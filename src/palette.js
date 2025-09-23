@@ -297,6 +297,21 @@ class SystemBlocksEditor {
       console.error('btn-import element not found!');
     }
     
+    // Connection type selector
+    const connectionTypeSelect = document.getElementById('connection-type-select');
+    if (connectionTypeSelect) {
+      console.log('Adding change listener to Connection Type selector');
+      connectionTypeSelect.addEventListener('change', () => {
+        this.selectedConnectionType = connectionTypeSelect.value;
+        console.log('Connection type changed to:', this.selectedConnectionType);
+        debugLog('Connection type set to: ' + this.selectedConnectionType);
+      });
+      // Initialize the connection type
+      this.selectedConnectionType = connectionTypeSelect.value;
+    } else {
+      console.error('connection-type-select element not found!');
+    }
+    
     if (btnLinkCad) {
       console.log('Adding click listener to Link CAD button');
       btnLinkCad.addEventListener('click', () => {
@@ -561,8 +576,34 @@ class SystemBlocksEditor {
   addConnection(sourceBlockId, sourceInterfaceId, targetBlockId, targetInterfaceId) {
     debugLog('Adding connection between blocks');
     
+    // Find the source and target interfaces to determine connection type
+    const sourceBlock = this.diagram.blocks.find(b => b.id === sourceBlockId);
+    const targetBlock = this.diagram.blocks.find(b => b.id === targetBlockId);
+    
+    if (!sourceBlock || !targetBlock) {
+      debugLog('ERROR: Could not find blocks for connection');
+      return;
+    }
+    
+    const sourceIntf = sourceBlock.interfaces.find(i => i.id === sourceInterfaceId);
+    const targetIntf = targetBlock.interfaces.find(i => i.id === targetInterfaceId);
+    
+    if (!sourceIntf || !targetIntf) {
+      debugLog('ERROR: Could not find interfaces for connection');
+      return;
+    }
+    
+    // Determine connection type based on interface kinds
+    const connectionKind = this.determineConnectionKind(sourceIntf, targetIntf);
+    
+    // Save current state for undo
+    this.saveStateForUndo();
+    
     const connection = {
       id: this.generateId(),
+      kind: connectionKind,
+      protocol: sourceIntf.protocol || targetIntf.protocol || '',
+      attributes: {},
       source: {
         blockId: sourceBlockId,
         interfaceId: sourceInterfaceId
@@ -570,12 +611,71 @@ class SystemBlocksEditor {
       target: {
         blockId: targetBlockId,
         interfaceId: targetInterfaceId
-      }
+      },
+      style: this.getConnectionStyle(connectionKind)
     };
     
     this.diagram.connections.push(connection);
     this.renderConnection(connection);
-    debugLog('Connection added successfully');
+    debugLog('Connection added successfully with type: ' + connectionKind);
+  }
+  
+  determineConnectionKind(sourceIntf, targetIntf) {
+    // If user has manually selected a connection type (not auto), use it
+    if (this.selectedConnectionType && this.selectedConnectionType !== 'auto') {
+      debugLog('Using manually selected connection type: ' + this.selectedConnectionType);
+      return this.selectedConnectionType;
+    }
+    
+    // Auto-determine connection type based on interface kinds
+    // Prioritize power connections
+    if (sourceIntf.kind === 'power' || targetIntf.kind === 'power') {
+      return 'power';
+    }
+    
+    // Check for data connections
+    if (sourceIntf.kind === 'data' || targetIntf.kind === 'data') {
+      return 'data';
+    }
+    
+    // Check for mechanical connections
+    if (sourceIntf.kind === 'mechanical' || targetIntf.kind === 'mechanical') {
+      return 'mechanical';
+    }
+    
+    // Default to electrical
+    return 'electrical';
+  }
+  
+  getConnectionStyle(kind) {
+    const styles = {
+      power: {
+        color: '#dc3545',        // Red for power
+        width: '3',              // Thick lines for power
+        dashArray: 'none',       // Solid lines
+        arrowType: 'filled'      // Filled arrows
+      },
+      data: {
+        color: '#007bff',        // Blue for data
+        width: '2',              // Medium thickness
+        dashArray: 'none',       // Solid lines
+        arrowType: 'filled'      // Filled arrows
+      },
+      electrical: {
+        color: '#28a745',        // Green for electrical/signal
+        width: '1.5',            // Thinner lines
+        dashArray: '5,3',        // Dotted lines for signals
+        arrowType: 'filled'      // Filled arrows
+      },
+      mechanical: {
+        color: '#6c757d',        // Gray for mechanical
+        width: '2',              // Medium thickness
+        dashArray: '8,4',        // Dashed lines
+        arrowType: 'open'        // Open arrows
+      }
+    };
+    
+    return styles[kind] || styles.electrical;
   }
   
   renderConnection(connection) {
@@ -600,10 +700,14 @@ class SystemBlocksEditor {
     const sourcePos = this.getPortPosition(sourceBlock, sourceIntf);
     const targetPos = this.getPortPosition(targetBlock, targetIntf);
     
+    // Get connection style (ensure we have style data)
+    const style = connection.style || this.getConnectionStyle(connection.kind || 'electrical');
+    
     // Create connection group
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'connection-group');
     g.setAttribute('data-connection-id', connection.id);
+    g.setAttribute('data-connection-kind', connection.kind || 'electrical');
     
     // Create curved path instead of straight line
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -615,37 +719,29 @@ class SystemBlocksEditor {
     const pathData = `M ${sourcePos.x} ${sourcePos.y} Q ${midX} ${sourcePos.y} ${midX} ${(sourcePos.y + targetPos.y) / 2} Q ${midX} ${targetPos.y} ${targetPos.x} ${targetPos.y}`;
     
     path.setAttribute('d', pathData);
-    path.setAttribute('stroke', '#666');
-    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke', style.color);
+    path.setAttribute('stroke-width', style.width);
     path.setAttribute('fill', 'none');
     path.setAttribute('class', 'connection-line');
     
-    // Add arrowhead
-    const arrowSize = 6;
-    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    const angle = Math.atan2(targetPos.y - sourcePos.y, targetPos.x - sourcePos.x);
+    // Apply dash pattern if specified
+    if (style.dashArray !== 'none') {
+      path.setAttribute('stroke-dasharray', style.dashArray);
+    }
     
-    const arrowTip = {
-      x: targetPos.x - 4 * Math.cos(angle), // Offset from port center
-      y: targetPos.y - 4 * Math.sin(angle)
-    };
-    
-    const arrowBase1 = {
-      x: arrowTip.x - arrowSize * Math.cos(angle - Math.PI/6),
-      y: arrowTip.y - arrowSize * Math.sin(angle - Math.PI/6)
-    };
-    
-    const arrowBase2 = {
-      x: arrowTip.x - arrowSize * Math.cos(angle + Math.PI/6),
-      y: arrowTip.y - arrowSize * Math.sin(angle + Math.PI/6)
-    };
-    
-    arrow.setAttribute('points', `${arrowTip.x},${arrowTip.y} ${arrowBase1.x},${arrowBase1.y} ${arrowBase2.x},${arrowBase2.y}`);
-    arrow.setAttribute('fill', '#666');
-    arrow.setAttribute('class', 'connection-arrow');
+    // Create arrowhead based on style
+    const arrow = this.createArrowhead(sourcePos, targetPos, style);
     
     g.appendChild(path);
-    g.appendChild(arrow);
+    if (arrow) {
+      g.appendChild(arrow);
+    }
+    
+    // Add connection label if there's a protocol
+    if (connection.protocol) {
+      const label = this.createConnectionLabel(sourcePos, targetPos, connection.protocol, style);
+      g.appendChild(label);
+    }
     
     // Add click handler for connection management
     g.addEventListener('click', (e) => {
@@ -654,21 +750,143 @@ class SystemBlocksEditor {
       this.onConnectionClick(connection, e);
     });
     
-    // Add hover effects
+    // Add hover effects with connection-type-aware highlighting
     g.addEventListener('mouseenter', () => {
-      path.setAttribute('stroke', '#ff6b6b');
-      path.setAttribute('stroke-width', '2');
-      arrow.setAttribute('fill', '#ff6b6b');
+      path.setAttribute('stroke', this.getBrighterColor(style.color));
+      path.setAttribute('stroke-width', String(parseInt(style.width) + 1));
+      if (arrow) {
+        arrow.setAttribute('fill', this.getBrighterColor(style.color));
+      }
     });
     
     g.addEventListener('mouseleave', () => {
-      path.setAttribute('stroke', '#666');
-      path.setAttribute('stroke-width', '1.5');
-      arrow.setAttribute('fill', '#666');
+      path.setAttribute('stroke', style.color);
+      path.setAttribute('stroke-width', style.width);
+      if (arrow) {
+        arrow.setAttribute('fill', style.color);
+      }
     });
     
     this.connectionsLayer.appendChild(g);
-    debugLog('Connection rendered with improved styling');
+    debugLog(`Connection rendered with ${connection.kind || 'electrical'} styling`);
+  }
+  
+  createArrowhead(sourcePos, targetPos, style) {
+    const arrowSize = parseInt(style.width) + 4; // Scale arrow with line width
+    const angle = Math.atan2(targetPos.y - sourcePos.y, targetPos.x - sourcePos.x);
+    
+    const arrowTip = {
+      x: targetPos.x - 4 * Math.cos(angle), // Offset from port center
+      y: targetPos.y - 4 * Math.sin(angle)
+    };
+    
+    if (style.arrowType === 'filled') {
+      // Filled triangle arrow
+      const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      
+      const arrowBase1 = {
+        x: arrowTip.x - arrowSize * Math.cos(angle - Math.PI/6),
+        y: arrowTip.y - arrowSize * Math.sin(angle - Math.PI/6)
+      };
+      
+      const arrowBase2 = {
+        x: arrowTip.x - arrowSize * Math.cos(angle + Math.PI/6),
+        y: arrowTip.y - arrowSize * Math.sin(angle + Math.PI/6)
+      };
+      
+      arrow.setAttribute('points', `${arrowTip.x},${arrowTip.y} ${arrowBase1.x},${arrowBase1.y} ${arrowBase2.x},${arrowBase2.y}`);
+      arrow.setAttribute('fill', style.color);
+      arrow.setAttribute('class', 'connection-arrow filled');
+      
+      return arrow;
+    } else if (style.arrowType === 'open') {
+      // Open arrow (just two lines)
+      const arrowGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      arrowGroup.setAttribute('class', 'connection-arrow open');
+      
+      const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      
+      const arrowBase1 = {
+        x: arrowTip.x - arrowSize * Math.cos(angle - Math.PI/6),
+        y: arrowTip.y - arrowSize * Math.sin(angle - Math.PI/6)
+      };
+      
+      const arrowBase2 = {
+        x: arrowTip.x - arrowSize * Math.cos(angle + Math.PI/6),
+        y: arrowTip.y - arrowSize * Math.sin(angle + Math.PI/6)
+      };
+      
+      line1.setAttribute('x1', arrowTip.x);
+      line1.setAttribute('y1', arrowTip.y);
+      line1.setAttribute('x2', arrowBase1.x);
+      line1.setAttribute('y2', arrowBase1.y);
+      line1.setAttribute('stroke', style.color);
+      line1.setAttribute('stroke-width', style.width);
+      
+      line2.setAttribute('x1', arrowTip.x);
+      line2.setAttribute('y1', arrowTip.y);
+      line2.setAttribute('x2', arrowBase2.x);
+      line2.setAttribute('y2', arrowBase2.y);
+      line2.setAttribute('stroke', style.color);
+      line2.setAttribute('stroke-width', style.width);
+      
+      arrowGroup.appendChild(line1);
+      arrowGroup.appendChild(line2);
+      
+      return arrowGroup;
+    }
+    
+    return null; // No arrow
+  }
+  
+  createConnectionLabel(sourcePos, targetPos, text, style) {
+    const midX = (sourcePos.x + targetPos.x) / 2;
+    const midY = (sourcePos.y + targetPos.y) / 2;
+    
+    // Create label background
+    const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    labelGroup.setAttribute('class', 'connection-label');
+    
+    const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    textElement.setAttribute('x', midX);
+    textElement.setAttribute('y', midY - 2);
+    textElement.setAttribute('text-anchor', 'middle');
+    textElement.setAttribute('font-size', '10');
+    textElement.setAttribute('font-family', 'Arial, sans-serif');
+    textElement.setAttribute('fill', style.color);
+    textElement.setAttribute('font-weight', 'bold');
+    textElement.textContent = text;
+    
+    // Add background rectangle for better readability
+    const bbox = textElement.getBBox();
+    const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    background.setAttribute('x', bbox.x - 2);
+    background.setAttribute('y', bbox.y - 1);
+    background.setAttribute('width', bbox.width + 4);
+    background.setAttribute('height', bbox.height + 2);
+    background.setAttribute('fill', 'white');
+    background.setAttribute('fill-opacity', '0.8');
+    background.setAttribute('stroke', style.color);
+    background.setAttribute('stroke-width', '0.5');
+    background.setAttribute('rx', '2');
+    
+    labelGroup.appendChild(background);
+    labelGroup.appendChild(textElement);
+    
+    return labelGroup;
+  }
+  
+  getBrighterColor(color) {
+    // Simple color brightening for hover effects
+    const brighterColors = {
+      '#dc3545': '#ff6b6b',  // Red -> Bright red
+      '#007bff': '#4dabf7',  // Blue -> Bright blue  
+      '#28a745': '#51cf66',  // Green -> Bright green
+      '#6c757d': '#adb5bd'   // Gray -> Light gray
+    };
+    
+    return brighterColors[color] || '#ff6b6b';
   }
   
   onConnectionClick(connection, event) {
