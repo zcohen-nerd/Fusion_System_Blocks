@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "System Blocks Diagram",
+  "type": "object",
+  "required": ["blocks", "connections"],
+  "properties": {
+    "schema": { "type": "string" },
+    "units": {
+      "type": "object",
+      "properties": {
+        "voltage": { "type": "string" },
+        "current": { "type": "string" },
+        "length": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["Placeholder", "Planned", "In-Work", "Implemented", "Verified"]
+          },
+          "attributes": { "type": "object", "additionalProperties": true },
+          "interfaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "name", "kind"],
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "kind": {
+                  "type": "string",
+                  "enum": ["electrical", "power", "data", "mechanical"]
+                },
+                "protocol": { "type": "string" },
+                "direction": {
+                  "type": "string",
+                  "enum": ["input", "output", "bidirectional"]
+                },
+                "params": { "type": "object" },
+                "port": {
+                  "type": "object",
+                  "properties": {
+                    "side": { "type": "string" },
+                    "index": { "type": "integer" }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["target"],
+              "properties": {
+                "target": { "type": "string", "enum": ["cad", "ecad", "external"] },
+                "docId": { "type": "string" },
+                "occToken": { "type": "string" },
+                "docPath": { "type": "string" },
+                "device": { "type": "string" },
+                "footprint": { "type": "string" }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "connections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "from", "to", "kind"],
+        "properties": {
+          "id": { "type": "string" },
+          "from": {
+            "type": "object",
+            "required": ["blockId"],
+            "properties": {
+              "blockId": { "type": "string" },
+              "interfaceId": { "type": "string" }
+            },
+            "additionalProperties": true
+          },
+          "to": {
+            "type": "object",
+            "required": ["blockId"],
+            "properties": {
+              "blockId": { "type": "string" },
+              "interfaceId": { "type": "string" }
+            },
+            "additionalProperties": true
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["electrical", "power", "data", "mechanical"]
+          },
+          "protocol": { "type": "string" },
+          "attributes": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}
