@@ -5,7 +5,7 @@ This module is Fusion-agnostic and can be tested independently.
 import json
 import uuid
 import os
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 
 try:
     import jsonschema
@@ -287,6 +287,37 @@ def compute_block_status(block: Dict[str, Any]) -> str:
         return "Planned"
 
 
+def compute_block_status_with_rules(block: Dict[str, Any], diagram: Dict[str, Any]) -> str:
+    """
+    Compute block status including rule validation for "Verified" status.
+    
+    Args:
+        block: Block dictionary
+        diagram: Full diagram for rule checking context
+        
+    Returns:
+        Computed status from the enum
+    """
+    # Start with basic status computation
+    basic_status = compute_block_status(block)
+    
+    # If block reaches "Implemented", check if it can be "Verified"
+    if basic_status == "Implemented":
+        # Check if block passes implementation completeness for itself
+        single_block_diagram = {
+            "blocks": [block],
+            "connections": [c for c in diagram.get("connections", []) 
+                          if c.get("from", {}).get("blockId") == block.get("id") or 
+                             c.get("to", {}).get("blockId") == block.get("id")]
+        }
+        
+        completeness_result = check_implementation_completeness(single_block_diagram)
+        if completeness_result["success"]:
+            return "Verified"
+    
+    return basic_status
+
+
 def update_block_statuses(diagram: Dict[str, Any]) -> Dict[str, Any]:
     """
     Update the status of all blocks in a diagram based on auto-computation.
@@ -325,3 +356,240 @@ def get_status_color(status: str) -> str:
         "Verified": "#00ff00"      # Green
     }
     return status_colors.get(status, "#cccccc")
+
+
+def check_logic_level_compatibility(connection: Dict[str, Any], diagram: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Check if connected interfaces have compatible logic levels.
+    
+    Args:
+        connection: Connection dictionary
+        diagram: Full diagram for block lookup
+        
+    Returns:
+        Rule check result with success/failure and message
+    """
+    from_block_id = connection.get("from", {}).get("blockId")
+    to_block_id = connection.get("to", {}).get("blockId")
+    from_intf_id = connection.get("from", {}).get("interfaceId")
+    to_intf_id = connection.get("to", {}).get("interfaceId")
+    
+    if not all([from_block_id, to_block_id, from_intf_id, to_intf_id]):
+        return {
+            "rule": "logic_level_compatibility",
+            "success": False,
+            "severity": "error",
+            "message": "Connection missing required interface references"
+        }
+    
+    # Find blocks
+    blocks = {block["id"]: block for block in diagram.get("blocks", [])}
+    from_block = blocks.get(from_block_id)
+    to_block = blocks.get(to_block_id)
+    
+    if not from_block or not to_block:
+        return {
+            "rule": "logic_level_compatibility", 
+            "success": False,
+            "severity": "error",
+            "message": "Cannot find connected blocks"
+        }
+    
+    # Find interfaces
+    from_intf = next((intf for intf in from_block.get("interfaces", []) if intf["id"] == from_intf_id), None)
+    to_intf = next((intf for intf in to_block.get("interfaces", []) if intf["id"] == to_intf_id), None)
+    
+    if not from_intf or not to_intf:
+        return {
+            "rule": "logic_level_compatibility",
+            "success": False, 
+            "severity": "error",
+            "message": "Cannot find connected interfaces"
+        }
+    
+    # Check logic levels from interface parameters
+    from_voltage = from_intf.get("params", {}).get("voltage", "3.3V")
+    to_voltage = to_intf.get("params", {}).get("voltage", "3.3V")
+    
+    # Simple voltage compatibility check
+    compatible_voltages = [
+        ("3.3V", "3.3V"), ("5V", "5V"), ("1.8V", "1.8V"),
+        ("5V", "3.3V")  # 5V can drive 3.3V (with appropriate logic)
+    ]
+    
+    if (from_voltage, to_voltage) in compatible_voltages:
+        return {
+            "rule": "logic_level_compatibility",
+            "success": True,
+            "severity": "info", 
+            "message": f"Compatible logic levels: {from_voltage} → {to_voltage}"
+        }
+    else:
+        return {
+            "rule": "logic_level_compatibility",
+            "success": False,
+            "severity": "warning",
+            "message": f"Potential logic level mismatch: {from_voltage} → {to_voltage}"
+        }
+
+
+def check_power_budget(diagram: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Check if power consumption doesn't exceed power supply capacity.
+    
+    Args:
+        diagram: Full diagram dictionary
+        
+    Returns:
+        Rule check result with success/failure and message
+    """
+    total_supply = 0.0
+    total_consumption = 0.0
+    supply_blocks = []
+    consumer_blocks = []
+    
+    for block in diagram.get("blocks", []):
+        block_type = block.get("type", "").lower()
+        attributes = block.get("attributes", {})
+        
+        # Check if block is a power supply
+        if "power" in block_type or "supply" in block_type or "regulator" in block_type:
+            try:
+                current_str = attributes.get("output_current", "0mA")
+                current_val = float(current_str.replace("mA", "").replace("A", "000" if "A" in current_str else ""))
+                total_supply += current_val
+                supply_blocks.append(f"{block['name']}: {current_str}")
+            except (ValueError, AttributeError):
+                pass
+        
+        # Check power consumption
+        try:
+            current_str = attributes.get("current", attributes.get("power_consumption", "0mA"))
+            if current_str and current_str != "0mA":
+                current_val = float(current_str.replace("mA", "").replace("A", "000" if "A" in current_str else ""))
+                total_consumption += current_val
+                consumer_blocks.append(f"{block['name']}: {current_str}")
+        except (ValueError, AttributeError):
+            pass
+    
+    # Add 20% safety margin
+    safe_supply = total_supply * 0.8
+    
+    if total_consumption == 0 and total_supply == 0:
+        return {
+            "rule": "power_budget",
+            "success": True,
+            "severity": "info",
+            "message": "No power specifications found - unable to verify budget"
+        }
+    elif total_consumption <= safe_supply:
+        return {
+            "rule": "power_budget", 
+            "success": True,
+            "severity": "info",
+            "message": f"Power budget OK: {total_consumption}mA used / {total_supply}mA available"
+        }
+    else:
+        return {
+            "rule": "power_budget",
+            "success": False,
+            "severity": "error", 
+            "message": f"Power budget exceeded: {total_consumption}mA needed > {safe_supply}mA available (with 20% margin)"
+        }
+
+
+def check_implementation_completeness(diagram: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Check if all blocks have sufficient implementation details.
+    
+    Args:
+        diagram: Full diagram dictionary
+        
+    Returns:
+        Rule check result with success/failure and message
+    """
+    incomplete_blocks = []
+    total_blocks = len(diagram.get("blocks", []))
+    
+    for block in diagram.get("blocks", []):
+        block_name = block.get("name", "Unnamed")
+        issues = []
+        
+        # Check for CAD/ECAD links for non-placeholder blocks
+        status = block.get("status", "Placeholder")
+        if status not in ["Placeholder", "Planned"]:
+            links = block.get("links", [])
+            has_cad = any(link.get("target") == "cad" for link in links)
+            has_ecad = any(link.get("target") == "ecad" for link in links)
+            
+            if not has_cad and not has_ecad:
+                issues.append("missing CAD/ECAD links")
+        
+        # Check for interface definitions
+        interfaces = block.get("interfaces", [])
+        if status in ["Implemented", "Verified"] and len(interfaces) < 2:
+            issues.append("insufficient interfaces defined")
+        
+        # Check for attributes
+        attributes = block.get("attributes", {})
+        meaningful_attrs = [k for k, v in attributes.items() if v and str(v).strip()]
+        if status in ["Planned", "In-Work", "Implemented", "Verified"] and len(meaningful_attrs) < 1:
+            issues.append("missing key attributes")
+        
+        if issues:
+            incomplete_blocks.append(f"{block_name}: {', '.join(issues)}")
+    
+    if not incomplete_blocks:
+        return {
+            "rule": "implementation_completeness",
+            "success": True,
+            "severity": "info",
+            "message": f"All {total_blocks} blocks have adequate implementation details"
+        }
+    else:
+        return {
+            "rule": "implementation_completeness", 
+            "success": False,
+            "severity": "warning",
+            "message": f"Incomplete blocks: {'; '.join(incomplete_blocks)}"
+        }
+
+
+def run_all_rule_checks(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Run all rule checks on a diagram.
+    
+    Args:
+        diagram: Full diagram dictionary
+        
+    Returns:
+        List of rule check results
+    """
+    results = []
+    
+    # Check power budget (diagram-level rule)
+    results.append(check_power_budget(diagram))
+    
+    # Check implementation completeness (diagram-level rule) 
+    results.append(check_implementation_completeness(diagram))
+    
+    # Check logic level compatibility for each connection
+    for connection in diagram.get("connections", []):
+        logic_result = check_logic_level_compatibility(connection, diagram)
+        results.append(logic_result)
+    
+    return results
+
+
+def get_rule_failures(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Get only the failed rule checks for a diagram.
+    
+    Args:
+        diagram: Full diagram dictionary
+        
+    Returns:
+        List of failed rule check results
+    """
+    all_results = run_all_rule_checks(diagram)
+    return [result for result in all_results if not result["success"]]

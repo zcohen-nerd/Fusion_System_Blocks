@@ -153,6 +153,62 @@
       border-radius: 2px;
       margin-right: 6px;
     }
+    
+    .rule-panel {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px;
+      font-size: 11px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      z-index: 100;
+      max-width: 350px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .rule-panel h4 {
+      margin: 0 0 6px 0;
+      font-size: 12px;
+      color: #333;
+    }
+    
+    .rule-result {
+      display: flex;
+      align-items: flex-start;
+      margin: 3px 0;
+      padding: 2px;
+      border-radius: 2px;
+    }
+    
+    .rule-result.error {
+      background: #ffeeee;
+      border-left: 3px solid #ff6666;
+    }
+    
+    .rule-result.warning {
+      background: #fff8e1;
+      border-left: 3px solid #ffa726;
+    }
+    
+    .rule-result.info {
+      background: #e8f5e8;
+      border-left: 3px solid #66bb6a;
+    }
+    
+    .rule-icon {
+      margin-right: 4px;
+      font-weight: bold;
+    }
+    
+    .rule-message {
+      flex: 1;
+      font-size: 10px;
+      line-height: 1.3;
+    }
   </style>
 </head>
 <body>
@@ -164,6 +220,7 @@
       <button id="btn-load">Load</button>
       <button id="btn-add-block">Add Block</button>
       <button id="btn-snap-grid" class="toggle-btn active">Snap to Grid</button>
+      <button id="btn-check-rules">Check Rules</button>
       <div class="separator"></div>
       <button id="btn-link-cad" class="context-btn" disabled>Link to CAD</button>
       <button id="btn-link-ecad" class="context-btn" disabled>Link to ECAD</button>
@@ -204,6 +261,17 @@
       <div class="status-item">
         <div class="status-color" style="background-color: #00ff00;"></div>
         <span>Verified</span>
+      </div>
+    </div>
+    
+    <!-- Rule Results Panel -->
+    <div class="rule-panel" id="rule-panel">
+      <h4>Rule Checks</h4>
+      <div id="rule-results">
+        <div class="rule-result info">
+          <span class="rule-icon">ℹ️</span>
+          <span class="rule-message">Run checks to see results</span>
+        </div>
       </div>
     </div>
   </div>

@@ -73,6 +73,7 @@ class SystemBlocksEditor {
     document.getElementById('btn-load').addEventListener('click', () => this.loadDiagram());
     document.getElementById('btn-add-block').addEventListener('click', () => this.promptAddBlock());
     document.getElementById('btn-snap-grid').addEventListener('click', () => this.toggleSnapToGrid());
+    document.getElementById('btn-check-rules').addEventListener('click', () => this.checkAndDisplayRules());
     document.getElementById('btn-link-cad').addEventListener('click', () => this.linkSelectedBlockToCAD());
     document.getElementById('btn-link-ecad').addEventListener('click', () => this.linkSelectedBlockToECAD());
     
@@ -574,6 +575,304 @@ class SystemBlocksEditor {
     
     // Re-render the block
     this.renderBlock(block);
+  }
+  
+  checkLogicLevelCompatibility(connection) {
+    // Check if connected interfaces have compatible logic levels
+    const fromBlock = this.diagram.blocks.find(b => b.id === connection.from.blockId);
+    const toBlock = this.diagram.blocks.find(b => b.id === connection.to.blockId);
+    
+    if (!fromBlock || !toBlock) {
+      return {
+        rule: "logic_level_compatibility",
+        success: false,
+        severity: "error",
+        message: "Cannot find connected blocks"
+      };
+    }
+    
+    const fromIntf = fromBlock.interfaces.find(i => i.id === connection.from.interfaceId);
+    const toIntf = toBlock.interfaces.find(i => i.id === connection.to.interfaceId);
+    
+    if (!fromIntf || !toIntf) {
+      return {
+        rule: "logic_level_compatibility", 
+        success: false,
+        severity: "error",
+        message: "Cannot find connected interfaces"
+      };
+    }
+    
+    // Check logic levels from interface parameters
+    const fromVoltage = fromIntf.params?.voltage || "3.3V";
+    const toVoltage = toIntf.params?.voltage || "3.3V";
+    
+    // Simple voltage compatibility check
+    const compatibleVoltages = [
+      ["3.3V", "3.3V"], ["5V", "5V"], ["1.8V", "1.8V"],
+      ["5V", "3.3V"]  // 5V can drive 3.3V (with appropriate logic)
+    ];
+    
+    const isCompatible = compatibleVoltages.some(([from, to]) => 
+      from === fromVoltage && to === toVoltage
+    );
+    
+    if (isCompatible) {
+      return {
+        rule: "logic_level_compatibility",
+        success: true,
+        severity: "info",
+        message: `Compatible logic levels: ${fromVoltage} → ${toVoltage}`
+      };
+    } else {
+      return {
+        rule: "logic_level_compatibility",
+        success: false,
+        severity: "warning", 
+        message: `Potential logic level mismatch: ${fromVoltage} → ${toVoltage}`
+      };
+    }
+  }
+  
+  checkPowerBudget() {
+    // Check if power consumption doesn't exceed power supply capacity
+    let totalSupply = 0;
+    let totalConsumption = 0;
+    
+    this.diagram.blocks.forEach(block => {
+      const blockType = (block.type || "").toLowerCase();
+      const attributes = block.attributes || {};
+      
+      // Check if block is a power supply
+      if (blockType.includes("power") || blockType.includes("supply") || blockType.includes("regulator")) {
+        try {
+          const currentStr = attributes.output_current || "0mA";
+          const currentVal = parseFloat(currentStr.replace(/[mA]/g, ""));
+          if (currentStr.includes("A") && !currentStr.includes("mA")) {
+            totalSupply += currentVal * 1000; // Convert A to mA
+          } else {
+            totalSupply += currentVal;
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
+      }
+      
+      // Check power consumption
+      try {
+        const currentStr = attributes.current || attributes.power_consumption || "0mA";
+        if (currentStr && currentStr !== "0mA") {
+          const currentVal = parseFloat(currentStr.replace(/[mA]/g, ""));
+          if (currentStr.includes("A") && !currentStr.includes("mA")) {
+            totalConsumption += currentVal * 1000; // Convert A to mA  
+          } else {
+            totalConsumption += currentVal;
+          }
+        }
+      } catch (e) {
+        // Ignore parsing errors
+      }
+    });
+    
+    // Add 20% safety margin
+    const safeSupply = totalSupply * 0.8;
+    
+    if (totalConsumption === 0 && totalSupply === 0) {
+      return {
+        rule: "power_budget",
+        success: true,
+        severity: "info",
+        message: "No power specifications found - unable to verify budget"
+      };
+    } else if (totalConsumption <= safeSupply) {
+      return {
+        rule: "power_budget",
+        success: true,
+        severity: "info", 
+        message: `Power budget OK: ${totalConsumption}mA used / ${totalSupply}mA available`
+      };
+    } else {
+      return {
+        rule: "power_budget",
+        success: false,
+        severity: "error",
+        message: `Power budget exceeded: ${totalConsumption}mA needed > ${safeSupply}mA available (with 20% margin)`
+      };
+    }
+  }
+  
+  checkImplementationCompleteness() {
+    // Check if all blocks have sufficient implementation details
+    const incompleteBlocks = [];
+    
+    this.diagram.blocks.forEach(block => {
+      const blockName = block.name || "Unnamed";
+      const issues = [];
+      const status = block.status || "Placeholder";
+      
+      // Check for CAD/ECAD links for non-placeholder blocks
+      if (!["Placeholder", "Planned"].includes(status)) {
+        const links = block.links || [];
+        const hasCAD = links.some(link => link.target === "cad");
+        const hasECAD = links.some(link => link.target === "ecad");
+        
+        if (!hasCAD && !hasECAD) {
+          issues.push("missing CAD/ECAD links");
+        }
+      }
+      
+      // Check for interface definitions
+      const interfaces = block.interfaces || [];
+      if (["Implemented", "Verified"].includes(status) && interfaces.length < 2) {
+        issues.push("insufficient interfaces defined");
+      }
+      
+      // Check for attributes
+      const attributes = block.attributes || {};
+      const meaningfulAttrs = Object.entries(attributes).filter(([k, v]) => v && String(v).trim());
+      if (["Planned", "In-Work", "Implemented", "Verified"].includes(status) && meaningfulAttrs.length < 1) {
+        issues.push("missing key attributes");
+      }
+      
+      if (issues.length > 0) {
+        incompleteBlocks.push(`${blockName}: ${issues.join(', ')}`);
+      }
+    });
+    
+    if (incompleteBlocks.length === 0) {
+      return {
+        rule: "implementation_completeness",
+        success: true,
+        severity: "info",
+        message: `All ${this.diagram.blocks.length} blocks have adequate implementation details`
+      };
+    } else {
+      return {
+        rule: "implementation_completeness",
+        success: false,
+        severity: "warning",
+        message: `Incomplete blocks: ${incompleteBlocks.join('; ')}`
+      };
+    }
+  }
+  
+  runAllRuleChecks() {
+    // Run all rule checks on the current diagram
+    const results = [];
+    
+    // Check power budget (diagram-level rule)
+    results.push(this.checkPowerBudget());
+    
+    // Check implementation completeness (diagram-level rule)
+    results.push(this.checkImplementationCompleteness());
+    
+    // Check logic level compatibility for each connection
+    this.diagram.connections.forEach(connection => {
+      const logicResult = this.checkLogicLevelCompatibility(connection);
+      results.push(logicResult);
+    });
+    
+    return results;
+  }
+  
+  getRuleFailures() {
+    // Get only the failed rule checks
+    const allResults = this.runAllRuleChecks();
+    return allResults.filter(result => !result.success);
+  }
+  
+  updateRuleWarnings() {
+    // Update visual warning indicators for rule failures
+    this.clearRuleWarnings();
+    
+    const failures = this.getRuleFailures();
+    
+    failures.forEach(failure => {
+      if (failure.rule === "logic_level_compatibility") {
+        // Add warning badge to connection
+        // This would require connection identification - simplified for now
+        console.warn("Logic level issue:", failure.message);
+      } else if (failure.rule === "power_budget") {
+        // Show power budget warning in UI
+        this.showPowerBudgetWarning(failure.message);
+      } else if (failure.rule === "implementation_completeness") {
+        // Mark incomplete blocks with warning badges
+        this.markIncompleteBlocks(failure.message);
+      }
+    });
+  }
+  
+  clearRuleWarnings() {
+    // Clear existing warning indicators
+    document.querySelectorAll('.rule-warning').forEach(el => el.remove());
+    document.querySelectorAll('.power-warning').forEach(el => el.remove());
+  }
+  
+  showPowerBudgetWarning(message) {
+    // Show power budget warning in the UI
+    const warningDiv = document.createElement('div');
+    warningDiv.className = 'power-warning';
+    warningDiv.style.cssText = `
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #ffeeee;
+      border: 1px solid #ff6666;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      max-width: 300px;
+      z-index: 200;
+    `;
+    warningDiv.textContent = `⚠️ ${message}`;
+    document.getElementById('canvas-container').appendChild(warningDiv);
+  }
+  
+  markIncompleteBlocks(message) {
+    // Add visual indicators to incomplete blocks
+    console.warn("Implementation completeness issues:", message);
+    // Additional visual marking could be added here
+  }
+  
+  checkAndDisplayRules() {
+    // Run all rule checks and display results in the rule panel
+    console.log("Running rule checks...");
+    const results = this.runAllRuleChecks();
+    this.updateRulePanel(results);
+    
+    // Also update visual warning indicators
+    this.updateRuleWarnings();
+  }
+  
+  updateRulePanel(results) {
+    // Update the rule results panel with check results
+    const resultsContainer = document.getElementById('rule-results');
+    resultsContainer.innerHTML = '';
+    
+    if (results.length === 0) {
+      resultsContainer.innerHTML = `
+        <div class="rule-result info">
+          <span class="rule-icon">ℹ️</span>
+          <span class="rule-message">No rules to check</span>
+        </div>
+      `;
+      return;
+    }
+    
+    results.forEach(result => {
+      const resultDiv = document.createElement('div');
+      resultDiv.className = `rule-result ${result.severity}`;
+      
+      const icon = result.severity === 'error' ? '❌' : 
+                  result.severity === 'warning' ? '⚠️' : '✅';
+      
+      resultDiv.innerHTML = `
+        <span class="rule-icon">${icon}</span>
+        <span class="rule-message">${result.message}</span>
+      `;
+      
+      resultsContainer.appendChild(resultDiv);
+    });
   }
   
   newDiagram() {
