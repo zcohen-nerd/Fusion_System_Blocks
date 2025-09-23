@@ -60,6 +60,31 @@
       border-color: #0066cc;
     }
     
+    .connection-type-container {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .connection-type-select {
+      padding: 4px 8px;
+      border: 1px solid #999;
+      border-radius: 3px;
+      font-size: 12px;
+      background: white;
+      cursor: pointer;
+    }
+    
+    .connection-type-select:hover {
+      border-color: #0066cc;
+    }
+    
+    .connection-type-select:focus {
+      outline: none;
+      border-color: #0066cc;
+      box-shadow: 0 0 3px rgba(0, 102, 204, 0.3);
+    }
+    
     #canvas-container { 
       height: calc(100% - 60px); 
       position: relative;
@@ -191,6 +216,43 @@
       height: 12px;
       border-radius: 2px;
       margin-right: 6px;
+    }
+    
+    .connection-legend {
+      position: absolute;
+      top: 200px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 12px;
+      font-size: 12px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      max-width: 150px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .connection-legend h4 {
+      margin: 0 0 6px 0;
+      font-size: 12px;
+      color: #333;
+    }
+    
+    .connection-item {
+      display: flex;
+      align-items: center;
+      margin: 3px 0;
+      gap: 6px;
+    }
+    
+    .connection-item svg {
+      flex-shrink: 0;
+    }
+    
+    .connection-item span {
+      font-size: 11px;
+      color: #333;
     }
     
     .rule-panel {
@@ -340,6 +402,28 @@
         <span id="search-results" class="search-results-info"></span>
       </div>
       <div class="separator"></div>
+      <!-- Connection Type Selector -->
+      <div class="connection-type-container">
+        <label for="connection-type-select" style="font-size: 12px; color: #666; margin-right: 5px;">Connection:</label>
+        <select id="connection-type-select" class="connection-type-select" title="Choose connection type for new connections">
+          <option value="auto" selected>Auto</option>
+          <option value="electrical">⚡ Electrical</option>
+          <option value="power">🔌 Power</option>
+          <option value="data">📊 Data</option>
+          <option value="mechanical">⚙️ Mechanical</option>
+        </select>
+        <select id="arrow-direction-select" class="connection-type-select" title="Choose arrow direction" style="margin-left: 5px;">
+          <option value="forward" selected>→ Forward</option>
+          <option value="bidirectional">↔ Both</option>
+          <option value="backward">← Backward</option>
+          <option value="none">— None</option>
+        </select>
+      </div>
+      <div class="separator"></div>
+      <!-- Connection Templates -->
+      <button id="btn-connection-templates" class="context-btn" title="Connection Templates">📋 Templates</button>
+      <button id="btn-bulk-connections" class="context-btn" title="Bulk Connection Operations">⚡ Bulk</button>
+      <div class="separator"></div>
       <button id="btn-add-block">Add Block</button>
       <button id="btn-snap-grid" class="toggle-btn active">Snap to Grid</button>
       <button id="btn-check-rules">Check Rules</button>
@@ -385,6 +469,63 @@
       <div class="status-item">
         <div class="status-color" style="background-color: #00ff00;"></div>
         <span>Verified</span>
+      </div>
+    </div>
+    
+    <!-- Connection Type Legend -->
+    <div class="connection-legend">
+      <h4>Connection Types</h4>
+      <div class="connection-item">
+        <svg width="40" height="12" viewBox="0 0 40 12">
+          <line x1="0" y1="6" x2="30" y2="6" stroke="#dc3545" stroke-width="3"/>
+          <polygon points="30,6 26,3 26,9" fill="#dc3545"/>
+        </svg>
+        <span>🔌 Power</span>
+      </div>
+      <div class="connection-item">
+        <svg width="40" height="12" viewBox="0 0 40 12">
+          <line x1="0" y1="6" x2="30" y2="6" stroke="#007bff" stroke-width="2"/>
+          <polygon points="30,6 26,3 26,9" fill="#007bff"/>
+        </svg>
+        <span>📊 Data</span>
+      </div>
+      <div class="connection-item">
+        <svg width="40" height="12" viewBox="0 0 40 12">
+          <line x1="0" y1="6" x2="30" y2="6" stroke="#28a745" stroke-width="1.5" stroke-dasharray="5,3"/>
+          <polygon points="30,6 26,3 26,9" fill="#28a745"/>
+        </svg>
+        <span>⚡ Electrical</span>
+      </div>
+      <div class="connection-item">
+        <svg width="40" height="12" viewBox="0 0 40 12">
+          <line x1="0" y1="6" x2="30" y2="6" stroke="#6c757d" stroke-width="2" stroke-dasharray="8,4"/>
+          <line x1="30" y1="3" x2="26" y2="6" stroke="#6c757d" stroke-width="2"/>
+          <line x1="30" y1="9" x2="26" y2="6" stroke="#6c757d" stroke-width="2"/>
+        </svg>
+        <span>⚙️ Mechanical</span>
+      </div>
+      
+      <h4 style="margin-top: 15px;">Arrow Types</h4>
+      <div class="connection-item">
+        <svg width="40" height="12" viewBox="0 0 40 12">
+          <line x1="0" y1="6" x2="30" y2="6" stroke="#333" stroke-width="2"/>
+          <polygon points="30,6 26,3 26,9" fill="#333"/>
+        </svg>
+        <span>→ Forward</span>
+      </div>
+      <div class="connection-item">
+        <svg width="40" height="12" viewBox="0 0 40 12">
+          <line x1="0" y1="6" x2="30" y2="6" stroke="#333" stroke-width="2"/>
+          <polygon points="30,6 26,3 26,9" fill="#333"/>
+          <polygon points="0,6 4,3 4,9" fill="#333"/>
+        </svg>
+        <span>↔ Bidirectional</span>
+      </div>
+      <div class="connection-item">
+        <svg width="40" height="12" viewBox="0 0 40 12">
+          <line x1="0" y1="6" x2="30" y2="6" stroke="#333" stroke-width="2"/>
+        </svg>
+        <span>— No Arrow</span>
       </div>
     </div>
     

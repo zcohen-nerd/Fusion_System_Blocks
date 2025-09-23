@@ -297,6 +297,60 @@ class SystemBlocksEditor {
       console.error('btn-import element not found!');
     }
     
+    // Connection type selector
+    const connectionTypeSelect = document.getElementById('connection-type-select');
+    if (connectionTypeSelect) {
+      console.log('Adding change listener to Connection Type selector');
+      connectionTypeSelect.addEventListener('change', () => {
+        this.selectedConnectionType = connectionTypeSelect.value;
+        console.log('Connection type changed to:', this.selectedConnectionType);
+        debugLog('Connection type set to: ' + this.selectedConnectionType);
+      });
+      // Initialize the connection type
+      this.selectedConnectionType = connectionTypeSelect.value;
+    } else {
+      console.error('connection-type-select element not found!');
+    }
+    
+    // Arrow direction selector
+    const arrowDirectionSelect = document.getElementById('arrow-direction-select');
+    if (arrowDirectionSelect) {
+      console.log('Adding change listener to Arrow Direction selector');
+      arrowDirectionSelect.addEventListener('change', () => {
+        this.selectedArrowDirection = arrowDirectionSelect.value;
+        console.log('Arrow direction changed to:', this.selectedArrowDirection);
+        debugLog('Arrow direction set to: ' + this.selectedArrowDirection);
+      });
+      // Initialize the arrow direction
+      this.selectedArrowDirection = arrowDirectionSelect.value;
+    } else {
+      console.error('arrow-direction-select element not found!');
+    }
+    
+    // Connection templates button
+    const btnConnectionTemplates = document.getElementById('btn-connection-templates');
+    if (btnConnectionTemplates) {
+      console.log('Adding click listener to Connection Templates button');
+      btnConnectionTemplates.addEventListener('click', () => {
+        console.log('Connection Templates button clicked!');
+        this.showConnectionTemplates();
+      });
+    } else {
+      console.error('btn-connection-templates element not found!');
+    }
+    
+    // Bulk connections button
+    const btnBulkConnections = document.getElementById('btn-bulk-connections');
+    if (btnBulkConnections) {
+      console.log('Adding click listener to Bulk Connections button');
+      btnBulkConnections.addEventListener('click', () => {
+        console.log('Bulk Connections button clicked!');
+        this.showBulkConnectionDialog();
+      });
+    } else {
+      console.error('btn-bulk-connections element not found!');
+    }
+    
     if (btnLinkCad) {
       console.log('Adding click listener to Link CAD button');
       btnLinkCad.addEventListener('click', () => {
@@ -561,8 +615,57 @@ class SystemBlocksEditor {
   addConnection(sourceBlockId, sourceInterfaceId, targetBlockId, targetInterfaceId) {
     debugLog('Adding connection between blocks');
     
+    // Find the source and target interfaces to determine connection type
+    const sourceBlock = this.diagram.blocks.find(b => b.id === sourceBlockId);
+    const targetBlock = this.diagram.blocks.find(b => b.id === targetBlockId);
+    
+    if (!sourceBlock || !targetBlock) {
+      debugLog('ERROR: Could not find blocks for connection');
+      return;
+    }
+    
+    const sourceIntf = sourceBlock.interfaces.find(i => i.id === sourceInterfaceId);
+    const targetIntf = targetBlock.interfaces.find(i => i.id === targetInterfaceId);
+    
+    if (!sourceIntf || !targetIntf) {
+      debugLog('ERROR: Could not find interfaces for connection');
+      return;
+    }
+    
+    // Determine connection type based on interface kinds
+    const connectionKind = this.determineConnectionKind(sourceIntf, targetIntf);
+    
+    // Validate the connection before creating it
+    const validation = this.validateConnection(sourceIntf, targetIntf, connectionKind);
+    if (!validation.valid) {
+      alert(`Connection validation failed:\n${validation.errors.join('\n')}`);
+      debugLog('Connection validation failed: ' + validation.errors.join(', '));
+      return;
+    }
+    
+    // Check for warnings
+    if (validation.warnings.length > 0) {
+      const proceed = confirm(`Connection warnings:\n${validation.warnings.join('\n')}\n\nProceed anyway?`);
+      if (!proceed) {
+        debugLog('Connection cancelled due to warnings');
+        return;
+      }
+    }
+    
+    // Save current state for undo
+    this.saveStateForUndo();
+    
+    // Use template protocol if available and interfaces don't have one
+    let connectionProtocol = sourceIntf.protocol || targetIntf.protocol || '';
+    if (!connectionProtocol && this.activeTemplate && this.activeTemplate.protocol) {
+      connectionProtocol = this.activeTemplate.protocol;
+    }
+    
     const connection = {
       id: this.generateId(),
+      kind: connectionKind,
+      protocol: connectionProtocol,
+      attributes: {},
       source: {
         blockId: sourceBlockId,
         interfaceId: sourceInterfaceId
@@ -570,12 +673,164 @@ class SystemBlocksEditor {
       target: {
         blockId: targetBlockId,
         interfaceId: targetInterfaceId
-      }
+      },
+      style: this.getConnectionStyle(connectionKind),
+      arrowDirection: this.selectedArrowDirection || 'forward'
     };
     
     this.diagram.connections.push(connection);
     this.renderConnection(connection);
-    debugLog('Connection added successfully');
+    debugLog('Connection added successfully with type: ' + connectionKind);
+  }
+  
+  determineConnectionKind(sourceIntf, targetIntf) {
+    // If user has manually selected a connection type (not auto), use it
+    if (this.selectedConnectionType && this.selectedConnectionType !== 'auto') {
+      debugLog('Using manually selected connection type: ' + this.selectedConnectionType);
+      return this.selectedConnectionType;
+    }
+    
+    // Auto-determine connection type based on interface kinds
+    // Prioritize power connections
+    if (sourceIntf.kind === 'power' || targetIntf.kind === 'power') {
+      return 'power';
+    }
+    
+    // Check for data connections
+    if (sourceIntf.kind === 'data' || targetIntf.kind === 'data') {
+      return 'data';
+    }
+    
+    // Check for mechanical connections
+    if (sourceIntf.kind === 'mechanical' || targetIntf.kind === 'mechanical') {
+      return 'mechanical';
+    }
+    
+    // Default to electrical
+    return 'electrical';
+  }
+  
+  getConnectionStyle(kind) {
+    const styles = {
+      power: {
+        color: '#dc3545',        // Red for power
+        width: '3',              // Thick lines for power
+        dashArray: 'none',       // Solid lines
+        arrowType: 'filled'      // Filled arrows
+      },
+      data: {
+        color: '#007bff',        // Blue for data
+        width: '2',              // Medium thickness
+        dashArray: 'none',       // Solid lines
+        arrowType: 'filled'      // Filled arrows
+      },
+      electrical: {
+        color: '#28a745',        // Green for electrical/signal
+        width: '1.5',            // Thinner lines
+        dashArray: '5,3',        // Dotted lines for signals
+        arrowType: 'filled'      // Filled arrows
+      },
+      mechanical: {
+        color: '#6c757d',        // Gray for mechanical
+        width: '2',              // Medium thickness
+        dashArray: '8,4',        // Dashed lines
+        arrowType: 'open'        // Open arrows
+      }
+    };
+    
+    return styles[kind] || styles.electrical;
+  }
+  
+  validateConnection(sourceIntf, targetIntf, connectionKind) {
+    const result = {
+      valid: true,
+      errors: [],
+      warnings: []
+    };
+    
+    // Rule 1: Interface compatibility
+    if (sourceIntf.kind && targetIntf.kind && sourceIntf.kind !== targetIntf.kind) {
+      // Allow some compatible combinations
+      const compatibleCombinations = [
+        ['electrical', 'power'],  // Electrical can connect to power
+        ['data', 'electrical']    // Data can connect to electrical
+      ];
+      
+      const isCompatible = compatibleCombinations.some(combo => 
+        (combo.includes(sourceIntf.kind) && combo.includes(targetIntf.kind))
+      );
+      
+      if (!isCompatible) {
+        result.warnings.push(`Interface type mismatch: ${sourceIntf.kind} ↔ ${targetIntf.kind}`);
+      }
+    }
+    
+    // Rule 2: Direction compatibility
+    if (sourceIntf.direction === 'input' && targetIntf.direction === 'input') {
+      result.errors.push('Cannot connect two input interfaces');
+    }
+    
+    if (sourceIntf.direction === 'output' && targetIntf.direction === 'output') {
+      result.warnings.push('Connecting two output interfaces - verify this is intentional');
+    }
+    
+    // Rule 3: Protocol compatibility
+    if (sourceIntf.protocol && targetIntf.protocol && sourceIntf.protocol !== targetIntf.protocol) {
+      result.warnings.push(`Protocol mismatch: ${sourceIntf.protocol} ↔ ${targetIntf.protocol}`);
+    }
+    
+    // Rule 4: Voltage level compatibility (if specified)
+    if (sourceIntf.params?.voltage && targetIntf.params?.voltage) {
+      const sourceVoltage = parseFloat(sourceIntf.params.voltage);
+      const targetVoltage = parseFloat(targetIntf.params.voltage);
+      
+      if (Math.abs(sourceVoltage - targetVoltage) > 0.5) {
+        result.warnings.push(`Voltage level mismatch: ${sourceVoltage}V ↔ ${targetVoltage}V`);
+      }
+    }
+    
+    // Rule 5: Power connection validation
+    if (connectionKind === 'power') {
+      // Power connections should have voltage specifications
+      if (!sourceIntf.params?.voltage && !targetIntf.params?.voltage) {
+        result.warnings.push('Power connection without voltage specifications');
+      }
+      
+      // Check current capacity
+      if (sourceIntf.params?.maxCurrent && targetIntf.params?.maxCurrent) {
+        const sourceCurrent = parseFloat(sourceIntf.params.maxCurrent);
+        const targetCurrent = parseFloat(targetIntf.params.maxCurrent);
+        
+        if (sourceCurrent < targetCurrent) {
+          result.warnings.push(`Current capacity mismatch: source ${sourceCurrent}A < target ${targetCurrent}A`);
+        }
+      }
+    }
+    
+    // Rule 6: Data connection validation
+    if (connectionKind === 'data') {
+      // Data connections should have protocol specifications
+      if (!sourceIntf.protocol && !targetIntf.protocol) {
+        result.warnings.push('Data connection without protocol specifications');
+      }
+      
+      // Check data rate compatibility
+      if (sourceIntf.params?.dataRate && targetIntf.params?.dataRate) {
+        const sourceRate = parseFloat(sourceIntf.params.dataRate);
+        const targetRate = parseFloat(targetIntf.params.dataRate);
+        
+        if (sourceRate < targetRate) {
+          result.warnings.push(`Data rate mismatch: source ${sourceRate} < target ${targetRate}`);
+        }
+      }
+    }
+    
+    // Set valid to false if there are errors
+    if (result.errors.length > 0) {
+      result.valid = false;
+    }
+    
+    return result;
   }
   
   renderConnection(connection) {
@@ -600,10 +855,14 @@ class SystemBlocksEditor {
     const sourcePos = this.getPortPosition(sourceBlock, sourceIntf);
     const targetPos = this.getPortPosition(targetBlock, targetIntf);
     
+    // Get connection style (ensure we have style data)
+    const style = connection.style || this.getConnectionStyle(connection.kind || 'electrical');
+    
     // Create connection group
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'connection-group');
     g.setAttribute('data-connection-id', connection.id);
+    g.setAttribute('data-connection-kind', connection.kind || 'electrical');
     
     // Create curved path instead of straight line
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -615,37 +874,36 @@ class SystemBlocksEditor {
     const pathData = `M ${sourcePos.x} ${sourcePos.y} Q ${midX} ${sourcePos.y} ${midX} ${(sourcePos.y + targetPos.y) / 2} Q ${midX} ${targetPos.y} ${targetPos.x} ${targetPos.y}`;
     
     path.setAttribute('d', pathData);
-    path.setAttribute('stroke', '#666');
-    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke', style.color);
+    path.setAttribute('stroke-width', style.width);
     path.setAttribute('fill', 'none');
     path.setAttribute('class', 'connection-line');
     
-    // Add arrowhead
-    const arrowSize = 6;
-    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    const angle = Math.atan2(targetPos.y - sourcePos.y, targetPos.x - sourcePos.x);
+    // Apply dash pattern if specified
+    if (style.dashArray !== 'none') {
+      path.setAttribute('stroke-dasharray', style.dashArray);
+    }
     
-    const arrowTip = {
-      x: targetPos.x - 4 * Math.cos(angle), // Offset from port center
-      y: targetPos.y - 4 * Math.sin(angle)
-    };
-    
-    const arrowBase1 = {
-      x: arrowTip.x - arrowSize * Math.cos(angle - Math.PI/6),
-      y: arrowTip.y - arrowSize * Math.sin(angle - Math.PI/6)
-    };
-    
-    const arrowBase2 = {
-      x: arrowTip.x - arrowSize * Math.cos(angle + Math.PI/6),
-      y: arrowTip.y - arrowSize * Math.sin(angle + Math.PI/6)
-    };
-    
-    arrow.setAttribute('points', `${arrowTip.x},${arrowTip.y} ${arrowBase1.x},${arrowBase1.y} ${arrowBase2.x},${arrowBase2.y}`);
-    arrow.setAttribute('fill', '#666');
-    arrow.setAttribute('class', 'connection-arrow');
+    // Create arrowhead(s) based on direction
+    const arrowDirection = connection.arrowDirection || 'forward';
+    const arrows = this.createArrowheads(sourcePos, targetPos, style, arrowDirection);
     
     g.appendChild(path);
-    g.appendChild(arrow);
+    
+    // Add arrow(s) to the group
+    if (arrows.forward) {
+      g.appendChild(arrows.forward);
+    }
+    if (arrows.backward) {
+      g.appendChild(arrows.backward);
+    }
+    
+    // Add connection label if there's a protocol or custom label
+    if (connection.protocol || connection.label) {
+      const labelText = connection.label || connection.protocol;
+      const label = this.createConnectionLabel(sourcePos, targetPos, labelText, style);
+      g.appendChild(label);
+    }
     
     // Add click handler for connection management
     g.addEventListener('click', (e) => {
@@ -654,30 +912,792 @@ class SystemBlocksEditor {
       this.onConnectionClick(connection, e);
     });
     
-    // Add hover effects
+    // Add hover effects with connection-type-aware highlighting
     g.addEventListener('mouseenter', () => {
-      path.setAttribute('stroke', '#ff6b6b');
-      path.setAttribute('stroke-width', '2');
-      arrow.setAttribute('fill', '#ff6b6b');
+      path.setAttribute('stroke', this.getBrighterColor(style.color));
+      path.setAttribute('stroke-width', String(parseInt(style.width) + 1));
+      // Update all arrows in the group
+      const arrows = g.querySelectorAll('.connection-arrow');
+      arrows.forEach(arrow => {
+        if (arrow.tagName === 'polygon') {
+          arrow.setAttribute('fill', this.getBrighterColor(style.color));
+        } else if (arrow.tagName === 'g') {
+          const lines = arrow.querySelectorAll('line');
+          lines.forEach(line => line.setAttribute('stroke', this.getBrighterColor(style.color)));
+        }
+      });
     });
     
     g.addEventListener('mouseleave', () => {
-      path.setAttribute('stroke', '#666');
-      path.setAttribute('stroke-width', '1.5');
-      arrow.setAttribute('fill', '#666');
+      path.setAttribute('stroke', style.color);
+      path.setAttribute('stroke-width', style.width);
+      // Reset all arrows in the group
+      const arrows = g.querySelectorAll('.connection-arrow');
+      arrows.forEach(arrow => {
+        if (arrow.tagName === 'polygon') {
+          arrow.setAttribute('fill', style.color);
+        } else if (arrow.tagName === 'g') {
+          const lines = arrow.querySelectorAll('line');
+          lines.forEach(line => line.setAttribute('stroke', style.color));
+        }
+      });
     });
     
     this.connectionsLayer.appendChild(g);
-    debugLog('Connection rendered with improved styling');
+    debugLog(`Connection rendered with ${connection.kind || 'electrical'} styling`);
+  }
+  
+  createArrowheads(sourcePos, targetPos, style, arrowDirection) {
+    const arrows = {};
+    
+    if (arrowDirection === 'none') {
+      return arrows; // No arrows
+    }
+    
+    const arrowSize = parseInt(style.width) + 4; // Scale arrow with line width
+    const angle = Math.atan2(targetPos.y - sourcePos.y, targetPos.x - sourcePos.x);
+    
+    // Forward arrow (pointing to target)
+    if (arrowDirection === 'forward' || arrowDirection === 'bidirectional') {
+      const arrowTip = {
+        x: targetPos.x - 4 * Math.cos(angle), // Offset from port center
+        y: targetPos.y - 4 * Math.sin(angle)
+      };
+      
+      arrows.forward = this.createSingleArrowhead(arrowTip, angle, arrowSize, style, 'forward');
+    }
+    
+    // Backward arrow (pointing to source)
+    if (arrowDirection === 'backward' || arrowDirection === 'bidirectional') {
+      const backAngle = angle + Math.PI; // Reverse direction
+      const arrowTip = {
+        x: sourcePos.x - 4 * Math.cos(backAngle), // Offset from port center
+        y: sourcePos.y - 4 * Math.sin(backAngle)
+      };
+      
+      arrows.backward = this.createSingleArrowhead(arrowTip, backAngle, arrowSize, style, 'backward');
+    }
+    
+    return arrows;
+  }
+  
+  createSingleArrowhead(arrowTip, angle, arrowSize, style, direction) {
+    if (style.arrowType === 'filled') {
+      // Filled triangle arrow
+      const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      
+      const arrowBase1 = {
+        x: arrowTip.x - arrowSize * Math.cos(angle - Math.PI/6),
+        y: arrowTip.y - arrowSize * Math.sin(angle - Math.PI/6)
+      };
+      
+      const arrowBase2 = {
+        x: arrowTip.x - arrowSize * Math.cos(angle + Math.PI/6),
+        y: arrowTip.y - arrowSize * Math.sin(angle + Math.PI/6)
+      };
+      
+      arrow.setAttribute('points', `${arrowTip.x},${arrowTip.y} ${arrowBase1.x},${arrowBase1.y} ${arrowBase2.x},${arrowBase2.y}`);
+      arrow.setAttribute('fill', style.color);
+      arrow.setAttribute('class', `connection-arrow filled ${direction}`);
+      
+      return arrow;
+    } else if (style.arrowType === 'open') {
+      // Open arrow (just two lines)
+      const arrowGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      arrowGroup.setAttribute('class', `connection-arrow open ${direction}`);
+      
+      const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      
+      const arrowBase1 = {
+        x: arrowTip.x - arrowSize * Math.cos(angle - Math.PI/6),
+        y: arrowTip.y - arrowSize * Math.sin(angle - Math.PI/6)
+      };
+      
+      const arrowBase2 = {
+        x: arrowTip.x - arrowSize * Math.cos(angle + Math.PI/6),
+        y: arrowTip.y - arrowSize * Math.sin(angle + Math.PI/6)
+      };
+      
+      line1.setAttribute('x1', arrowTip.x);
+      line1.setAttribute('y1', arrowTip.y);
+      line1.setAttribute('x2', arrowBase1.x);
+      line1.setAttribute('y2', arrowBase1.y);
+      line1.setAttribute('stroke', style.color);
+      line1.setAttribute('stroke-width', style.width);
+      
+      line2.setAttribute('x1', arrowTip.x);
+      line2.setAttribute('y1', arrowTip.y);
+      line2.setAttribute('x2', arrowBase2.x);
+      line2.setAttribute('y2', arrowBase2.y);
+      line2.setAttribute('stroke', style.color);
+      line2.setAttribute('stroke-width', style.width);
+      
+      arrowGroup.appendChild(line1);
+      arrowGroup.appendChild(line2);
+      
+      return arrowGroup;
+    }
+    
+    return null; // No arrow
+  }
+  
+  createConnectionLabel(sourcePos, targetPos, text, style) {
+    const midX = (sourcePos.x + targetPos.x) / 2;
+    const midY = (sourcePos.y + targetPos.y) / 2;
+    
+    // Create label background
+    const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    labelGroup.setAttribute('class', 'connection-label');
+    
+    const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    textElement.setAttribute('x', midX);
+    textElement.setAttribute('y', midY - 2);
+    textElement.setAttribute('text-anchor', 'middle');
+    textElement.setAttribute('font-size', '10');
+    textElement.setAttribute('font-family', 'Arial, sans-serif');
+    textElement.setAttribute('fill', style.color);
+    textElement.setAttribute('font-weight', 'bold');
+    textElement.textContent = text;
+    
+    // Add background rectangle for better readability
+    const bbox = textElement.getBBox();
+    const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    background.setAttribute('x', bbox.x - 2);
+    background.setAttribute('y', bbox.y - 1);
+    background.setAttribute('width', bbox.width + 4);
+    background.setAttribute('height', bbox.height + 2);
+    background.setAttribute('fill', 'white');
+    background.setAttribute('fill-opacity', '0.8');
+    background.setAttribute('stroke', style.color);
+    background.setAttribute('stroke-width', '0.5');
+    background.setAttribute('rx', '2');
+    
+    labelGroup.appendChild(background);
+    labelGroup.appendChild(textElement);
+    
+    return labelGroup;
+  }
+  
+  getBrighterColor(color) {
+    // Simple color brightening for hover effects
+    const brighterColors = {
+      '#dc3545': '#ff6b6b',  // Red -> Bright red
+      '#007bff': '#4dabf7',  // Blue -> Bright blue  
+      '#28a745': '#51cf66',  // Green -> Bright green
+      '#6c757d': '#adb5bd'   // Gray -> Light gray
+    };
+    
+    return brighterColors[color] || '#ff6b6b';
   }
   
   onConnectionClick(connection, event) {
     debugLog('Connection management for ID: ' + connection.id);
     
-    // Show connection options
+    // Check if this is a right-click (context menu)
+    if (event.button === 2 || event.ctrlKey) {
+      this.showConnectionContextMenu(connection, event);
+      return;
+    }
+    
+    // Left click - show connection options
     if (confirm('Delete this connection?')) {
+      this.saveStateForUndo();
       this.deleteConnection(connection.id);
     }
+  }
+  
+  showConnectionContextMenu(connection, event) {
+    // Prevent the default context menu
+    event.preventDefault();
+    
+    // Remove any existing context menu
+    const existingMenu = document.getElementById('connection-context-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+    
+    // Create context menu
+    const menu = document.createElement('div');
+    menu.id = 'connection-context-menu';
+    menu.style.cssText = `
+      position: fixed;
+      left: ${event.clientX}px;
+      top: ${event.clientY}px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 1000;
+      min-width: 180px;
+      font-size: 14px;
+    `;
+    
+    // Menu items
+    const menuItems = [
+      { label: '✏️ Edit Properties', action: () => this.editConnectionProperties(connection) },
+      { label: '🔄 Change Type', action: () => this.changeConnectionType(connection) },
+      { label: '↔️ Change Direction', action: () => this.changeConnectionDirection(connection) },
+      { label: '🏷️ Edit Label', action: () => this.editConnectionLabel(connection) },
+      { label: '🗑️ Delete', action: () => this.deleteConnectionWithConfirm(connection) }
+    ];
+    
+    menuItems.forEach(item => {
+      const menuItem = document.createElement('div');
+      menuItem.style.cssText = `
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+      `;
+      menuItem.textContent = item.label;
+      
+      menuItem.addEventListener('mouseenter', () => {
+        menuItem.style.backgroundColor = '#f0f0f0';
+      });
+      
+      menuItem.addEventListener('mouseleave', () => {
+        menuItem.style.backgroundColor = 'white';
+      });
+      
+      menuItem.addEventListener('click', () => {
+        item.action();
+        menu.remove();
+      });
+      
+      menu.appendChild(menuItem);
+    });
+    
+    // Add to page
+    document.body.appendChild(menu);
+    
+    // Remove menu when clicking elsewhere
+    const removeMenu = () => {
+      if (menu.parentNode) {
+        menu.remove();
+      }
+      document.removeEventListener('click', removeMenu);
+    };
+    
+    // Delay adding the listener to prevent immediate removal
+    setTimeout(() => {
+      document.addEventListener('click', removeMenu);
+    }, 100);
+  }
+  
+  editConnectionProperties(connection) {
+    const protocol = prompt('Enter connection protocol:', connection.protocol || '');
+    if (protocol !== null) {
+      this.saveStateForUndo();
+      connection.protocol = protocol;
+      this.refreshConnection(connection);
+      debugLog('Connection protocol updated to: ' + protocol);
+    }
+  }
+  
+  changeConnectionType(connection) {
+    const types = ['electrical', 'power', 'data', 'mechanical'];
+    const currentType = connection.kind || 'electrical';
+    const newType = prompt(`Current type: ${currentType}\nEnter new type (${types.join(', ')}):`, currentType);
+    
+    if (newType && types.includes(newType.toLowerCase())) {
+      this.saveStateForUndo();
+      connection.kind = newType.toLowerCase();
+      connection.style = this.getConnectionStyle(connection.kind);
+      this.refreshConnection(connection);
+      debugLog('Connection type changed to: ' + connection.kind);
+    } else if (newType !== null) {
+      alert('Invalid connection type. Valid types: ' + types.join(', '));
+    }
+  }
+  
+  changeConnectionDirection(connection) {
+    const directions = ['forward', 'backward', 'bidirectional', 'none'];
+    const currentDir = connection.arrowDirection || 'forward';
+    const newDir = prompt(`Current direction: ${currentDir}\nEnter new direction (${directions.join(', ')}):`, currentDir);
+    
+    if (newDir && directions.includes(newDir.toLowerCase())) {
+      this.saveStateForUndo();
+      connection.arrowDirection = newDir.toLowerCase();
+      this.refreshConnection(connection);
+      debugLog('Connection direction changed to: ' + connection.arrowDirection);
+    } else if (newDir !== null) {
+      alert('Invalid direction. Valid directions: ' + directions.join(', '));
+    }
+  }
+  
+  editConnectionLabel(connection) {
+    const label = prompt('Enter connection label:', connection.label || '');
+    if (label !== null) {
+      this.saveStateForUndo();
+      connection.label = label;
+      this.refreshConnection(connection);
+      debugLog('Connection label updated to: ' + label);
+    }
+  }
+  
+  deleteConnectionWithConfirm(connection) {
+    if (confirm('Delete this connection?')) {
+      this.saveStateForUndo();
+      this.deleteConnection(connection.id);
+    }
+  }
+  
+  refreshConnection(connection) {
+    // Remove the existing connection visual
+    const connectionElement = this.connectionsLayer.querySelector(`[data-connection-id="${connection.id}"]`);
+    if (connectionElement) {
+      connectionElement.remove();
+    }
+    
+    // Re-render the connection with updated properties
+    this.renderConnection(connection);
+  }
+  
+  showConnectionTemplates() {
+    // Remove any existing template dialog
+    const existingDialog = document.getElementById('connection-templates-dialog');
+    if (existingDialog) {
+      existingDialog.remove();
+    }
+    
+    // Create template dialog
+    const dialog = document.createElement('div');
+    dialog.id = 'connection-templates-dialog';
+    dialog.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      padding: 20px;
+      z-index: 1000;
+      min-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    `;
+    
+    dialog.innerHTML = `
+      <h3 style="margin-top: 0;">Connection Templates</h3>
+      <p style="color: #666; margin-bottom: 20px;">Choose a template to quickly apply connection settings:</p>
+      
+      <div id="template-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <!-- Templates will be added here -->
+      </div>
+      
+      <div style="margin-top: 20px; text-align: right;">
+        <button id="close-templates" style="padding: 8px 16px; margin-left: 10px; 
+                border: 1px solid #ccc; background: #f0f0f0; border-radius: 4px; cursor: pointer;">
+          Close
+        </button>
+      </div>
+    `;
+    
+    // Add templates to the grid
+    const templateGrid = dialog.querySelector('#template-grid');
+    const templates = this.getConnectionTemplates();
+    
+    templates.forEach(template => {
+      const templateCard = document.createElement('div');
+      templateCard.style.cssText = `
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 15px;
+        cursor: pointer;
+        background: #fafafa;
+        transition: all 0.2s;
+      `;
+      
+      templateCard.innerHTML = `
+        <h4 style="margin: 0 0 8px 0; color: ${template.style.color};">${template.icon} ${template.name}</h4>
+        <p style="margin: 0 0 10px 0; font-size: 12px; color: #666;">${template.description}</p>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <svg width="60" height="20" viewBox="0 0 60 20">
+            <line x1="5" y1="10" x2="45" y2="10" 
+                  stroke="${template.style.color}" 
+                  stroke-width="${template.style.width}"
+                  ${template.style.dashArray !== 'none' ? `stroke-dasharray="${template.style.dashArray}"` : ''}/>
+            ${this.getTemplateArrowSVG(template)}
+          </svg>
+          <span style="font-size: 11px; color: #888;">${template.kind}</span>
+        </div>
+      `;
+      
+      templateCard.addEventListener('mouseenter', () => {
+        templateCard.style.background = '#f0f8ff';
+        templateCard.style.borderColor = '#0066cc';
+      });
+      
+      templateCard.addEventListener('mouseleave', () => {
+        templateCard.style.background = '#fafafa';
+        templateCard.style.borderColor = '#ddd';
+      });
+      
+      templateCard.addEventListener('click', () => {
+        this.applyConnectionTemplate(template);
+        dialog.remove();
+      });
+      
+      templateGrid.appendChild(templateCard);
+    });
+    
+    // Close button handler
+    dialog.querySelector('#close-templates').addEventListener('click', () => {
+      dialog.remove();
+    });
+    
+    // Add to page
+    document.body.appendChild(dialog);
+    
+    // Close on outside click
+    const closeOnOutsideClick = (e) => {
+      if (!dialog.contains(e.target)) {
+        dialog.remove();
+        document.removeEventListener('click', closeOnOutsideClick);
+      }
+    };
+    
+    setTimeout(() => {
+      document.addEventListener('click', closeOnOutsideClick);
+    }, 100);
+  }
+  
+  getConnectionTemplates() {
+    return [
+      {
+        name: 'Standard Power',
+        description: 'Power supply connections with voltage validation',
+        icon: '🔌',
+        kind: 'power',
+        arrowDirection: 'forward',
+        style: this.getConnectionStyle('power'),
+        validation: { requireVoltage: true, requireCurrent: true }
+      },
+      {
+        name: 'USB Data',
+        description: 'USB communication with protocol labeling',
+        icon: '🔌',
+        kind: 'data',
+        arrowDirection: 'bidirectional',
+        style: this.getConnectionStyle('data'),
+        protocol: 'USB',
+        validation: { requireProtocol: true }
+      },
+      {
+        name: 'SPI Bus',
+        description: 'SPI serial communication interface',
+        icon: '📊',
+        kind: 'data',
+        arrowDirection: 'bidirectional',
+        style: this.getConnectionStyle('data'),
+        protocol: 'SPI',
+        validation: { requireProtocol: true }
+      },
+      {
+        name: 'I2C Bus',
+        description: 'I2C serial communication with addressing',
+        icon: '📡',
+        kind: 'data',
+        arrowDirection: 'bidirectional',
+        style: this.getConnectionStyle('data'),
+        protocol: 'I2C',
+        validation: { requireProtocol: true }
+      },
+      {
+        name: 'GPIO Signal',
+        description: 'General purpose digital signal',
+        icon: '⚡',
+        kind: 'electrical',
+        arrowDirection: 'forward',
+        style: this.getConnectionStyle('electrical'),
+        validation: { requireVoltage: true }
+      },
+      {
+        name: 'Mechanical Link',
+        description: 'Physical mechanical connection',
+        icon: '⚙️',
+        kind: 'mechanical',
+        arrowDirection: 'none',
+        style: this.getConnectionStyle('mechanical'),
+        validation: {}
+      },
+      {
+        name: 'Ethernet',
+        description: 'Ethernet network connection',
+        icon: '🌐',
+        kind: 'data',
+        arrowDirection: 'bidirectional',
+        style: this.getConnectionStyle('data'),
+        protocol: 'Ethernet',
+        validation: { requireProtocol: true }
+      },
+      {
+        name: 'PWM Control',
+        description: 'Pulse width modulation control signal',
+        icon: '📈',
+        kind: 'electrical',
+        arrowDirection: 'forward',
+        style: this.getConnectionStyle('electrical'),
+        protocol: 'PWM',
+        validation: { requireVoltage: true }
+      }
+    ];
+  }
+  
+  getTemplateArrowSVG(template) {
+    const arrows = [];
+    const style = template.style;
+    
+    if (template.arrowDirection === 'forward' || template.arrowDirection === 'bidirectional') {
+      arrows.push(`<polygon points="45,10 41,7 41,13" fill="${style.color}"/>`);
+    }
+    
+    if (template.arrowDirection === 'backward' || template.arrowDirection === 'bidirectional') {
+      arrows.push(`<polygon points="15,10 19,7 19,13" fill="${style.color}"/>`);
+    }
+    
+    return arrows.join('');
+  }
+  
+  applyConnectionTemplate(template) {
+    // Update the UI selectors to match the template
+    const connectionTypeSelect = document.getElementById('connection-type-select');
+    const arrowDirectionSelect = document.getElementById('arrow-direction-select');
+    
+    if (connectionTypeSelect) {
+      connectionTypeSelect.value = template.kind;
+      this.selectedConnectionType = template.kind;
+    }
+    
+    if (arrowDirectionSelect) {
+      arrowDirectionSelect.value = template.arrowDirection;
+      this.selectedArrowDirection = template.arrowDirection;
+    }
+    
+    // Store the template for future connections
+    this.activeTemplate = template;
+    
+    debugLog(`Applied connection template: ${template.name}`);
+    alert(`Template "${template.name}" applied!\nNext connections will use these settings:\n• Type: ${template.kind}\n• Direction: ${template.arrowDirection}${template.protocol ? '\n• Protocol: ' + template.protocol : ''}`);
+  }
+  
+  showBulkConnectionDialog() {
+    // Remove any existing dialog
+    const existingDialog = document.getElementById('bulk-connection-dialog');
+    if (existingDialog) {
+      existingDialog.remove();
+    }
+    
+    // Create bulk connection dialog
+    const dialog = document.createElement('div');
+    dialog.id = 'bulk-connection-dialog';
+    dialog.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      padding: 20px;
+      z-index: 1000;
+      min-width: 400px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    `;
+    
+    dialog.innerHTML = `
+      <h3 style="margin-top: 0;">Bulk Connection Operations</h3>
+      
+      <div style="margin-bottom: 20px;">
+        <h4>Connection Statistics</h4>
+        <div id="connection-stats" style="font-size: 14px; color: #666;"></div>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <h4>Bulk Operations</h4>
+        <button id="validate-all-connections" style="display: block; width: 100%; margin: 5px 0; padding: 10px; 
+                border: 1px solid #0066cc; background: #f0f8ff; border-radius: 4px; cursor: pointer;">
+          🔍 Validate All Connections
+        </button>
+        <button id="update-connection-styles" style="display: block; width: 100%; margin: 5px 0; padding: 10px; 
+                border: 1px solid #28a745; background: #f0fff0; border-radius: 4px; cursor: pointer;">
+          🎨 Update All Connection Styles
+        </button>
+        <button id="auto-organize-connections" style="display: block; width: 100%; margin: 5px 0; padding: 10px; 
+                border: 1px solid #ffc107; background: #fffef0; border-radius: 4px; cursor: pointer;">
+          📐 Auto-Organize Connections
+        </button>
+        <button id="export-connection-report" style="display: block; width: 100%; margin: 5px 0; padding: 10px; 
+                border: 1px solid #6c757d; background: #f8f9fa; border-radius: 4px; cursor: pointer;">
+          📊 Export Connection Report
+        </button>
+      </div>
+      
+      <div style="text-align: right;">
+        <button id="close-bulk-dialog" style="padding: 8px 16px; 
+                border: 1px solid #ccc; background: #f0f0f0; border-radius: 4px; cursor: pointer;">
+          Close
+        </button>
+      </div>
+    `;
+    
+    // Update connection stats
+    this.updateConnectionStats(dialog);
+    
+    // Add event listeners for bulk operations
+    dialog.querySelector('#validate-all-connections').addEventListener('click', () => {
+      this.validateAllConnections();
+    });
+    
+    dialog.querySelector('#update-connection-styles').addEventListener('click', () => {
+      this.updateAllConnectionStyles();
+    });
+    
+    dialog.querySelector('#auto-organize-connections').addEventListener('click', () => {
+      this.autoOrganizeConnections();
+    });
+    
+    dialog.querySelector('#export-connection-report').addEventListener('click', () => {
+      this.exportConnectionReport();
+    });
+    
+    dialog.querySelector('#close-bulk-dialog').addEventListener('click', () => {
+      dialog.remove();
+    });
+    
+    // Add to page
+    document.body.appendChild(dialog);
+  }
+  
+  updateConnectionStats(dialog) {
+    const stats = {
+      total: this.diagram.connections.length,
+      byType: {},
+      byDirection: {},
+      withProtocols: 0,
+      withWarnings: 0
+    };
+    
+    this.diagram.connections.forEach(conn => {
+      // Count by type
+      const type = conn.kind || 'electrical';
+      stats.byType[type] = (stats.byType[type] || 0) + 1;
+      
+      // Count by direction
+      const direction = conn.arrowDirection || 'forward';
+      stats.byDirection[direction] = (stats.byDirection[direction] || 0) + 1;
+      
+      // Count protocols
+      if (conn.protocol || conn.label) {
+        stats.withProtocols++;
+      }
+    });
+    
+    const statsDiv = dialog.querySelector('#connection-stats');
+    statsDiv.innerHTML = `
+      <p><strong>Total Connections:</strong> ${stats.total}</p>
+      <p><strong>By Type:</strong> ${Object.entries(stats.byType).map(([k,v]) => `${k}: ${v}`).join(', ')}</p>
+      <p><strong>By Direction:</strong> ${Object.entries(stats.byDirection).map(([k,v]) => `${k}: ${v}`).join(', ')}</p>
+      <p><strong>With Labels:</strong> ${stats.withProtocols}</p>
+    `;
+  }
+  
+  validateAllConnections() {
+    const results = [];
+    let errorCount = 0;
+    let warningCount = 0;
+    
+    this.diagram.connections.forEach(conn => {
+      const sourceBlock = this.diagram.blocks.find(b => b.id === conn.source.blockId);
+      const targetBlock = this.diagram.blocks.find(b => b.id === conn.target.blockId);
+      
+      if (sourceBlock && targetBlock) {
+        const sourceIntf = sourceBlock.interfaces.find(i => i.id === conn.source.interfaceId);
+        const targetIntf = targetBlock.interfaces.find(i => i.id === conn.target.interfaceId);
+        
+        if (sourceIntf && targetIntf) {
+          const validation = this.validateConnection(sourceIntf, targetIntf, conn.kind);
+          
+          if (!validation.valid) {
+            errorCount++;
+            results.push(`❌ ${sourceBlock.name} → ${targetBlock.name}: ${validation.errors.join(', ')}`);
+          } else if (validation.warnings.length > 0) {
+            warningCount++;
+            results.push(`⚠️ ${sourceBlock.name} → ${targetBlock.name}: ${validation.warnings.join(', ')}`);
+          }
+        }
+      }
+    });
+    
+    if (results.length === 0) {
+      alert('✅ All connections are valid!');
+    } else {
+      const summary = `Validation Results:\n• ${errorCount} errors\n• ${warningCount} warnings\n\n${results.join('\n')}`;
+      alert(summary);
+    }
+    
+    debugLog(`Connection validation completed: ${errorCount} errors, ${warningCount} warnings`);
+  }
+  
+  updateAllConnectionStyles() {
+    this.saveStateForUndo();
+    
+    let updatedCount = 0;
+    this.diagram.connections.forEach(conn => {
+      const newStyle = this.getConnectionStyle(conn.kind || 'electrical');
+      if (JSON.stringify(conn.style) !== JSON.stringify(newStyle)) {
+        conn.style = newStyle;
+        this.refreshConnection(conn);
+        updatedCount++;
+      }
+    });
+    
+    alert(`Updated styles for ${updatedCount} connections`);
+    debugLog(`Updated styles for ${updatedCount} connections`);
+  }
+  
+  autoOrganizeConnections() {
+    // This is a placeholder for auto-organization logic
+    alert('Auto-organize connections feature coming soon!\n\nThis will automatically:\n• Route connections to avoid overlaps\n• Optimize connection paths\n• Group related connections');
+    debugLog('Auto-organize connections requested');
+  }
+  
+  exportConnectionReport() {
+    const report = {
+      timestamp: new Date().toISOString(),
+      totalConnections: this.diagram.connections.length,
+      connections: this.diagram.connections.map(conn => {
+        const sourceBlock = this.diagram.blocks.find(b => b.id === conn.source.blockId);
+        const targetBlock = this.diagram.blocks.find(b => b.id === conn.target.blockId);
+        
+        return {
+          id: conn.id,
+          source: sourceBlock ? sourceBlock.name : 'Unknown',
+          target: targetBlock ? targetBlock.name : 'Unknown',
+          type: conn.kind || 'electrical',
+          direction: conn.arrowDirection || 'forward',
+          protocol: conn.protocol || '',
+          label: conn.label || ''
+        };
+      })
+    };
+    
+    const reportText = JSON.stringify(report, null, 2);
+    const blob = new Blob([reportText], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `connection-report-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    debugLog('Connection report exported');
+    alert('Connection report exported successfully!');
   }
   
   deleteConnection(connectionId) {
