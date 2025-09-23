@@ -64,3 +64,17 @@ Use enum: `["Placeholder", "Planned", "In-Work", "Implemented", "Verified"]`
 - Don't bypass the schema - all data changes must validate
 - Don't use `adsk.fusion.Design.attributes` directly - use the established `ATTR_GROUP`
 - Avoid large external JS frameworks - keep palette lightweight
+
+## Commit Guidelines
+- Always work in a **feature branch** (`git checkout -b feat/...`)
+- Keep commits **small and incremental** (one feature or fix per commit)
+- Use clear commit messages:
+  - `feat: add Save/Load buttons`
+  - `fix: correct attribute persistence`
+  - `test: add schema validation tests`
+- Don’t mix unrelated changes in the same commit
+
+## Task Backlog
+All implementation tasks are tracked in **`TASKS.md`** at the project root.  
+Follow the backlog in order.  
+When starting a new task, use a new feature branch and commit only the relevant changes.
