@@ -5,15 +5,121 @@
   <title>System Blocks</title>
   <style>
     html, body { height:100%; margin:0; font-family: system-ui, sans-serif; }
-    #canvas { height: calc(100% - 48px); border-top: 1px solid #bbb; padding: 12px; }
-    header { padding: 12px; }
+    
+    header { 
+      padding: 8px 12px; 
+      background: #f0f0f0; 
+      border-bottom: 1px solid #ccc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .toolbar {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .toolbar button {
+      padding: 6px 12px;
+      border: 1px solid #999;
+      background: white;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .toolbar button:hover {
+      background: #e6e6e6;
+    }
+    
+    #canvas-container { 
+      height: calc(100% - 60px); 
+      position: relative;
+      overflow: hidden;
+    }
+    
+    #svg-canvas {
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle, #ddd 1px, transparent 1px);
+      background-size: 20px 20px;
+      cursor: grab;
+    }
+    
+    #svg-canvas:active {
+      cursor: grabbing;
+    }
+    
+    .block {
+      fill: #e6f3ff;
+      stroke: #0066cc;
+      stroke-width: 2;
+      cursor: move;
+    }
+    
+    .block:hover {
+      fill: #cce6ff;
+    }
+    
+    .block.selected {
+      stroke: #ff6600;
+      stroke-width: 3;
+    }
+    
+    .block-text {
+      fill: #333;
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+    }
+    
+    .connection {
+      stroke: #666;
+      stroke-width: 2;
+      fill: none;
+      marker-end: url(#arrowhead);
+    }
+    
+    .port {
+      fill: #fff;
+      stroke: #333;
+      stroke-width: 1;
+      cursor: crosshair;
+    }
+    
+    .port:hover {
+      fill: #ffff99;
+    }
   </style>
 </head>
 <body>
   <header>
-    <strong>System Blocks Diagram (Prototype)</strong>
+    <strong>System Blocks Diagram</strong>
+    <div class="toolbar">
+      <button id="btn-new">New</button>
+      <button id="btn-save">Save</button>
+      <button id="btn-load">Load</button>
+      <button id="btn-add-block">Add Block</button>
+    </div>
   </header>
-  <div id="canvas">[Diagram editor will go here]</div>
+  
+  <div id="canvas-container">
+    <svg id="svg-canvas" viewBox="0 0 1000 1000">
+      <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+        </marker>
+      </defs>
+      <g id="connections-layer"></g>
+      <g id="blocks-layer"></g>
+    </svg>
+  </div>
+  
   <script src="palette.js"></script>
 </body>
 </html>

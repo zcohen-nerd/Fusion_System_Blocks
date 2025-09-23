@@ -1,5 +1,7 @@
-import json, os
+import json
+import os
 import jsonschema
+
 
 def test_schema_is_valid_json_schema():
     schema_file = os.path.join("docs", "schema.json")

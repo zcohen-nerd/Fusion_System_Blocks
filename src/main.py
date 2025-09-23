@@ -1,10 +1,91 @@
-import adsk.core, adsk.fusion, traceback, pathlib
+import adsk.core
+import adsk.fusion
+import traceback
+import pathlib
+import json
 
 APP = adsk.core.Application.get()
 UI = APP.userInterface
 ATTR_GROUP = 'systemBlocks'
 
 _handlers = []  # keep event handlers alive
+
+
+def get_root_component():
+    """Get the root component of the active design."""
+    try:
+        design = adsk.fusion.Design.cast(APP.activeProduct)
+        if design:
+            return design.rootComponent
+    except Exception:
+        pass
+    return None
+
+
+def save_diagram_json(json_data):
+    """Save diagram JSON to Fusion attributes."""
+    try:
+        root_comp = get_root_component()
+        if not root_comp:
+            UI.messageBox('No active design found')
+            return False
+
+        # Remove existing attribute if it exists
+        existing_attr = root_comp.attributes.itemByName(ATTR_GROUP, 'diagramJson')
+        if existing_attr:
+            existing_attr.deleteMe()
+
+        # Add new attribute
+        root_comp.attributes.add(ATTR_GROUP, 'diagramJson', json_data)
+        UI.messageBox('Diagram saved successfully')
+        return True
+    except Exception as e:
+        UI.messageBox(f'Save failed: {str(e)}')
+        return False
+
+
+def load_diagram_json():
+    """Load diagram JSON from Fusion attributes."""
+    try:
+        root_comp = get_root_component()
+        if not root_comp:
+            UI.messageBox('No active design found')
+            return None
+
+        attr = root_comp.attributes.itemByName(ATTR_GROUP, 'diagramJson')
+        if attr:
+            return attr.value
+        else:
+            UI.messageBox('No saved diagram found')
+            return None
+    except Exception as e:
+        UI.messageBox(f'Load failed: {str(e)}')
+        return None
+
+
+class PaletteMessageHandler(adsk.core.HTMLEventHandler):
+    """Handle messages from the palette."""
+
+    def notify(self, args):
+        try:
+            htmlArgs = adsk.core.HTMLEventArgs.cast(args)
+            data = json.loads(htmlArgs.data)
+            action = data.get('action', '')
+            payload = data.get('data', '')
+
+            if action == 'save-diagram':
+                save_diagram_json(payload)
+            elif action == 'load-diagram':
+                json_data = load_diagram_json()
+                if json_data:
+                    # Send data back to palette
+                    palette = UI.palettes.itemById('sysBlocksPalette')
+                    if palette:
+                        script = f"loadDiagramFromPython({json.dumps(json_data)});"
+                        palette.sendInfoToHTML('load-response', script)
+        except Exception as e:
+            UI.messageBox(f'Message handler error: {str(e)}')
+
 
 class CommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
     def notify(self, args):
@@ -18,6 +99,12 @@ class CommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
                     palette_path,
                     True, True, True, 600, 800
                 )
+
+                # Set up message handler
+                msg_handler = PaletteMessageHandler()
+                pal.incomingFromHTML.add(msg_handler)
+                _handlers.append(msg_handler)
+
             pal.isVisible = True
         except Exception:
             UI.messageBox('Palette open failed:\n{}'.format(traceback.format_exc()))
