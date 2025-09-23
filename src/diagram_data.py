@@ -5,7 +5,7 @@ This module is Fusion-agnostic and can be tested independently.
 import json
 import uuid
 import os
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional, Any, List, Tuple
 
 try:
     import jsonschema
@@ -925,3 +925,293 @@ def export_report_files(diagram: Dict[str, Any], base_filename: str = "system_bl
         exported_files['header_error'] = str(e)
     
     return exported_files
+
+
+# Import Functions
+
+def parse_mermaid_flowchart(mermaid_text: str) -> Dict[str, Any]:
+    """
+    Parse Mermaid flowchart syntax and create a diagram.
+    
+    Supports basic flowchart syntax like:
+    - A --> B
+    - A -->|label| B  
+    - A[Display Name]
+    - A(Round Node)
+    - A{Decision}
+    
+    Args:
+        mermaid_text: Mermaid flowchart text
+        
+    Returns:
+        Diagram dictionary
+    """
+    import re
+    
+    diagram = create_empty_diagram()
+    
+    # Parse lines and extract nodes and connections
+    lines = [line.strip() for line in mermaid_text.split('\n') if line.strip()]
+    
+    # Remove flowchart declaration
+    lines = [line for line in lines if not line.startswith('flowchart') and not line.startswith('graph')]
+    
+    nodes = {}  # id -> {name, type, x, y}
+    connections = []  # {from, to, label}
+    
+    # Position tracking for automatic layout
+    current_x = 100
+    current_y = 100
+    nodes_per_row = 3
+    node_spacing_x = 200
+    node_spacing_y = 150
+    
+    for line in lines:
+        # First, extract node definitions from anywhere in the line
+        # Node patterns: A[Display Name], A(Round), A{Decision}
+        node_matches = re.findall(r'(\w+)([\[\(\{])([^\]\)\}]+)([\]\)\}])', line)
+        for node_match in node_matches:
+            node_id = node_match[0]
+            bracket_type = node_match[1]
+            display_name = node_match[2]
+            
+            # Determine type from bracket style
+            node_type = 'Generic'
+            if bracket_type == '{':
+                node_type = 'Decision'
+            elif bracket_type == '(':
+                node_type = 'Process'
+            elif bracket_type == '[':
+                node_type = 'Generic'
+            
+            if node_id not in nodes:
+                nodes[node_id] = {
+                    'name': display_name,
+                    'type': node_type,
+                    'x': current_x,
+                    'y': current_y
+                }
+                current_x += node_spacing_x
+                if len(nodes) % nodes_per_row == 0:
+                    current_x = 100
+                    current_y += node_spacing_y
+            else:
+                # Update existing node with more specific info
+                nodes[node_id]['name'] = display_name
+                nodes[node_id]['type'] = node_type
+        
+        # Connection patterns: A --> B, A -->|label| B, A --> B[Display]
+        # Make the pattern more flexible to handle node definitions inline
+        connection_match = re.match(r'(\w+)(?:[\[\(\{][^\]\)\}]*[\]\)\}])?\s*-->\s*(?:\|([^|]+)\|)?\s*(\w+)(?:[\[\(\{][^\]\)\}]*[\]\)\}])?', line)
+        if connection_match:
+            from_id = connection_match.group(1)
+            label = connection_match.group(2) or ''
+            to_id = connection_match.group(3)
+            
+            # Ensure nodes exist (with basic info if not already defined)
+            if from_id not in nodes:
+                nodes[from_id] = {
+                    'name': from_id,
+                    'type': 'Generic',
+                    'x': current_x,
+                    'y': current_y
+                }
+                current_x += node_spacing_x
+                if len(nodes) % nodes_per_row == 0:
+                    current_x = 100
+                    current_y += node_spacing_y
+            
+            if to_id not in nodes:
+                nodes[to_id] = {
+                    'name': to_id,
+                    'type': 'Generic', 
+                    'x': current_x,
+                    'y': current_y
+                }
+                current_x += node_spacing_x
+                if len(nodes) % nodes_per_row == 0:
+                    current_x = 100
+                    current_y += node_spacing_y
+            
+            # Add connection
+            connections.append({
+                'from': from_id,
+                'to': to_id,
+                'label': label
+            })
+            continue
+        
+        # Handle standalone node definitions (not in connections)
+        if '-->' not in line:
+            # This is just a node definition line, already handled above
+            pass
+    
+    # Create blocks from nodes
+    for node_id, node_data in nodes.items():
+        block = create_block(
+            node_data['name'],
+            node_data['x'], 
+            node_data['y'],
+            node_data['type'],
+            'Placeholder'
+        )
+        block['id'] = node_id
+        
+        # Add a generic interface for each block
+        interface = create_interface("Generic", "data", "bidirectional", "right", 0)
+        block['interfaces'].append(interface)
+        
+        add_block_to_diagram(diagram, block)
+    
+    # Create connections
+    for conn_data in connections:
+        from_block = next((b for b in diagram['blocks'] if b['id'] == conn_data['from']), None)
+        to_block = next((b for b in diagram['blocks'] if b['id'] == conn_data['to']), None)
+        
+        if from_block and to_block:
+            # Use first interface from each block
+            from_interface = from_block['interfaces'][0] if from_block['interfaces'] else None
+            to_interface = to_block['interfaces'][0] if to_block['interfaces'] else None
+            
+            if from_interface and to_interface:
+                connection = create_connection(
+                    from_block['id'],
+                    to_block['id'], 
+                    'data',
+                    from_interface['id'],
+                    to_interface['id']
+                )
+                
+                if conn_data['label']:
+                    connection['attributes'] = {'protocol': conn_data['label']}
+                
+                add_connection_to_diagram(diagram, connection)
+    
+    return diagram
+
+
+def import_from_csv(csv_blocks: str, csv_connections: str = '') -> Dict[str, Any]:
+    """
+    Import diagram from CSV format.
+    
+    Args:
+        csv_blocks: CSV string with columns: name,type,x,y[,status,attributes...]
+        csv_connections: CSV string with columns: from,to,kind[,protocol,attributes...]
+        
+    Returns:
+        Diagram dictionary
+    """
+    import csv
+    from io import StringIO
+    
+    diagram = create_empty_diagram()
+    
+    # Parse blocks CSV
+    if csv_blocks.strip():
+        reader = csv.DictReader(StringIO(csv_blocks))
+        for row in reader:
+            name = row.get('name', 'Unnamed')
+            block_type = row.get('type', 'Generic')
+            x = float(row.get('x', 100))
+            y = float(row.get('y', 100))
+            status = row.get('status', 'Placeholder')
+            
+            block = create_block(name, x, y, block_type, status)
+            
+            # Add attributes from additional columns
+            for key, value in row.items():
+                if key not in ['name', 'type', 'x', 'y', 'status'] and value:
+                    block['attributes'][key] = value
+            
+            # Add a default interface
+            interface = create_interface("Default", "data", "bidirectional", "right", 0)
+            block['interfaces'].append(interface)
+            
+            add_block_to_diagram(diagram, block)
+    
+    # Parse connections CSV
+    if csv_connections.strip():
+        reader = csv.DictReader(StringIO(csv_connections))
+        for row in reader:
+            from_name = row.get('from', '')
+            to_name = row.get('to', '')
+            kind = row.get('kind', 'data')
+            protocol = row.get('protocol', '')
+            
+            # Find blocks by name
+            from_block = next((b for b in diagram['blocks'] if b['name'] == from_name), None)
+            to_block = next((b for b in diagram['blocks'] if b['name'] == to_name), None)
+            
+            if from_block and to_block:
+                # Use first interface from each block
+                from_interface = from_block['interfaces'][0] if from_block['interfaces'] else None
+                to_interface = to_block['interfaces'][0] if to_block['interfaces'] else None
+                
+                if from_interface and to_interface:
+                    connection = create_connection(
+                        from_block['id'],
+                        to_block['id'],
+                        kind,
+                        from_interface['id'],
+                        to_interface['id']
+                    )
+                    
+                    # Add attributes from additional columns
+                    for key, value in row.items():
+                        if key not in ['from', 'to', 'kind'] and value:
+                            connection['attributes'][key] = value
+                    
+                    if protocol:
+                        connection['attributes']['protocol'] = protocol
+                    
+                    add_connection_to_diagram(diagram, connection)
+    
+    return diagram
+
+
+def validate_imported_diagram(diagram: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    Validate an imported diagram against the schema and business rules.
+    
+    Args:
+        diagram: Imported diagram dictionary
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    # First validate against JSON schema
+    is_valid, error = validate_diagram(diagram)
+    if not is_valid:
+        return False, f"Schema validation failed: {error}"
+    
+    # Check for minimum viable diagram
+    if not diagram.get('blocks'):
+        return False, "Diagram must contain at least one block"
+    
+    # Validate block names are unique
+    block_names = [block.get('name', '') for block in diagram.get('blocks', [])]
+    if len(block_names) != len(set(block_names)):
+        return False, "Block names must be unique"
+    
+    # Validate connections reference existing blocks
+    block_ids = {block.get('id') for block in diagram.get('blocks', [])}
+    for conn in diagram.get('connections', []):
+        from_id = conn.get('from', {}).get('blockId')
+        to_id = conn.get('to', {}).get('blockId')
+        
+        if from_id not in block_ids:
+            return False, f"Connection references unknown block: {from_id}"
+        if to_id not in block_ids:
+            return False, f"Connection references unknown block: {to_id}"
+    
+    # Run rule checks and warn about violations (but don't fail)
+    rule_results = run_all_rule_checks(diagram)
+    violations = [r for r in rule_results if not r['success']]
+    
+    if violations:
+        warning_msg = f"Import successful with {len(violations)} rule violations. " + \
+                     "Review and fix violations in the editor."
+        # Return success but with warning message
+        return True, warning_msg
+    
+    return True, "Import successful and valid"

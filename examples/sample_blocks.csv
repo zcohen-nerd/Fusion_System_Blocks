@@ -1,0 +1,8 @@
+name,type,x,y,status,voltage,current,notes
+Power Supply,PowerSupply,100,100,Verified,12V,2000mA,Main power input
+Voltage Regulator,VoltageRegulator,300,100,Implemented,3.3V,1500mA,LDO regulator
+Microcontroller,Microcontroller,500,100,In-Work,3.3V,200mA,ARM Cortex-M4
+Temperature Sensor,Sensor,300,250,Planned,3.3V,5mA,I2C interface
+DC Motor,Motor,700,100,Placeholder,12V,800mA,High torque
+Status LED,LED,500,250,Placeholder,3.3V,20mA,Green status indicator
+User Button,Button,100,250,Placeholder,3.3V,0mA,Momentary push button

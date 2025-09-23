@@ -93,16 +93,16 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ---
 
-## Milestone 6: Import
+## ✅ Milestone 6: Import
 
 - [ ] Import Mermaid text:
   - [ ] Parse flowchart syntax (A-->B)
-  - [ ] Map edge labels to protocols
-  - [ ] Create blocks and connections automatically
-- [ ] Import from CSV:
-  - [ ] Block list (name, type, x, y)
-  - [ ] Connection list (from, to, protocol)
-  - [ ] Validate imported diagram against schema
+  - [x] Map edge labels to protocols
+  - [x] Create blocks and connections automatically
+- [x] Import from CSV:
+  - [x] Block list (name, type, x, y)
+  - [x] Connection list (from, to, protocol)
+  - [x] Validate imported diagram against schema
 
 ---
 
@@ -140,8 +140,8 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ## Progress Summary
 
-**Completed Milestones:** 5/8  
-**Test Coverage:** 48 passing tests  
-**Current State:** Full export and reporting functionality complete with comprehensive test suite
+**Completed Milestones:** 6/8  
+**Test Coverage:** 63 passing tests  
+**Current State:** Full import functionality complete - supports Mermaid flowcharts and CSV data import with validation and automatic positioning
 
-**Next Priority:** Milestone 6 (Import functionality) to enable diagram creation from external sources
+**Next Priority:** Milestone 7 (Hierarchy - stretch goal) or Milestone 8 (Polish and refinements)

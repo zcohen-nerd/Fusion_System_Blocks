@@ -223,6 +223,88 @@ class PaletteMessageHandler(adsk.core.HTMLEventHandler):
                             'message': 'No diagram data found to export'
                         }
                         palette.sendInfoToHTML('export-response', json.dumps(response))
+            elif action == 'import-mermaid':
+                # Import from Mermaid flowchart
+                mermaid_text = payload.get('mermaidText', '')
+                if mermaid_text:
+                    try:
+                        imported_diagram = diagram_data.parse_mermaid_flowchart(mermaid_text)
+                        is_valid, validation_message = diagram_data.validate_imported_diagram(imported_diagram)
+                        
+                        palette = UI.palettes.itemById('sysBlocksPalette')
+                        if palette:
+                            if is_valid:
+                                response = {
+                                    'success': True,
+                                    'diagram': imported_diagram,
+                                    'warnings': validation_message if 'violation' in validation_message else None
+                                }
+                            else:
+                                response = {
+                                    'success': False,
+                                    'error': validation_message
+                                }
+                            script = f"receiveImportFromPython({json.dumps(response)});"
+                            palette.sendInfoToHTML('import-response', script)
+                    except Exception as e:
+                        palette = UI.palettes.itemById('sysBlocksPalette')
+                        if palette:
+                            response = {
+                                'success': False,
+                                'error': f'Mermaid import failed: {str(e)}'
+                            }
+                            script = f"receiveImportFromPython({json.dumps(response)});"
+                            palette.sendInfoToHTML('import-response', script)
+                else:
+                    palette = UI.palettes.itemById('sysBlocksPalette')
+                    if palette:
+                        response = {
+                            'success': False,
+                            'error': 'No Mermaid text provided'
+                        }
+                        script = f"receiveImportFromPython({json.dumps(response)});"
+                        palette.sendInfoToHTML('import-response', script)
+            elif action == 'import-csv':
+                # Import from CSV
+                csv_blocks = payload.get('csvBlocks', '')
+                csv_connections = payload.get('csvConnections', '')
+                if csv_blocks:
+                    try:
+                        imported_diagram = diagram_data.import_from_csv(csv_blocks, csv_connections)
+                        is_valid, validation_message = diagram_data.validate_imported_diagram(imported_diagram)
+                        
+                        palette = UI.palettes.itemById('sysBlocksPalette')
+                        if palette:
+                            if is_valid:
+                                response = {
+                                    'success': True,
+                                    'diagram': imported_diagram,
+                                    'warnings': validation_message if 'violation' in validation_message else None
+                                }
+                            else:
+                                response = {
+                                    'success': False,
+                                    'error': validation_message
+                                }
+                            palette.sendInfoToHTML('import-response', f"receiveImportFromPython({json.dumps(response)});")
+                    except Exception as e:
+                        palette = UI.palettes.itemById('sysBlocksPalette')
+                        if palette:
+                            response = {
+                                'success': False,
+                                'error': f'CSV import failed: {str(e)}'
+                            }
+                            script = f"receiveImportFromPython({json.dumps(response)});"
+                            palette.sendInfoToHTML('import-response', script)
+                else:
+                    palette = UI.palettes.itemById('sysBlocksPalette')
+                    if palette:
+                        response = {
+                            'success': False,
+                            'error': 'No CSV blocks data provided'
+                        }
+                        script = f"receiveImportFromPython({json.dumps(response)});"
+                        palette.sendInfoToHTML('import-response', script)
         except Exception as e:
             UI.messageBox(f'Message handler error: {str(e)}')
 

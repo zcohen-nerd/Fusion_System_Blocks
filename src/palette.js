@@ -75,6 +75,7 @@ class SystemBlocksEditor {
     document.getElementById('btn-snap-grid').addEventListener('click', () => this.toggleSnapToGrid());
     document.getElementById('btn-check-rules').addEventListener('click', () => this.checkAndDisplayRules());
     document.getElementById('btn-export-report').addEventListener('click', () => this.exportReport());
+    document.getElementById('btn-import').addEventListener('click', () => this.showImportDialog());
     document.getElementById('btn-link-cad').addEventListener('click', () => this.linkSelectedBlockToCAD());
     document.getElementById('btn-link-ecad').addEventListener('click', () => this.linkSelectedBlockToECAD());
     
@@ -86,6 +87,14 @@ class SystemBlocksEditor {
     
     // Prevent context menu
     this.svg.addEventListener('contextmenu', (e) => e.preventDefault());
+    
+    // Import dialog events
+    document.querySelectorAll('input[name="import-type"]').forEach(radio => {
+      radio.addEventListener('change', () => this.updateImportUI());
+    });
+    document.getElementById('btn-import-cancel').addEventListener('click', () => this.hideImportDialog());
+    document.getElementById('btn-import-ok').addEventListener('click', () => this.performImport());
+    document.getElementById('dialog-overlay').addEventListener('click', () => this.hideImportDialog());
   }
   
   addBlock(name, x, y, type = "Custom") {
@@ -876,6 +885,114 @@ class SystemBlocksEditor {
     });
   }
   
+  // Import functionality
+  showImportDialog() {
+    document.getElementById('import-dialog').style.display = 'block';
+    document.getElementById('dialog-overlay').style.display = 'block';
+    this.updateImportUI();
+  }
+  
+  hideImportDialog() {
+    document.getElementById('import-dialog').style.display = 'none';
+    document.getElementById('dialog-overlay').style.display = 'none';
+    
+    // Clear form
+    document.getElementById('mermaid-text').value = '';
+    document.getElementById('csv-blocks').value = '';
+    document.getElementById('csv-connections').value = '';
+    document.querySelector('input[name="import-type"][value="mermaid"]').checked = true;
+    this.updateImportUI();
+  }
+  
+  updateImportUI() {
+    const importType = document.querySelector('input[name="import-type"]:checked').value;
+    
+    if (importType === 'mermaid') {
+      document.getElementById('mermaid-import').style.display = 'block';
+      document.getElementById('csv-import').style.display = 'none';
+    } else {
+      document.getElementById('mermaid-import').style.display = 'none';
+      document.getElementById('csv-import').style.display = 'block';
+    }
+  }
+  
+  performImport() {
+    const importType = document.querySelector('input[name="import-type"]:checked').value;
+    
+    try {
+      if (importType === 'mermaid') {
+        this.importFromMermaid();
+      } else if (importType === 'csv') {
+        this.importFromCSV();
+      }
+    } catch (error) {
+      console.error('Import failed:', error);
+      alert(`Import failed: ${error.message}`);
+    }
+  }
+  
+  importFromMermaid() {
+    const mermaidText = document.getElementById('mermaid-text').value.trim();
+    
+    if (!mermaidText) {
+      alert('Please enter Mermaid flowchart text');
+      return;
+    }
+    
+    console.log('Importing from Mermaid:', mermaidText);
+    
+    // Send to Python for parsing
+    const message = {
+      action: 'import-mermaid',
+      data: { mermaidText: mermaidText }
+    };
+    
+    adsk.fusionSendData('import-request', JSON.stringify(message));
+  }
+  
+  importFromCSV() {
+    const csvBlocks = document.getElementById('csv-blocks').value.trim();
+    const csvConnections = document.getElementById('csv-connections').value.trim();
+    
+    if (!csvBlocks) {
+      alert('Please enter blocks CSV data');
+      return;
+    }
+    
+    console.log('Importing from CSV:', { blocks: csvBlocks, connections: csvConnections });
+    
+    // Send to Python for parsing
+    const message = {
+      action: 'import-csv',
+      data: { 
+        csvBlocks: csvBlocks,
+        csvConnections: csvConnections
+      }
+    };
+    
+    adsk.fusionSendData('import-request', JSON.stringify(message));
+  }
+  
+  // Handle import response from Python
+  handleImportResponse(response) {
+    console.log('Import response:', response);
+    
+    if (response.success) {
+      // Load the imported diagram
+      this.diagram = response.diagram;
+      this.renderDiagram();
+      this.hideImportDialog();
+      
+      if (response.warnings) {
+        alert(`Import successful!\n\nWarnings:\n${response.warnings}`);
+      } else {
+        alert('Import successful!');
+      }
+    } else {
+      alert(`Import failed: ${response.error}`);
+    }
+  }
+  
   exportReport() {
     // Export comprehensive report files
     console.log("Exporting report files...");
@@ -1299,5 +1416,12 @@ function loadDiagramFromPython(jsonData) {
 function receiveCADLinkFromPython(blockId, occToken, docId, docPath) {
   if (editor) {
     editor.receiveCADLink(blockId, occToken, docId, docPath);
+  }
+}
+
+// Global function for Python to call with import results
+function receiveImportFromPython(responseData) {
+  if (editor) {
+    editor.handleImportResponse(responseData);
   }
 }
