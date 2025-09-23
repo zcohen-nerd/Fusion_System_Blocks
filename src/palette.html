@@ -121,6 +121,38 @@
     .port:hover {
       fill: #ffff99;
     }
+    
+    .status-legend {
+      position: absolute;
+      top: 60px;
+      right: 10px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px;
+      font-size: 11px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      z-index: 100;
+    }
+    
+    .status-legend h4 {
+      margin: 0 0 6px 0;
+      font-size: 12px;
+      color: #333;
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      margin: 3px 0;
+    }
+    
+    .status-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      margin-right: 6px;
+    }
   </style>
 </head>
 <body>
@@ -149,6 +181,31 @@
       <g id="connections-layer"></g>
       <g id="blocks-layer"></g>
     </svg>
+    
+    <!-- Status Legend -->
+    <div class="status-legend">
+      <h4>Block Status</h4>
+      <div class="status-item">
+        <div class="status-color" style="background-color: #cccccc;"></div>
+        <span>Placeholder</span>
+      </div>
+      <div class="status-item">
+        <div class="status-color" style="background-color: #87ceeb;"></div>
+        <span>Planned</span>
+      </div>
+      <div class="status-item">
+        <div class="status-color" style="background-color: #ffd700;"></div>
+        <span>In-Work</span>
+      </div>
+      <div class="status-item">
+        <div class="status-color" style="background-color: #90ee90;"></div>
+        <span>Implemented</span>
+      </div>
+      <div class="status-item">
+        <div class="status-color" style="background-color: #00ff00;"></div>
+        <span>Verified</span>
+      </div>
+    </div>
   </div>
   
   <script src="palette.js"></script>

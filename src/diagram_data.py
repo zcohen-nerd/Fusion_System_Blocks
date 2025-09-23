@@ -238,3 +238,90 @@ def remove_block_from_diagram(diagram: Dict[str, Any], block_id: str) -> bool:
     ]
 
     return len(diagram["blocks"]) < initial_count
+
+
+def compute_block_status(block: Dict[str, Any]) -> str:
+    """
+    Auto-compute the status of a block based on its content and links.
+    
+    Status progression:
+    - Placeholder: block exists but has minimal content
+    - Planned: attributes defined, no links
+    - In-Work: some links exist
+    - Implemented: required links complete
+    - Verified: all validation rules pass
+    
+    Args:
+        block: Block dictionary
+        
+    Returns:
+        Computed status from the enum
+    """
+    if not block:
+        return "Placeholder"
+    
+    # Check if block has meaningful attributes
+    attributes = block.get('attributes', {})
+    has_attributes = bool(attributes and any(v for v in attributes.values() if v))
+    
+    # Check links
+    links = block.get('links', [])
+    has_links = len(links) > 0
+    
+    # Check if block has interfaces defined
+    interfaces = block.get('interfaces', [])
+    has_interfaces = len(interfaces) > 0
+    
+    # Status computation logic
+    if not has_attributes and not has_links and not has_interfaces:
+        return "Placeholder"
+    elif has_attributes and not has_links:
+        return "Planned"
+    elif has_links:
+        # Could add more sophisticated logic here to determine if "complete"
+        if has_interfaces and has_attributes:
+            return "Implemented"
+        else:
+            return "In-Work"
+    else:
+        return "Planned"
+
+
+def update_block_statuses(diagram: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Update the status of all blocks in a diagram based on auto-computation.
+    
+    Args:
+        diagram: Diagram dictionary
+        
+    Returns:
+        Updated diagram with computed statuses
+    """
+    if 'blocks' not in diagram:
+        return diagram
+    
+    for block in diagram['blocks']:
+        computed_status = compute_block_status(block)
+        block['status'] = computed_status
+    
+    return diagram
+
+
+def get_status_color(status: str) -> str:
+    """
+    Get the color associated with a block status for visual feedback.
+    
+    Args:
+        status: Status string
+        
+    Returns:
+        Color string (hex or CSS color name)
+    """
+    status_colors = {
+        "Placeholder": "#cccccc",  # Light gray
+        "Planned": "#87ceeb",      # Sky blue
+        "In-Work": "#ffd700",      # Gold/yellow
+        "Implemented": "#90ee90",  # Light green
+        "Verified": "#00ff00"      # Green
+    }
+    return status_colors.get(status, "#cccccc")

@@ -46,6 +46,17 @@ class SystemBlocksEditor {
     };
   }
   
+  getStatusColor(status) {
+    const statusColors = {
+      "Placeholder": "#cccccc",  // Light gray
+      "Planned": "#87ceeb",      // Sky blue
+      "In-Work": "#ffd700",      // Gold/yellow
+      "Implemented": "#90ee90",  // Light green
+      "Verified": "#00ff00"      // Green
+    };
+    return statusColors[status] || "#cccccc";
+  }
+  
   initializeUI() {
     this.svg = document.getElementById('svg-canvas');
     this.blocksLayer = document.getElementById('blocks-layer');
@@ -120,6 +131,18 @@ class SystemBlocksEditor {
     g.setAttribute('data-block-id', block.id);
     g.setAttribute('transform', `translate(${block.x}, ${block.y})`);
     
+    // Status halo (background border)
+    const statusHalo = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    statusHalo.setAttribute('class', 'status-halo');
+    statusHalo.setAttribute('width', block.width + 6);
+    statusHalo.setAttribute('height', block.height + 6);
+    statusHalo.setAttribute('x', -3);
+    statusHalo.setAttribute('y', -3);
+    statusHalo.setAttribute('rx', '6');
+    statusHalo.setAttribute('fill', this.getStatusColor(block.status || 'Placeholder'));
+    statusHalo.setAttribute('opacity', '0.3');
+    g.appendChild(statusHalo);
+    
     // Block rectangle
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     rect.setAttribute('class', 'block');
@@ -132,9 +155,19 @@ class SystemBlocksEditor {
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('class', 'block-text');
     text.setAttribute('x', block.width / 2);
-    text.setAttribute('y', block.height / 2);
+    text.setAttribute('y', block.height / 2 - 5);
     text.textContent = block.name;
     g.appendChild(text);
+    
+    // Status text
+    const statusText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    statusText.setAttribute('class', 'status-text');
+    statusText.setAttribute('x', block.width / 2);
+    statusText.setAttribute('y', block.height / 2 + 12);
+    statusText.textContent = block.status || 'Placeholder';
+    statusText.setAttribute('font-size', '10');
+    statusText.setAttribute('opacity', '0.7');
+    g.appendChild(statusText);
     
     // Render ports
     block.interfaces.forEach((intf, idx) => {
@@ -405,6 +438,9 @@ class SystemBlocksEditor {
   }
   
   updateBlockVisuals(block) {
+    // Update block status first
+    this.updateBlockStatus(block);
+    
     // Add visual indicators for linked blocks (small badge/icon)
     const blockGroup = document.querySelector(`[data-block-id="${block.id}"]`);
     if (!blockGroup) return;
@@ -473,6 +509,73 @@ class SystemBlocksEditor {
     return errors;
   }
   
+  computeBlockStatus(block) {
+    // Auto-compute the status of a block based on its content and links
+    if (!block) {
+      return "Placeholder";
+    }
+    
+    // Check if block has meaningful attributes
+    const attributes = block.attributes || {};
+    const hasAttributes = Object.keys(attributes).length > 0 && 
+      Object.values(attributes).some(v => v && v !== "");
+    
+    // Check links
+    const links = block.links || [];
+    const hasLinks = links.length > 0;
+    
+    // Check if block has interfaces defined
+    const interfaces = block.interfaces || [];
+    const hasInterfaces = interfaces.length > 0;
+    
+    // Status computation logic
+    if (!hasAttributes && !hasLinks && !hasInterfaces) {
+      return "Placeholder";
+    } else if (hasAttributes && !hasLinks) {
+      return "Planned";
+    } else if (hasLinks) {
+      // Could add more sophisticated logic here to determine if "complete"
+      if (hasInterfaces && hasAttributes) {
+        return "Implemented";
+      } else {
+        return "In-Work";
+      }
+    } else {
+      return "Planned";
+    }
+  }
+  
+  updateBlockStatus(block) {
+    // Update a single block's status and re-render
+    const newStatus = this.computeBlockStatus(block);
+    if (block.status !== newStatus) {
+      block.status = newStatus;
+      this.redrawBlock(block);
+    }
+  }
+  
+  updateAllBlockStatuses() {
+    // Update status for all blocks
+    this.diagram.blocks.forEach(block => {
+      const newStatus = this.computeBlockStatus(block);
+      block.status = newStatus;
+    });
+    
+    // Re-render all blocks to show updated status
+    this.renderDiagram();
+  }
+  
+  redrawBlock(block) {
+    // Remove existing block element
+    const existingElement = document.querySelector(`[data-block-id="${block.id}"]`);
+    if (existingElement) {
+      existingElement.remove();
+    }
+    
+    // Re-render the block
+    this.renderBlock(block);
+  }
+  
   newDiagram() {
     this.diagram = this.createEmptyDiagram();
     this.blocksLayer.innerHTML = '';
@@ -481,6 +584,9 @@ class SystemBlocksEditor {
   }
   
   saveDiagram() {
+    // Update block statuses before saving
+    this.updateAllBlockStatuses();
+    
     // Validate links before saving
     const validation = this.validateDiagramLinks();
     if (!validation.isValid) {

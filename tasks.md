@@ -1,114 +1,224 @@
-# Fusion System Blocks — Development Backlog# Fusion System Blocks — Deve## ✅ Milestone 2: CAD/ECAD Linking
+# Fusion System Blocks — Development Backlog# Fusion System Blocks — Development Backlog# Fusion System Blocks — Deve## ✅ Milestone 2: CAD/ECAD Linking
 
-- [x] Add **"Link to CAD"** button in palette
 
-This file defines the step-by-step backlog for building the add-in.    - [x] Python: selection command to pick a Fusion occurrence
 
-Each task should be completed in its own **feature branch** with a clear commit history.    - [x] Save occurrence token and docId into block's `links[]`
+This file defines the step-by-step backlog for building the add-in.  - [x] Add **"Link to CAD"** button in palette
 
-Keep commits **small and incremental** (one feature or fix at a time).- [x] Add **"Link to ECAD"** button in palette
+Each task should be completed in its own **feature branch** with a clear commit history.  
 
-  - [x] Store `device` and `footprint` into block's `links[]`
+Keep commits **small and incremental** (one feature or fix at a time).This file defines the step-by-step backlog for building the add-in.    - [x] Python: selection command to pick a Fusion occurrence
 
----- [ ] Update JSON schema to confirm links are valid
 
-- [x] Visual feedback in palette: show small icon/badge on linked blocksBacklog
 
-## ✅ Milestone 1: Diagram Core + Persistence
+---Each task should be completed in its own **feature branch** with a clear commit history.    - [x] Save occurrence token and docId into block's `links[]`
 
-- [x] Implement basic **node editor** in `palette.html` / `palette.js`This file defines the step-by-step backlog for building the add-in.  
 
-  - [x] SVG or Canvas-based blocksEach task should be completed in its own **feature branch** with a clear commit history.  
 
-  - [x] Pan/zoomKeep commits **small and incremental** (one feature or fix at a time).
+## ✅ Milestone 1: Diagram Core + PersistenceKeep commits **small and incremental** (one feature or fix at a time).- [x] Add **"Link to ECAD"** button in palette
 
-  - [x] Snap-to-grid
+- [x] Implement basic **node editor** in `palette.html` / `palette.js`
 
-  - [x] Draggable blocks with named ports---
+  - [x] SVG or Canvas-based blocks  - [x] Store `device` and `footprint` into block's `links[]`
 
-- [x] Add **New / Save / Load** buttons in the palette
+  - [x] Pan/zoom
 
-  - [x] `New`: clears in-memory diagram## ✅ Milestone 1: Diagram Core + Persistence
+  - [x] Snap-to-grid---- [ ] Update JSON schema to confirm links are valid
 
-  - [x] `Save`: sends diagram JSON → Python- [x] Implement basic **node editor** in `palette.html` / `palette.js`
+  - [x] Draggable blocks with named ports
 
-  - [x] `Load`: requests diagram JSON ← Python  - [x] SVG or Canvas-based blocks
+- [x] Add **New / Save / Load** buttons in the palette- [x] Visual feedback in palette: show small icon/badge on linked blocksBacklog
 
-- [x] In `main.py`:  - [x] Pan/zoom
+  - [x] `New`: clears in-memory diagram
 
-  - [x] Implement palette ↔ Python messaging  - [x] Snap-to-grid
+  - [x] `Save`: sends diagram JSON → Python## ✅ Milestone 1: Diagram Core + Persistence
 
-  - [x] Store JSON in `adsk.core.Attributes` (group: `systemBlocks`, name: `diagramJson`)  - [x] Draggable blocks with named ports
+  - [x] `Load`: requests diagram JSON ← Python
 
-  - [x] Provide helper functions `save_diagram_json()` and `load_diagram_json()`- [x] Add **New / Save / Load** buttons in the palette
-
-- [x] Add `src/diagram_data.py`:  - [x] `New`: clears in-memory diagram
-
-  - [x] Functions to serialize/deserialize JSON  - [x] `Save`: sends diagram JSON → Python
-
-  - [x] Schema validation against `docs/schema.json`  - [x] `Load`: requests diagram JSON ← Python
-
-- [x] Add pytest unit tests for JSON utilities- [x] In `main.py`:
+- [x] In `main.py`:- [x] Implement basic **node editor** in `palette.html` / `palette.js`This file defines the step-by-step backlog for building the add-in.  
 
   - [x] Implement palette ↔ Python messaging
 
----  - [x] Store JSON in `adsk.core.Attributes` (group: `systemBlocks`, name: `diagramJson`)
+  - [x] Store JSON in `adsk.core.Attributes` (group: `systemBlocks`, name: `diagramJson`)  - [x] SVG or Canvas-based blocksEach task should be completed in its own **feature branch** with a clear commit history.  
 
   - [x] Provide helper functions `save_diagram_json()` and `load_diagram_json()`
 
-## ✅ Milestone 2: CAD/ECAD Linking- [x] Add `src/json_utils.py`:
+- [x] Add `src/diagram_data.py`:  - [x] Pan/zoomKeep commits **small and incremental** (one feature or fix at a time).
 
-- [x] Add **"Link to CAD"** button in palette  - [x] Functions to serialize/deserialize JSON
+  - [x] Functions to serialize/deserialize JSON
 
-  - [x] Python: selection command to pick a Fusion occurrence  - [x] Schema validation against `docs/schema.json`
+  - [x] Schema validation against `docs/schema.json`  - [x] Snap-to-grid
 
-  - [x] Save occurrence token and docId into block's `links[]`- [x] Add pytest unit tests for JSON utilities
+- [x] Add pytest unit tests for JSON utilities
+
+  - [x] Draggable blocks with named ports---
+
+---
+
+- [x] Add **New / Save / Load** buttons in the palette
+
+## ✅ Milestone 2: CAD/ECAD Linking
+
+- [x] Add **"Link to CAD"** button in palette  - [x] `New`: clears in-memory diagram## ✅ Milestone 1: Diagram Core + Persistence
+
+  - [x] Python: selection command to pick a Fusion occurrence
+
+  - [x] Save occurrence token and docId into block's `links[]`  - [x] `Save`: sends diagram JSON → Python- [x] Implement basic **node editor** in `palette.html` / `palette.js`
 
 - [x] Add **"Link to ECAD"** button in palette
 
-  - [x] Store `device` and `footprint` into block's `links[]`---
+  - [x] Store `device` and `footprint` into block's `links[]`  - [x] `Load`: requests diagram JSON ← Python  - [x] SVG or Canvas-based blocks
 
 - [x] Update JSON schema to confirm links are valid
 
-- [x] Visual feedback in palette: show small icon/badge on linked blocks## ✅ Milestone 2: CAD/ECAD Linking
+- [x] Visual feedback in palette: show small icon/badge on linked blocks- [x] In `main.py`:  - [x] Pan/zoom
 
-- [ ] Add **“Link to CAD”** button in palette
 
----  - [ ] Python: selection command to pick a Fusion occurrence
 
-  - [ ] Save occurrence token and docId into block’s `links[]`
+---  - [x] Implement palette ↔ Python messaging  - [x] Snap-to-grid
 
-## Milestone 3: Status Tracking- [ ] Add **“Link to ECAD”** button in palette
 
-- [ ] Implement block `status` enum:  - [ ] Store `device` and `footprint` into block’s `links[]`
+
+## ✅ Milestone 3: Status Tracking  - [x] Store JSON in `adsk.core.Attributes` (group: `systemBlocks`, name: `diagramJson`)  - [x] Draggable blocks with named ports
+
+- [x] Implement block `status` enum:
+
+  - Placeholder → Planned → In-Work → Implemented → Verified  - [x] Provide helper functions `save_diagram_json()` and `load_diagram_json()`- [x] Add **New / Save / Load** buttons in the palette
+
+- [x] Auto-compute `status`:
+
+  - [x] Placeholder = block exists but empty- [x] Add `src/diagram_data.py`:  - [x] `New`: clears in-memory diagram
+
+  - [x] Planned = attributes defined, no links
+
+  - [x] In-Work = some links exist  - [x] Functions to serialize/deserialize JSON  - [x] `Save`: sends diagram JSON → Python
+
+  - [x] Implemented = required links complete
+
+  - [x] Verified = rule checks pass  - [x] Schema validation against `docs/schema.json`  - [x] `Load`: requests diagram JSON ← Python
+
+- [x] Visual feedback in palette:
+
+  - [x] Color halos or borders per status- [x] Add pytest unit tests for JSON utilities- [x] In `main.py`:
+
+  - [x] Legend in UI
+
+  - [x] Implement palette ↔ Python messaging
+
+---
+
+---  - [x] Store JSON in `adsk.core.Attributes` (group: `systemBlocks`, name: `diagramJson`)
+
+## Milestone 4: Rule Checks
+
+- [ ] Implement **logic-level compatibility** rule  - [x] Provide helper functions `save_diagram_json()` and `load_diagram_json()`
+
+- [ ] Implement **power budget** rule
+
+- [ ] Implement **implementation completeness** rule## ✅ Milestone 2: CAD/ECAD Linking- [x] Add `src/json_utils.py`:
+
+- [ ] Add warning badges on connections or blocks when rules fail
+
+- [ ] Expose rule results in a **Status Panel** in palette- [x] Add **"Link to CAD"** button in palette  - [x] Functions to serialize/deserialize JSON
+
+
+
+---  - [x] Python: selection command to pick a Fusion occurrence  - [x] Schema validation against `docs/schema.json`
+
+
+
+## Milestone 5: Export & Reports  - [x] Save occurrence token and docId into block's `links[]`- [x] Add pytest unit tests for JSON utilities
+
+- [ ] Add "Export Report" button
+
+- [ ] Generate Markdown file in `/exports/` with:- [x] Add **"Link to ECAD"** button in palette
+
+  - [ ] Embedded PNG of diagram
+
+  - [ ] Block table (id, name, type, status, attributes)  - [x] Store `device` and `footprint` into block's `links[]`---
+
+  - [ ] Connection table (from → to, protocol, attributes)
+
+- [ ] Add "Export Pin Map":- [x] Update JSON schema to confirm links are valid
+
+  - [ ] Generate CSV (Signal, Source, Dest, Pin, Notes)
+
+  - [ ] Generate optional C header with `#define` pin constants- [x] Visual feedback in palette: show small icon/badge on linked blocks## ✅ Milestone 2: CAD/ECAD Linking
+
+
+
+---- [ ] Add **“Link to CAD”** button in palette
+
+
+
+## Milestone 6: Import---  - [ ] Python: selection command to pick a Fusion occurrence
+
+- [ ] Import Mermaid text:
+
+  - [ ] Parse flowchart syntax (A-->B)  - [ ] Save occurrence token and docId into block’s `links[]`
+
+  - [ ] Map edge labels to protocols
+
+- [ ] Import draw.io XML (subset):## Milestone 3: Status Tracking- [ ] Add **“Link to ECAD”** button in palette
+
+  - [ ] Rectangles → blocks
+
+  - [ ] Connectors → connections- [ ] Implement block `status` enum:  - [ ] Store `device` and `footprint` into block’s `links[]`
+
+- [ ] Validate imported diagram against schema
 
   - Placeholder → Planned → In-Work → Implemented → Verified- [ ] Update JSON schema to confirm links are valid
 
+---
+
 - [ ] Auto-compute `status`:- [ ] Visual feedback in palette: show small icon/badge on linked blocks
 
-  - [ ] Placeholder = block exists but empty
+## Milestone 7: Hierarchy (Stretch Goal)
 
-  - [ ] Planned = attributes defined, no links---
+- [ ] Allow blocks to contain **child diagrams**  - [ ] Placeholder = block exists but empty
+
+- [ ] UI: double-click block → drill down into sub-diagram
+
+- [ ] Enforce parent-child interface mapping  - [ ] Planned = attributes defined, no links---
+
+- [ ] Roll up status from child to parent
 
   - [ ] In-Work = some links exist
 
+---
+
   - [ ] Implemented = required links complete## ✅ Milestone 3: Status Tracking
 
-  - [ ] Verified = rule checks pass- [ ] Implement block `status` enum:
+## Milestone 8: Polish
 
-- [ ] Visual feedback in palette:  - Placeholder → Planned → In-Work → Implemented → Verified
+- [ ] Add undo/redo support in palette  - [ ] Verified = rule checks pass- [ ] Implement block `status` enum:
+
+- [ ] Add tooltips for block attributes
+
+- [ ] Add search/filter for blocks- [ ] Visual feedback in palette:  - Placeholder → Planned → In-Work → Implemented → Verified
+
+- [ ] Improve styling (consistent icons, better grid, theme support)
 
   - [ ] Color halos or borders per status- [ ] Auto-compute `status`:
 
+---
+
   - [ ] Legend in UI  - [ ] Placeholder = block exists but empty
 
-  - [ ] Planned = attributes defined, no links
+## Guidelines
 
----  - [ ] In-Work = some links exist
+- Work in a feature branch for each milestone (e.g., `feat/milestone-1-diagram-core`)  - [ ] Planned = attributes defined, no links
 
-  - [ ] Implemented = required links complete
+- Validate JSON with `pytest` before commit
 
-## Milestone 4: Rule Checks  - [ ] Verified = rule checks pass
+- Run `flake8` before commit---  - [ ] In-Work = some links exist
+
+- Keep commits small and messages clear:
+
+  - `feat: add Save/Load buttons`  - [ ] Implemented = required links complete
+
+  - `fix: correct attribute persistence`
+
+  - `test: add schema validation tests`## Milestone 4: Rule Checks  - [ ] Verified = rule checks pass
 
 - [ ] Implement **logic-level compatibility** rule- [ ] Visual feedback in palette:
 
