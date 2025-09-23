@@ -16,6 +16,11 @@ class SystemBlocksEditor {
     this.gridSize = 20;
     this.snapToGrid = true;
     
+    // Hierarchy navigation
+    this.hierarchyStack = []; // Stack of parent diagrams
+    this.currentPath = []; // Current breadcrumb path
+    this.rootDiagram = null; // Reference to the root diagram
+    
     this.initializeUI();
     this.setupEventListeners();
   }
@@ -71,10 +76,17 @@ class SystemBlocksEditor {
     document.getElementById('btn-new').addEventListener('click', () => this.newDiagram());
     document.getElementById('btn-save').addEventListener('click', () => this.saveDiagram());
     document.getElementById('btn-load').addEventListener('click', () => this.loadDiagram());
+    
+    // Hierarchy navigation buttons
+    document.getElementById('btn-go-up').addEventListener('click', () => this.goUpInHierarchy());
+    document.getElementById('btn-drill-down').addEventListener('click', () => this.drillDownIntoBlock());
+    document.getElementById('btn-create-child').addEventListener('click', () => this.createChildDiagram());
+    
     document.getElementById('btn-add-block').addEventListener('click', () => this.promptAddBlock());
     document.getElementById('btn-snap-grid').addEventListener('click', () => this.toggleSnapToGrid());
     document.getElementById('btn-check-rules').addEventListener('click', () => this.checkAndDisplayRules());
     document.getElementById('btn-export-report').addEventListener('click', () => this.exportReport());
+    document.getElementById('btn-import').addEventListener('click', () => this.showImportDialog());
     document.getElementById('btn-link-cad').addEventListener('click', () => this.linkSelectedBlockToCAD());
     document.getElementById('btn-link-ecad').addEventListener('click', () => this.linkSelectedBlockToECAD());
     
@@ -83,9 +95,18 @@ class SystemBlocksEditor {
     this.svg.addEventListener('mousemove', (e) => this.onMouseMove(e));
     this.svg.addEventListener('mouseup', (e) => this.onMouseUp(e));
     this.svg.addEventListener('wheel', (e) => this.onWheel(e));
+    this.svg.addEventListener('dblclick', (e) => this.onDoubleClick(e));
     
     // Prevent context menu
     this.svg.addEventListener('contextmenu', (e) => e.preventDefault());
+    
+    // Import dialog events
+    document.querySelectorAll('input[name="import-type"]').forEach(radio => {
+      radio.addEventListener('change', () => this.updateImportUI());
+    });
+    document.getElementById('btn-import-cancel').addEventListener('click', () => this.hideImportDialog());
+    document.getElementById('btn-import-ok').addEventListener('click', () => this.performImport());
+    document.getElementById('dialog-overlay').addEventListener('click', () => this.hideImportDialog());
   }
   
   addBlock(name, x, y, type = "Custom") {
@@ -170,6 +191,22 @@ class SystemBlocksEditor {
     statusText.setAttribute('font-size', '10');
     statusText.setAttribute('opacity', '0.7');
     g.appendChild(statusText);
+    
+    // Child diagram indicator
+    if (this.hasChildDiagram(block)) {
+      // Add dashed border
+      rect.setAttribute('stroke-dasharray', '5,5');
+      rect.setAttribute('stroke-width', '3');
+      
+      // Add folder icon
+      const childIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      childIcon.setAttribute('class', 'child-indicator');
+      childIcon.setAttribute('x', block.width - 15);
+      childIcon.setAttribute('y', 15);
+      childIcon.textContent = '📁';
+      childIcon.setAttribute('font-size', '12');
+      g.appendChild(childIcon);
+    }
     
     // Render ports
     block.interfaces.forEach((intf, idx) => {
@@ -287,14 +324,19 @@ class SystemBlocksEditor {
       el.classList.remove('selected');
     });
     
+    this.selectedBlock = block;
+    
     // Add selection to new block
-    const blockElement = document.querySelector(`[data-block-id="${block.id}"] .block`);
-    if (blockElement) {
-      blockElement.classList.add('selected');
+    if (block) {
+      const blockElement = document.querySelector(`[data-block-id="${block.id}"] .block`);
+      if (blockElement) {
+        blockElement.classList.add('selected');
+      }
     }
     
     // Update context buttons
     this.updateContextButtons(block);
+    this.updateHierarchyButtons();
   }
   
   updateContextButtons(selectedBlock) {
@@ -876,6 +918,114 @@ class SystemBlocksEditor {
     });
   }
   
+  // Import functionality
+  showImportDialog() {
+    document.getElementById('import-dialog').style.display = 'block';
+    document.getElementById('dialog-overlay').style.display = 'block';
+    this.updateImportUI();
+  }
+  
+  hideImportDialog() {
+    document.getElementById('import-dialog').style.display = 'none';
+    document.getElementById('dialog-overlay').style.display = 'none';
+    
+    // Clear form
+    document.getElementById('mermaid-text').value = '';
+    document.getElementById('csv-blocks').value = '';
+    document.getElementById('csv-connections').value = '';
+    document.querySelector('input[name="import-type"][value="mermaid"]').checked = true;
+    this.updateImportUI();
+  }
+  
+  updateImportUI() {
+    const importType = document.querySelector('input[name="import-type"]:checked').value;
+    
+    if (importType === 'mermaid') {
+      document.getElementById('mermaid-import').style.display = 'block';
+      document.getElementById('csv-import').style.display = 'none';
+    } else {
+      document.getElementById('mermaid-import').style.display = 'none';
+      document.getElementById('csv-import').style.display = 'block';
+    }
+  }
+  
+  performImport() {
+    const importType = document.querySelector('input[name="import-type"]:checked').value;
+    
+    try {
+      if (importType === 'mermaid') {
+        this.importFromMermaid();
+      } else if (importType === 'csv') {
+        this.importFromCSV();
+      }
+    } catch (error) {
+      console.error('Import failed:', error);
+      alert(`Import failed: ${error.message}`);
+    }
+  }
+  
+  importFromMermaid() {
+    const mermaidText = document.getElementById('mermaid-text').value.trim();
+    
+    if (!mermaidText) {
+      alert('Please enter Mermaid flowchart text');
+      return;
+    }
+    
+    console.log('Importing from Mermaid:', mermaidText);
+    
+    // Send to Python for parsing
+    const message = {
+      action: 'import-mermaid',
+      data: { mermaidText: mermaidText }
+    };
+    
+    adsk.fusionSendData('import-request', JSON.stringify(message));
+  }
+  
+  importFromCSV() {
+    const csvBlocks = document.getElementById('csv-blocks').value.trim();
+    const csvConnections = document.getElementById('csv-connections').value.trim();
+    
+    if (!csvBlocks) {
+      alert('Please enter blocks CSV data');
+      return;
+    }
+    
+    console.log('Importing from CSV:', { blocks: csvBlocks, connections: csvConnections });
+    
+    // Send to Python for parsing
+    const message = {
+      action: 'import-csv',
+      data: { 
+        csvBlocks: csvBlocks,
+        csvConnections: csvConnections
+      }
+    };
+    
+    adsk.fusionSendData('import-request', JSON.stringify(message));
+  }
+  
+  // Handle import response from Python
+  handleImportResponse(response) {
+    console.log('Import response:', response);
+    
+    if (response.success) {
+      // Load the imported diagram
+      this.diagram = response.diagram;
+      this.renderDiagram();
+      this.hideImportDialog();
+      
+      if (response.warnings) {
+        alert(`Import successful!\n\nWarnings:\n${response.warnings}`);
+      } else {
+        alert('Import successful!');
+      }
+    } else {
+      alert(`Import failed: ${response.error}`);
+    }
+  }
+  
   exportReport() {
     // Export comprehensive report files
     console.log("Exporting report files...");
@@ -1278,6 +1428,10 @@ class SystemBlocksEditor {
       this.updateBlockVisuals(block);
     });
     
+    // Update hierarchy UI
+    this.updateBreadcrumb();
+    this.updateHierarchyButtons();
+    
     // TODO: Render connections
   }
 }
@@ -1299,5 +1453,136 @@ function loadDiagramFromPython(jsonData) {
 function receiveCADLinkFromPython(blockId, occToken, docId, docPath) {
   if (editor) {
     editor.receiveCADLink(blockId, occToken, docId, docPath);
+  }
+}
+
+// ==================== HIERARCHY METHODS ====================
+
+// Add hierarchy methods to the SystemBlocksEditor class
+SystemBlocksEditor.prototype.updateBreadcrumb = function() {
+  const breadcrumbElement = document.getElementById('breadcrumb-path');
+  const path = this.currentPath.length > 0 ? this.currentPath.join(' > ') : 'Root';
+  breadcrumbElement.textContent = path;
+};
+
+SystemBlocksEditor.prototype.updateHierarchyButtons = function() {
+  const goUpBtn = document.getElementById('btn-go-up');
+  const drillDownBtn = document.getElementById('btn-drill-down');
+  const createChildBtn = document.getElementById('btn-create-child');
+  
+  // Enable go up if we're not at root level
+  goUpBtn.disabled = this.hierarchyStack.length === 0;
+  
+  // Enable drill down if selected block has child diagram
+  drillDownBtn.disabled = !this.selectedBlock || !this.hasChildDiagram(this.selectedBlock);
+  
+  // Enable create child if block is selected
+  createChildBtn.disabled = !this.selectedBlock;
+};
+
+SystemBlocksEditor.prototype.hasChildDiagram = function(block) {
+  return block && block.childDiagram && block.childDiagram.blocks;
+};
+
+SystemBlocksEditor.prototype.goUpInHierarchy = function() {
+  if (this.hierarchyStack.length === 0) {
+    console.log("Already at root level");
+    return;
+  }
+  
+  // Restore parent diagram
+  const parentContext = this.hierarchyStack.pop();
+  this.diagram = parentContext.diagram;
+  this.selectedBlock = parentContext.selectedBlock;
+  this.currentPath.pop();
+  
+  this.renderDiagram();
+  this.updateBreadcrumb();
+  this.updateHierarchyButtons();
+  
+  console.log(`Navigated up to: ${this.currentPath.join(' > ') || 'Root'}`);
+};
+
+SystemBlocksEditor.prototype.drillDownIntoBlock = function() {
+  if (!this.selectedBlock) {
+    alert("Please select a block first");
+    return;
+  }
+  
+  if (!this.hasChildDiagram(this.selectedBlock)) {
+    alert("Selected block has no child diagram");
+    return;
+  }
+  
+  // Save current context
+  this.hierarchyStack.push({
+    diagram: this.diagram,
+    selectedBlock: this.selectedBlock
+  });
+  
+  // Navigate to child diagram
+  this.currentPath.push(this.selectedBlock.name);
+  this.diagram = this.selectedBlock.childDiagram;
+  this.selectedBlock = null;
+  
+  this.renderDiagram();
+  this.updateBreadcrumb();
+  this.updateHierarchyButtons();
+  
+  console.log(`Navigated down to: ${this.currentPath.join(' > ')}`);
+};
+
+SystemBlocksEditor.prototype.createChildDiagram = function() {
+  if (!this.selectedBlock) {
+    alert("Please select a block first");
+    return;
+  }
+  
+  if (this.hasChildDiagram(this.selectedBlock)) {
+    const proceed = confirm("This block already has a child diagram. Replace it?");
+    if (!proceed) return;
+  }
+  
+  // Create empty child diagram
+  this.selectedBlock.childDiagram = this.createEmptyDiagram();
+  
+  // Immediately drill down into it
+  this.drillDownIntoBlock();
+  
+  // Add visual indicator for parent block (we'll need to re-render parent later)
+  console.log(`Created child diagram for block: ${this.selectedBlock ? this.selectedBlock.name : 'unknown'}`);
+};
+
+SystemBlocksEditor.prototype.onDoubleClick = function(e) {
+  // Double-click to drill down into blocks
+  const target = e.target;
+  if (target.classList.contains('block') || target.parentElement.classList.contains('block')) {
+    const blockElement = target.classList.contains('block') ? target : target.parentElement;
+    const blockId = blockElement.getAttribute('data-block-id');
+    const block = this.diagram.blocks.find(b => b.id === blockId);
+    
+    if (block && this.hasChildDiagram(block)) {
+      this.selectedBlock = block;
+      this.drillDownIntoBlock();
+    }
+  }
+};
+
+SystemBlocksEditor.prototype.newDiagram = function() {
+  this.diagram = this.createEmptyDiagram();
+  this.selectedBlock = null;
+  this.hierarchyStack = [];
+  this.currentPath = [];
+  this.rootDiagram = this.diagram;
+  
+  this.renderDiagram();
+  this.updateBreadcrumb();
+  this.updateHierarchyButtons();
+};
+
+// Global function for Python to call with import results
+function receiveImportFromPython(responseData) {
+  if (editor) {
+    editor.handleImportResponse(responseData);
   }
 }

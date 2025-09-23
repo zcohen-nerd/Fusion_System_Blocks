@@ -93,25 +93,25 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ---
 
-## Milestone 6: Import
+## ✅ Milestone 6: Import
 
 - [ ] Import Mermaid text:
   - [ ] Parse flowchart syntax (A-->B)
-  - [ ] Map edge labels to protocols
-  - [ ] Create blocks and connections automatically
-- [ ] Import from CSV:
-  - [ ] Block list (name, type, x, y)
-  - [ ] Connection list (from, to, protocol)
-  - [ ] Validate imported diagram against schema
+  - [x] Map edge labels to protocols
+  - [x] Create blocks and connections automatically
+- [x] Import from CSV:
+  - [x] Block list (name, type, x, y)
+  - [x] Connection list (from, to, protocol)
+  - [x] Validate imported diagram against schema
 
 ---
 
-## Milestone 7: Hierarchy (Stretch Goal)
+## ✅ Milestone 7: Hierarchy
 
-- [ ] Allow blocks to contain **child diagrams**
-- [ ] UI: double-click block → drill down into sub-diagram
-- [ ] Enforce parent-child interface mapping
-- [ ] Roll up status from child to parent
+- [x] Allow blocks to contain **child diagrams**
+- [x] UI: double-click block → drill down into sub-diagram
+- [x] Enforce parent-child interface mapping
+- [x] Roll up status from child to parent
 
 ---
 
@@ -140,8 +140,8 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ## Progress Summary
 
-**Completed Milestones:** 5/8  
-**Test Coverage:** 48 passing tests  
-**Current State:** Full export and reporting functionality complete with comprehensive test suite
+**Completed Milestones:** 7/8  
+**Test Coverage:** 80 passing tests  
+**Current State:** Full hierarchy support enables complex multi-level engineering systems with interface validation and status roll-up
 
-**Next Priority:** Milestone 6 (Import functionality) to enable diagram creation from external sources
+**Next Priority:** Milestone 8 (Polish and refinements) - the final milestone for production readiness

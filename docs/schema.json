@@ -73,6 +73,20 @@
               },
               "additionalProperties": true
             }
+          },
+          "childDiagram": {
+            "type": "object",
+            "properties": {
+              "blocks": {
+                "type": "array",
+                "items": { "$ref": "#/properties/blocks/items" }
+              },
+              "connections": {
+                "type": "array", 
+                "items": { "$ref": "#/properties/connections/items" }
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": true

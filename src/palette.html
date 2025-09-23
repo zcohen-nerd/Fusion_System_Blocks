@@ -95,6 +95,19 @@
       stroke-width: 3;
     }
     
+    .block.has-child {
+      stroke-dasharray: 5,5;
+      stroke-width: 3;
+    }
+    
+    .block.has-child::after {
+      content: "📁";
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      font-size: 10px;
+    }
+    
     .block-text {
       fill: #333;
       font-family: system-ui, sans-serif;
@@ -219,10 +232,17 @@
       <button id="btn-save">Save</button>
       <button id="btn-load">Load</button>
       <div class="separator"></div>
+      <!-- Hierarchy Navigation -->
+      <button id="btn-go-up" class="context-btn" disabled title="Go to Parent Diagram">↑ Up</button>
+      <span id="breadcrumb-path" style="margin: 0 10px; font-size: 12px; color: #666;">Root</span>
+      <button id="btn-drill-down" class="context-btn" disabled title="Open Child Diagram">↓ Drill Down</button>
+      <button id="btn-create-child" class="context-btn" disabled title="Create Child Diagram">+ Child</button>
+      <div class="separator"></div>
       <button id="btn-add-block">Add Block</button>
       <button id="btn-snap-grid" class="toggle-btn active">Snap to Grid</button>
       <button id="btn-check-rules">Check Rules</button>
       <button id="btn-export-report">Export Report</button>
+      <button id="btn-import">Import</button>
       <div class="separator"></div>
       <button id="btn-link-cad" class="context-btn" disabled>Link to CAD</button>
       <button id="btn-link-ecad" class="context-btn" disabled>Link to ECAD</button>
@@ -277,6 +297,51 @@
       </div>
     </div>
   </div>
+  
+  <!-- Import Dialog -->
+  <div id="import-dialog" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                                  background: white; border: 2px solid #ccc; padding: 20px; z-index: 1000; min-width: 500px;">
+    <h3>Import Diagram</h3>
+    
+    <div style="margin-bottom: 15px;">
+      <label>
+        <input type="radio" name="import-type" value="mermaid" checked> 
+        Import from Mermaid Flowchart
+      </label>
+    </div>
+    
+    <div style="margin-bottom: 15px;">
+      <label>
+        <input type="radio" name="import-type" value="csv"> 
+        Import from CSV
+      </label>
+    </div>
+    
+    <!-- Mermaid Import -->
+    <div id="mermaid-import" style="margin-bottom: 15px;">
+      <label for="mermaid-text">Mermaid Flowchart Text:</label><br>
+      <textarea id="mermaid-text" rows="8" cols="60" placeholder="flowchart TD&#10;    A[Start] --> B{Decision}&#10;    B -->|Yes| C[Process]&#10;    B -->|No| D[End]&#10;    C --> D"></textarea>
+    </div>
+    
+    <!-- CSV Import -->
+    <div id="csv-import" style="display: none; margin-bottom: 15px;">
+      <label for="csv-blocks">Blocks CSV (name,type,x,y,status):</label><br>
+      <textarea id="csv-blocks" rows="4" cols="60" placeholder="name,type,x,y,status&#10;Power Supply,PowerSupply,100,100,Verified&#10;Microcontroller,Microcontroller,300,100,Planned"></textarea>
+      
+      <br><br>
+      <label for="csv-connections">Connections CSV (from,to,kind,protocol):</label><br>
+      <textarea id="csv-connections" rows="4" cols="60" placeholder="from,to,kind,protocol&#10;Power Supply,Microcontroller,electrical,3.3V"></textarea>
+    </div>
+    
+    <div style="text-align: right;">
+      <button id="btn-import-cancel" style="margin-right: 10px;">Cancel</button>
+      <button id="btn-import-ok">Import</button>
+    </div>
+  </div>
+  
+  <!-- Dialog Overlay -->
+  <div id="dialog-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                                   background: rgba(0,0,0,0.5); z-index: 999;"></div>
   
   <script src="palette.js"></script>
 </body>

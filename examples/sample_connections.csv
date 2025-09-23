@@ -1,0 +1,9 @@
+from,to,kind,protocol,notes
+Power Supply,Voltage Regulator,electrical,12V DC,Main power distribution
+Voltage Regulator,Microcontroller,electrical,3.3V DC,MCU power
+Voltage Regulator,Temperature Sensor,electrical,3.3V DC,Sensor power
+Microcontroller,Temperature Sensor,data,I2C,Temperature readings
+Microcontroller,DC Motor,electrical,PWM,Motor control signal
+Microcontroller,Status LED,electrical,Digital GPIO,Status indication
+User Button,Microcontroller,data,Digital Input,User input signal
+Temperature Sensor,Microcontroller,data,I2C Response,Sensor feedback
