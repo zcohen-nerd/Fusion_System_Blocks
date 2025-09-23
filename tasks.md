@@ -1,4 +1,11 @@
-# Fusion System Blocks — Development Backlog
+# Fusion System Blocks — Deve## ✅ Milestone 2: CAD/ECAD Linking
+- [x] Add **"Link to CAD"** button in palette
+  - [x] Python: selection command to pick a Fusion occurrence
+  - [x] Save occurrence token and docId into block's `links[]`
+- [x] Add **"Link to ECAD"** button in palette
+  - [x] Store `device` and `footprint` into block's `links[]`
+- [ ] Update JSON schema to confirm links are valid
+- [x] Visual feedback in palette: show small icon/badge on linked blocksBacklog
 
 This file defines the step-by-step backlog for building the add-in.  
 Each task should be completed in its own **feature branch** with a clear commit history.  
