@@ -1,0 +1,2 @@
+Signal,Source Block,Source Interface,Dest Block,Dest Interface,Protocol,Notes
+"Power Output_to_Power Input","Power Supply","Power Output","Microcontroller","Power Input","","wire_gauge=22AWG; notes=Power distribution"

@@ -46,6 +46,17 @@ class SystemBlocksEditor {
     };
   }
   
+  getStatusColor(status) {
+    const statusColors = {
+      "Placeholder": "#cccccc",  // Light gray
+      "Planned": "#87ceeb",      // Sky blue
+      "In-Work": "#ffd700",      // Gold/yellow
+      "Implemented": "#90ee90",  // Light green
+      "Verified": "#00ff00"      // Green
+    };
+    return statusColors[status] || "#cccccc";
+  }
+  
   initializeUI() {
     this.svg = document.getElementById('svg-canvas');
     this.blocksLayer = document.getElementById('blocks-layer');
@@ -62,6 +73,8 @@ class SystemBlocksEditor {
     document.getElementById('btn-load').addEventListener('click', () => this.loadDiagram());
     document.getElementById('btn-add-block').addEventListener('click', () => this.promptAddBlock());
     document.getElementById('btn-snap-grid').addEventListener('click', () => this.toggleSnapToGrid());
+    document.getElementById('btn-check-rules').addEventListener('click', () => this.checkAndDisplayRules());
+    document.getElementById('btn-export-report').addEventListener('click', () => this.exportReport());
     document.getElementById('btn-link-cad').addEventListener('click', () => this.linkSelectedBlockToCAD());
     document.getElementById('btn-link-ecad').addEventListener('click', () => this.linkSelectedBlockToECAD());
     
@@ -120,6 +133,18 @@ class SystemBlocksEditor {
     g.setAttribute('data-block-id', block.id);
     g.setAttribute('transform', `translate(${block.x}, ${block.y})`);
     
+    // Status halo (background border)
+    const statusHalo = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    statusHalo.setAttribute('class', 'status-halo');
+    statusHalo.setAttribute('width', block.width + 6);
+    statusHalo.setAttribute('height', block.height + 6);
+    statusHalo.setAttribute('x', -3);
+    statusHalo.setAttribute('y', -3);
+    statusHalo.setAttribute('rx', '6');
+    statusHalo.setAttribute('fill', this.getStatusColor(block.status || 'Placeholder'));
+    statusHalo.setAttribute('opacity', '0.3');
+    g.appendChild(statusHalo);
+    
     // Block rectangle
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     rect.setAttribute('class', 'block');
@@ -132,9 +157,19 @@ class SystemBlocksEditor {
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('class', 'block-text');
     text.setAttribute('x', block.width / 2);
-    text.setAttribute('y', block.height / 2);
+    text.setAttribute('y', block.height / 2 - 5);
     text.textContent = block.name;
     g.appendChild(text);
+    
+    // Status text
+    const statusText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    statusText.setAttribute('class', 'status-text');
+    statusText.setAttribute('x', block.width / 2);
+    statusText.setAttribute('y', block.height / 2 + 12);
+    statusText.textContent = block.status || 'Placeholder';
+    statusText.setAttribute('font-size', '10');
+    statusText.setAttribute('opacity', '0.7');
+    g.appendChild(statusText);
     
     // Render ports
     block.interfaces.forEach((intf, idx) => {
@@ -405,6 +440,9 @@ class SystemBlocksEditor {
   }
   
   updateBlockVisuals(block) {
+    // Update block status first
+    this.updateBlockStatus(block);
+    
     // Add visual indicators for linked blocks (small badge/icon)
     const blockGroup = document.querySelector(`[data-block-id="${block.id}"]`);
     if (!blockGroup) return;
@@ -473,6 +511,668 @@ class SystemBlocksEditor {
     return errors;
   }
   
+  computeBlockStatus(block) {
+    // Auto-compute the status of a block based on its content and links
+    if (!block) {
+      return "Placeholder";
+    }
+    
+    // Check if block has meaningful attributes
+    const attributes = block.attributes || {};
+    const hasAttributes = Object.keys(attributes).length > 0 && 
+      Object.values(attributes).some(v => v && v !== "");
+    
+    // Check links
+    const links = block.links || [];
+    const hasLinks = links.length > 0;
+    
+    // Check if block has interfaces defined
+    const interfaces = block.interfaces || [];
+    const hasInterfaces = interfaces.length > 0;
+    
+    // Status computation logic
+    if (!hasAttributes && !hasLinks && !hasInterfaces) {
+      return "Placeholder";
+    } else if (hasAttributes && !hasLinks) {
+      return "Planned";
+    } else if (hasLinks) {
+      // Could add more sophisticated logic here to determine if "complete"
+      if (hasInterfaces && hasAttributes) {
+        return "Implemented";
+      } else {
+        return "In-Work";
+      }
+    } else {
+      return "Planned";
+    }
+  }
+  
+  updateBlockStatus(block) {
+    // Update a single block's status and re-render
+    const newStatus = this.computeBlockStatus(block);
+    if (block.status !== newStatus) {
+      block.status = newStatus;
+      this.redrawBlock(block);
+    }
+  }
+  
+  updateAllBlockStatuses() {
+    // Update status for all blocks
+    this.diagram.blocks.forEach(block => {
+      const newStatus = this.computeBlockStatus(block);
+      block.status = newStatus;
+    });
+    
+    // Re-render all blocks to show updated status
+    this.renderDiagram();
+  }
+  
+  redrawBlock(block) {
+    // Remove existing block element
+    const existingElement = document.querySelector(`[data-block-id="${block.id}"]`);
+    if (existingElement) {
+      existingElement.remove();
+    }
+    
+    // Re-render the block
+    this.renderBlock(block);
+  }
+  
+  checkLogicLevelCompatibility(connection) {
+    // Check if connected interfaces have compatible logic levels
+    const fromBlock = this.diagram.blocks.find(b => b.id === connection.from.blockId);
+    const toBlock = this.diagram.blocks.find(b => b.id === connection.to.blockId);
+    
+    if (!fromBlock || !toBlock) {
+      return {
+        rule: "logic_level_compatibility",
+        success: false,
+        severity: "error",
+        message: "Cannot find connected blocks"
+      };
+    }
+    
+    const fromIntf = fromBlock.interfaces.find(i => i.id === connection.from.interfaceId);
+    const toIntf = toBlock.interfaces.find(i => i.id === connection.to.interfaceId);
+    
+    if (!fromIntf || !toIntf) {
+      return {
+        rule: "logic_level_compatibility", 
+        success: false,
+        severity: "error",
+        message: "Cannot find connected interfaces"
+      };
+    }
+    
+    // Check logic levels from interface parameters
+    const fromVoltage = fromIntf.params?.voltage || "3.3V";
+    const toVoltage = toIntf.params?.voltage || "3.3V";
+    
+    // Simple voltage compatibility check
+    const compatibleVoltages = [
+      ["3.3V", "3.3V"], ["5V", "5V"], ["1.8V", "1.8V"],
+      ["5V", "3.3V"]  // 5V can drive 3.3V (with appropriate logic)
+    ];
+    
+    const isCompatible = compatibleVoltages.some(([from, to]) => 
+      from === fromVoltage && to === toVoltage
+    );
+    
+    if (isCompatible) {
+      return {
+        rule: "logic_level_compatibility",
+        success: true,
+        severity: "info",
+        message: `Compatible logic levels: ${fromVoltage} → ${toVoltage}`
+      };
+    } else {
+      return {
+        rule: "logic_level_compatibility",
+        success: false,
+        severity: "warning", 
+        message: `Potential logic level mismatch: ${fromVoltage} → ${toVoltage}`
+      };
+    }
+  }
+  
+  checkPowerBudget() {
+    // Check if power consumption doesn't exceed power supply capacity
+    let totalSupply = 0;
+    let totalConsumption = 0;
+    
+    this.diagram.blocks.forEach(block => {
+      const blockType = (block.type || "").toLowerCase();
+      const attributes = block.attributes || {};
+      
+      // Check if block is a power supply
+      if (blockType.includes("power") || blockType.includes("supply") || blockType.includes("regulator")) {
+        try {
+          const currentStr = attributes.output_current || "0mA";
+          const currentVal = parseFloat(currentStr.replace(/[mA]/g, ""));
+          if (currentStr.includes("A") && !currentStr.includes("mA")) {
+            totalSupply += currentVal * 1000; // Convert A to mA
+          } else {
+            totalSupply += currentVal;
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
+      }
+      
+      // Check power consumption
+      try {
+        const currentStr = attributes.current || attributes.power_consumption || "0mA";
+        if (currentStr && currentStr !== "0mA") {
+          const currentVal = parseFloat(currentStr.replace(/[mA]/g, ""));
+          if (currentStr.includes("A") && !currentStr.includes("mA")) {
+            totalConsumption += currentVal * 1000; // Convert A to mA  
+          } else {
+            totalConsumption += currentVal;
+          }
+        }
+      } catch (e) {
+        // Ignore parsing errors
+      }
+    });
+    
+    // Add 20% safety margin
+    const safeSupply = totalSupply * 0.8;
+    
+    if (totalConsumption === 0 && totalSupply === 0) {
+      return {
+        rule: "power_budget",
+        success: true,
+        severity: "info",
+        message: "No power specifications found - unable to verify budget"
+      };
+    } else if (totalConsumption <= safeSupply) {
+      return {
+        rule: "power_budget",
+        success: true,
+        severity: "info", 
+        message: `Power budget OK: ${totalConsumption}mA used / ${totalSupply}mA available`
+      };
+    } else {
+      return {
+        rule: "power_budget",
+        success: false,
+        severity: "error",
+        message: `Power budget exceeded: ${totalConsumption}mA needed > ${safeSupply}mA available (with 20% margin)`
+      };
+    }
+  }
+  
+  checkImplementationCompleteness() {
+    // Check if all blocks have sufficient implementation details
+    const incompleteBlocks = [];
+    
+    this.diagram.blocks.forEach(block => {
+      const blockName = block.name || "Unnamed";
+      const issues = [];
+      const status = block.status || "Placeholder";
+      
+      // Check for CAD/ECAD links for non-placeholder blocks
+      if (!["Placeholder", "Planned"].includes(status)) {
+        const links = block.links || [];
+        const hasCAD = links.some(link => link.target === "cad");
+        const hasECAD = links.some(link => link.target === "ecad");
+        
+        if (!hasCAD && !hasECAD) {
+          issues.push("missing CAD/ECAD links");
+        }
+      }
+      
+      // Check for interface definitions
+      const interfaces = block.interfaces || [];
+      if (["Implemented", "Verified"].includes(status) && interfaces.length < 2) {
+        issues.push("insufficient interfaces defined");
+      }
+      
+      // Check for attributes
+      const attributes = block.attributes || {};
+      const meaningfulAttrs = Object.entries(attributes).filter(([k, v]) => v && String(v).trim());
+      if (["Planned", "In-Work", "Implemented", "Verified"].includes(status) && meaningfulAttrs.length < 1) {
+        issues.push("missing key attributes");
+      }
+      
+      if (issues.length > 0) {
+        incompleteBlocks.push(`${blockName}: ${issues.join(', ')}`);
+      }
+    });
+    
+    if (incompleteBlocks.length === 0) {
+      return {
+        rule: "implementation_completeness",
+        success: true,
+        severity: "info",
+        message: `All ${this.diagram.blocks.length} blocks have adequate implementation details`
+      };
+    } else {
+      return {
+        rule: "implementation_completeness",
+        success: false,
+        severity: "warning",
+        message: `Incomplete blocks: ${incompleteBlocks.join('; ')}`
+      };
+    }
+  }
+  
+  runAllRuleChecks() {
+    // Run all rule checks on the current diagram
+    const results = [];
+    
+    // Check power budget (diagram-level rule)
+    results.push(this.checkPowerBudget());
+    
+    // Check implementation completeness (diagram-level rule)
+    results.push(this.checkImplementationCompleteness());
+    
+    // Check logic level compatibility for each connection
+    this.diagram.connections.forEach(connection => {
+      const logicResult = this.checkLogicLevelCompatibility(connection);
+      results.push(logicResult);
+    });
+    
+    return results;
+  }
+  
+  getRuleFailures() {
+    // Get only the failed rule checks
+    const allResults = this.runAllRuleChecks();
+    return allResults.filter(result => !result.success);
+  }
+  
+  updateRuleWarnings() {
+    // Update visual warning indicators for rule failures
+    this.clearRuleWarnings();
+    
+    const failures = this.getRuleFailures();
+    
+    failures.forEach(failure => {
+      if (failure.rule === "logic_level_compatibility") {
+        // Add warning badge to connection
+        // This would require connection identification - simplified for now
+        console.warn("Logic level issue:", failure.message);
+      } else if (failure.rule === "power_budget") {
+        // Show power budget warning in UI
+        this.showPowerBudgetWarning(failure.message);
+      } else if (failure.rule === "implementation_completeness") {
+        // Mark incomplete blocks with warning badges
+        this.markIncompleteBlocks(failure.message);
+      }
+    });
+  }
+  
+  clearRuleWarnings() {
+    // Clear existing warning indicators
+    document.querySelectorAll('.rule-warning').forEach(el => el.remove());
+    document.querySelectorAll('.power-warning').forEach(el => el.remove());
+  }
+  
+  showPowerBudgetWarning(message) {
+    // Show power budget warning in the UI
+    const warningDiv = document.createElement('div');
+    warningDiv.className = 'power-warning';
+    warningDiv.style.cssText = `
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #ffeeee;
+      border: 1px solid #ff6666;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      max-width: 300px;
+      z-index: 200;
+    `;
+    warningDiv.textContent = `⚠️ ${message}`;
+    document.getElementById('canvas-container').appendChild(warningDiv);
+  }
+  
+  markIncompleteBlocks(message) {
+    // Add visual indicators to incomplete blocks
+    console.warn("Implementation completeness issues:", message);
+    // Additional visual marking could be added here
+  }
+  
+  checkAndDisplayRules() {
+    // Run all rule checks and display results in the rule panel
+    console.log("Running rule checks...");
+    const results = this.runAllRuleChecks();
+    this.updateRulePanel(results);
+    
+    // Also update visual warning indicators
+    this.updateRuleWarnings();
+  }
+  
+  updateRulePanel(results) {
+    // Update the rule results panel with check results
+    const resultsContainer = document.getElementById('rule-results');
+    resultsContainer.innerHTML = '';
+    
+    if (results.length === 0) {
+      resultsContainer.innerHTML = `
+        <div class="rule-result info">
+          <span class="rule-icon">ℹ️</span>
+          <span class="rule-message">No rules to check</span>
+        </div>
+      `;
+      return;
+    }
+    
+    results.forEach(result => {
+      const resultDiv = document.createElement('div');
+      resultDiv.className = `rule-result ${result.severity}`;
+      
+      const icon = result.severity === 'error' ? '❌' : 
+                  result.severity === 'warning' ? '⚠️' : '✅';
+      
+      resultDiv.innerHTML = `
+        <span class="rule-icon">${icon}</span>
+        <span class="rule-message">${result.message}</span>
+      `;
+      
+      resultsContainer.appendChild(resultDiv);
+    });
+  }
+  
+  exportReport() {
+    // Export comprehensive report files
+    console.log("Exporting report files...");
+    
+    // Update block statuses before export
+    this.updateAllBlockStatuses();
+    
+    const jsonData = JSON.stringify(this.diagram, null, 2);
+    
+    // Send export request to Python via Fusion's palette messaging
+    if (window.adsk && window.adsk.fusion && window.adsk.fusion.palettes) {
+      const message = JSON.stringify({
+        action: 'export-report',
+        data: jsonData
+      });
+      window.adsk.fusion.palettes.sendInfoToParent('palette-message', message);
+    } else {
+      // Fallback for testing - generate client-side reports
+      console.warn("Fusion palette messaging not available - generating client-side reports");
+      this.generateClientSideReports();
+    }
+  }
+  
+  generateClientSideReports() {
+    // Generate reports directly in JavaScript for testing
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    
+    // Generate Markdown report
+    const markdownReport = this.generateMarkdownReport();
+    this.downloadFile(`system_blocks_report_${timestamp}.md`, markdownReport, 'text/markdown');
+    
+    // Generate CSV pin map
+    const csvPinMap = this.generateCsvPinMap();
+    this.downloadFile(`system_blocks_pinmap_${timestamp}.csv`, csvPinMap, 'text/csv');
+    
+    // Generate C header
+    const headerFile = this.generateCHeader();
+    this.downloadFile(`system_blocks_pins_${timestamp}.h`, headerFile, 'text/plain');
+    
+    console.log("Client-side reports generated and downloaded");
+  }
+  
+  generateMarkdownReport() {
+    // Generate a comprehensive Markdown report
+    const now = new Date().toLocaleString();
+    const blocks = this.diagram.blocks || [];
+    const connections = this.diagram.connections || [];
+    
+    let report = `# System Blocks Report
+
+**Generated:** ${now}  
+**Schema Version:** ${this.diagram.schema || 'system-blocks-v1'}
+
+---
+
+## Summary
+
+- **Total Blocks:** ${blocks.length}
+- **Total Connections:** ${connections.length}
+
+`;
+    
+    // Status breakdown
+    const statusCounts = {};
+    blocks.forEach(block => {
+      const status = block.status || 'Placeholder';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+    
+    if (Object.keys(statusCounts).length > 0) {
+      report += "\n### Block Status Distribution\n\n";
+      Object.entries(statusCounts).sort().forEach(([status, count]) => {
+        report += `- **${status}:** ${count}\n`;
+      });
+    }
+    
+    // Rule check results
+    const ruleResults = this.runAllRuleChecks();
+    const failures = ruleResults.filter(r => !r.success);
+    
+    report += `\n### Rule Check Summary\n\n`;
+    report += `- **Total Checks:** ${ruleResults.length}\n`;
+    report += `- **Passed:** ${ruleResults.length - failures.length}\n`;
+    report += `- **Failed:** ${failures.length}\n`;
+    
+    if (failures.length > 0) {
+      report += "\n#### Rule Failures\n\n";
+      failures.forEach(failure => {
+        const icon = failure.severity === 'error' ? '❌' : '⚠️';
+        report += `- ${icon} **${failure.rule}:** ${failure.message}\n`;
+      });
+    }
+    
+    // Block table
+    report += "\n---\n\n## Block Details\n\n";
+    
+    if (blocks.length > 0) {
+      report += "| Name | Type | Status | Attributes | Interfaces | Links |\n";
+      report += "|------|------|--------|------------|------------|-------|\n";
+      
+      blocks.forEach(block => {
+        const name = block.name || 'Unnamed';
+        const type = block.type || 'Custom';
+        const status = block.status || 'Placeholder';
+        
+        const attrs = block.attributes || {};
+        const attrStr = Object.entries(attrs)
+          .filter(([k, v]) => v)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(', ') || 'None';
+        
+        const intfCount = (block.interfaces || []).length;
+        const linkCount = (block.links || []).length;
+        
+        report += `| ${name} | ${type} | ${status} | ${attrStr} | ${intfCount} | ${linkCount} |\n`;
+      });
+    } else {
+      report += "*No blocks defined*\n";
+    }
+    
+    // Connection table
+    report += "\n---\n\n## Connection Details\n\n";
+    
+    if (connections.length > 0) {
+      report += "| From Block | From Interface | To Block | To Interface | Protocol | Attributes |\n";
+      report += "|------------|----------------|----------|--------------|----------|------------|\n";
+      
+      const blockNames = {};
+      blocks.forEach(block => {
+        blockNames[block.id] = block.name || 'Unnamed';
+      });
+      
+      connections.forEach(conn => {
+        const fromBlockId = conn.from?.blockId || '';
+        const toBlockId = conn.to?.blockId || '';
+        const fromIntfId = conn.from?.interfaceId || '';
+        const toIntfId = conn.to?.interfaceId || '';
+        
+        const fromBlockName = blockNames[fromBlockId] || fromBlockId;
+        const toBlockName = blockNames[toBlockId] || toBlockId;
+        
+        const protocol = conn.protocol || 'N/A';
+        const attrs = conn.attributes || {};
+        const attrStr = Object.entries(attrs)
+          .filter(([k, v]) => v)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(', ') || 'None';
+        
+        report += `| ${fromBlockName} | ${fromIntfId} | ${toBlockName} | ${toIntfId} | ${protocol} | ${attrStr} |\n`;
+      });
+    } else {
+      report += "*No connections defined*\n";
+    }
+    
+    return report;
+  }
+  
+  generateCsvPinMap() {
+    // Generate CSV pin map from connections
+    const lines = ["Signal,Source Block,Source Interface,Dest Block,Dest Interface,Protocol,Notes"];
+    
+    const blocks = this.diagram.blocks || [];
+    const connections = this.diagram.connections || [];
+    
+    const blockLookup = {};
+    blocks.forEach(block => {
+      blockLookup[block.id] = block;
+    });
+    
+    connections.forEach(conn => {
+      const fromBlockId = conn.from?.blockId || '';
+      const toBlockId = conn.to?.blockId || '';
+      const fromIntfId = conn.from?.interfaceId || '';
+      const toIntfId = conn.to?.interfaceId || '';
+      
+      const fromBlock = blockLookup[fromBlockId] || {};
+      const toBlock = blockLookup[toBlockId] || {};
+      
+      const fromBlockName = fromBlock.name || fromBlockId;
+      const toBlockName = toBlock.name || toBlockId;
+      
+      // Find interface names
+      let fromIntfName = fromIntfId;
+      let toIntfName = toIntfId;
+      
+      (fromBlock.interfaces || []).forEach(intf => {
+        if (intf.id === fromIntfId) {
+          fromIntfName = intf.name || fromIntfId;
+        }
+      });
+      
+      (toBlock.interfaces || []).forEach(intf => {
+        if (intf.id === toIntfId) {
+          toIntfName = intf.name || toIntfId;
+        }
+      });
+      
+      const protocol = conn.protocol || '';
+      const signalName = `${fromIntfName}_to_${toIntfName}`;
+      
+      const attrs = conn.attributes || {};
+      const notes = Object.entries(attrs)
+        .filter(([k, v]) => v)
+        .map(([k, v]) => `${k}=${v}`)
+        .join('; ');
+      
+      lines.push(`"${signalName}","${fromBlockName}","${fromIntfName}","${toBlockName}","${toIntfName}","${protocol}","${notes}"`);
+    });
+    
+    return lines.join('\n');
+  }
+  
+  generateCHeader() {
+    // Generate C header file with pin definitions
+    const headerName = "pin_definitions";
+    const headerGuard = `${headerName.toUpperCase()}_H`;
+    const now = new Date().toLocaleString();
+    
+    let header = `#ifndef ${headerGuard}
+#define ${headerGuard}
+
+/*
+ * Auto-generated pin definitions from System Blocks diagram
+ * Generated: ${now}
+ */
+
+`;
+    
+    const blocks = this.diagram.blocks || [];
+    const pinDefinitions = [];
+    const interfaceDefinitions = [];
+    
+    // Extract pin definitions from block attributes
+    blocks.forEach(block => {
+      const blockName = (block.name || 'UNNAMED').toUpperCase().replace(/\s+/g, '_');
+      const attributes = block.attributes || {};
+      
+      Object.entries(attributes).forEach(([attrName, attrValue]) => {
+        if (attrName.toLowerCase().includes('pin') && attrValue) {
+          const defineName = `${blockName}_${attrName.toUpperCase()}`;
+          const value = isNaN(attrValue) ? `"${attrValue}"` : attrValue;
+          pinDefinitions.push([defineName, value]);
+        }
+      });
+      
+      // Extract from interfaces
+      (block.interfaces || []).forEach(intf => {
+        const intfName = (intf.name || 'UNNAMED').toUpperCase().replace(/\s+/g, '_');
+        const params = intf.params || {};
+        
+        if (params.pin) {
+          const defineName = `${blockName}_${intfName}_PIN`;
+          const value = isNaN(params.pin) ? `"${params.pin}"` : params.pin;
+          interfaceDefinitions.push([defineName, value]);
+        }
+      });
+    });
+    
+    // Add pin definitions to header
+    if (pinDefinitions.length > 0) {
+      header += "/* Block Pin Definitions */\n";
+      pinDefinitions.forEach(([name, value]) => {
+        header += `#define ${name.padEnd(30)} ${value}\n`;
+      });
+      header += "\n";
+    }
+    
+    if (interfaceDefinitions.length > 0) {
+      header += "/* Interface Pin Definitions */\n";
+      interfaceDefinitions.forEach(([name, value]) => {
+        header += `#define ${name.padEnd(30)} ${value}\n`;
+      });
+      header += "\n";
+    }
+    
+    header += `#endif /* ${headerGuard} */\n`;
+    
+    return header;
+  }
+  
+  downloadFile(filename, content, mimeType) {
+    // Create and trigger download of a file
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    URL.revokeObjectURL(url);
+  }
+  
   newDiagram() {
     this.diagram = this.createEmptyDiagram();
     this.blocksLayer.innerHTML = '';
@@ -481,6 +1181,9 @@ class SystemBlocksEditor {
   }
   
   saveDiagram() {
+    // Update block statuses before saving
+    this.updateAllBlockStatuses();
+    
     // Validate links before saving
     const validation = this.validateDiagramLinks();
     if (!validation.isValid) {
