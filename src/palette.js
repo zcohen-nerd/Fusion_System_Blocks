@@ -429,6 +429,50 @@ class SystemBlocksEditor {
     }
   }
   
+  validateDiagramLinks() {
+    const errors = [];
+    
+    this.diagram.blocks.forEach(block => {
+      const blockErrors = this.validateBlockLinks(block);
+      errors.push(...blockErrors);
+    });
+    
+    return {
+      isValid: errors.length === 0,
+      errors: errors
+    };
+  }
+  
+  validateBlockLinks(block) {
+    const errors = [];
+    const blockName = block.name || "Unnamed Block";
+    
+    block.links.forEach((link, index) => {
+      const target = link.target;
+      
+      if (target === "cad") {
+        if (!link.occToken) {
+          errors.push(`${blockName}: CAD link ${index + 1} missing occToken`);
+        }
+        if (!link.docId) {
+          errors.push(`${blockName}: CAD link ${index + 1} missing docId`);
+        }
+      } else if (target === "ecad") {
+        if (!link.device) {
+          errors.push(`${blockName}: ECAD link ${index + 1} missing device`);
+        }
+      } else if (target === "external") {
+        if (!link.device && !link.docPath && !link.docId) {
+          errors.push(`${blockName}: External link ${index + 1} needs at least one identifier`);
+        }
+      } else {
+        errors.push(`${blockName}: Link ${index + 1} has invalid target '${target}'`);
+      }
+    });
+    
+    return errors;
+  }
+  
   newDiagram() {
     this.diagram = this.createEmptyDiagram();
     this.blocksLayer.innerHTML = '';
@@ -437,6 +481,17 @@ class SystemBlocksEditor {
   }
   
   saveDiagram() {
+    // Validate links before saving
+    const validation = this.validateDiagramLinks();
+    if (!validation.isValid) {
+      const proceed = confirm(
+        `Diagram has validation errors:\n\n${validation.errors.join('\n')}\n\nSave anyway?`
+      );
+      if (!proceed) {
+        return;
+      }
+    }
+    
     const jsonData = JSON.stringify(this.diagram, null, 2);
     console.log("Saving diagram:", jsonData);
     
@@ -485,6 +540,17 @@ class SystemBlocksEditor {
       console.log("Diagram loaded from Python");
     } catch (error) {
       console.error("Error loading diagram:", error);
+    }
+  }
+  
+  // Method to receive CAD link data from Python
+  receiveCADLink(blockId, occToken, docId, docPath) {
+    const block = this.diagram.blocks.find(b => b.id === blockId);
+    if (block) {
+      this.addCADLink(block, occToken, docId, docPath);
+      console.log(`CAD link received for block "${block.name}"`);
+    } else {
+      console.error(`Block with ID ${blockId} not found`);
     }
   }
   

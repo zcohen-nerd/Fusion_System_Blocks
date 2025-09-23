@@ -3,6 +3,12 @@ import adsk.fusion
 import traceback
 import pathlib
 import json
+import sys
+import os
+
+# Add current directory to path so we can import diagram_data
+sys.path.insert(0, os.path.dirname(__file__))
+import diagram_data
 
 APP = adsk.core.Application.get()
 UI = APP.userInterface
@@ -25,6 +31,20 @@ def get_root_component():
 def save_diagram_json(json_data):
     """Save diagram JSON to Fusion attributes."""
     try:
+        # Validate the diagram before saving
+        diagram = json.loads(json_data)
+        is_valid, error = diagram_data.validate_diagram(diagram)
+        if not is_valid:
+            UI.messageBox(f'Diagram validation failed: {error}')
+            return False
+            
+        # Check link validation specifically
+        links_valid, link_errors = diagram_data.validate_diagram_links(diagram)
+        if not links_valid:
+            error_msg = 'Link validation errors:\n' + '\n'.join(link_errors)
+            UI.messageBox(error_msg)
+            return False
+        
         root_comp = get_root_component()
         if not root_comp:
             UI.messageBox('No active design found')
