@@ -7,23 +7,23 @@ Keep commits **small and incremental** (one feature or fix at a time).
 ---
 
 ## ✅ Milestone 1: Diagram Core + Persistence
-- [ ] Implement basic **node editor** in `palette.html` / `palette.js`
-  - [ ] SVG or Canvas-based blocks
-  - [ ] Pan/zoom
+- [x] Implement basic **node editor** in `palette.html` / `palette.js`
+  - [x] SVG or Canvas-based blocks
+  - [x] Pan/zoom
   - [ ] Snap-to-grid
-  - [ ] Draggable blocks with named ports
-- [ ] Add **New / Save / Load** buttons in the palette
-  - [ ] `New`: clears in-memory diagram
-  - [ ] `Save`: sends diagram JSON → Python
-  - [ ] `Load`: requests diagram JSON ← Python
-- [ ] In `main.py`:
-  - [ ] Implement palette ↔ Python messaging
-  - [ ] Store JSON in `adsk.core.Attributes` (group: `systemBlocks`, name: `diagramJson`)
-  - [ ] Provide helper functions `save_diagram_json()` and `load_diagram_json()`
-- [ ] Add `src/json_utils.py`:
-  - [ ] Functions to serialize/deserialize JSON
-  - [ ] Schema validation against `docs/schema.json`
-- [ ] Add pytest unit tests for JSON utilities
+  - [x] Draggable blocks with named ports
+- [x] Add **New / Save / Load** buttons in the palette
+  - [x] `New`: clears in-memory diagram
+  - [x] `Save`: sends diagram JSON → Python
+  - [x] `Load`: requests diagram JSON ← Python
+- [x] In `main.py`:
+  - [x] Implement palette ↔ Python messaging
+  - [x] Store JSON in `adsk.core.Attributes` (group: `systemBlocks`, name: `diagramJson`)
+  - [x] Provide helper functions `save_diagram_json()` and `load_diagram_json()`
+- [x] Add `src/json_utils.py`:
+  - [x] Functions to serialize/deserialize JSON
+  - [x] Schema validation against `docs/schema.json`
+- [x] Add pytest unit tests for JSON utilities
 
 ---
 
