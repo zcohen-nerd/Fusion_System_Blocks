@@ -327,6 +327,30 @@ class SystemBlocksEditor {
       console.error('arrow-direction-select element not found!');
     }
     
+    // Connection templates button
+    const btnConnectionTemplates = document.getElementById('btn-connection-templates');
+    if (btnConnectionTemplates) {
+      console.log('Adding click listener to Connection Templates button');
+      btnConnectionTemplates.addEventListener('click', () => {
+        console.log('Connection Templates button clicked!');
+        this.showConnectionTemplates();
+      });
+    } else {
+      console.error('btn-connection-templates element not found!');
+    }
+    
+    // Bulk connections button
+    const btnBulkConnections = document.getElementById('btn-bulk-connections');
+    if (btnBulkConnections) {
+      console.log('Adding click listener to Bulk Connections button');
+      btnBulkConnections.addEventListener('click', () => {
+        console.log('Bulk Connections button clicked!');
+        this.showBulkConnectionDialog();
+      });
+    } else {
+      console.error('btn-bulk-connections element not found!');
+    }
+    
     if (btnLinkCad) {
       console.log('Adding click listener to Link CAD button');
       btnLinkCad.addEventListener('click', () => {
@@ -611,13 +635,36 @@ class SystemBlocksEditor {
     // Determine connection type based on interface kinds
     const connectionKind = this.determineConnectionKind(sourceIntf, targetIntf);
     
+    // Validate the connection before creating it
+    const validation = this.validateConnection(sourceIntf, targetIntf, connectionKind);
+    if (!validation.valid) {
+      alert(`Connection validation failed:\n${validation.errors.join('\n')}`);
+      debugLog('Connection validation failed: ' + validation.errors.join(', '));
+      return;
+    }
+    
+    // Check for warnings
+    if (validation.warnings.length > 0) {
+      const proceed = confirm(`Connection warnings:\n${validation.warnings.join('\n')}\n\nProceed anyway?`);
+      if (!proceed) {
+        debugLog('Connection cancelled due to warnings');
+        return;
+      }
+    }
+    
     // Save current state for undo
     this.saveStateForUndo();
+    
+    // Use template protocol if available and interfaces don't have one
+    let connectionProtocol = sourceIntf.protocol || targetIntf.protocol || '';
+    if (!connectionProtocol && this.activeTemplate && this.activeTemplate.protocol) {
+      connectionProtocol = this.activeTemplate.protocol;
+    }
     
     const connection = {
       id: this.generateId(),
       kind: connectionKind,
-      protocol: sourceIntf.protocol || targetIntf.protocol || '',
+      protocol: connectionProtocol,
       attributes: {},
       source: {
         blockId: sourceBlockId,
@@ -692,6 +739,98 @@ class SystemBlocksEditor {
     };
     
     return styles[kind] || styles.electrical;
+  }
+  
+  validateConnection(sourceIntf, targetIntf, connectionKind) {
+    const result = {
+      valid: true,
+      errors: [],
+      warnings: []
+    };
+    
+    // Rule 1: Interface compatibility
+    if (sourceIntf.kind && targetIntf.kind && sourceIntf.kind !== targetIntf.kind) {
+      // Allow some compatible combinations
+      const compatibleCombinations = [
+        ['electrical', 'power'],  // Electrical can connect to power
+        ['data', 'electrical']    // Data can connect to electrical
+      ];
+      
+      const isCompatible = compatibleCombinations.some(combo => 
+        (combo.includes(sourceIntf.kind) && combo.includes(targetIntf.kind))
+      );
+      
+      if (!isCompatible) {
+        result.warnings.push(`Interface type mismatch: ${sourceIntf.kind} ↔ ${targetIntf.kind}`);
+      }
+    }
+    
+    // Rule 2: Direction compatibility
+    if (sourceIntf.direction === 'input' && targetIntf.direction === 'input') {
+      result.errors.push('Cannot connect two input interfaces');
+    }
+    
+    if (sourceIntf.direction === 'output' && targetIntf.direction === 'output') {
+      result.warnings.push('Connecting two output interfaces - verify this is intentional');
+    }
+    
+    // Rule 3: Protocol compatibility
+    if (sourceIntf.protocol && targetIntf.protocol && sourceIntf.protocol !== targetIntf.protocol) {
+      result.warnings.push(`Protocol mismatch: ${sourceIntf.protocol} ↔ ${targetIntf.protocol}`);
+    }
+    
+    // Rule 4: Voltage level compatibility (if specified)
+    if (sourceIntf.params?.voltage && targetIntf.params?.voltage) {
+      const sourceVoltage = parseFloat(sourceIntf.params.voltage);
+      const targetVoltage = parseFloat(targetIntf.params.voltage);
+      
+      if (Math.abs(sourceVoltage - targetVoltage) > 0.5) {
+        result.warnings.push(`Voltage level mismatch: ${sourceVoltage}V ↔ ${targetVoltage}V`);
+      }
+    }
+    
+    // Rule 5: Power connection validation
+    if (connectionKind === 'power') {
+      // Power connections should have voltage specifications
+      if (!sourceIntf.params?.voltage && !targetIntf.params?.voltage) {
+        result.warnings.push('Power connection without voltage specifications');
+      }
+      
+      // Check current capacity
+      if (sourceIntf.params?.maxCurrent && targetIntf.params?.maxCurrent) {
+        const sourceCurrent = parseFloat(sourceIntf.params.maxCurrent);
+        const targetCurrent = parseFloat(targetIntf.params.maxCurrent);
+        
+        if (sourceCurrent < targetCurrent) {
+          result.warnings.push(`Current capacity mismatch: source ${sourceCurrent}A < target ${targetCurrent}A`);
+        }
+      }
+    }
+    
+    // Rule 6: Data connection validation
+    if (connectionKind === 'data') {
+      // Data connections should have protocol specifications
+      if (!sourceIntf.protocol && !targetIntf.protocol) {
+        result.warnings.push('Data connection without protocol specifications');
+      }
+      
+      // Check data rate compatibility
+      if (sourceIntf.params?.dataRate && targetIntf.params?.dataRate) {
+        const sourceRate = parseFloat(sourceIntf.params.dataRate);
+        const targetRate = parseFloat(targetIntf.params.dataRate);
+        
+        if (sourceRate < targetRate) {
+          result.warnings.push(`Data rate mismatch: source ${sourceRate} < target ${targetRate}`);
+        }
+      }
+    }
+    
+    // Set valid to false if there are errors
+    if (result.errors.length > 0) {
+      result.valid = false;
+    }
+    
+    return result;
   }
   
   renderConnection(connection) {
@@ -1112,6 +1251,453 @@ class SystemBlocksEditor {
     
     // Re-render the connection with updated properties
     this.renderConnection(connection);
+  }
+  
+  showConnectionTemplates() {
+    // Remove any existing template dialog
+    const existingDialog = document.getElementById('connection-templates-dialog');
+    if (existingDialog) {
+      existingDialog.remove();
+    }
+    
+    // Create template dialog
+    const dialog = document.createElement('div');
+    dialog.id = 'connection-templates-dialog';
+    dialog.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      padding: 20px;
+      z-index: 1000;
+      min-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    `;
+    
+    dialog.innerHTML = `
+      <h3 style="margin-top: 0;">Connection Templates</h3>
+      <p style="color: #666; margin-bottom: 20px;">Choose a template to quickly apply connection settings:</p>
+      
+      <div id="template-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <!-- Templates will be added here -->
+      </div>
+      
+      <div style="margin-top: 20px; text-align: right;">
+        <button id="close-templates" style="padding: 8px 16px; margin-left: 10px; 
+                border: 1px solid #ccc; background: #f0f0f0; border-radius: 4px; cursor: pointer;">
+          Close
+        </button>
+      </div>
+    `;
+    
+    // Add templates to the grid
+    const templateGrid = dialog.querySelector('#template-grid');
+    const templates = this.getConnectionTemplates();
+    
+    templates.forEach(template => {
+      const templateCard = document.createElement('div');
+      templateCard.style.cssText = `
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 15px;
+        cursor: pointer;
+        background: #fafafa;
+        transition: all 0.2s;
+      `;
+      
+      templateCard.innerHTML = `
+        <h4 style="margin: 0 0 8px 0; color: ${template.style.color};">${template.icon} ${template.name}</h4>
+        <p style="margin: 0 0 10px 0; font-size: 12px; color: #666;">${template.description}</p>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <svg width="60" height="20" viewBox="0 0 60 20">
+            <line x1="5" y1="10" x2="45" y2="10" 
+                  stroke="${template.style.color}" 
+                  stroke-width="${template.style.width}"
+                  ${template.style.dashArray !== 'none' ? `stroke-dasharray="${template.style.dashArray}"` : ''}/>
+            ${this.getTemplateArrowSVG(template)}
+          </svg>
+          <span style="font-size: 11px; color: #888;">${template.kind}</span>
+        </div>
+      `;
+      
+      templateCard.addEventListener('mouseenter', () => {
+        templateCard.style.background = '#f0f8ff';
+        templateCard.style.borderColor = '#0066cc';
+      });
+      
+      templateCard.addEventListener('mouseleave', () => {
+        templateCard.style.background = '#fafafa';
+        templateCard.style.borderColor = '#ddd';
+      });
+      
+      templateCard.addEventListener('click', () => {
+        this.applyConnectionTemplate(template);
+        dialog.remove();
+      });
+      
+      templateGrid.appendChild(templateCard);
+    });
+    
+    // Close button handler
+    dialog.querySelector('#close-templates').addEventListener('click', () => {
+      dialog.remove();
+    });
+    
+    // Add to page
+    document.body.appendChild(dialog);
+    
+    // Close on outside click
+    const closeOnOutsideClick = (e) => {
+      if (!dialog.contains(e.target)) {
+        dialog.remove();
+        document.removeEventListener('click', closeOnOutsideClick);
+      }
+    };
+    
+    setTimeout(() => {
+      document.addEventListener('click', closeOnOutsideClick);
+    }, 100);
+  }
+  
+  getConnectionTemplates() {
+    return [
+      {
+        name: 'Standard Power',
+        description: 'Power supply connections with voltage validation',
+        icon: '🔌',
+        kind: 'power',
+        arrowDirection: 'forward',
+        style: this.getConnectionStyle('power'),
+        validation: { requireVoltage: true, requireCurrent: true }
+      },
+      {
+        name: 'USB Data',
+        description: 'USB communication with protocol labeling',
+        icon: '🔌',
+        kind: 'data',
+        arrowDirection: 'bidirectional',
+        style: this.getConnectionStyle('data'),
+        protocol: 'USB',
+        validation: { requireProtocol: true }
+      },
+      {
+        name: 'SPI Bus',
+        description: 'SPI serial communication interface',
+        icon: '📊',
+        kind: 'data',
+        arrowDirection: 'bidirectional',
+        style: this.getConnectionStyle('data'),
+        protocol: 'SPI',
+        validation: { requireProtocol: true }
+      },
+      {
+        name: 'I2C Bus',
+        description: 'I2C serial communication with addressing',
+        icon: '📡',
+        kind: 'data',
+        arrowDirection: 'bidirectional',
+        style: this.getConnectionStyle('data'),
+        protocol: 'I2C',
+        validation: { requireProtocol: true }
+      },
+      {
+        name: 'GPIO Signal',
+        description: 'General purpose digital signal',
+        icon: '⚡',
+        kind: 'electrical',
+        arrowDirection: 'forward',
+        style: this.getConnectionStyle('electrical'),
+        validation: { requireVoltage: true }
+      },
+      {
+        name: 'Mechanical Link',
+        description: 'Physical mechanical connection',
+        icon: '⚙️',
+        kind: 'mechanical',
+        arrowDirection: 'none',
+        style: this.getConnectionStyle('mechanical'),
+        validation: {}
+      },
+      {
+        name: 'Ethernet',
+        description: 'Ethernet network connection',
+        icon: '🌐',
+        kind: 'data',
+        arrowDirection: 'bidirectional',
+        style: this.getConnectionStyle('data'),
+        protocol: 'Ethernet',
+        validation: { requireProtocol: true }
+      },
+      {
+        name: 'PWM Control',
+        description: 'Pulse width modulation control signal',
+        icon: '📈',
+        kind: 'electrical',
+        arrowDirection: 'forward',
+        style: this.getConnectionStyle('electrical'),
+        protocol: 'PWM',
+        validation: { requireVoltage: true }
+      }
+    ];
+  }
+  
+  getTemplateArrowSVG(template) {
+    const arrows = [];
+    const style = template.style;
+    
+    if (template.arrowDirection === 'forward' || template.arrowDirection === 'bidirectional') {
+      arrows.push(`<polygon points="45,10 41,7 41,13" fill="${style.color}"/>`);
+    }
+    
+    if (template.arrowDirection === 'backward' || template.arrowDirection === 'bidirectional') {
+      arrows.push(`<polygon points="15,10 19,7 19,13" fill="${style.color}"/>`);
+    }
+    
+    return arrows.join('');
+  }
+  
+  applyConnectionTemplate(template) {
+    // Update the UI selectors to match the template
+    const connectionTypeSelect = document.getElementById('connection-type-select');
+    const arrowDirectionSelect = document.getElementById('arrow-direction-select');
+    
+    if (connectionTypeSelect) {
+      connectionTypeSelect.value = template.kind;
+      this.selectedConnectionType = template.kind;
+    }
+    
+    if (arrowDirectionSelect) {
+      arrowDirectionSelect.value = template.arrowDirection;
+      this.selectedArrowDirection = template.arrowDirection;
+    }
+    
+    // Store the template for future connections
+    this.activeTemplate = template;
+    
+    debugLog(`Applied connection template: ${template.name}`);
+    alert(`Template "${template.name}" applied!\nNext connections will use these settings:\n• Type: ${template.kind}\n• Direction: ${template.arrowDirection}${template.protocol ? '\n• Protocol: ' + template.protocol : ''}`);
+  }
+  
+  showBulkConnectionDialog() {
+    // Remove any existing dialog
+    const existingDialog = document.getElementById('bulk-connection-dialog');
+    if (existingDialog) {
+      existingDialog.remove();
+    }
+    
+    // Create bulk connection dialog
+    const dialog = document.createElement('div');
+    dialog.id = 'bulk-connection-dialog';
+    dialog.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      padding: 20px;
+      z-index: 1000;
+      min-width: 400px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    `;
+    
+    dialog.innerHTML = `
+      <h3 style="margin-top: 0;">Bulk Connection Operations</h3>
+      
+      <div style="margin-bottom: 20px;">
+        <h4>Connection Statistics</h4>
+        <div id="connection-stats" style="font-size: 14px; color: #666;"></div>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <h4>Bulk Operations</h4>
+        <button id="validate-all-connections" style="display: block; width: 100%; margin: 5px 0; padding: 10px; 
+                border: 1px solid #0066cc; background: #f0f8ff; border-radius: 4px; cursor: pointer;">
+          🔍 Validate All Connections
+        </button>
+        <button id="update-connection-styles" style="display: block; width: 100%; margin: 5px 0; padding: 10px; 
+                border: 1px solid #28a745; background: #f0fff0; border-radius: 4px; cursor: pointer;">
+          🎨 Update All Connection Styles
+        </button>
+        <button id="auto-organize-connections" style="display: block; width: 100%; margin: 5px 0; padding: 10px; 
+                border: 1px solid #ffc107; background: #fffef0; border-radius: 4px; cursor: pointer;">
+          📐 Auto-Organize Connections
+        </button>
+        <button id="export-connection-report" style="display: block; width: 100%; margin: 5px 0; padding: 10px; 
+                border: 1px solid #6c757d; background: #f8f9fa; border-radius: 4px; cursor: pointer;">
+          📊 Export Connection Report
+        </button>
+      </div>
+      
+      <div style="text-align: right;">
+        <button id="close-bulk-dialog" style="padding: 8px 16px; 
+                border: 1px solid #ccc; background: #f0f0f0; border-radius: 4px; cursor: pointer;">
+          Close
+        </button>
+      </div>
+    `;
+    
+    // Update connection stats
+    this.updateConnectionStats(dialog);
+    
+    // Add event listeners for bulk operations
+    dialog.querySelector('#validate-all-connections').addEventListener('click', () => {
+      this.validateAllConnections();
+    });
+    
+    dialog.querySelector('#update-connection-styles').addEventListener('click', () => {
+      this.updateAllConnectionStyles();
+    });
+    
+    dialog.querySelector('#auto-organize-connections').addEventListener('click', () => {
+      this.autoOrganizeConnections();
+    });
+    
+    dialog.querySelector('#export-connection-report').addEventListener('click', () => {
+      this.exportConnectionReport();
+    });
+    
+    dialog.querySelector('#close-bulk-dialog').addEventListener('click', () => {
+      dialog.remove();
+    });
+    
+    // Add to page
+    document.body.appendChild(dialog);
+  }
+  
+  updateConnectionStats(dialog) {
+    const stats = {
+      total: this.diagram.connections.length,
+      byType: {},
+      byDirection: {},
+      withProtocols: 0,
+      withWarnings: 0
+    };
+    
+    this.diagram.connections.forEach(conn => {
+      // Count by type
+      const type = conn.kind || 'electrical';
+      stats.byType[type] = (stats.byType[type] || 0) + 1;
+      
+      // Count by direction
+      const direction = conn.arrowDirection || 'forward';
+      stats.byDirection[direction] = (stats.byDirection[direction] || 0) + 1;
+      
+      // Count protocols
+      if (conn.protocol || conn.label) {
+        stats.withProtocols++;
+      }
+    });
+    
+    const statsDiv = dialog.querySelector('#connection-stats');
+    statsDiv.innerHTML = `
+      <p><strong>Total Connections:</strong> ${stats.total}</p>
+      <p><strong>By Type:</strong> ${Object.entries(stats.byType).map(([k,v]) => `${k}: ${v}`).join(', ')}</p>
+      <p><strong>By Direction:</strong> ${Object.entries(stats.byDirection).map(([k,v]) => `${k}: ${v}`).join(', ')}</p>
+      <p><strong>With Labels:</strong> ${stats.withProtocols}</p>
+    `;
+  }
+  
+  validateAllConnections() {
+    const results = [];
+    let errorCount = 0;
+    let warningCount = 0;
+    
+    this.diagram.connections.forEach(conn => {
+      const sourceBlock = this.diagram.blocks.find(b => b.id === conn.source.blockId);
+      const targetBlock = this.diagram.blocks.find(b => b.id === conn.target.blockId);
+      
+      if (sourceBlock && targetBlock) {
+        const sourceIntf = sourceBlock.interfaces.find(i => i.id === conn.source.interfaceId);
+        const targetIntf = targetBlock.interfaces.find(i => i.id === conn.target.interfaceId);
+        
+        if (sourceIntf && targetIntf) {
+          const validation = this.validateConnection(sourceIntf, targetIntf, conn.kind);
+          
+          if (!validation.valid) {
+            errorCount++;
+            results.push(`❌ ${sourceBlock.name} → ${targetBlock.name}: ${validation.errors.join(', ')}`);
+          } else if (validation.warnings.length > 0) {
+            warningCount++;
+            results.push(`⚠️ ${sourceBlock.name} → ${targetBlock.name}: ${validation.warnings.join(', ')}`);
+          }
+        }
+      }
+    });
+    
+    if (results.length === 0) {
+      alert('✅ All connections are valid!');
+    } else {
+      const summary = `Validation Results:\n• ${errorCount} errors\n• ${warningCount} warnings\n\n${results.join('\n')}`;
+      alert(summary);
+    }
+    
+    debugLog(`Connection validation completed: ${errorCount} errors, ${warningCount} warnings`);
+  }
+  
+  updateAllConnectionStyles() {
+    this.saveStateForUndo();
+    
+    let updatedCount = 0;
+    this.diagram.connections.forEach(conn => {
+      const newStyle = this.getConnectionStyle(conn.kind || 'electrical');
+      if (JSON.stringify(conn.style) !== JSON.stringify(newStyle)) {
+        conn.style = newStyle;
+        this.refreshConnection(conn);
+        updatedCount++;
+      }
+    });
+    
+    alert(`Updated styles for ${updatedCount} connections`);
+    debugLog(`Updated styles for ${updatedCount} connections`);
+  }
+  
+  autoOrganizeConnections() {
+    // This is a placeholder for auto-organization logic
+    alert('Auto-organize connections feature coming soon!\n\nThis will automatically:\n• Route connections to avoid overlaps\n• Optimize connection paths\n• Group related connections');
+    debugLog('Auto-organize connections requested');
+  }
+  
+  exportConnectionReport() {
+    const report = {
+      timestamp: new Date().toISOString(),
+      totalConnections: this.diagram.connections.length,
+      connections: this.diagram.connections.map(conn => {
+        const sourceBlock = this.diagram.blocks.find(b => b.id === conn.source.blockId);
+        const targetBlock = this.diagram.blocks.find(b => b.id === conn.target.blockId);
+        
+        return {
+          id: conn.id,
+          source: sourceBlock ? sourceBlock.name : 'Unknown',
+          target: targetBlock ? targetBlock.name : 'Unknown',
+          type: conn.kind || 'electrical',
+          direction: conn.arrowDirection || 'forward',
+          protocol: conn.protocol || '',
+          label: conn.label || ''
+        };
+      })
+    };
+    
+    const reportText = JSON.stringify(report, null, 2);
+    const blob = new Blob([reportText], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `connection-report-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    debugLog('Connection report exported');
+    alert('Connection report exported successfully!');
   }
   
   deleteConnection(connectionId) {
