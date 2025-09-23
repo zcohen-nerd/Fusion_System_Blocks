@@ -33,6 +33,15 @@
       background: #e6e6e6;
     }
     
+    .toolbar button.toggle-btn.active {
+      background: #0066cc;
+      color: white;
+    }
+    
+    .toolbar button.toggle-btn:hover {
+      background: #0052a3;
+    }
+    
     #canvas-container { 
       height: calc(100% - 60px); 
       position: relative;
@@ -104,6 +113,7 @@
       <button id="btn-save">Save</button>
       <button id="btn-load">Load</button>
       <button id="btn-add-block">Add Block</button>
+      <button id="btn-snap-grid" class="toggle-btn active">Snap to Grid</button>
     </div>
   </header>
   

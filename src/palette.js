@@ -12,6 +12,10 @@ class SystemBlocksEditor {
     this.viewBox = { x: 0, y: 0, width: 1000, height: 1000 };
     this.scale = 1;
     
+    // Grid configuration
+    this.gridSize = 20;
+    this.snapToGrid = true;
+    
     this.initializeUI();
     this.setupEventListeners();
   }
@@ -26,6 +30,20 @@ class SystemBlocksEditor {
   
   generateId() {
     return crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
+  }
+  
+  snapToGrid(value) {
+    if (!this.snapToGrid) {
+      return value;
+    }
+    return Math.round(value / this.gridSize) * this.gridSize;
+  }
+  
+  snapPointToGrid(x, y) {
+    return {
+      x: this.snapToGrid(x),
+      y: this.snapToGrid(y)
+    };
   }
   
   initializeUI() {
@@ -43,6 +61,7 @@ class SystemBlocksEditor {
     document.getElementById('btn-save').addEventListener('click', () => this.saveDiagram());
     document.getElementById('btn-load').addEventListener('click', () => this.loadDiagram());
     document.getElementById('btn-add-block').addEventListener('click', () => this.promptAddBlock());
+    document.getElementById('btn-snap-grid').addEventListener('click', () => this.toggleSnapToGrid());
     
     // SVG pan/zoom
     this.svg.addEventListener('mousedown', (e) => this.onMouseDown(e));
@@ -55,13 +74,16 @@ class SystemBlocksEditor {
   }
   
   addBlock(name, x, y, type = "Custom") {
+    // Snap initial position to grid
+    const snappedPos = this.snapPointToGrid(x, y);
+    
     const block = {
       id: this.generateId(),
       name: name,
       type: type,
       status: "Placeholder",
-      x: x,
-      y: y,
+      x: snappedPos.x,
+      y: snappedPos.y,
       width: 120,
       height: 60,
       interfaces: [],
@@ -177,8 +199,13 @@ class SystemBlocksEditor {
       const svgX = ((e.clientX - rect.left) / this.scale) + this.viewBox.x;
       const svgY = ((e.clientY - rect.top) / this.scale) + this.viewBox.y;
       
-      this.selectedBlock.x = svgX - this.dragStart.x;
-      this.selectedBlock.y = svgY - this.dragStart.y;
+      const rawX = svgX - this.dragStart.x;
+      const rawY = svgY - this.dragStart.y;
+      
+      // Apply snap-to-grid
+      const snappedPos = this.snapPointToGrid(rawX, rawY);
+      this.selectedBlock.x = snappedPos.x;
+      this.selectedBlock.y = snappedPos.y;
       
       this.updateBlockPosition(this.selectedBlock);
     }
@@ -250,6 +277,19 @@ class SystemBlocksEditor {
     if (name) {
       this.addBlock(name, 100, 100);
     }
+  }
+  
+  toggleSnapToGrid() {
+    this.snapToGrid = !this.snapToGrid;
+    const btn = document.getElementById('btn-snap-grid');
+    if (this.snapToGrid) {
+      btn.classList.add('active');
+      btn.textContent = 'Snap to Grid';
+    } else {
+      btn.classList.remove('active');
+      btn.textContent = 'Snap Off';
+    }
+    console.log(`Snap to grid: ${this.snapToGrid ? 'ON' : 'OFF'}`);
   }
   
   newDiagram() {
