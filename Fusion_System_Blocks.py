@@ -129,7 +129,25 @@ def select_occurrence_for_linking():
         return None
 
 
-class SystemBlocksPaletteShowCommandHandler(adsk.core.CommandEventHandler):
+class SystemBlocksPaletteShowCommandHandler(adsk.core.CommandCreatedEventHandler):
+    def __init__(self):
+        super().__init__()
+
+    def notify(self, args):
+        try:
+            # Get the command created event args
+            command = args.command
+            
+            # Add a command execute handler
+            onExecute = CommandExecuteHandler()
+            command.execute.add(onExecute)
+            _handlers.append(onExecute)
+                
+        except Exception as e:
+            UI.messageBox(f'Error in command created handler: {str(e)}')
+
+
+class CommandExecuteHandler(adsk.core.CommandEventHandler):
     def __init__(self):
         super().__init__()
 
