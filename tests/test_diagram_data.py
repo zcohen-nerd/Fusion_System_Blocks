@@ -1,10 +1,11 @@
 """Tests for diagram_data module."""
+
 import os
 import sys
 import pytest
 
 # Add src directory to path so we can import diagram_data
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import diagram_data  # noqa: E402
 
