@@ -312,6 +312,21 @@ class SystemBlocksEditor {
       console.error('connection-type-select element not found!');
     }
     
+    // Arrow direction selector
+    const arrowDirectionSelect = document.getElementById('arrow-direction-select');
+    if (arrowDirectionSelect) {
+      console.log('Adding change listener to Arrow Direction selector');
+      arrowDirectionSelect.addEventListener('change', () => {
+        this.selectedArrowDirection = arrowDirectionSelect.value;
+        console.log('Arrow direction changed to:', this.selectedArrowDirection);
+        debugLog('Arrow direction set to: ' + this.selectedArrowDirection);
+      });
+      // Initialize the arrow direction
+      this.selectedArrowDirection = arrowDirectionSelect.value;
+    } else {
+      console.error('arrow-direction-select element not found!');
+    }
+    
     if (btnLinkCad) {
       console.log('Adding click listener to Link CAD button');
       btnLinkCad.addEventListener('click', () => {
@@ -612,7 +627,8 @@ class SystemBlocksEditor {
         blockId: targetBlockId,
         interfaceId: targetInterfaceId
       },
-      style: this.getConnectionStyle(connectionKind)
+      style: this.getConnectionStyle(connectionKind),
+      arrowDirection: this.selectedArrowDirection || 'forward'
     };
     
     this.diagram.connections.push(connection);
@@ -729,17 +745,24 @@ class SystemBlocksEditor {
       path.setAttribute('stroke-dasharray', style.dashArray);
     }
     
-    // Create arrowhead based on style
-    const arrow = this.createArrowhead(sourcePos, targetPos, style);
+    // Create arrowhead(s) based on direction
+    const arrowDirection = connection.arrowDirection || 'forward';
+    const arrows = this.createArrowheads(sourcePos, targetPos, style, arrowDirection);
     
     g.appendChild(path);
-    if (arrow) {
-      g.appendChild(arrow);
+    
+    // Add arrow(s) to the group
+    if (arrows.forward) {
+      g.appendChild(arrows.forward);
+    }
+    if (arrows.backward) {
+      g.appendChild(arrows.backward);
     }
     
-    // Add connection label if there's a protocol
-    if (connection.protocol) {
-      const label = this.createConnectionLabel(sourcePos, targetPos, connection.protocol, style);
+    // Add connection label if there's a protocol or custom label
+    if (connection.protocol || connection.label) {
+      const labelText = connection.label || connection.protocol;
+      const label = this.createConnectionLabel(sourcePos, targetPos, labelText, style);
       g.appendChild(label);
     }
     
@@ -754,32 +777,72 @@ class SystemBlocksEditor {
     g.addEventListener('mouseenter', () => {
       path.setAttribute('stroke', this.getBrighterColor(style.color));
       path.setAttribute('stroke-width', String(parseInt(style.width) + 1));
-      if (arrow) {
-        arrow.setAttribute('fill', this.getBrighterColor(style.color));
-      }
+      // Update all arrows in the group
+      const arrows = g.querySelectorAll('.connection-arrow');
+      arrows.forEach(arrow => {
+        if (arrow.tagName === 'polygon') {
+          arrow.setAttribute('fill', this.getBrighterColor(style.color));
+        } else if (arrow.tagName === 'g') {
+          const lines = arrow.querySelectorAll('line');
+          lines.forEach(line => line.setAttribute('stroke', this.getBrighterColor(style.color)));
+        }
+      });
     });
     
     g.addEventListener('mouseleave', () => {
       path.setAttribute('stroke', style.color);
       path.setAttribute('stroke-width', style.width);
-      if (arrow) {
-        arrow.setAttribute('fill', style.color);
-      }
+      // Reset all arrows in the group
+      const arrows = g.querySelectorAll('.connection-arrow');
+      arrows.forEach(arrow => {
+        if (arrow.tagName === 'polygon') {
+          arrow.setAttribute('fill', style.color);
+        } else if (arrow.tagName === 'g') {
+          const lines = arrow.querySelectorAll('line');
+          lines.forEach(line => line.setAttribute('stroke', style.color));
+        }
+      });
     });
     
     this.connectionsLayer.appendChild(g);
     debugLog(`Connection rendered with ${connection.kind || 'electrical'} styling`);
   }
   
-  createArrowhead(sourcePos, targetPos, style) {
+  createArrowheads(sourcePos, targetPos, style, arrowDirection) {
+    const arrows = {};
+    
+    if (arrowDirection === 'none') {
+      return arrows; // No arrows
+    }
+    
     const arrowSize = parseInt(style.width) + 4; // Scale arrow with line width
     const angle = Math.atan2(targetPos.y - sourcePos.y, targetPos.x - sourcePos.x);
     
-    const arrowTip = {
-      x: targetPos.x - 4 * Math.cos(angle), // Offset from port center
-      y: targetPos.y - 4 * Math.sin(angle)
-    };
+    // Forward arrow (pointing to target)
+    if (arrowDirection === 'forward' || arrowDirection === 'bidirectional') {
+      const arrowTip = {
+        x: targetPos.x - 4 * Math.cos(angle), // Offset from port center
+        y: targetPos.y - 4 * Math.sin(angle)
+      };
+      
+      arrows.forward = this.createSingleArrowhead(arrowTip, angle, arrowSize, style, 'forward');
+    }
     
+    // Backward arrow (pointing to source)
+    if (arrowDirection === 'backward' || arrowDirection === 'bidirectional') {
+      const backAngle = angle + Math.PI; // Reverse direction
+      const arrowTip = {
+        x: sourcePos.x - 4 * Math.cos(backAngle), // Offset from port center
+        y: sourcePos.y - 4 * Math.sin(backAngle)
+      };
+      
+      arrows.backward = this.createSingleArrowhead(arrowTip, backAngle, arrowSize, style, 'backward');
+    }
+    
+    return arrows;
+  }
+  
+  createSingleArrowhead(arrowTip, angle, arrowSize, style, direction) {
     if (style.arrowType === 'filled') {
       // Filled triangle arrow
       const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
@@ -796,13 +859,13 @@ class SystemBlocksEditor {
       
       arrow.setAttribute('points', `${arrowTip.x},${arrowTip.y} ${arrowBase1.x},${arrowBase1.y} ${arrowBase2.x},${arrowBase2.y}`);
       arrow.setAttribute('fill', style.color);
-      arrow.setAttribute('class', 'connection-arrow filled');
+      arrow.setAttribute('class', `connection-arrow filled ${direction}`);
       
       return arrow;
     } else if (style.arrowType === 'open') {
       // Open arrow (just two lines)
       const arrowGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      arrowGroup.setAttribute('class', 'connection-arrow open');
+      arrowGroup.setAttribute('class', `connection-arrow open ${direction}`);
       
       const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -892,10 +955,163 @@ class SystemBlocksEditor {
   onConnectionClick(connection, event) {
     debugLog('Connection management for ID: ' + connection.id);
     
-    // Show connection options
+    // Check if this is a right-click (context menu)
+    if (event.button === 2 || event.ctrlKey) {
+      this.showConnectionContextMenu(connection, event);
+      return;
+    }
+    
+    // Left click - show connection options
     if (confirm('Delete this connection?')) {
+      this.saveStateForUndo();
       this.deleteConnection(connection.id);
     }
+  }
+  
+  showConnectionContextMenu(connection, event) {
+    // Prevent the default context menu
+    event.preventDefault();
+    
+    // Remove any existing context menu
+    const existingMenu = document.getElementById('connection-context-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+    
+    // Create context menu
+    const menu = document.createElement('div');
+    menu.id = 'connection-context-menu';
+    menu.style.cssText = `
+      position: fixed;
+      left: ${event.clientX}px;
+      top: ${event.clientY}px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 1000;
+      min-width: 180px;
+      font-size: 14px;
+    `;
+    
+    // Menu items
+    const menuItems = [
+      { label: '✏️ Edit Properties', action: () => this.editConnectionProperties(connection) },
+      { label: '🔄 Change Type', action: () => this.changeConnectionType(connection) },
+      { label: '↔️ Change Direction', action: () => this.changeConnectionDirection(connection) },
+      { label: '🏷️ Edit Label', action: () => this.editConnectionLabel(connection) },
+      { label: '🗑️ Delete', action: () => this.deleteConnectionWithConfirm(connection) }
+    ];
+    
+    menuItems.forEach(item => {
+      const menuItem = document.createElement('div');
+      menuItem.style.cssText = `
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+      `;
+      menuItem.textContent = item.label;
+      
+      menuItem.addEventListener('mouseenter', () => {
+        menuItem.style.backgroundColor = '#f0f0f0';
+      });
+      
+      menuItem.addEventListener('mouseleave', () => {
+        menuItem.style.backgroundColor = 'white';
+      });
+      
+      menuItem.addEventListener('click', () => {
+        item.action();
+        menu.remove();
+      });
+      
+      menu.appendChild(menuItem);
+    });
+    
+    // Add to page
+    document.body.appendChild(menu);
+    
+    // Remove menu when clicking elsewhere
+    const removeMenu = () => {
+      if (menu.parentNode) {
+        menu.remove();
+      }
+      document.removeEventListener('click', removeMenu);
+    };
+    
+    // Delay adding the listener to prevent immediate removal
+    setTimeout(() => {
+      document.addEventListener('click', removeMenu);
+    }, 100);
+  }
+  
+  editConnectionProperties(connection) {
+    const protocol = prompt('Enter connection protocol:', connection.protocol || '');
+    if (protocol !== null) {
+      this.saveStateForUndo();
+      connection.protocol = protocol;
+      this.refreshConnection(connection);
+      debugLog('Connection protocol updated to: ' + protocol);
+    }
+  }
+  
+  changeConnectionType(connection) {
+    const types = ['electrical', 'power', 'data', 'mechanical'];
+    const currentType = connection.kind || 'electrical';
+    const newType = prompt(`Current type: ${currentType}\nEnter new type (${types.join(', ')}):`, currentType);
+    
+    if (newType && types.includes(newType.toLowerCase())) {
+      this.saveStateForUndo();
+      connection.kind = newType.toLowerCase();
+      connection.style = this.getConnectionStyle(connection.kind);
+      this.refreshConnection(connection);
+      debugLog('Connection type changed to: ' + connection.kind);
+    } else if (newType !== null) {
+      alert('Invalid connection type. Valid types: ' + types.join(', '));
+    }
+  }
+  
+  changeConnectionDirection(connection) {
+    const directions = ['forward', 'backward', 'bidirectional', 'none'];
+    const currentDir = connection.arrowDirection || 'forward';
+    const newDir = prompt(`Current direction: ${currentDir}\nEnter new direction (${directions.join(', ')}):`, currentDir);
+    
+    if (newDir && directions.includes(newDir.toLowerCase())) {
+      this.saveStateForUndo();
+      connection.arrowDirection = newDir.toLowerCase();
+      this.refreshConnection(connection);
+      debugLog('Connection direction changed to: ' + connection.arrowDirection);
+    } else if (newDir !== null) {
+      alert('Invalid direction. Valid directions: ' + directions.join(', '));
+    }
+  }
+  
+  editConnectionLabel(connection) {
+    const label = prompt('Enter connection label:', connection.label || '');
+    if (label !== null) {
+      this.saveStateForUndo();
+      connection.label = label;
+      this.refreshConnection(connection);
+      debugLog('Connection label updated to: ' + label);
+    }
+  }
+  
+  deleteConnectionWithConfirm(connection) {
+    if (confirm('Delete this connection?')) {
+      this.saveStateForUndo();
+      this.deleteConnection(connection.id);
+    }
+  }
+  
+  refreshConnection(connection) {
+    // Remove the existing connection visual
+    const connectionElement = this.connectionsLayer.querySelector(`[data-connection-id="${connection.id}"]`);
+    if (connectionElement) {
+      connectionElement.remove();
+    }
+    
+    // Re-render the connection with updated properties
+    this.renderConnection(connection);
   }
   
   deleteConnection(connectionId) {

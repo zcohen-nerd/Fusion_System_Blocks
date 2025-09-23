@@ -229,6 +229,8 @@
       font-size: 12px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
       max-width: 150px;
+      max-height: 400px;
+      overflow-y: auto;
     }
     
     .connection-legend h4 {
@@ -410,6 +412,12 @@
           <option value="data">📊 Data</option>
           <option value="mechanical">⚙️ Mechanical</option>
         </select>
+        <select id="arrow-direction-select" class="connection-type-select" title="Choose arrow direction" style="margin-left: 5px;">
+          <option value="forward" selected>→ Forward</option>
+          <option value="bidirectional">↔ Both</option>
+          <option value="backward">← Backward</option>
+          <option value="none">— None</option>
+        </select>
       </div>
       <div class="separator"></div>
       <button id="btn-add-block">Add Block</button>
@@ -491,6 +499,29 @@
           <line x1="30" y1="9" x2="26" y2="6" stroke="#6c757d" stroke-width="2"/>
         </svg>
         <span>⚙️ Mechanical</span>
+      </div>
+      
+      <h4 style="margin-top: 15px;">Arrow Types</h4>
+      <div class="connection-item">
+        <svg width="40" height="12" viewBox="0 0 40 12">
+          <line x1="0" y1="6" x2="30" y2="6" stroke="#333" stroke-width="2"/>
+          <polygon points="30,6 26,3 26,9" fill="#333"/>
+        </svg>
+        <span>→ Forward</span>
+      </div>
+      <div class="connection-item">
+        <svg width="40" height="12" viewBox="0 0 40 12">
+          <line x1="0" y1="6" x2="30" y2="6" stroke="#333" stroke-width="2"/>
+          <polygon points="30,6 26,3 26,9" fill="#333"/>
+          <polygon points="0,6 4,3 4,9" fill="#333"/>
+        </svg>
+        <span>↔ Bidirectional</span>
+      </div>
+      <div class="connection-item">
+        <svg width="40" height="12" viewBox="0 0 40 12">
+          <line x1="0" y1="6" x2="30" y2="6" stroke="#333" stroke-width="2"/>
+        </svg>
+        <span>— No Arrow</span>
       </div>
     </div>
     
