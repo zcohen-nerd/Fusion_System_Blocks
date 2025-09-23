@@ -256,8 +256,8 @@ def run(context):
             cmdDef = UI.commandDefinitions.addButtonDefinition(
                 'SystemBlocksPaletteShowCommand',
                 'System Blocks',
-                'Show the System Blocks Diagram Editor',
-                './resources'  # This should point to your icon resources
+                'Show the System Blocks Diagram Editor'
+                # Removed the resource folder path - will use default icon
             )
 
         # Create the event handler
