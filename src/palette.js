@@ -74,6 +74,7 @@ class SystemBlocksEditor {
     document.getElementById('btn-add-block').addEventListener('click', () => this.promptAddBlock());
     document.getElementById('btn-snap-grid').addEventListener('click', () => this.toggleSnapToGrid());
     document.getElementById('btn-check-rules').addEventListener('click', () => this.checkAndDisplayRules());
+    document.getElementById('btn-export-report').addEventListener('click', () => this.exportReport());
     document.getElementById('btn-link-cad').addEventListener('click', () => this.linkSelectedBlockToCAD());
     document.getElementById('btn-link-ecad').addEventListener('click', () => this.linkSelectedBlockToECAD());
     
@@ -873,6 +874,303 @@ class SystemBlocksEditor {
       
       resultsContainer.appendChild(resultDiv);
     });
+  }
+  
+  exportReport() {
+    // Export comprehensive report files
+    console.log("Exporting report files...");
+    
+    // Update block statuses before export
+    this.updateAllBlockStatuses();
+    
+    const jsonData = JSON.stringify(this.diagram, null, 2);
+    
+    // Send export request to Python via Fusion's palette messaging
+    if (window.adsk && window.adsk.fusion && window.adsk.fusion.palettes) {
+      const message = JSON.stringify({
+        action: 'export-report',
+        data: jsonData
+      });
+      window.adsk.fusion.palettes.sendInfoToParent('palette-message', message);
+    } else {
+      // Fallback for testing - generate client-side reports
+      console.warn("Fusion palette messaging not available - generating client-side reports");
+      this.generateClientSideReports();
+    }
+  }
+  
+  generateClientSideReports() {
+    // Generate reports directly in JavaScript for testing
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    
+    // Generate Markdown report
+    const markdownReport = this.generateMarkdownReport();
+    this.downloadFile(`system_blocks_report_${timestamp}.md`, markdownReport, 'text/markdown');
+    
+    // Generate CSV pin map
+    const csvPinMap = this.generateCsvPinMap();
+    this.downloadFile(`system_blocks_pinmap_${timestamp}.csv`, csvPinMap, 'text/csv');
+    
+    // Generate C header
+    const headerFile = this.generateCHeader();
+    this.downloadFile(`system_blocks_pins_${timestamp}.h`, headerFile, 'text/plain');
+    
+    console.log("Client-side reports generated and downloaded");
+  }
+  
+  generateMarkdownReport() {
+    // Generate a comprehensive Markdown report
+    const now = new Date().toLocaleString();
+    const blocks = this.diagram.blocks || [];
+    const connections = this.diagram.connections || [];
+    
+    let report = `# System Blocks Report
+
+**Generated:** ${now}  
+**Schema Version:** ${this.diagram.schema || 'system-blocks-v1'}
+
+---
+
+## Summary
+
+- **Total Blocks:** ${blocks.length}
+- **Total Connections:** ${connections.length}
+
+`;
+    
+    // Status breakdown
+    const statusCounts = {};
+    blocks.forEach(block => {
+      const status = block.status || 'Placeholder';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+    
+    if (Object.keys(statusCounts).length > 0) {
+      report += "\n### Block Status Distribution\n\n";
+      Object.entries(statusCounts).sort().forEach(([status, count]) => {
+        report += `- **${status}:** ${count}\n`;
+      });
+    }
+    
+    // Rule check results
+    const ruleResults = this.runAllRuleChecks();
+    const failures = ruleResults.filter(r => !r.success);
+    
+    report += `\n### Rule Check Summary\n\n`;
+    report += `- **Total Checks:** ${ruleResults.length}\n`;
+    report += `- **Passed:** ${ruleResults.length - failures.length}\n`;
+    report += `- **Failed:** ${failures.length}\n`;
+    
+    if (failures.length > 0) {
+      report += "\n#### Rule Failures\n\n";
+      failures.forEach(failure => {
+        const icon = failure.severity === 'error' ? '❌' : '⚠️';
+        report += `- ${icon} **${failure.rule}:** ${failure.message}\n`;
+      });
+    }
+    
+    // Block table
+    report += "\n---\n\n## Block Details\n\n";
+    
+    if (blocks.length > 0) {
+      report += "| Name | Type | Status | Attributes | Interfaces | Links |\n";
+      report += "|------|------|--------|------------|------------|-------|\n";
+      
+      blocks.forEach(block => {
+        const name = block.name || 'Unnamed';
+        const type = block.type || 'Custom';
+        const status = block.status || 'Placeholder';
+        
+        const attrs = block.attributes || {};
+        const attrStr = Object.entries(attrs)
+          .filter(([k, v]) => v)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(', ') || 'None';
+        
+        const intfCount = (block.interfaces || []).length;
+        const linkCount = (block.links || []).length;
+        
+        report += `| ${name} | ${type} | ${status} | ${attrStr} | ${intfCount} | ${linkCount} |\n`;
+      });
+    } else {
+      report += "*No blocks defined*\n";
+    }
+    
+    // Connection table
+    report += "\n---\n\n## Connection Details\n\n";
+    
+    if (connections.length > 0) {
+      report += "| From Block | From Interface | To Block | To Interface | Protocol | Attributes |\n";
+      report += "|------------|----------------|----------|--------------|----------|------------|\n";
+      
+      const blockNames = {};
+      blocks.forEach(block => {
+        blockNames[block.id] = block.name || 'Unnamed';
+      });
+      
+      connections.forEach(conn => {
+        const fromBlockId = conn.from?.blockId || '';
+        const toBlockId = conn.to?.blockId || '';
+        const fromIntfId = conn.from?.interfaceId || '';
+        const toIntfId = conn.to?.interfaceId || '';
+        
+        const fromBlockName = blockNames[fromBlockId] || fromBlockId;
+        const toBlockName = blockNames[toBlockId] || toBlockId;
+        
+        const protocol = conn.protocol || 'N/A';
+        const attrs = conn.attributes || {};
+        const attrStr = Object.entries(attrs)
+          .filter(([k, v]) => v)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(', ') || 'None';
+        
+        report += `| ${fromBlockName} | ${fromIntfId} | ${toBlockName} | ${toIntfId} | ${protocol} | ${attrStr} |\n`;
+      });
+    } else {
+      report += "*No connections defined*\n";
+    }
+    
+    return report;
+  }
+  
+  generateCsvPinMap() {
+    // Generate CSV pin map from connections
+    const lines = ["Signal,Source Block,Source Interface,Dest Block,Dest Interface,Protocol,Notes"];
+    
+    const blocks = this.diagram.blocks || [];
+    const connections = this.diagram.connections || [];
+    
+    const blockLookup = {};
+    blocks.forEach(block => {
+      blockLookup[block.id] = block;
+    });
+    
+    connections.forEach(conn => {
+      const fromBlockId = conn.from?.blockId || '';
+      const toBlockId = conn.to?.blockId || '';
+      const fromIntfId = conn.from?.interfaceId || '';
+      const toIntfId = conn.to?.interfaceId || '';
+      
+      const fromBlock = blockLookup[fromBlockId] || {};
+      const toBlock = blockLookup[toBlockId] || {};
+      
+      const fromBlockName = fromBlock.name || fromBlockId;
+      const toBlockName = toBlock.name || toBlockId;
+      
+      // Find interface names
+      let fromIntfName = fromIntfId;
+      let toIntfName = toIntfId;
+      
+      (fromBlock.interfaces || []).forEach(intf => {
+        if (intf.id === fromIntfId) {
+          fromIntfName = intf.name || fromIntfId;
+        }
+      });
+      
+      (toBlock.interfaces || []).forEach(intf => {
+        if (intf.id === toIntfId) {
+          toIntfName = intf.name || toIntfId;
+        }
+      });
+      
+      const protocol = conn.protocol || '';
+      const signalName = `${fromIntfName}_to_${toIntfName}`;
+      
+      const attrs = conn.attributes || {};
+      const notes = Object.entries(attrs)
+        .filter(([k, v]) => v)
+        .map(([k, v]) => `${k}=${v}`)
+        .join('; ');
+      
+      lines.push(`"${signalName}","${fromBlockName}","${fromIntfName}","${toBlockName}","${toIntfName}","${protocol}","${notes}"`);
+    });
+    
+    return lines.join('\n');
+  }
+  
+  generateCHeader() {
+    // Generate C header file with pin definitions
+    const headerName = "pin_definitions";
+    const headerGuard = `${headerName.toUpperCase()}_H`;
+    const now = new Date().toLocaleString();
+    
+    let header = `#ifndef ${headerGuard}
+#define ${headerGuard}
+
+/*
+ * Auto-generated pin definitions from System Blocks diagram
+ * Generated: ${now}
+ */
+
+`;
+    
+    const blocks = this.diagram.blocks || [];
+    const pinDefinitions = [];
+    const interfaceDefinitions = [];
+    
+    // Extract pin definitions from block attributes
+    blocks.forEach(block => {
+      const blockName = (block.name || 'UNNAMED').toUpperCase().replace(/\s+/g, '_');
+      const attributes = block.attributes || {};
+      
+      Object.entries(attributes).forEach(([attrName, attrValue]) => {
+        if (attrName.toLowerCase().includes('pin') && attrValue) {
+          const defineName = `${blockName}_${attrName.toUpperCase()}`;
+          const value = isNaN(attrValue) ? `"${attrValue}"` : attrValue;
+          pinDefinitions.push([defineName, value]);
+        }
+      });
+      
+      // Extract from interfaces
+      (block.interfaces || []).forEach(intf => {
+        const intfName = (intf.name || 'UNNAMED').toUpperCase().replace(/\s+/g, '_');
+        const params = intf.params || {};
+        
+        if (params.pin) {
+          const defineName = `${blockName}_${intfName}_PIN`;
+          const value = isNaN(params.pin) ? `"${params.pin}"` : params.pin;
+          interfaceDefinitions.push([defineName, value]);
+        }
+      });
+    });
+    
+    // Add pin definitions to header
+    if (pinDefinitions.length > 0) {
+      header += "/* Block Pin Definitions */\n";
+      pinDefinitions.forEach(([name, value]) => {
+        header += `#define ${name.padEnd(30)} ${value}\n`;
+      });
+      header += "\n";
+    }
+    
+    if (interfaceDefinitions.length > 0) {
+      header += "/* Interface Pin Definitions */\n";
+      interfaceDefinitions.forEach(([name, value]) => {
+        header += `#define ${name.padEnd(30)} ${value}\n`;
+      });
+      header += "\n";
+    }
+    
+    header += `#endif /* ${headerGuard} */\n`;
+    
+    return header;
+  }
+  
+  downloadFile(filename, content, mimeType) {
+    // Create and trigger download of a file
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    URL.revokeObjectURL(url);
   }
   
   newDiagram() {

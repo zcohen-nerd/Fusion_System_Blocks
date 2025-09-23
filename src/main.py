@@ -200,6 +200,29 @@ class PaletteMessageHandler(adsk.core.HTMLEventHandler):
                 block_id = payload.get('blockId', '')
                 block_name = payload.get('blockName', '')
                 start_cad_selection(block_id, block_name)
+            elif action == 'export-report':
+                # Export reports using diagram_data functions
+                json_data = load_diagram_json()
+                if json_data:
+                    export_paths = diagram_data.export_report_files(json_data)
+                    # Send success response back to palette
+                    palette = UI.palettes.itemById('sysBlocksPalette')
+                    if palette:
+                        response = {
+                            'status': 'success',
+                            'files': export_paths,
+                            'message': f'Exported {len(export_paths)} report files'
+                        }
+                        palette.sendInfoToHTML('export-response', json.dumps(response))
+                else:
+                    # Send error response back to palette
+                    palette = UI.palettes.itemById('sysBlocksPalette')
+                    if palette:
+                        response = {
+                            'status': 'error',
+                            'message': 'No diagram data found to export'
+                        }
+                        palette.sendInfoToHTML('export-response', json.dumps(response))
         except Exception as e:
             UI.messageBox(f'Message handler error: {str(e)}')
 

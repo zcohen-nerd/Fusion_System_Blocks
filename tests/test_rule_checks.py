@@ -3,7 +3,13 @@ Test module for rule checking functionality in diagram_data.py
 """
 
 import pytest
-from src.diagram_data import (
+import sys
+import os
+
+# Add src directory to path so we can import diagram_data
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from diagram_data import (
     check_logic_level_compatibility,
     check_power_budget,
     check_implementation_completeness,

@@ -593,3 +593,335 @@ def get_rule_failures(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     all_results = run_all_rule_checks(diagram)
     return [result for result in all_results if not result["success"]]
+
+
+def generate_markdown_report(diagram: Dict[str, Any], title: str = "System Blocks Report") -> str:
+    """
+    Generate a comprehensive Markdown report for a diagram.
+    
+    Args:
+        diagram: Full diagram dictionary
+        title: Report title
+        
+    Returns:
+        Markdown report string
+    """
+    import datetime
+    
+    # Report header
+    report = f"""# {title}
+
+**Generated:** {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}  
+**Schema Version:** {diagram.get('schema', 'system-blocks-v1')}
+
+---
+
+## Summary
+
+"""
+    
+    # Summary statistics
+    blocks = diagram.get('blocks', [])
+    connections = diagram.get('connections', [])
+    
+    report += f"- **Total Blocks:** {len(blocks)}\n"
+    report += f"- **Total Connections:** {len(connections)}\n"
+    
+    # Status breakdown
+    status_counts = {}
+    for block in blocks:
+        status = block.get('status', 'Placeholder')
+        status_counts[status] = status_counts.get(status, 0) + 1
+    
+    if status_counts:
+        report += "\n### Block Status Distribution\n\n"
+        for status, count in sorted(status_counts.items()):
+            report += f"- **{status}:** {count}\n"
+    
+    # Rule check results
+    rule_results = run_all_rule_checks(diagram)
+    failures = [r for r in rule_results if not r["success"]]
+    
+    report += f"\n### Rule Check Summary\n\n"
+    report += f"- **Total Checks:** {len(rule_results)}\n"
+    report += f"- **Passed:** {len(rule_results) - len(failures)}\n"
+    report += f"- **Failed:** {len(failures)}\n"
+    
+    if failures:
+        report += "\n#### Rule Failures\n\n"
+        for failure in failures:
+            severity_icon = "❌" if failure["severity"] == "error" else "⚠️"
+            report += f"- {severity_icon} **{failure['rule']}:** {failure['message']}\n"
+    
+    # Block table
+    report += "\n---\n\n## Block Details\n\n"
+    
+    if blocks:
+        report += "| Name | Type | Status | Attributes | Interfaces | Links |\n"
+        report += "|------|------|--------|------------|------------|-------|\n"
+        
+        for block in blocks:
+            name = block.get('name', 'Unnamed')
+            block_type = block.get('type', 'Custom')
+            status = block.get('status', 'Placeholder')
+            
+            # Format attributes
+            attrs = block.get('attributes', {})
+            attr_str = ", ".join([f"{k}={v}" for k, v in attrs.items() if v]) or "None"
+            
+            # Count interfaces and links
+            intf_count = len(block.get('interfaces', []))
+            link_count = len(block.get('links', []))
+            
+            report += f"| {name} | {block_type} | {status} | {attr_str} | {intf_count} | {link_count} |\n"
+    else:
+        report += "*No blocks defined*\n"
+    
+    # Connection table
+    report += "\n---\n\n## Connection Details\n\n"
+    
+    if connections:
+        report += "| From Block | From Interface | To Block | To Interface | Protocol | Attributes |\n"
+        report += "|------------|----------------|----------|--------------|----------|------------|\n"
+        
+        # Create block lookup for names
+        block_names = {block['id']: block.get('name', 'Unnamed') for block in blocks}
+        
+        for conn in connections:
+            from_block_id = conn.get('from', {}).get('blockId', '')
+            to_block_id = conn.get('to', {}).get('blockId', '')
+            from_intf_id = conn.get('from', {}).get('interfaceId', '')
+            to_intf_id = conn.get('to', {}).get('interfaceId', '')
+            
+            from_block_name = block_names.get(from_block_id, from_block_id)
+            to_block_name = block_names.get(to_block_id, to_block_id)
+            
+            protocol = conn.get('protocol', 'N/A')
+            attrs = conn.get('attributes', {})
+            attr_str = ", ".join([f"{k}={v}" for k, v in attrs.items() if v]) or "None"
+            
+            report += f"| {from_block_name} | {from_intf_id} | {to_block_name} | {to_intf_id} | {protocol} | {attr_str} |\n"
+    else:
+        report += "*No connections defined*\n"
+    
+    # Interface details
+    report += "\n---\n\n## Interface Details\n\n"
+    
+    has_interfaces = False
+    for block in blocks:
+        interfaces = block.get('interfaces', [])
+        if interfaces:
+            if not has_interfaces:
+                report += "| Block | Interface | Kind | Direction | Protocol | Parameters |\n"
+                report += "|-------|-----------|------|-----------|----------|------------|\n"
+                has_interfaces = True
+            
+            block_name = block.get('name', 'Unnamed')
+            for intf in interfaces:
+                intf_name = intf.get('name', 'Unnamed')
+                kind = intf.get('kind', 'N/A')
+                direction = intf.get('direction', 'bidirectional')
+                protocol = intf.get('protocol', 'N/A')
+                
+                params = intf.get('params', {})
+                param_str = ", ".join([f"{k}={v}" for k, v in params.items() if v]) or "None"
+                
+                report += f"| {block_name} | {intf_name} | {kind} | {direction} | {protocol} | {param_str} |\n"
+    
+    if not has_interfaces:
+        report += "*No interfaces defined*\n"
+    
+    return report
+
+
+def generate_pin_map_csv(diagram: Dict[str, Any]) -> str:
+    """
+    Generate a CSV pin map from the diagram connections.
+    
+    Args:
+        diagram: Full diagram dictionary
+        
+    Returns:
+        CSV string with pin mapping
+    """
+    csv_lines = ["Signal,Source Block,Source Interface,Dest Block,Dest Interface,Protocol,Notes"]
+    
+    blocks = diagram.get('blocks', [])
+    connections = diagram.get('connections', [])
+    
+    # Create lookup dictionaries
+    block_lookup = {block['id']: block for block in blocks}
+    
+    for conn in connections:
+        from_block_id = conn.get('from', {}).get('blockId', '')
+        to_block_id = conn.get('to', {}).get('blockId', '')
+        from_intf_id = conn.get('from', {}).get('interfaceId', '')
+        to_intf_id = conn.get('to', {}).get('interfaceId', '')
+        
+        from_block = block_lookup.get(from_block_id, {})
+        to_block = block_lookup.get(to_block_id, {})
+        
+        from_block_name = from_block.get('name', from_block_id)
+        to_block_name = to_block.get('name', to_block_id)
+        
+        # Find interface names
+        from_intf_name = from_intf_id
+        to_intf_name = to_intf_id
+        
+        for intf in from_block.get('interfaces', []):
+            if intf.get('id') == from_intf_id:
+                from_intf_name = intf.get('name', from_intf_id)
+                break
+        
+        for intf in to_block.get('interfaces', []):
+            if intf.get('id') == to_intf_id:
+                to_intf_name = intf.get('name', to_intf_id)
+                break
+        
+        protocol = conn.get('protocol', '')
+        
+        # Generate signal name from interface names
+        signal_name = f"{from_intf_name}_to_{to_intf_name}"
+        
+        # Notes from connection attributes
+        attrs = conn.get('attributes', {})
+        notes = "; ".join([f"{k}={v}" for k, v in attrs.items() if v])
+        
+        csv_lines.append(f'"{signal_name}","{from_block_name}","{from_intf_name}","{to_block_name}","{to_intf_name}","{protocol}","{notes}"')
+    
+    return "\n".join(csv_lines)
+
+
+def generate_pin_map_header(diagram: Dict[str, Any], header_name: str = "pin_definitions") -> str:
+    """
+    Generate a C header file with pin definitions.
+    
+    Args:
+        diagram: Full diagram dictionary
+        header_name: Name for the header file (without .h extension)
+        
+    Returns:
+        C header file content string
+    """
+    header_guard = f"{header_name.upper()}_H"
+    
+    header = f"""#ifndef {header_guard}
+#define {header_guard}
+
+/*
+ * Auto-generated pin definitions from System Blocks diagram
+ * Generated: {__import__('datetime').datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+ */
+
+"""
+    
+    blocks = diagram.get('blocks', [])
+    
+    # Extract pin definitions from block attributes
+    pin_definitions = []
+    
+    for block in blocks:
+        block_name = block.get('name', 'UNNAMED').upper().replace(' ', '_')
+        attributes = block.get('attributes', {})
+        
+        # Look for pin-related attributes
+        for attr_name, attr_value in attributes.items():
+            if 'pin' in attr_name.lower() and attr_value:
+                try:
+                    # Try to parse as integer pin number
+                    pin_num = int(attr_value)
+                    define_name = f"{block_name}_{attr_name.upper()}"
+                    pin_definitions.append((define_name, pin_num))
+                except ValueError:
+                    # Not a number, treat as string constant
+                    define_name = f"{block_name}_{attr_name.upper()}"
+                    pin_definitions.append((define_name, f'"{attr_value}"'))
+    
+    # Add pin definitions to header
+    if pin_definitions:
+        header += "/* Block Pin Definitions */\n"
+        for define_name, value in pin_definitions:
+            header += f"#define {define_name:<30} {value}\n"
+        header += "\n"
+    
+    # Add interface-based definitions
+    interface_definitions = []
+    
+    for block in blocks:
+        block_name = block.get('name', 'UNNAMED').upper().replace(' ', '_')
+        interfaces = block.get('interfaces', [])
+        
+        for intf in interfaces:
+            intf_name = intf.get('name', 'UNNAMED').upper().replace(' ', '_')
+            params = intf.get('params', {})
+            
+            if 'pin' in params:
+                try:
+                    pin_num = int(params['pin'])
+                    define_name = f"{block_name}_{intf_name}_PIN"
+                    interface_definitions.append((define_name, pin_num))
+                except ValueError:
+                    pass
+    
+    if interface_definitions:
+        header += "/* Interface Pin Definitions */\n"
+        for define_name, value in interface_definitions:
+            header += f"#define {define_name:<30} {value}\n"
+        header += "\n"
+    
+    header += f"#endif /* {header_guard} */\n"
+    
+    return header
+
+
+def export_report_files(diagram: Dict[str, Any], base_filename: str = "system_blocks_report") -> Dict[str, str]:
+    """
+    Export all report files (Markdown, CSV, C header) and return file paths.
+    
+    Args:
+        diagram: Full diagram dictionary
+        base_filename: Base name for generated files
+        
+    Returns:
+        Dictionary mapping file type to file path
+    """
+    import os
+    from pathlib import Path
+    
+    # Determine export directory (relative to this module)
+    export_dir = Path(__file__).parent.parent / "exports"
+    export_dir.mkdir(exist_ok=True)
+    
+    exported_files = {}
+    
+    # Generate Markdown report
+    try:
+        markdown_content = generate_markdown_report(diagram)
+        md_path = export_dir / f"{base_filename}.md"
+        with open(md_path, 'w', encoding='utf-8') as f:
+            f.write(markdown_content)
+        exported_files['markdown'] = str(md_path)
+    except Exception as e:
+        exported_files['markdown_error'] = str(e)
+    
+    # Generate CSV pin map
+    try:
+        csv_content = generate_pin_map_csv(diagram)
+        csv_path = export_dir / f"{base_filename}_pinmap.csv"
+        with open(csv_path, 'w', encoding='utf-8') as f:
+            f.write(csv_content)
+        exported_files['csv'] = str(csv_path)
+    except Exception as e:
+        exported_files['csv_error'] = str(e)
+    
+    # Generate C header
+    try:
+        header_content = generate_pin_map_header(diagram, base_filename)
+        h_path = export_dir / f"{base_filename}.h"
+        with open(h_path, 'w', encoding='utf-8') as f:
+            f.write(header_content)
+        exported_files['header'] = str(h_path)
+    except Exception as e:
+        exported_files['header_error'] = str(e)
+    
+    return exported_files
