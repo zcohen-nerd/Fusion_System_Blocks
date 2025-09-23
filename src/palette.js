@@ -21,8 +21,15 @@ class SystemBlocksEditor {
     this.currentPath = []; // Current breadcrumb path
     this.rootDiagram = null; // Reference to the root diagram
     
+    // Undo/Redo system
+    this.undoStack = []; // Previous diagram states
+    this.redoStack = []; // Future diagram states  
+    this.maxUndoLevels = 50; // Limit memory usage
+    this.isPerformingUndoRedo = false; // Prevent undo/redo loops
+    
     this.initializeUI();
     this.setupEventListeners();
+    this.initializeSearch();
   }
   
   createEmptyDiagram() {
@@ -77,6 +84,10 @@ class SystemBlocksEditor {
     document.getElementById('btn-save').addEventListener('click', () => this.saveDiagram());
     document.getElementById('btn-load').addEventListener('click', () => this.loadDiagram());
     
+    // Undo/Redo buttons
+    document.getElementById('btn-undo').addEventListener('click', () => this.undo());
+    document.getElementById('btn-redo').addEventListener('click', () => this.redo());
+    
     // Hierarchy navigation buttons
     document.getElementById('btn-go-up').addEventListener('click', () => this.goUpInHierarchy());
     document.getElementById('btn-drill-down').addEventListener('click', () => this.drillDownIntoBlock());
@@ -107,9 +118,14 @@ class SystemBlocksEditor {
     document.getElementById('btn-import-cancel').addEventListener('click', () => this.hideImportDialog());
     document.getElementById('btn-import-ok').addEventListener('click', () => this.performImport());
     document.getElementById('dialog-overlay').addEventListener('click', () => this.hideImportDialog());
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
   }
   
   addBlock(name, x, y, type = "Custom") {
+    this.saveState(); // Save for undo
+    
     // Snap initial position to grid
     const snappedPos = this.snapPointToGrid(x, y);
     
@@ -303,6 +319,7 @@ class SystemBlocksEditor {
   
   onBlockMouseDown(e, block) {
     e.stopPropagation();
+    this.saveState(); // Save for undo before starting drag
     this.selectedBlock = block;
     this.isDragging = true;
     
@@ -1432,6 +1449,14 @@ class SystemBlocksEditor {
     this.updateBreadcrumb();
     this.updateHierarchyButtons();
     
+    // Update tooltip events for all blocks
+    this.updateBlockHoverEvents();
+    
+    // Update search results if search is active
+    if (this.searchState && (this.searchState.query || this.searchState.activeFilter !== 'all')) {
+      this.applySearchAndFilter();
+    }
+    
     // TODO: Render connections
   }
 }
@@ -1568,6 +1593,170 @@ SystemBlocksEditor.prototype.onDoubleClick = function(e) {
   }
 };
 
+// ==================== UNDO/REDO SYSTEM ====================
+
+SystemBlocksEditor.prototype.saveState = function() {
+  if (this.isPerformingUndoRedo) return; // Don't save state during undo/redo operations
+  
+  // Deep copy current diagram state
+  const state = {
+    diagram: JSON.parse(JSON.stringify(this.diagram)),
+    selectedBlockId: this.selectedBlock ? this.selectedBlock.id : null,
+    hierarchyStack: JSON.parse(JSON.stringify(this.hierarchyStack)),
+    currentPath: [...this.currentPath]
+  };
+  
+  // Add to undo stack
+  this.undoStack.push(state);
+  
+  // Limit stack size
+  if (this.undoStack.length > this.maxUndoLevels) {
+    this.undoStack.shift();
+  }
+  
+  // Clear redo stack when new action is performed
+  this.redoStack = [];
+  
+  this.updateUndoRedoButtons();
+};
+
+SystemBlocksEditor.prototype.undo = function() {
+  if (this.undoStack.length === 0) return;
+  
+  this.isPerformingUndoRedo = true;
+  
+  // Save current state to redo stack
+  const currentState = {
+    diagram: JSON.parse(JSON.stringify(this.diagram)),
+    selectedBlockId: this.selectedBlock ? this.selectedBlock.id : null,
+    hierarchyStack: JSON.parse(JSON.stringify(this.hierarchyStack)),
+    currentPath: [...this.currentPath]
+  };
+  this.redoStack.push(currentState);
+  
+  // Restore previous state
+  const previousState = this.undoStack.pop();
+  this.diagram = previousState.diagram;
+  this.hierarchyStack = previousState.hierarchyStack;
+  this.currentPath = previousState.currentPath;
+  
+  // Restore selection
+  this.selectedBlock = null;
+  if (previousState.selectedBlockId) {
+    this.selectedBlock = this.diagram.blocks.find(b => b.id === previousState.selectedBlockId);
+  }
+  
+  this.renderDiagram();
+  this.updateUndoRedoButtons();
+  
+  this.isPerformingUndoRedo = false;
+  console.log('Undo performed');
+};
+
+SystemBlocksEditor.prototype.redo = function() {
+  if (this.redoStack.length === 0) return;
+  
+  this.isPerformingUndoRedo = true;
+  
+  // Save current state to undo stack
+  const currentState = {
+    diagram: JSON.parse(JSON.stringify(this.diagram)),
+    selectedBlockId: this.selectedBlock ? this.selectedBlock.id : null,
+    hierarchyStack: JSON.parse(JSON.stringify(this.hierarchyStack)),
+    currentPath: [...this.currentPath]
+  };
+  this.undoStack.push(currentState);
+  
+  // Restore future state
+  const futureState = this.redoStack.pop();
+  this.diagram = futureState.diagram;
+  this.hierarchyStack = futureState.hierarchyStack;
+  this.currentPath = futureState.currentPath;
+  
+  // Restore selection
+  this.selectedBlock = null;
+  if (futureState.selectedBlockId) {
+    this.selectedBlock = this.diagram.blocks.find(b => b.id === futureState.selectedBlockId);
+  }
+  
+  this.renderDiagram();
+  this.updateUndoRedoButtons();
+  
+  this.isPerformingUndoRedo = false;
+  console.log('Redo performed');
+};
+
+SystemBlocksEditor.prototype.updateUndoRedoButtons = function() {
+  const undoBtn = document.getElementById('btn-undo');
+  const redoBtn = document.getElementById('btn-redo');
+  
+  undoBtn.disabled = this.undoStack.length === 0;
+  redoBtn.disabled = this.redoStack.length === 0;
+  
+  // Update tooltips with action count
+  undoBtn.title = `Undo (${this.undoStack.length} actions available)`;
+  redoBtn.title = `Redo (${this.redoStack.length} actions available)`;
+};
+
+SystemBlocksEditor.prototype.handleKeyboardShortcuts = function(e) {
+  // Check if we're in a text input - don't handle shortcuts
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    return;
+  }
+  
+  const isCtrl = e.ctrlKey || e.metaKey; // Support both Ctrl and Cmd
+  
+  if (isCtrl && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    this.undo();
+  } else if (isCtrl && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+    e.preventDefault();
+    this.redo();
+  } else if (isCtrl && e.key === 's') {
+    e.preventDefault();
+    this.saveDiagram();
+  } else if (isCtrl && e.key === 'n') {
+    e.preventDefault();
+    this.newDiagram();
+  } else if (isCtrl && e.key === 'f') {
+    e.preventDefault();
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.select();
+    }
+  } else if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (this.selectedBlock) {
+      e.preventDefault();
+      this.deleteSelectedBlock();
+    }
+  } else if (e.key === 'Escape') {
+    this.selectedBlock = null;
+    this.selectBlock(null);
+  }
+};
+
+SystemBlocksEditor.prototype.deleteSelectedBlock = function() {
+  if (!this.selectedBlock) return;
+  
+  this.saveState(); // Save for undo
+  
+  const blockId = this.selectedBlock.id;
+  
+  // Remove block from diagram
+  this.diagram.blocks = this.diagram.blocks.filter(b => b.id !== blockId);
+  
+  // Remove connections involving this block
+  this.diagram.connections = this.diagram.connections.filter(c => 
+    c.from.blockId !== blockId && c.to.blockId !== blockId
+  );
+  
+  this.selectedBlock = null;
+  this.renderDiagram();
+  
+  console.log(`Deleted block: ${blockId}`);
+};
+
 SystemBlocksEditor.prototype.newDiagram = function() {
   this.diagram = this.createEmptyDiagram();
   this.selectedBlock = null;
@@ -1575,9 +1764,290 @@ SystemBlocksEditor.prototype.newDiagram = function() {
   this.currentPath = [];
   this.rootDiagram = this.diagram;
   
+  // Clear undo/redo stacks for new diagram
+  this.undoStack = [];
+  this.redoStack = [];
+  this.updateUndoRedoButtons();
+  
+  this.renderDiagram();
+  this.updateBreadcrumb();
   this.renderDiagram();
   this.updateBreadcrumb();
   this.updateHierarchyButtons();
+};
+
+// ==================== TOOLTIP SYSTEM ====================
+
+SystemBlocksEditor.prototype.showTooltip = function(e, block) {
+  // Remove any existing tooltip
+  this.hideTooltip();
+  
+  // Create tooltip content
+  let content = `<strong>${block.name}</strong><br/>`;
+  content += `Type: ${block.type}<br/>`;
+  content += `Status: ${block.status || 'Placeholder'}<br/>`;
+  
+  // Add attributes if they exist
+  const attributes = block.attributes || {};
+  const attributeKeys = Object.keys(attributes);
+  if (attributeKeys.length > 0) {
+    content += '<br/><strong>Attributes:</strong><br/>';
+    attributeKeys.forEach(key => {
+      if (attributes[key]) {
+        content += `${key}: ${attributes[key]}<br/>`;
+      }
+    });
+  }
+  
+  // Add interfaces info
+  const interfaces = block.interfaces || [];
+  if (interfaces.length > 0) {
+    content += `<br/><strong>Interfaces:</strong> ${interfaces.length}<br/>`;
+    interfaces.slice(0, 3).forEach(intf => {
+      content += `• ${intf.name} (${intf.kind})<br/>`;
+    });
+    if (interfaces.length > 3) {
+      content += `• ... and ${interfaces.length - 3} more<br/>`;
+    }
+  }
+  
+  // Add CAD links info
+  const links = block.links || [];
+  if (links.length > 0) {
+    content += `<br/><strong>Links:</strong> ${links.length} connected<br/>`;
+  }
+  
+  // Add child diagram info
+  if (this.hasChildDiagram && this.hasChildDiagram(block)) {
+    const childBlocks = block.childDiagram?.blocks?.length || 0;
+    content += `<br/><strong>Child Diagram:</strong> ${childBlocks} blocks<br/>`;
+  }
+  
+  // Create tooltip element
+  const tooltip = document.createElement('div');
+  tooltip.className = 'tooltip';
+  tooltip.innerHTML = content;
+  tooltip.id = 'block-tooltip';
+  
+  // Position tooltip
+  const rect = this.svg.getBoundingClientRect();
+  tooltip.style.left = (e.clientX - rect.left + 10) + 'px';
+  tooltip.style.top = (e.clientY - rect.top - 30) + 'px';
+  
+  // Add to SVG container
+  document.getElementById('canvas-container').appendChild(tooltip);
+};
+
+SystemBlocksEditor.prototype.hideTooltip = function() {
+  const existingTooltip = document.getElementById('block-tooltip');
+  if (existingTooltip) {
+    existingTooltip.remove();
+  }
+};
+
+SystemBlocksEditor.prototype.updateBlockHoverEvents = function() {
+  // Add hover events to all block groups
+  document.querySelectorAll('.block-group').forEach(blockGroup => {
+    const blockId = blockGroup.getAttribute('data-block-id');
+    const block = this.diagram.blocks.find(b => b.id === blockId);
+    
+    if (block) {
+      blockGroup.addEventListener('mouseenter', (e) => {
+        clearTimeout(this.tooltipTimeout);
+        this.tooltipTimeout = setTimeout(() => {
+          this.showTooltip(e, block);
+        }, 800); // Delay before showing tooltip
+      });
+      
+      blockGroup.addEventListener('mouseleave', () => {
+        clearTimeout(this.tooltipTimeout);
+        this.hideTooltip();
+      });
+      
+      blockGroup.addEventListener('mousemove', (e) => {
+        // Update tooltip position if it exists
+        const tooltip = document.getElementById('block-tooltip');
+        if (tooltip) {
+          const rect = this.svg.getBoundingClientRect();
+          tooltip.style.left = (e.clientX - rect.left + 10) + 'px';
+          tooltip.style.top = (e.clientY - rect.top - 30) + 'px';
+        }
+      });
+    }
+  });
+};
+
+// ==================== SEARCH AND FILTER SYSTEM ====================
+
+SystemBlocksEditor.prototype.initializeSearch = function() {
+  // Initialize search state
+  this.searchState = {
+    query: '',
+    activeFilter: 'all',
+    highlightedBlocks: [],
+    matchCount: 0
+  };
+  
+  // Bind search input events
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    // Real-time search as user types
+    searchInput.addEventListener('input', (e) => {
+      this.performSearch(e.target.value);
+    });
+    
+    // Clear search on Escape
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.target.value = '';
+        this.performSearch('');
+        e.target.blur();
+      }
+    });
+  }
+  
+  // Bind filter buttons
+  const filterButtons = ['filter-all', 'filter-placeholder', 'filter-implemented'];
+  filterButtons.forEach(buttonId => {
+    const button = document.getElementById(buttonId);
+    if (button) {
+      button.addEventListener('click', () => {
+        this.setActiveFilter(buttonId.replace('filter-', ''));
+      });
+    }
+  });
+};
+
+SystemBlocksEditor.prototype.performSearch = function(query) {
+  this.searchState.query = query.toLowerCase().trim();
+  this.applySearchAndFilter();
+};
+
+SystemBlocksEditor.prototype.setActiveFilter = function(filterType) {
+  // Update button states
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  document.getElementById(`filter-${filterType}`).classList.add('active');
+  
+  this.searchState.activeFilter = filterType;
+  this.applySearchAndFilter();
+};
+
+SystemBlocksEditor.prototype.applySearchAndFilter = function() {
+  const blocks = this.diagram.blocks;
+  let visibleBlocks = [];
+  let highlightedBlocks = [];
+  
+  blocks.forEach(block => {
+    // Apply status filter
+    let matchesFilter = true;
+    if (this.searchState.activeFilter === 'placeholder') {
+      matchesFilter = !block.status || block.status === 'Placeholder';
+    } else if (this.searchState.activeFilter === 'implemented') {
+      matchesFilter = block.status === 'Implemented' || block.status === 'Verified';
+    }
+    
+    // Apply search query
+    let matchesSearch = true;
+    let isHighlighted = false;
+    
+    if (this.searchState.query) {
+      const searchableText = [
+        block.name || '',
+        block.type || '',
+        block.status || 'Placeholder',
+        ...(block.interfaces || []).map(intf => intf.name || ''),
+        ...Object.entries(block.attributes || {}).flat()
+      ].join(' ').toLowerCase();
+      
+      matchesSearch = searchableText.includes(this.searchState.query);
+      isHighlighted = matchesSearch;
+    }
+    
+    if (matchesFilter && matchesSearch) {
+      visibleBlocks.push(block);
+      if (isHighlighted) {
+        highlightedBlocks.push(block.id);
+      }
+    }
+  });
+  
+  // Update search state
+  this.searchState.highlightedBlocks = highlightedBlocks;
+  this.searchState.matchCount = this.searchState.query ? highlightedBlocks.length : visibleBlocks.length;
+  
+  // Apply visual updates
+  this.updateBlockVisibility(visibleBlocks, highlightedBlocks);
+  this.updateSearchResultsInfo();
+};
+
+SystemBlocksEditor.prototype.updateBlockVisibility = function(visibleBlocks, highlightedBlocks) {
+  const allBlocks = this.diagram.blocks;
+  
+  allBlocks.forEach(block => {
+    const blockElement = document.querySelector(`[data-block-id="${block.id}"]`);
+    if (blockElement) {
+      const isVisible = visibleBlocks.find(b => b.id === block.id);
+      const isHighlighted = highlightedBlocks.includes(block.id);
+      
+      // Remove existing search classes
+      blockElement.classList.remove('search-highlight', 'search-dimmed');
+      
+      if (!isVisible) {
+        // Hide filtered out blocks
+        blockElement.style.display = 'none';
+      } else {
+        // Show visible blocks
+        blockElement.style.display = '';
+        
+        if (this.searchState.query) {
+          if (isHighlighted) {
+            blockElement.classList.add('search-highlight');
+          } else {
+            blockElement.classList.add('search-dimmed');
+          }
+        }
+      }
+    }
+  });
+};
+
+SystemBlocksEditor.prototype.updateSearchResultsInfo = function() {
+  const resultsSpan = document.getElementById('search-results');
+  if (resultsSpan) {
+    if (this.searchState.query) {
+      const totalBlocks = this.diagram.blocks.length;
+      resultsSpan.textContent = `${this.searchState.matchCount}/${totalBlocks}`;
+    } else {
+      const visibleCount = this.getVisibleBlockCount();
+      resultsSpan.textContent = visibleCount === this.diagram.blocks.length ? '' : `${visibleCount} shown`;
+    }
+  }
+};
+
+SystemBlocksEditor.prototype.getVisibleBlockCount = function() {
+  let count = 0;
+  this.diagram.blocks.forEach(block => {
+    if (this.searchState.activeFilter === 'placeholder') {
+      if (!block.status || block.status === 'Placeholder') count++;
+    } else if (this.searchState.activeFilter === 'implemented') {
+      if (block.status === 'Implemented' || block.status === 'Verified') count++;
+    } else {
+      count++;
+    }
+  });
+  return count;
+};
+
+SystemBlocksEditor.prototype.clearSearch = function() {
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    searchInput.value = '';
+  }
+  this.searchState.query = '';
+  this.searchState.highlightedBlocks = [];
+  this.applySearchAndFilter();
 };
 
 // Global function for Python to call with import results
