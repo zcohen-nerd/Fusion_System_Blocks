@@ -286,9 +286,14 @@ def run(context):
         # Create the palette
         palette = UI.palettes.itemById('SystemBlocksPalette')
         if not palette:
-            # Get the HTML file path
+            # Get the HTML file path and convert to proper file URL
             addin_path = os.path.dirname(__file__)
             html_file = os.path.join(addin_path, 'src', 'palette.html')
+            
+            # Convert Windows path to file URL format
+            html_file = html_file.replace('\\', '/')
+            if not html_file.startswith('file:///'):
+                html_file = 'file:///' + html_file
             
             palette = UI.palettes.add(
                 'SystemBlocksPalette',
