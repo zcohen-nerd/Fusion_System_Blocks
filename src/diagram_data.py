@@ -240,6 +240,164 @@ def remove_block_from_diagram(diagram: Dict[str, Any], block_id: str) -> bool:
     return len(diagram["blocks"]) < initial_count
 
 
+# ==================== HIERARCHY FUNCTIONS ====================
+
+def create_child_diagram(parent_block: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create an empty child diagram for a block.
+    
+    Args:
+        parent_block: The block that will contain the child diagram
+        
+    Returns:
+        Empty child diagram structure
+    """
+    child_diagram = create_empty_diagram()
+    parent_block["childDiagram"] = child_diagram
+    return child_diagram
+
+
+def has_child_diagram(block: Dict[str, Any]) -> bool:
+    """Check if a block has a child diagram."""
+    return "childDiagram" in block and block["childDiagram"] is not None
+
+
+def get_child_diagram(block: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Get the child diagram of a block, if it exists."""
+    return block.get("childDiagram")
+
+
+def validate_hierarchy_interfaces(parent_block: Dict[str, Any]) -> tuple[bool, list[str]]:
+    """
+    Validate that parent block interfaces are properly mapped to child diagram.
+    
+    For each interface on the parent block, there should be a corresponding
+    interface boundary in the child diagram.
+    """
+    errors = []
+    
+    if not has_child_diagram(parent_block):
+        return True, []  # No child diagram to validate
+    
+    child_diagram = get_child_diagram(parent_block)
+    parent_interfaces = parent_block.get("interfaces", [])
+    
+    # Get all interfaces from child blocks
+    child_interfaces = []
+    for child_block in child_diagram.get("blocks", []):
+        for interface in child_block.get("interfaces", []):
+            child_interfaces.append({
+                "blockId": child_block["id"],
+                "blockName": child_block["name"], 
+                "interface": interface
+            })
+    
+    # Check each parent interface has a potential match in child
+    for parent_iface in parent_interfaces:
+        # Look for matching interfaces in child diagram
+        matches = [
+            ci for ci in child_interfaces 
+            if (ci["interface"]["kind"] == parent_iface["kind"] and
+                ci["interface"]["direction"] != parent_iface["direction"])  # Opposite direction
+        ]
+        
+        if not matches:
+            errors.append(
+                f"Parent interface '{parent_iface['name']}' ({parent_iface['kind']}) "
+                f"has no corresponding interface in child diagram"
+            )
+    
+    return len(errors) == 0, errors
+
+
+def compute_hierarchical_status(block: Dict[str, Any]) -> str:
+    """
+    Compute block status considering child diagram status.
+    
+    Rules:
+    - If no child diagram: use normal status computation
+    - If child exists: status cannot exceed child completion level
+    - All children "Verified" → parent can be "Verified"
+    - Any child "Placeholder" → parent max "Planned"
+    """
+    if not has_child_diagram(block):
+        return compute_block_status(block)
+    
+    child_diagram = get_child_diagram(block)
+    child_blocks = child_diagram.get("blocks", [])
+    
+    if not child_blocks:
+        return "Placeholder"  # Empty child diagram
+    
+    # Get status of all child blocks (recursively)
+    child_statuses = []
+    for child_block in child_blocks:
+        child_status = compute_hierarchical_status(child_block)  # Recursive
+        child_statuses.append(child_status)
+    
+    # Determine max possible status based on children
+    status_levels = ["Placeholder", "Planned", "In-Work", "Implemented", "Verified"]
+    min_child_level = min(status_levels.index(status) for status in child_statuses)
+    max_possible_status = status_levels[min_child_level + 1] if min_child_level < len(status_levels) - 1 else status_levels[-1]
+    
+    # Get parent's natural status
+    parent_natural_status = compute_block_status(block)
+    parent_level = status_levels.index(parent_natural_status)
+    max_level = status_levels.index(max_possible_status)
+    
+    # Parent cannot exceed what children allow
+    final_level = min(parent_level, max_level)
+    return status_levels[final_level]
+
+
+def get_all_blocks_recursive(diagram: Dict[str, Any]) -> list[Dict[str, Any]]:
+    """
+    Get all blocks from a diagram, including those in child diagrams.
+    
+    Returns a flat list of all blocks in the hierarchy.
+    """
+    all_blocks = []
+    
+    for block in diagram.get("blocks", []):
+        all_blocks.append(block)
+        
+        # Recursively get blocks from child diagrams
+        if has_child_diagram(block):
+            child_diagram = get_child_diagram(block)
+            child_blocks = get_all_blocks_recursive(child_diagram)
+            all_blocks.extend(child_blocks)
+    
+    return all_blocks
+
+
+def find_block_path(diagram: Dict[str, Any], target_block_id: str, path: list[str] = None) -> Optional[list[str]]:
+    """
+    Find the path to a block within the hierarchy.
+    
+    Returns:
+        List of block IDs representing the path from root to target block
+        None if block not found
+    """
+    if path is None:
+        path = []
+    
+    # Check blocks at current level
+    for block in diagram.get("blocks", []):
+        current_path = path + [block["id"]]
+        
+        if block["id"] == target_block_id:
+            return current_path
+        
+        # Search in child diagram
+        if has_child_diagram(block):
+            child_diagram = get_child_diagram(block)
+            child_path = find_block_path(child_diagram, target_block_id, current_path)
+            if child_path:
+                return child_path
+    
+    return None
+
+
 def compute_block_status(block: Dict[str, Any]) -> str:
     """
     Auto-compute the status of a block based on its content and links.

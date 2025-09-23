@@ -106,12 +106,12 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ---
 
-## Milestone 7: Hierarchy (Stretch Goal)
+## ✅ Milestone 7: Hierarchy
 
-- [ ] Allow blocks to contain **child diagrams**
-- [ ] UI: double-click block → drill down into sub-diagram
-- [ ] Enforce parent-child interface mapping
-- [ ] Roll up status from child to parent
+- [x] Allow blocks to contain **child diagrams**
+- [x] UI: double-click block → drill down into sub-diagram
+- [x] Enforce parent-child interface mapping
+- [x] Roll up status from child to parent
 
 ---
 
@@ -140,8 +140,8 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ## Progress Summary
 
-**Completed Milestones:** 6/8  
-**Test Coverage:** 63 passing tests  
-**Current State:** Full import functionality complete - supports Mermaid flowcharts and CSV data import with validation and automatic positioning
+**Completed Milestones:** 7/8  
+**Test Coverage:** 80 passing tests  
+**Current State:** Full hierarchy support enables complex multi-level engineering systems with interface validation and status roll-up
 
-**Next Priority:** Milestone 7 (Hierarchy - stretch goal) or Milestone 8 (Polish and refinements)
+**Next Priority:** Milestone 8 (Polish and refinements) - the final milestone for production readiness

@@ -16,6 +16,11 @@ class SystemBlocksEditor {
     this.gridSize = 20;
     this.snapToGrid = true;
     
+    // Hierarchy navigation
+    this.hierarchyStack = []; // Stack of parent diagrams
+    this.currentPath = []; // Current breadcrumb path
+    this.rootDiagram = null; // Reference to the root diagram
+    
     this.initializeUI();
     this.setupEventListeners();
   }
@@ -71,6 +76,12 @@ class SystemBlocksEditor {
     document.getElementById('btn-new').addEventListener('click', () => this.newDiagram());
     document.getElementById('btn-save').addEventListener('click', () => this.saveDiagram());
     document.getElementById('btn-load').addEventListener('click', () => this.loadDiagram());
+    
+    // Hierarchy navigation buttons
+    document.getElementById('btn-go-up').addEventListener('click', () => this.goUpInHierarchy());
+    document.getElementById('btn-drill-down').addEventListener('click', () => this.drillDownIntoBlock());
+    document.getElementById('btn-create-child').addEventListener('click', () => this.createChildDiagram());
+    
     document.getElementById('btn-add-block').addEventListener('click', () => this.promptAddBlock());
     document.getElementById('btn-snap-grid').addEventListener('click', () => this.toggleSnapToGrid());
     document.getElementById('btn-check-rules').addEventListener('click', () => this.checkAndDisplayRules());
@@ -84,6 +95,7 @@ class SystemBlocksEditor {
     this.svg.addEventListener('mousemove', (e) => this.onMouseMove(e));
     this.svg.addEventListener('mouseup', (e) => this.onMouseUp(e));
     this.svg.addEventListener('wheel', (e) => this.onWheel(e));
+    this.svg.addEventListener('dblclick', (e) => this.onDoubleClick(e));
     
     // Prevent context menu
     this.svg.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -179,6 +191,22 @@ class SystemBlocksEditor {
     statusText.setAttribute('font-size', '10');
     statusText.setAttribute('opacity', '0.7');
     g.appendChild(statusText);
+    
+    // Child diagram indicator
+    if (this.hasChildDiagram(block)) {
+      // Add dashed border
+      rect.setAttribute('stroke-dasharray', '5,5');
+      rect.setAttribute('stroke-width', '3');
+      
+      // Add folder icon
+      const childIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      childIcon.setAttribute('class', 'child-indicator');
+      childIcon.setAttribute('x', block.width - 15);
+      childIcon.setAttribute('y', 15);
+      childIcon.textContent = '📁';
+      childIcon.setAttribute('font-size', '12');
+      g.appendChild(childIcon);
+    }
     
     // Render ports
     block.interfaces.forEach((intf, idx) => {
@@ -296,14 +324,19 @@ class SystemBlocksEditor {
       el.classList.remove('selected');
     });
     
+    this.selectedBlock = block;
+    
     // Add selection to new block
-    const blockElement = document.querySelector(`[data-block-id="${block.id}"] .block`);
-    if (blockElement) {
-      blockElement.classList.add('selected');
+    if (block) {
+      const blockElement = document.querySelector(`[data-block-id="${block.id}"] .block`);
+      if (blockElement) {
+        blockElement.classList.add('selected');
+      }
     }
     
     // Update context buttons
     this.updateContextButtons(block);
+    this.updateHierarchyButtons();
   }
   
   updateContextButtons(selectedBlock) {
@@ -1395,6 +1428,10 @@ class SystemBlocksEditor {
       this.updateBlockVisuals(block);
     });
     
+    // Update hierarchy UI
+    this.updateBreadcrumb();
+    this.updateHierarchyButtons();
+    
     // TODO: Render connections
   }
 }
@@ -1418,6 +1455,130 @@ function receiveCADLinkFromPython(blockId, occToken, docId, docPath) {
     editor.receiveCADLink(blockId, occToken, docId, docPath);
   }
 }
+
+// ==================== HIERARCHY METHODS ====================
+
+// Add hierarchy methods to the SystemBlocksEditor class
+SystemBlocksEditor.prototype.updateBreadcrumb = function() {
+  const breadcrumbElement = document.getElementById('breadcrumb-path');
+  const path = this.currentPath.length > 0 ? this.currentPath.join(' > ') : 'Root';
+  breadcrumbElement.textContent = path;
+};
+
+SystemBlocksEditor.prototype.updateHierarchyButtons = function() {
+  const goUpBtn = document.getElementById('btn-go-up');
+  const drillDownBtn = document.getElementById('btn-drill-down');
+  const createChildBtn = document.getElementById('btn-create-child');
+  
+  // Enable go up if we're not at root level
+  goUpBtn.disabled = this.hierarchyStack.length === 0;
+  
+  // Enable drill down if selected block has child diagram
+  drillDownBtn.disabled = !this.selectedBlock || !this.hasChildDiagram(this.selectedBlock);
+  
+  // Enable create child if block is selected
+  createChildBtn.disabled = !this.selectedBlock;
+};
+
+SystemBlocksEditor.prototype.hasChildDiagram = function(block) {
+  return block && block.childDiagram && block.childDiagram.blocks;
+};
+
+SystemBlocksEditor.prototype.goUpInHierarchy = function() {
+  if (this.hierarchyStack.length === 0) {
+    console.log("Already at root level");
+    return;
+  }
+  
+  // Restore parent diagram
+  const parentContext = this.hierarchyStack.pop();
+  this.diagram = parentContext.diagram;
+  this.selectedBlock = parentContext.selectedBlock;
+  this.currentPath.pop();
+  
+  this.renderDiagram();
+  this.updateBreadcrumb();
+  this.updateHierarchyButtons();
+  
+  console.log(`Navigated up to: ${this.currentPath.join(' > ') || 'Root'}`);
+};
+
+SystemBlocksEditor.prototype.drillDownIntoBlock = function() {
+  if (!this.selectedBlock) {
+    alert("Please select a block first");
+    return;
+  }
+  
+  if (!this.hasChildDiagram(this.selectedBlock)) {
+    alert("Selected block has no child diagram");
+    return;
+  }
+  
+  // Save current context
+  this.hierarchyStack.push({
+    diagram: this.diagram,
+    selectedBlock: this.selectedBlock
+  });
+  
+  // Navigate to child diagram
+  this.currentPath.push(this.selectedBlock.name);
+  this.diagram = this.selectedBlock.childDiagram;
+  this.selectedBlock = null;
+  
+  this.renderDiagram();
+  this.updateBreadcrumb();
+  this.updateHierarchyButtons();
+  
+  console.log(`Navigated down to: ${this.currentPath.join(' > ')}`);
+};
+
+SystemBlocksEditor.prototype.createChildDiagram = function() {
+  if (!this.selectedBlock) {
+    alert("Please select a block first");
+    return;
+  }
+  
+  if (this.hasChildDiagram(this.selectedBlock)) {
+    const proceed = confirm("This block already has a child diagram. Replace it?");
+    if (!proceed) return;
+  }
+  
+  // Create empty child diagram
+  this.selectedBlock.childDiagram = this.createEmptyDiagram();
+  
+  // Immediately drill down into it
+  this.drillDownIntoBlock();
+  
+  // Add visual indicator for parent block (we'll need to re-render parent later)
+  console.log(`Created child diagram for block: ${this.selectedBlock ? this.selectedBlock.name : 'unknown'}`);
+};
+
+SystemBlocksEditor.prototype.onDoubleClick = function(e) {
+  // Double-click to drill down into blocks
+  const target = e.target;
+  if (target.classList.contains('block') || target.parentElement.classList.contains('block')) {
+    const blockElement = target.classList.contains('block') ? target : target.parentElement;
+    const blockId = blockElement.getAttribute('data-block-id');
+    const block = this.diagram.blocks.find(b => b.id === blockId);
+    
+    if (block && this.hasChildDiagram(block)) {
+      this.selectedBlock = block;
+      this.drillDownIntoBlock();
+    }
+  }
+};
+
+SystemBlocksEditor.prototype.newDiagram = function() {
+  this.diagram = this.createEmptyDiagram();
+  this.selectedBlock = null;
+  this.hierarchyStack = [];
+  this.currentPath = [];
+  this.rootDiagram = this.diagram;
+  
+  this.renderDiagram();
+  this.updateBreadcrumb();
+  this.updateHierarchyButtons();
+};
 
 // Global function for Python to call with import results
 function receiveImportFromPython(responseData) {
