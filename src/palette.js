@@ -1,9 +1,29 @@
+// IMMEDIATE TEST - This should appear in console if JS is loading
+console.log("=== JAVASCRIPT FILE LOADING ===");
+console.error("=== JS ERROR TEST ===");
+
+// Visual debug function for when console doesn't work
+function debugLog(message) {
+  try {
+    const debugDiv = document.getElementById('debug-log');
+    if (debugDiv) {
+      debugDiv.innerHTML += message + '<br>';
+      debugDiv.scrollTop = debugDiv.scrollHeight;
+    }
+  } catch (e) {
+    // Ignore errors if debug div doesn't exist yet
+  }
+}
+
+debugLog("=== JAVASCRIPT FILE LOADED ===");
 console.log("System Blocks palette loaded");
 
 // SVG-based node editor with pan/zoom, grid, and draggable blocks with ports
 class SystemBlocksEditor {
   constructor() {
+    debugLog("SystemBlocksEditor constructor starting...");
     this.diagram = this.createEmptyDiagram();
+    debugLog("Empty diagram created");
     this.selectedBlock = null;
     this.isDragging = false;
     this.isPanning = false;
@@ -14,7 +34,7 @@ class SystemBlocksEditor {
     
     // Grid configuration
     this.gridSize = 20;
-    this.snapToGrid = true;
+    this.snapToGridEnabled = true;
     
     // Hierarchy navigation
     this.hierarchyStack = []; // Stack of parent diagrams
@@ -27,9 +47,13 @@ class SystemBlocksEditor {
     this.maxUndoLevels = 50; // Limit memory usage
     this.isPerformingUndoRedo = false; // Prevent undo/redo loops
     
+    debugLog("About to initialize UI...");
     this.initializeUI();
+    debugLog("UI initialized, setting up event listeners...");
     this.setupEventListeners();
+    debugLog("Event listeners set up, initializing search...");
     this.initializeSearch();
+    debugLog("SystemBlocksEditor constructor complete!");
   }
   
   createEmptyDiagram() {
@@ -45,7 +69,7 @@ class SystemBlocksEditor {
   }
   
   snapToGrid(value) {
-    if (!this.snapToGrid) {
+    if (!this.snapToGridEnabled) {
       return value;
     }
     return Math.round(value / this.gridSize) * this.gridSize;
@@ -70,36 +94,230 @@ class SystemBlocksEditor {
   }
   
   initializeUI() {
+    debugLog("initializeUI starting...");
+    
+    debugLog("Looking for svg-canvas...");
     this.svg = document.getElementById('svg-canvas');
+    if (this.svg) {
+      debugLog("Found svg-canvas!");
+    } else {
+      debugLog("ERROR: svg-canvas not found!");
+      return;
+    }
+    
+    debugLog("Looking for blocks-layer...");
     this.blocksLayer = document.getElementById('blocks-layer');
+    if (this.blocksLayer) {
+      debugLog("Found blocks-layer!");
+    } else {
+      debugLog("ERROR: blocks-layer not found!");
+      return;
+    }
+    
+    debugLog("Looking for connections-layer...");
     this.connectionsLayer = document.getElementById('connections-layer');
+    if (this.connectionsLayer) {
+      debugLog("Found connections-layer!");
+    } else {
+      debugLog("ERROR: connections-layer not found!");
+      return;
+    }
     
     // Initialize with a sample block
-    this.addBlock("Sample MCU", 200, 150, "MCU");
+    debugLog("About to add sample block...");
+    try {
+      this.addBlock("Sample MCU", 200, 150, "MCU");
+      debugLog("Sample block added successfully!");
+    } catch (e) {
+      debugLog("ERROR adding sample block: " + e.message);
+    }
+    debugLog("initializeUI complete!");
   }
   
   setupEventListeners() {
+    debugLog('Setting up event listeners...');
+    console.log('Setting up event listeners...');
+    
+    // Add a global click listener to catch all clicks
+    document.addEventListener('click', (e) => {
+      debugLog('CLICK: ' + (e.target.id || e.target.tagName));
+      console.log('GLOBAL CLICK DETECTED:', e.target.id || e.target.tagName, e.target);
+    });
+    
     // Toolbar buttons
-    document.getElementById('btn-new').addEventListener('click', () => this.newDiagram());
-    document.getElementById('btn-save').addEventListener('click', () => this.saveDiagram());
-    document.getElementById('btn-load').addEventListener('click', () => this.loadDiagram());
+    const btnNew = document.getElementById('btn-new');
+    const btnSave = document.getElementById('btn-save');
+    const btnLoad = document.getElementById('btn-load');
+    
+    if (btnNew) {
+      console.log('Adding click listener to New button');
+      btnNew.addEventListener('click', () => {
+        console.log('New button clicked!');
+        this.newDiagram();
+      });
+    } else {
+      console.error('btn-new element not found!');
+    }
+    
+    if (btnSave) {
+      console.log('Adding click listener to Save button');
+      btnSave.addEventListener('click', () => {
+        console.log('Save button clicked!');
+        this.saveDiagram();
+      });
+    } else {
+      console.error('btn-save element not found!');
+    }
+    
+    if (btnLoad) {
+      console.log('Adding click listener to Load button');
+      btnLoad.addEventListener('click', () => {
+        console.log('Load button clicked!');
+        this.loadDiagram();
+      });
+    } else {
+      console.error('btn-load element not found!');
+    }
     
     // Undo/Redo buttons
-    document.getElementById('btn-undo').addEventListener('click', () => this.undo());
-    document.getElementById('btn-redo').addEventListener('click', () => this.redo());
+    const btnUndo = document.getElementById('btn-undo');
+    const btnRedo = document.getElementById('btn-redo');
+    
+    if (btnUndo) {
+      console.log('Adding click listener to Undo button');
+      btnUndo.addEventListener('click', () => {
+        console.log('Undo button clicked!');
+        this.undo();
+      });
+    } else {
+      console.error('btn-undo element not found!');
+    }
+    
+    if (btnRedo) {
+      console.log('Adding click listener to Redo button');
+      btnRedo.addEventListener('click', () => {
+        console.log('Redo button clicked!');
+        this.redo();
+      });
+    } else {
+      console.error('btn-redo element not found!');
+    }
     
     // Hierarchy navigation buttons
-    document.getElementById('btn-go-up').addEventListener('click', () => this.goUpInHierarchy());
-    document.getElementById('btn-drill-down').addEventListener('click', () => this.drillDownIntoBlock());
-    document.getElementById('btn-create-child').addEventListener('click', () => this.createChildDiagram());
+    const btnGoUp = document.getElementById('btn-go-up');
+    const btnDrillDown = document.getElementById('btn-drill-down');
+    const btnCreateChild = document.getElementById('btn-create-child');
     
-    document.getElementById('btn-add-block').addEventListener('click', () => this.promptAddBlock());
-    document.getElementById('btn-snap-grid').addEventListener('click', () => this.toggleSnapToGrid());
-    document.getElementById('btn-check-rules').addEventListener('click', () => this.checkAndDisplayRules());
-    document.getElementById('btn-export-report').addEventListener('click', () => this.exportReport());
-    document.getElementById('btn-import').addEventListener('click', () => this.showImportDialog());
-    document.getElementById('btn-link-cad').addEventListener('click', () => this.linkSelectedBlockToCAD());
-    document.getElementById('btn-link-ecad').addEventListener('click', () => this.linkSelectedBlockToECAD());
+    if (btnGoUp) {
+      console.log('Adding click listener to Go Up button');
+      btnGoUp.addEventListener('click', () => {
+        console.log('Go Up button clicked!');
+        this.goUpInHierarchy();
+      });
+    } else {
+      console.error('btn-go-up element not found!');
+    }
+    
+    if (btnDrillDown) {
+      console.log('Adding click listener to Drill Down button');
+      btnDrillDown.addEventListener('click', () => {
+        console.log('Drill Down button clicked!');
+        this.drillDownIntoBlock();
+      });
+    } else {
+      console.error('btn-drill-down element not found!');
+    }
+    
+    if (btnCreateChild) {
+      console.log('Adding click listener to Create Child button');
+      btnCreateChild.addEventListener('click', () => {
+        console.log('Create Child button clicked!');
+        this.createChildDiagram();
+      });
+    } else {
+      console.error('btn-create-child element not found!');
+    }
+    
+    // Additional buttons with debugging
+    const btnAddBlock = document.getElementById('btn-add-block');
+    const btnSnapGrid = document.getElementById('btn-snap-grid');
+    const btnCheckRules = document.getElementById('btn-check-rules');
+    const btnExportReport = document.getElementById('btn-export-report');
+    const btnImport = document.getElementById('btn-import');
+    const btnLinkCad = document.getElementById('btn-link-cad');
+    const btnLinkEcad = document.getElementById('btn-link-ecad');
+    
+    if (btnAddBlock) {
+      console.log('Adding click listener to Add Block button');
+      btnAddBlock.addEventListener('click', () => {
+        console.log('Add Block button clicked!');
+        this.promptAddBlock();
+      });
+    } else {
+      console.error('btn-add-block element not found!');
+    }
+    
+    if (btnSnapGrid) {
+      console.log('Adding click listener to Snap Grid button');
+      btnSnapGrid.addEventListener('click', () => {
+        console.log('Snap Grid button clicked!');
+        this.toggleSnapToGrid();
+      });
+    } else {
+      console.error('btn-snap-grid element not found!');
+    }
+    
+    if (btnCheckRules) {
+      console.log('Adding click listener to Check Rules button');
+      btnCheckRules.addEventListener('click', () => {
+        console.log('Check Rules button clicked!');
+        this.checkAndDisplayRules();
+      });
+    } else {
+      console.error('btn-check-rules element not found!');
+    }
+    
+    if (btnExportReport) {
+      console.log('Adding click listener to Export Report button');
+      btnExportReport.addEventListener('click', () => {
+        console.log('Export Report button clicked!');
+        this.exportReport();
+      });
+    } else {
+      console.error('btn-export-report element not found!');
+    }
+    
+    if (btnImport) {
+      console.log('Adding click listener to Import button');
+      btnImport.addEventListener('click', () => {
+        console.log('Import button clicked!');
+        this.showImportDialog();
+      });
+    } else {
+      console.error('btn-import element not found!');
+    }
+    
+    if (btnLinkCad) {
+      console.log('Adding click listener to Link CAD button');
+      btnLinkCad.addEventListener('click', () => {
+        console.log('Link CAD button clicked!');
+        this.linkSelectedBlockToCAD();
+      });
+    } else {
+      console.error('btn-link-cad element not found!');
+    }
+    
+    if (btnLinkEcad) {
+      console.log('Adding click listener to Link ECAD button');
+      btnLinkEcad.addEventListener('click', () => {
+        console.log('Link ECAD button clicked!');
+        this.linkSelectedBlockToECAD();
+      });
+    } else {
+      console.error('btn-link-ecad element not found!');
+    }
+    
+    console.log('Event listeners setup complete');
     
     // SVG pan/zoom
     this.svg.addEventListener('mousedown', (e) => this.onMouseDown(e));
@@ -124,33 +342,53 @@ class SystemBlocksEditor {
   }
   
   addBlock(name, x, y, type = "Custom") {
-    this.saveState(); // Save for undo
+    debugLog("addBlock called with: " + name + " at (" + x + ", " + y + ")");
     
-    // Snap initial position to grid
-    const snappedPos = this.snapPointToGrid(x, y);
-    
-    const block = {
-      id: this.generateId(),
-      name: name,
-      type: type,
-      status: "Placeholder",
-      x: snappedPos.x,
-      y: snappedPos.y,
-      width: 120,
-      height: 60,
-      interfaces: [],
-      links: [],
-      attributes: {}
-    };
-    
-    // Add default interfaces
-    block.interfaces.push(this.createInterface("VCC", "power", "input", "left", 0));
-    block.interfaces.push(this.createInterface("GND", "power", "input", "left", 1));
-    block.interfaces.push(this.createInterface("OUT", "data", "output", "right", 0));
-    
-    this.diagram.blocks.push(block);
-    this.renderBlock(block);
-    return block;
+    try {
+      debugLog("About to save state...");
+      this.saveState(); // Save for undo
+      debugLog("State saved");
+      
+      // Snap initial position to grid
+      debugLog("About to snap to grid...");
+      const snappedPos = this.snapPointToGrid(x, y);
+      debugLog("Snapped position: " + snappedPos.x + ", " + snappedPos.y);
+      
+      const block = {
+        id: this.generateId(),
+        name: name,
+        type: type,
+        status: "Placeholder",
+        x: snappedPos.x,
+        y: snappedPos.y,
+        width: 120,
+        height: 60,
+        interfaces: [],
+        links: [],
+        attributes: {}
+      };
+      debugLog("Block object created with ID: " + block.id);
+      
+      // Add default interfaces
+      debugLog("Adding default interfaces...");
+      block.interfaces.push(this.createInterface("VCC", "power", "input", "left", 0));
+      block.interfaces.push(this.createInterface("GND", "power", "input", "left", 1));
+      block.interfaces.push(this.createInterface("OUT", "data", "output", "right", 0));
+      debugLog("Interfaces added: " + block.interfaces.length);
+      
+      debugLog("Adding block to diagram...");
+      this.diagram.blocks.push(block);
+      debugLog("Block added to diagram. Total blocks: " + this.diagram.blocks.length);
+      
+      debugLog("About to render block...");
+      this.renderBlock(block);
+      debugLog("Block rendered successfully!");
+      
+      return block;
+    } catch (e) {
+      debugLog("ERROR in addBlock: " + e.message);
+      throw e;
+    }
   }
   
   createInterface(name, kind, direction, side, index) {
@@ -198,15 +436,17 @@ class SystemBlocksEditor {
     text.textContent = block.name;
     g.appendChild(text);
     
-    // Status text
-    const statusText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    statusText.setAttribute('class', 'status-text');
-    statusText.setAttribute('x', block.width / 2);
-    statusText.setAttribute('y', block.height / 2 + 12);
-    statusText.textContent = block.status || 'Placeholder';
-    statusText.setAttribute('font-size', '10');
-    statusText.setAttribute('opacity', '0.7');
-    g.appendChild(statusText);
+    // Status text (only show if not Placeholder)
+    if (block.status && block.status !== 'Placeholder') {
+      const statusText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      statusText.setAttribute('class', 'status-text');
+      statusText.setAttribute('x', block.width / 2);
+      statusText.setAttribute('y', block.height / 2 + 12);
+      statusText.textContent = block.status;
+      statusText.setAttribute('font-size', '10');
+      statusText.setAttribute('opacity', '0.7');
+      g.appendChild(statusText);
+    }
     
     // Child diagram indicator
     if (this.hasChildDiagram(block)) {
@@ -263,7 +503,219 @@ class SystemBlocksEditor {
     port.setAttribute('cx', x);
     port.setAttribute('cy', y);
     
+    // Add click event listener for ports
+    port.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent block selection
+      debugLog('Port clicked: ' + intf.name + ' on block ' + block.name);
+      this.onPortClick(block, intf, e);
+    });
+    
     return port;
+  }
+  
+  onPortClick(block, intf, event) {
+    debugLog('Port clicked: ' + intf.name + ' (' + intf.direction + ') on block ' + block.name);
+    
+    if (!this.connectionMode) {
+      // Start connection mode
+      this.connectionMode = {
+        sourceBlock: block,
+        sourceInterface: intf,
+        isConnecting: true
+      };
+      debugLog('Started connection mode from ' + block.name + '.' + intf.name);
+      
+      // Visual feedback - highlight the source port
+      event.target.style.fill = '#ff6b6b';
+      event.target.style.stroke = '#ff0000';
+      event.target.style.strokeWidth = '2';
+      
+    } else {
+      // Complete the connection
+      if (this.connectionMode.sourceBlock.id !== block.id) {
+        debugLog('Completing connection from ' + this.connectionMode.sourceBlock.name + '.' + this.connectionMode.sourceInterface.name + ' to ' + block.name + '.' + intf.name);
+        
+        this.addConnection(
+          this.connectionMode.sourceBlock.id,
+          this.connectionMode.sourceInterface.id,
+          block.id,
+          intf.id
+        );
+        
+        // Reset visual feedback
+        document.querySelectorAll('.port').forEach(port => {
+          port.style.fill = '';
+          port.style.stroke = '';
+          port.style.strokeWidth = '';
+        });
+        
+      } else {
+        debugLog('Cannot connect port to itself');
+      }
+      
+      // Exit connection mode
+      this.connectionMode = null;
+    }
+  }
+  
+  addConnection(sourceBlockId, sourceInterfaceId, targetBlockId, targetInterfaceId) {
+    debugLog('Adding connection between blocks');
+    
+    const connection = {
+      id: this.generateId(),
+      source: {
+        blockId: sourceBlockId,
+        interfaceId: sourceInterfaceId
+      },
+      target: {
+        blockId: targetBlockId,
+        interfaceId: targetInterfaceId
+      }
+    };
+    
+    this.diagram.connections.push(connection);
+    this.renderConnection(connection);
+    debugLog('Connection added successfully');
+  }
+  
+  renderConnection(connection) {
+    // Find source and target blocks and interfaces
+    const sourceBlock = this.diagram.blocks.find(b => b.id === connection.source.blockId);
+    const targetBlock = this.diagram.blocks.find(b => b.id === connection.target.blockId);
+    
+    if (!sourceBlock || !targetBlock) {
+      debugLog('ERROR: Could not find blocks for connection');
+      return;
+    }
+    
+    const sourceIntf = sourceBlock.interfaces.find(i => i.id === connection.source.interfaceId);
+    const targetIntf = targetBlock.interfaces.find(i => i.id === connection.target.interfaceId);
+    
+    if (!sourceIntf || !targetIntf) {
+      debugLog('ERROR: Could not find interfaces for connection');
+      return;
+    }
+    
+    // Calculate port positions
+    const sourcePos = this.getPortPosition(sourceBlock, sourceIntf);
+    const targetPos = this.getPortPosition(targetBlock, targetIntf);
+    
+    // Create connection group
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'connection-group');
+    g.setAttribute('data-connection-id', connection.id);
+    
+    // Create curved path instead of straight line
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    
+    // Calculate control points for smooth curve
+    const dx = targetPos.x - sourcePos.x;
+    const midX = sourcePos.x + dx * 0.5;
+    
+    const pathData = `M ${sourcePos.x} ${sourcePos.y} Q ${midX} ${sourcePos.y} ${midX} ${(sourcePos.y + targetPos.y) / 2} Q ${midX} ${targetPos.y} ${targetPos.x} ${targetPos.y}`;
+    
+    path.setAttribute('d', pathData);
+    path.setAttribute('stroke', '#666');
+    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('class', 'connection-line');
+    
+    // Add arrowhead
+    const arrowSize = 6;
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const angle = Math.atan2(targetPos.y - sourcePos.y, targetPos.x - sourcePos.x);
+    
+    const arrowTip = {
+      x: targetPos.x - 4 * Math.cos(angle), // Offset from port center
+      y: targetPos.y - 4 * Math.sin(angle)
+    };
+    
+    const arrowBase1 = {
+      x: arrowTip.x - arrowSize * Math.cos(angle - Math.PI/6),
+      y: arrowTip.y - arrowSize * Math.sin(angle - Math.PI/6)
+    };
+    
+    const arrowBase2 = {
+      x: arrowTip.x - arrowSize * Math.cos(angle + Math.PI/6),
+      y: arrowTip.y - arrowSize * Math.sin(angle + Math.PI/6)
+    };
+    
+    arrow.setAttribute('points', `${arrowTip.x},${arrowTip.y} ${arrowBase1.x},${arrowBase1.y} ${arrowBase2.x},${arrowBase2.y}`);
+    arrow.setAttribute('fill', '#666');
+    arrow.setAttribute('class', 'connection-arrow');
+    
+    g.appendChild(path);
+    g.appendChild(arrow);
+    
+    // Add click handler for connection management
+    g.addEventListener('click', (e) => {
+      e.stopPropagation();
+      debugLog('Connection clicked, ID: ' + connection.id);
+      this.onConnectionClick(connection, e);
+    });
+    
+    // Add hover effects
+    g.addEventListener('mouseenter', () => {
+      path.setAttribute('stroke', '#ff6b6b');
+      path.setAttribute('stroke-width', '2');
+      arrow.setAttribute('fill', '#ff6b6b');
+    });
+    
+    g.addEventListener('mouseleave', () => {
+      path.setAttribute('stroke', '#666');
+      path.setAttribute('stroke-width', '1.5');
+      arrow.setAttribute('fill', '#666');
+    });
+    
+    this.connectionsLayer.appendChild(g);
+    debugLog('Connection rendered with improved styling');
+  }
+  
+  onConnectionClick(connection, event) {
+    debugLog('Connection management for ID: ' + connection.id);
+    
+    // Show connection options
+    if (confirm('Delete this connection?')) {
+      this.deleteConnection(connection.id);
+    }
+  }
+  
+  deleteConnection(connectionId) {
+    debugLog('Deleting connection: ' + connectionId);
+    
+    // Remove from diagram data
+    this.diagram.connections = this.diagram.connections.filter(c => c.id !== connectionId);
+    
+    // Remove from SVG
+    const connectionElement = this.connectionsLayer.querySelector(`[data-connection-id="${connectionId}"]`);
+    if (connectionElement) {
+      connectionElement.remove();
+      debugLog('Connection deleted successfully');
+    } else {
+      debugLog('ERROR: Connection element not found for deletion');
+    }
+  }
+  
+  getPortPosition(block, intf) {
+    const side = intf.port.side;
+    const portIndex = intf.port.index;
+    
+    let x, y;
+    if (side === 'left') {
+      x = block.x;
+      y = block.y + 20 + portIndex * 20;
+    } else if (side === 'right') {
+      x = block.x + block.width;
+      y = block.y + 20 + portIndex * 20;
+    } else if (side === 'top') {
+      x = block.x + 20 + portIndex * 20;
+      y = block.y;
+    } else { // bottom
+      x = block.x + 20 + portIndex * 20;
+      y = block.y + block.height;
+    }
+    
+    return { x, y };
   }
   
   onMouseDown(e) {
@@ -394,23 +846,38 @@ class SystemBlocksEditor {
   }
   
   promptAddBlock() {
+    debugLog("promptAddBlock called");
     const name = prompt("Enter block name:", "New Block");
+    debugLog("User entered name: " + name);
     if (name) {
-      this.addBlock(name, 100, 100);
+      debugLog("About to call addBlock with name: " + name);
+      try {
+        // Calculate position with offset to avoid overlap
+        const blockCount = this.diagram.blocks.length;
+        const offsetX = 100 + (blockCount * 30); // Move right by 30px for each block
+        const offsetY = 100 + (blockCount * 30); // Move down by 30px for each block
+        
+        const result = this.addBlock(name, offsetX, offsetY);
+        debugLog("addBlock returned: " + (result ? "success" : "failed"));
+      } catch (e) {
+        debugLog("ERROR in addBlock: " + e.message);
+      }
+    } else {
+      debugLog("User cancelled or entered empty name");
     }
   }
   
   toggleSnapToGrid() {
-    this.snapToGrid = !this.snapToGrid;
+    this.snapToGridEnabled = !this.snapToGridEnabled;
     const btn = document.getElementById('btn-snap-grid');
-    if (this.snapToGrid) {
+    if (this.snapToGridEnabled) {
       btn.classList.add('active');
       btn.textContent = 'Snap to Grid';
     } else {
       btn.classList.remove('active');
       btn.textContent = 'Snap Off';
     }
-    console.log(`Snap to grid: ${this.snapToGrid ? 'ON' : 'OFF'}`);
+    console.log(`Snap to grid: ${this.snapToGridEnabled ? 'ON' : 'OFF'}`);
   }
   
   linkSelectedBlockToCAD() {
@@ -1464,7 +1931,27 @@ class SystemBlocksEditor {
 // Initialize the editor when the DOM is loaded
 let editor;
 document.addEventListener('DOMContentLoaded', () => {
-  editor = new SystemBlocksEditor();
+  debugLog('DOM loaded, creating editor...');
+  console.log('DOM loaded, creating editor...');
+  try {
+    debugLog('About to create SystemBlocksEditor...');
+    editor = new SystemBlocksEditor();
+    debugLog('Editor created successfully!');
+    console.log('Editor created successfully:', editor);
+    
+    // Test button click
+    setTimeout(() => {
+      const addButton = document.getElementById('btn-add-block');
+      if (addButton) {
+        console.log('Add button found:', addButton);
+      } else {
+        console.log('Add button NOT found!');
+      }
+    }, 1000);
+    
+  } catch (error) {
+    console.error('Error creating editor:', error);
+  }
 });
 
 // Global function for Python to call
