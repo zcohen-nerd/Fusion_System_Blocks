@@ -10,7 +10,7 @@ Keep commits **small and incremental** (one feature or fix at a time).
 - [x] Implement basic **node editor** in `palette.html` / `palette.js`
   - [x] SVG or Canvas-based blocks
   - [x] Pan/zoom
-  - [ ] Snap-to-grid
+  - [x] Snap-to-grid
   - [x] Draggable blocks with named ports
 - [x] Add **New / Save / Load** buttons in the palette
   - [x] `New`: clears in-memory diagram
