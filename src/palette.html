@@ -148,6 +148,32 @@
       z-index: 100;
     }
     
+    /* Tooltip Styles */
+    .tooltip {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: system-ui, sans-serif;
+      pointer-events: none;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      max-width: 300px;
+      word-wrap: break-word;
+    }
+    
+    .tooltip::before {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border: 5px solid transparent;
+      border-top-color: rgba(0, 0, 0, 0.9);
+    }
+    
     .status-legend h4 {
       margin: 0 0 6px 0;
       font-size: 12px;
@@ -222,6 +248,69 @@
       font-size: 10px;
       line-height: 1.3;
     }
+    
+    /* Search and Filter Styles */
+    .search-container {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin: 0 5px;
+    }
+    
+    .search-input {
+      padding: 4px 8px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: 12px;
+      width: 120px;
+    }
+    
+    .search-input:focus {
+      outline: none;
+      border-color: #0066cc;
+      box-shadow: 0 0 3px rgba(0,102,204,0.3);
+    }
+    
+    .filter-btn {
+      padding: 4px 8px;
+      border: 1px solid #ccc;
+      background: white;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    
+    .filter-btn.active {
+      background: #0066cc;
+      color: white;
+      border-color: #0066cc;
+    }
+    
+    .filter-btn:hover {
+      background: #f0f0f0;
+    }
+    
+    .filter-btn.active:hover {
+      background: #0052a3;
+    }
+    
+    .search-results-info {
+      font-size: 11px;
+      color: #666;
+      margin-left: 5px;
+    }
+    
+    /* Block highlighting for search */
+    .block-group.search-highlight .block {
+      stroke: #ff6600 !important;
+      stroke-width: 3px !important;
+      filter: drop-shadow(0 0 5px rgba(255,102,0,0.5));
+    }
+    
+    .block-group.search-dimmed {
+      opacity: 0.3;
+    }
   </style>
 </head>
 <body>
@@ -232,11 +321,24 @@
       <button id="btn-save">Save</button>
       <button id="btn-load">Load</button>
       <div class="separator"></div>
+      <!-- Undo/Redo -->
+      <button id="btn-undo" class="context-btn" disabled title="Undo (Ctrl+Z)">↶ Undo</button>
+      <button id="btn-redo" class="context-btn" disabled title="Redo (Ctrl+Y)">↷ Redo</button>
+      <div class="separator"></div>
       <!-- Hierarchy Navigation -->
       <button id="btn-go-up" class="context-btn" disabled title="Go to Parent Diagram">↑ Up</button>
       <span id="breadcrumb-path" style="margin: 0 10px; font-size: 12px; color: #666;">Root</span>
       <button id="btn-drill-down" class="context-btn" disabled title="Open Child Diagram">↓ Drill Down</button>
       <button id="btn-create-child" class="context-btn" disabled title="Create Child Diagram">+ Child</button>
+      <div class="separator"></div>
+      <!-- Search and Filter -->
+      <div class="search-container">
+        <input type="text" id="search-input" class="search-input" placeholder="Search blocks..." title="Search by name, type, or status (Ctrl+F)">
+        <button id="filter-all" class="filter-btn active" title="Show all blocks">All</button>
+        <button id="filter-placeholder" class="filter-btn" title="Show only Placeholder blocks">Placeholder</button>
+        <button id="filter-implemented" class="filter-btn" title="Show only Implemented blocks">Implemented</button>
+        <span id="search-results" class="search-results-info"></span>
+      </div>
       <div class="separator"></div>
       <button id="btn-add-block">Add Block</button>
       <button id="btn-snap-grid" class="toggle-btn active">Snap to Grid</button>
@@ -343,6 +445,13 @@
   <div id="dialog-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
                                    background: rgba(0,0,0,0.5); z-index: 999;"></div>
   
-  <script src="palette.js"></script>
+  <script>
+    // Visual debug function
+    function debugLog(message) {
+      // Debug logging disabled for clean interface
+      // console.log(message);
+    }
+  </script>
+  <script src="./palette.js"></script>
 </body>
 </html>

@@ -1,11 +1,12 @@
 """Test hierarchy functionality for Fusion System Blocks."""
+
 import pytest
 import sys
 import os
 import pathlib
 
 # Add src to path
-src_path = pathlib.Path(__file__).parent.parent / 'src'
+src_path = pathlib.Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
 import diagram_data
@@ -18,10 +19,10 @@ class TestHierarchyFunctions:
         """Test creating a child diagram for a block."""
         # Create parent block
         parent_block = diagram_data.create_block("Power System", 100, 100, "PowerSystem", "Planned")
-        
+
         # Create child diagram
         child_diagram = diagram_data.create_child_diagram(parent_block)
-        
+
         # Verify child diagram exists and is properly structured
         assert diagram_data.has_child_diagram(parent_block)
         assert child_diagram is not None
@@ -33,10 +34,10 @@ class TestHierarchyFunctions:
     def test_has_child_diagram(self):
         """Test checking if a block has a child diagram."""
         block = diagram_data.create_block("Test Block", 100, 100, "Generic", "Placeholder")
-        
+
         # Initially no child diagram
         assert not diagram_data.has_child_diagram(block)
-        
+
         # Add child diagram
         diagram_data.create_child_diagram(block)
         assert diagram_data.has_child_diagram(block)
@@ -44,23 +45,25 @@ class TestHierarchyFunctions:
     def test_get_child_diagram(self):
         """Test getting child diagram from a block."""
         block = diagram_data.create_block("Test Block", 100, 100, "Generic", "Placeholder")
-        
+
         # Initially no child diagram
         assert diagram_data.get_child_diagram(block) is None
-        
+
         # Add child diagram
         child = diagram_data.create_child_diagram(block)
         retrieved_child = diagram_data.get_child_diagram(block)
-        
+
         assert retrieved_child is not None
         assert retrieved_child is child
 
     def test_validate_hierarchy_interfaces_empty(self):
         """Test interface validation with no child diagram."""
         block = diagram_data.create_block("Test Block", 100, 100, "Generic", "Placeholder")
-        interface = diagram_data.create_interface("Test Interface", "electrical", "output", "right", 0)
+        interface = diagram_data.create_interface(
+            "Test Interface", "electrical", "output", "right", 0
+        )
         block["interfaces"].append(interface)
-        
+
         # No child diagram - validation should pass
         is_valid, errors = diagram_data.validate_hierarchy_interfaces(block)
         assert is_valid
@@ -70,17 +73,21 @@ class TestHierarchyFunctions:
         """Test interface validation with matching child interfaces."""
         # Create parent block with power output interface
         parent_block = diagram_data.create_block("Power System", 100, 100, "PowerSystem", "Planned")
-        parent_interface = diagram_data.create_interface("3.3V Output", "power", "output", "right", 0)
+        parent_interface = diagram_data.create_interface(
+            "3.3V Output", "power", "output", "right", 0
+        )
         parent_block["interfaces"].append(parent_interface)
-        
+
         # Create child diagram with matching power input
         child_diagram = diagram_data.create_child_diagram(parent_block)
-        child_block = diagram_data.create_block("Regulator", 150, 150, "VoltageRegulator", "Planned")
+        child_block = diagram_data.create_block(
+            "Regulator", 150, 150, "VoltageRegulator", "Planned"
+        )
         child_interface = diagram_data.create_interface("3.3V Input", "power", "input", "left", 0)
         child_block["interfaces"].append(child_interface)
-        
+
         diagram_data.add_block_to_diagram(child_diagram, child_block)
-        
+
         # Validation should pass (opposite directions match)
         is_valid, errors = diagram_data.validate_hierarchy_interfaces(parent_block)
         assert is_valid
@@ -90,17 +97,19 @@ class TestHierarchyFunctions:
         """Test interface validation with missing child interfaces."""
         # Create parent block with power output interface
         parent_block = diagram_data.create_block("Power System", 100, 100, "PowerSystem", "Planned")
-        parent_interface = diagram_data.create_interface("3.3V Output", "power", "output", "right", 0)
+        parent_interface = diagram_data.create_interface(
+            "3.3V Output", "power", "output", "right", 0
+        )
         parent_block["interfaces"].append(parent_interface)
-        
+
         # Create child diagram with no matching interface
         child_diagram = diagram_data.create_child_diagram(parent_block)
         child_block = diagram_data.create_block("LED", 150, 150, "LED", "Planned")
         child_interface = diagram_data.create_interface("Data Input", "data", "input", "left", 0)
         child_block["interfaces"].append(child_interface)
-        
+
         diagram_data.add_block_to_diagram(child_diagram, child_block)
-        
+
         # Validation should fail
         is_valid, errors = diagram_data.validate_hierarchy_interfaces(parent_block)
         assert not is_valid
@@ -113,7 +122,7 @@ class TestHierarchyFunctions:
         block = diagram_data.create_block("Simple Block", 100, 100, "Generic", "Planned")
         # Add attributes to reach planned status
         block["attributes"]["voltage"] = "3.3V"
-        
+
         # Should use normal status computation
         status = diagram_data.compute_hierarchical_status(block)
         assert status == "Planned"
@@ -122,7 +131,7 @@ class TestHierarchyFunctions:
         """Test status computation for block with empty child diagram."""
         block = diagram_data.create_block("Parent Block", 100, 100, "Generic", "Planned")
         diagram_data.create_child_diagram(block)
-        
+
         # Empty child diagram should result in Placeholder status
         status = diagram_data.compute_hierarchical_status(block)
         assert status == "Placeholder"
@@ -133,12 +142,12 @@ class TestHierarchyFunctions:
         parent_block = diagram_data.create_block("System", 100, 100, "System", "Implemented")
         parent_block["attributes"]["voltage"] = "12V"
         parent_block["links"] = [{"target": "cad", "docId": "test"}]
-        
+
         # Create child diagram with placeholder blocks
         child_diagram = diagram_data.create_child_diagram(parent_block)
         child_block = diagram_data.create_block("Child", 150, 150, "Generic", "Placeholder")
         diagram_data.add_block_to_diagram(child_diagram, child_block)
-        
+
         # Parent status should be limited by child
         status = diagram_data.compute_hierarchical_status(parent_block)
         assert status in ["Placeholder", "Planned"]  # Cannot exceed child level
@@ -148,12 +157,12 @@ class TestHierarchyFunctions:
         diagram = diagram_data.create_empty_diagram()
         block1 = diagram_data.create_block("Block 1", 100, 100, "Generic", "Placeholder")
         block2 = diagram_data.create_block("Block 2", 200, 100, "Generic", "Placeholder")
-        
+
         diagram_data.add_block_to_diagram(diagram, block1)
         diagram_data.add_block_to_diagram(diagram, block2)
-        
+
         all_blocks = diagram_data.get_all_blocks_recursive(diagram)
-        
+
         assert len(all_blocks) == 2
         assert block1 in all_blocks
         assert block2 in all_blocks
@@ -164,17 +173,17 @@ class TestHierarchyFunctions:
         root_diagram = diagram_data.create_empty_diagram()
         parent_block = diagram_data.create_block("Parent", 100, 100, "System", "Placeholder")
         diagram_data.add_block_to_diagram(root_diagram, parent_block)
-        
+
         # Create child diagram
         child_diagram = diagram_data.create_child_diagram(parent_block)
         child_block1 = diagram_data.create_block("Child 1", 150, 150, "Generic", "Placeholder")
         child_block2 = diagram_data.create_block("Child 2", 250, 150, "Generic", "Placeholder")
         diagram_data.add_block_to_diagram(child_diagram, child_block1)
         diagram_data.add_block_to_diagram(child_diagram, child_block2)
-        
+
         # Get all blocks recursively
         all_blocks = diagram_data.get_all_blocks_recursive(root_diagram)
-        
+
         assert len(all_blocks) == 3  # Parent + 2 children
         assert parent_block in all_blocks
         assert child_block1 in all_blocks
@@ -186,20 +195,20 @@ class TestHierarchyFunctions:
         root_diagram = diagram_data.create_empty_diagram()
         level1_block = diagram_data.create_block("Level 1", 100, 100, "System", "Placeholder")
         diagram_data.add_block_to_diagram(root_diagram, level1_block)
-        
+
         # Create level 2
         level2_diagram = diagram_data.create_child_diagram(level1_block)
         level2_block = diagram_data.create_block("Level 2", 150, 150, "Subsystem", "Placeholder")
         diagram_data.add_block_to_diagram(level2_diagram, level2_block)
-        
+
         # Create level 3
         level3_diagram = diagram_data.create_child_diagram(level2_block)
         level3_block = diagram_data.create_block("Level 3", 200, 200, "Component", "Placeholder")
         diagram_data.add_block_to_diagram(level3_diagram, level3_block)
-        
+
         # Get all blocks recursively
         all_blocks = diagram_data.get_all_blocks_recursive(root_diagram)
-        
+
         assert len(all_blocks) == 3
         assert level1_block in all_blocks
         assert level2_block in all_blocks
@@ -210,9 +219,9 @@ class TestHierarchyFunctions:
         diagram = diagram_data.create_empty_diagram()
         block = diagram_data.create_block("Target Block", 100, 100, "Generic", "Placeholder")
         diagram_data.add_block_to_diagram(diagram, block)
-        
+
         path = diagram_data.find_block_path(diagram, block["id"])
-        
+
         assert path is not None
         assert len(path) == 1
         assert path[0] == block["id"]
@@ -223,14 +232,14 @@ class TestHierarchyFunctions:
         root_diagram = diagram_data.create_empty_diagram()
         parent_block = diagram_data.create_block("Parent", 100, 100, "System", "Placeholder")
         diagram_data.add_block_to_diagram(root_diagram, parent_block)
-        
+
         # Create child diagram
         child_diagram = diagram_data.create_child_diagram(parent_block)
         target_block = diagram_data.create_block("Target", 150, 150, "Generic", "Placeholder")
         diagram_data.add_block_to_diagram(child_diagram, target_block)
-        
+
         path = diagram_data.find_block_path(root_diagram, target_block["id"])
-        
+
         assert path is not None
         assert len(path) == 2
         assert path[0] == parent_block["id"]
@@ -241,9 +250,9 @@ class TestHierarchyFunctions:
         diagram = diagram_data.create_empty_diagram()
         block = diagram_data.create_block("Block", 100, 100, "Generic", "Placeholder")
         diagram_data.add_block_to_diagram(diagram, block)
-        
+
         path = diagram_data.find_block_path(diagram, "non-existent-id")
-        
+
         assert path is None
 
     def test_schema_validation_with_child_diagram(self):
@@ -254,20 +263,22 @@ class TestHierarchyFunctions:
         parent_block["attributes"]["voltage"] = "12V"  # Add attributes for planned status
         interface = diagram_data.create_interface("Power Out", "power", "output", "right", 0)
         parent_block["interfaces"].append(interface)
-        
+
         # Add child diagram
         child_diagram = diagram_data.create_child_diagram(parent_block)
-        child_block = diagram_data.create_block("Child Component", 150, 150, "Component", "Placeholder")
+        child_block = diagram_data.create_block(
+            "Child Component", 150, 150, "Component", "Placeholder"
+        )
         child_interface = diagram_data.create_interface("Power In", "power", "input", "left", 0)
         child_block["interfaces"].append(child_interface)
         diagram_data.add_block_to_diagram(child_diagram, child_block)
-        
+
         diagram_data.add_block_to_diagram(root_diagram, parent_block)
-        
+
         # First test that child diagram validates on its own
         child_valid, child_error = diagram_data.validate_diagram(child_diagram)
         assert child_valid, f"Child diagram validation failed: {child_error}"
-        
+
         # Then test root diagram (may need to skip full schema validation if $ref doesn't work)
         # For now, just test that the structure is correct
         assert "childDiagram" in parent_block
@@ -279,31 +290,30 @@ class TestHierarchyFunctions:
         """Test that hierarchy doesn't break existing functionality."""
         # Create a diagram as before
         diagram = diagram_data.create_empty_diagram()
-        
+
         # Add blocks
         block1 = diagram_data.create_block("Block 1", 100, 100, "Generic", "Placeholder")
         block2 = diagram_data.create_block("Block 2", 300, 100, "Generic", "Placeholder")
-        
+
         # Add interfaces
         interface1 = diagram_data.create_interface("Output", "data", "output", "right", 0)
         interface2 = diagram_data.create_interface("Input", "data", "input", "left", 0)
         block1["interfaces"].append(interface1)
         block2["interfaces"].append(interface2)
-        
+
         diagram_data.add_block_to_diagram(diagram, block1)
         diagram_data.add_block_to_diagram(diagram, block2)
-        
+
         # Add connection
         connection = diagram_data.create_connection(
-            block1["id"], block2["id"], "data",
-            interface1["id"], interface2["id"]
+            block1["id"], block2["id"], "data", interface1["id"], interface2["id"]
         )
         diagram_data.add_connection_to_diagram(diagram, connection)
-        
+
         # Validate everything still works
         is_valid, error = diagram_data.validate_diagram(diagram)
         assert is_valid
-        
+
         # Status computation still works
         status1 = diagram_data.compute_hierarchical_status(block1)
         status2 = diagram_data.compute_hierarchical_status(block2)
