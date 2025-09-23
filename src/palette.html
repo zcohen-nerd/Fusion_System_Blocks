@@ -42,6 +42,24 @@
       background: #0052a3;
     }
     
+    .toolbar .separator {
+      width: 1px;
+      height: 20px;
+      background: #ccc;
+      margin: 0 4px;
+    }
+    
+    .toolbar button.context-btn:disabled {
+      background: #f5f5f5;
+      color: #999;
+      cursor: not-allowed;
+    }
+    
+    .toolbar button.context-btn:not(:disabled):hover {
+      background: #e6f3ff;
+      border-color: #0066cc;
+    }
+    
     #canvas-container { 
       height: calc(100% - 60px); 
       position: relative;
@@ -114,6 +132,9 @@
       <button id="btn-load">Load</button>
       <button id="btn-add-block">Add Block</button>
       <button id="btn-snap-grid" class="toggle-btn active">Snap to Grid</button>
+      <div class="separator"></div>
+      <button id="btn-link-cad" class="context-btn" disabled>Link to CAD</button>
+      <button id="btn-link-ecad" class="context-btn" disabled>Link to ECAD</button>
     </div>
   </header>
   

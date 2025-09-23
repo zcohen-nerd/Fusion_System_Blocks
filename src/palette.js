@@ -62,6 +62,8 @@ class SystemBlocksEditor {
     document.getElementById('btn-load').addEventListener('click', () => this.loadDiagram());
     document.getElementById('btn-add-block').addEventListener('click', () => this.promptAddBlock());
     document.getElementById('btn-snap-grid').addEventListener('click', () => this.toggleSnapToGrid());
+    document.getElementById('btn-link-cad').addEventListener('click', () => this.linkSelectedBlockToCAD());
+    document.getElementById('btn-link-ecad').addEventListener('click', () => this.linkSelectedBlockToECAD());
     
     // SVG pan/zoom
     this.svg.addEventListener('mousedown', (e) => this.onMouseDown(e));
@@ -214,7 +216,16 @@ class SystemBlocksEditor {
   onMouseUp(e) {
     this.isPanning = false;
     this.isDragging = false;
-    this.selectedBlock = null;
+    
+    // Clear selection if clicking on empty space
+    if (e.target === this.svg || e.target.closest('.block-group') === null) {
+      this.selectedBlock = null;
+      this.updateContextButtons(null);
+      document.querySelectorAll('.block.selected').forEach(el => {
+        el.classList.remove('selected');
+      });
+    }
+    
     this.svg.style.cursor = 'grab';
   }
   
@@ -245,6 +256,22 @@ class SystemBlocksEditor {
     const blockElement = document.querySelector(`[data-block-id="${block.id}"] .block`);
     if (blockElement) {
       blockElement.classList.add('selected');
+    }
+    
+    // Update context buttons
+    this.updateContextButtons(block);
+  }
+  
+  updateContextButtons(selectedBlock) {
+    const cadBtn = document.getElementById('btn-link-cad');
+    const ecadBtn = document.getElementById('btn-link-ecad');
+    
+    if (selectedBlock) {
+      cadBtn.disabled = false;
+      ecadBtn.disabled = false;
+    } else {
+      cadBtn.disabled = true;
+      ecadBtn.disabled = true;
     }
   }
   
@@ -290,6 +317,116 @@ class SystemBlocksEditor {
       btn.textContent = 'Snap Off';
     }
     console.log(`Snap to grid: ${this.snapToGrid ? 'ON' : 'OFF'}`);
+  }
+  
+  linkSelectedBlockToCAD() {
+    if (!this.selectedBlock) {
+      console.warn("No block selected for CAD linking");
+      return;
+    }
+    
+    console.log(`Linking block "${this.selectedBlock.name}" to CAD...`);
+    
+    // Send message to Python to start CAD selection
+    if (window.adsk && window.adsk.fusion && window.adsk.fusion.palettes) {
+      const message = JSON.stringify({
+        action: 'link-to-cad',
+        data: {
+          blockId: this.selectedBlock.id,
+          blockName: this.selectedBlock.name
+        }
+      });
+      window.adsk.fusion.palettes.sendInfoToParent('palette-message', message);
+    } else {
+      console.warn("Fusion palette messaging not available - simulating CAD link");
+      this.simulateCADLink(this.selectedBlock);
+    }
+  }
+  
+  linkSelectedBlockToECAD() {
+    if (!this.selectedBlock) {
+      console.warn("No block selected for ECAD linking");
+      return;
+    }
+    
+    console.log(`Linking block "${this.selectedBlock.name}" to ECAD...`);
+    
+    // For ECAD, we can prompt for device and footprint directly
+    const device = prompt("Enter device name:", this.selectedBlock.name);
+    const footprint = prompt("Enter footprint:", "");
+    
+    if (device) {
+      this.addECADLink(this.selectedBlock, device, footprint);
+    }
+  }
+  
+  simulateCADLink(block) {
+    // For testing without Fusion, create a mock CAD link
+    const mockOccToken = `mock_occ_${Date.now()}`;
+    const mockDocId = `mock_doc_${Date.now()}`;
+    
+    this.addCADLink(block, mockOccToken, mockDocId);
+    console.log("Mock CAD link created");
+  }
+  
+  addCADLink(block, occToken, docId, docPath = "") {
+    const cadLink = {
+      target: "cad",
+      occToken: occToken,
+      docId: docId,
+      docPath: docPath
+    };
+    
+    // Remove existing CAD links
+    block.links = block.links.filter(link => link.target !== "cad");
+    
+    // Add new CAD link
+    block.links.push(cadLink);
+    
+    console.log(`Added CAD link to block "${block.name}":`, cadLink);
+    this.updateBlockVisuals(block);
+  }
+  
+  addECADLink(block, device, footprint) {
+    const ecadLink = {
+      target: "ecad", 
+      device: device,
+      footprint: footprint || ""
+    };
+    
+    // Remove existing ECAD links
+    block.links = block.links.filter(link => link.target !== "ecad");
+    
+    // Add new ECAD link
+    block.links.push(ecadLink);
+    
+    console.log(`Added ECAD link to block "${block.name}":`, ecadLink);
+    this.updateBlockVisuals(block);
+  }
+  
+  updateBlockVisuals(block) {
+    // Add visual indicators for linked blocks (small badge/icon)
+    const blockGroup = document.querySelector(`[data-block-id="${block.id}"]`);
+    if (!blockGroup) return;
+    
+    // Remove existing link indicators
+    blockGroup.querySelectorAll('.link-indicator').forEach(el => el.remove());
+    
+    // Add link indicators
+    const hasCAD = block.links.some(link => link.target === "cad");
+    const hasECAD = block.links.some(link => link.target === "ecad");
+    
+    if (hasCAD || hasECAD) {
+      const indicator = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      indicator.setAttribute('class', 'link-indicator');
+      indicator.setAttribute('cx', block.width - 8);
+      indicator.setAttribute('cy', 8);
+      indicator.setAttribute('r', 4);
+      indicator.setAttribute('fill', hasCAD ? '#00aa00' : '#0066cc');
+      indicator.setAttribute('stroke', '#fff');
+      indicator.setAttribute('stroke-width', 1);
+      blockGroup.appendChild(indicator);
+    }
   }
   
   newDiagram() {
@@ -351,12 +488,25 @@ class SystemBlocksEditor {
     }
   }
   
+  // Method to receive CAD link data from Python
+  receiveCADLink(blockId, occToken, docId, docPath) {
+    const block = this.diagram.blocks.find(b => b.id === blockId);
+    if (block) {
+      this.addCADLink(block, occToken, docId, docPath);
+      console.log("CAD link received from Python");
+    } else {
+      console.error("Block not found for CAD linking:", blockId);
+    }
+  }
+  
   renderDiagram() {
     this.blocksLayer.innerHTML = '';
     this.connectionsLayer.innerHTML = '';
     
     this.diagram.blocks.forEach(block => {
       this.renderBlock(block);
+      // Update visuals to show any existing links
+      this.updateBlockVisuals(block);
     });
     
     // TODO: Render connections
@@ -373,5 +523,12 @@ document.addEventListener('DOMContentLoaded', () => {
 function loadDiagramFromPython(jsonData) {
   if (editor) {
     editor.receiveDiagramData(jsonData);
+  }
+}
+
+// Global function for Python to call when CAD selection is complete
+function receiveCADLinkFromPython(blockId, occToken, docId, docPath) {
+  if (editor) {
+    editor.receiveCADLink(blockId, occToken, docId, docPath);
   }
 }

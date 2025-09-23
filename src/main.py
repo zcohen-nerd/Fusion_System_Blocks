@@ -63,6 +63,99 @@ def load_diagram_json():
         return None
 
 
+def start_cad_selection(block_id, block_name):
+    """Start CAD component selection for linking to a block."""
+    try:
+        # Create a selection command
+        selection_cmd = UI.commandDefinitions.itemById('selectCADForBlock')
+        if not selection_cmd:
+            selection_cmd = UI.commandDefinitions.addButtonDefinition(
+                'selectCADForBlock',
+                f'Select CAD for "{block_name}"',
+                f'Select a Fusion occurrence to link to block "{block_name}"'
+            )
+        
+        # Set up command handler
+        handler = CADSelectionHandler(block_id, block_name)
+        selection_cmd.commandCreated.add(handler)
+        _handlers.append(handler)
+        
+        # Execute the command
+        selection_cmd.execute()
+        
+    except Exception as e:
+        UI.messageBox(f'CAD selection failed: {str(e)}')
+
+
+class CADSelectionHandler(adsk.core.CommandCreatedEventHandler):
+    """Handle CAD component selection for linking."""
+    
+    def __init__(self, block_id, block_name):
+        super().__init__()
+        self.block_id = block_id
+        self.block_name = block_name
+    
+    def notify(self, args):
+        try:
+            cmd = args.command
+            cmd.isRepeatable = False
+            
+            # Set up selection input
+            inputs = cmd.commandInputs
+            selection_input = inputs.addSelectionInput(
+                'cadSelection', 
+                'Select CAD Component',
+                f'Select a component or occurrence to link to "{self.block_name}"'
+            )
+            selection_input.addSelectionFilter('Occurrences')
+            selection_input.setSelectionLimits(1, 1)
+            
+            # Set up event handlers
+            execute_handler = CADSelectionExecuteHandler(self.block_id)
+            cmd.execute.add(execute_handler)
+            _handlers.append(execute_handler)
+            
+        except Exception as e:
+            UI.messageBox(f'CAD selection setup failed: {str(e)}')
+
+
+class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
+    """Handle execution of CAD selection command."""
+    
+    def __init__(self, block_id):
+        super().__init__()
+        self.block_id = block_id
+    
+    def notify(self, args):
+        try:
+            cmd = args.command
+            inputs = cmd.commandInputs
+            selection_input = inputs.itemById('cadSelection')
+            
+            if selection_input.selectionCount > 0:
+                selected_entity = selection_input.selection(0).entity
+                
+                if hasattr(selected_entity, 'entityToken'):
+                    occ_token = selected_entity.entityToken
+                    design = adsk.fusion.Design.cast(APP.activeProduct)
+                    doc_id = design.parentDocument.name if design and design.parentDocument else ""
+                    
+                    # Send CAD link data back to palette
+                    palette = UI.palettes.itemById('sysBlocksPalette')
+                    if palette:
+                        script = f"receiveCADLinkFromPython('{self.block_id}', '{occ_token}', '{doc_id}', '');"
+                        palette.sendInfoToHTML('cad-link-response', script)
+                    
+                    UI.messageBox(f'CAD component linked successfully')
+                else:
+                    UI.messageBox('Selected entity does not have a valid token')
+            else:
+                UI.messageBox('No component selected')
+                
+        except Exception as e:
+            UI.messageBox(f'CAD selection execution failed: {str(e)}')
+
+
 class PaletteMessageHandler(adsk.core.HTMLEventHandler):
     """Handle messages from the palette."""
 
@@ -83,6 +176,10 @@ class PaletteMessageHandler(adsk.core.HTMLEventHandler):
                     if palette:
                         script = f"loadDiagramFromPython({json.dumps(json_data)});"
                         palette.sendInfoToHTML('load-response', script)
+            elif action == 'link-to-cad':
+                block_id = payload.get('blockId', '')
+                block_name = payload.get('blockName', '')
+                start_cad_selection(block_id, block_name)
         except Exception as e:
             UI.messageBox(f'Message handler error: {str(e)}')
 
