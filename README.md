@@ -221,7 +221,7 @@ This project demonstrates the power of **AI-assisted development** - built using
 
 ## 📄 **License**
 
-MIT License - see [LICENSE](LICENSE) file for details.
+See [LICENSE](LICENSE) file for details.
 
 ---
 
