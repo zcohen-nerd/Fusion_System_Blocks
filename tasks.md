@@ -198,9 +198,63 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ---
 
-## 📐 Milestone 12: Advanced Diagram Features
+## � Milestone 12: Enhanced CAD Linking System
 
-**Priority: MEDIUM** - Professional diagramming capabilities
+**Priority: HIGH** - Revolutionary living integration between block diagrams and Fusion 360
+
+- [ ] **Advanced Component Linking**
+  - [ ] Enhanced CAD link schema with component properties (material, mass, bounding box)
+  - [ ] Component status tracking (synchronized, modified, missing)
+  - [ ] Last modified timestamps and change detection
+  - [ ] Component thumbnail generation and caching
+  - [ ] Custom properties synchronization from CAD to blocks
+
+- [ ] **Bidirectional Synchronization**
+  - [ ] Event-driven component change detection in Fusion 360
+  - [ ] Auto-update block properties when CAD components change
+  - [ ] Conflict resolution UI for out-of-sync components
+  - [ ] Background sync with smart caching for performance
+  - [ ] Component modification notifications and sync prompts
+
+- [ ] **Live Component Status**
+  - [ ] Visual status indicators in block diagram (Green=Complete, Yellow=In-Progress, Red=Missing)
+  - [ ] Component completion percentage per block
+  - [ ] Assembly progress tracking and visual feedback
+  - [ ] Real-time constraint status monitoring
+  - [ ] Component health dashboard in palette
+
+---
+
+## 🎨 Milestone 13: Visual Integration & Living Documentation
+
+**Priority: HIGH** - Make block diagrams a core part of the design process
+
+- [ ] **3D Model Integration**
+  - [ ] Block diagram overlay system in Fusion 360 viewport
+  - [ ] Component highlighting: select block → highlight related 3D components
+  - [ ] System grouping visualization with color-coded boundaries
+  - [ ] Connection path visualization as 3D guides/routes
+  - [ ] Hover tooltips showing block information on 3D components
+
+- [ ] **Enhanced Block Visualization**
+  - [ ] Live 3D thumbnails embedded in blocks
+  - [ ] Component property display in block tooltips
+  - [ ] Real-time assembly progress bars on blocks
+  - [ ] Visual connection status indicators (routed, planned, missing)
+  - [ ] Dynamic block sizing based on component complexity
+
+- [ ] **Living Documentation Features**
+  - [ ] Auto-generated assembly sequence from block diagram
+  - [ ] Real-time BOM generation with CAD component integration
+  - [ ] Service manual generation with block-to-component mapping
+  - [ ] Change impact visualization (highlight affected blocks/components)
+  - [ ] Manufacturing progress tracking through block completion status
+
+---
+
+## �📐 Milestone 14: Advanced Diagram Features
+
+**Priority: MEDIUM** - Professional diagramming capabilities (moved from Milestone 12)
 
 - [ ] **Layout and Alignment**
   - [ ] Auto-layout algorithms for block arrangement
@@ -222,21 +276,22 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ---
 
-## 🔄 Milestone 13: Integration and Automation
+## 🤖 Milestone 15: AI-Powered Design Assistant
 
-**Priority: LOW** - Advanced workflow integration
+**Priority: LOW** - Intelligent design suggestions and automation
 
-- [ ] **CAD Integration Enhancements**
-  - [ ] Automatic component placement in 3D model
-  - [ ] PCB layout integration
-  - [ ] Assembly constraints from block connections
-  - [ ] BOM generation from block diagram
+- [ ] **Smart Component Suggestions**
+  - [ ] AI-powered component recommendations based on block type
+  - [ ] McMaster-Carr and manufacturer catalog integration
+  - [ ] Spatial constraint analysis for component placement
+  - [ ] Compatibility checking between suggested components
 
-- [ ] **External Tool Integration**
-  - [ ] Export to electrical CAD tools (KiCad, Altium)
-  - [ ] Integration with PLM systems
-  - [ ] Version control system integration
-  - [ ] Collaboration features
+- [ ] **Design Validation & Assistance**
+  - [ ] Real-time design rule checking with AI insights
+  - [ ] Placement conflict detection and resolution suggestions
+  - [ ] Cable routing suggestions and automatic assembly creation
+  - [ ] Heat dissipation and clearance analysis
+  - [ ] Assembly sequence optimization
 
 - [ ] **Automation Features**
   - [ ] Script-based diagram generation
@@ -246,21 +301,21 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ---
 
-## 📊 Milestone 14: Analytics and Reporting
+## 📊 Milestone 16: Analytics and Reporting
 
-**Priority: LOW** - Advanced project insights
+**Priority: LOW** - Advanced project insights (moved from Milestone 14)
 
 - [ ] **Advanced Reporting**
-  - [ ] Detailed component analysis
-  - [ ] Connection matrix reports
-  - [ ] Design complexity metrics
-  - [ ] Progress tracking dashboards
+  - [ ] Detailed component analysis with CAD integration
+  - [ ] Connection matrix reports with 3D routing analysis
+  - [ ] Design complexity metrics and assembly time estimation
+  - [ ] Progress tracking dashboards with real manufacturing status
 
 - [ ] **Data Export**
-  - [ ] Excel/CSV export capabilities
-  - [ ] PDF report generation
+  - [ ] Excel/CSV export capabilities with live CAD data
+  - [ ] PDF report generation with 3D component images
   - [ ] Integration with project management tools
-  - [ ] Custom report templates
+  - [ ] Custom report templates with CAD property binding
 
 ---
 
@@ -279,7 +334,8 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 **Next Priority:**
 - **Milestone 10**: Fusion 360 UI integration and native theme matching
-- **Milestone 12**: Advanced diagram features (auto-layout, annotations)
+- **Milestone 12**: Enhanced CAD Linking System - REVOLUTIONARY living integration!
+- **Milestone 13**: Visual Integration & Living Documentation - the game changer!
   - [x] Implemented: required links complete
   - [x] Verified: all validation rules pass
 - [x] Add visual feedback in palette:
@@ -372,7 +428,7 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ## Progress Summary
 
-**Completed Milestones:** 11/14  
+**Completed Milestones:** 11/15  
 **Test Coverage:** 80+ passing tests  
 **Current State:** Professional engineering block system with 32+ specialized components, advanced template system, and multi-domain integration. World-class component library rivals commercial engineering software.
 
@@ -382,4 +438,9 @@ Keep commits **small and incremental** (one feature or fix at a time).
 - ✅ Template creation wizard with intelligent automation
 - ✅ Successfully pushed to GitHub (37.57 KiB of new code)
 
-**Next Priority:** Milestone 10 (Fusion 360 UI Integration) - native theme matching and professional polish
+**REVOLUTIONARY PATH AHEAD:** 
+- **Milestone 12**: Enhanced CAD Linking - Living integration between blocks and 3D components
+- **Milestone 13**: Visual Integration - Block diagrams become core design tools, not just documentation
+- This will be the **FIRST** block diagram tool that's truly integrated with CAD modeling!
+
+**Next Priority:** Milestone 10 (Fusion 360 UI Integration) followed by game-changing CAD integration milestones
