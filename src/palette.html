@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <title>System Blocks</title>
-  <link rel="stylesheet" href="fusion-theme.css">
+  <link rel="stylesheet" href="fusion-theme.css?v=milestone10">
+  <link rel="stylesheet" href="fusion-icons.css?v=milestone10">
   <style>
     /* === FUSION 360 BASE STYLES === */
     html, body { 
@@ -15,38 +16,115 @@
       overflow: hidden;
     }
     
+    /* === MILESTONE 10: ENHANCED HEADER STYLING === */
     header { 
-      background: var(--fusion-bg-secondary);
+      background: var(--fusion-gradient-secondary);
       border-bottom: 1px solid var(--fusion-border-primary);
       padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: var(--fusion-shadow-light);
+      box-shadow: var(--fusion-shadow-panel);
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
     }
     
+    header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      pointer-events: none;
+    }
+    
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--fusion-spacing-sm);
+      font-weight: var(--fusion-font-weight-bold);
+      font-size: var(--fusion-font-size-large);
+      color: var(--fusion-text-primary);
+    }
+    
+    .header-logo::before {
+      content: '';
+      width: 24px;
+      height: 24px;
+      background: var(--fusion-gradient-active);
+      border-radius: var(--fusion-radius-small);
+      box-shadow: var(--fusion-shadow-button);
+    }
+    
+    /* === MILESTONE 10: ENHANCED TOOLBAR STYLING === */
     .toolbar {
       display: flex;
       gap: var(--fusion-spacing-sm);
       align-items: center;
+      padding: var(--fusion-spacing-xs);
+      background: var(--fusion-gradient-primary);
+      border-radius: var(--fusion-radius-medium);
+      box-shadow: var(--fusion-shadow-light);
+      backdrop-filter: blur(5px);
     }
     
     .toolbar button {
       padding: var(--fusion-spacing-xs) var(--fusion-spacing-md);
       border: 1px solid var(--fusion-button-border);
-      background: var(--fusion-button-bg);
+      background: var(--fusion-gradient-button);
       color: var(--fusion-text-primary);
-      border-radius: var(--fusion-radius-small);
+      border-radius: var(--fusion-radius-medium);
       cursor: pointer;
       font-size: var(--fusion-font-size-normal);
       font-family: var(--fusion-font-family);
-      transition: var(--fusion-transition);
+      font-weight: var(--fusion-font-weight-medium);
+      transition: all var(--fusion-transition) var(--fusion-ease-in-out);
       outline: none;
+      display: flex;
+      align-items: center;
+      gap: var(--fusion-spacing-xs);
+      box-shadow: var(--fusion-shadow-button);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .toolbar button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      transition: left var(--fusion-transition-slow) var(--fusion-ease-out);
     }
     
     .toolbar button:hover {
-      background: var(--fusion-button-hover);
+      background: var(--fusion-gradient-button-hover);
       border-color: var(--fusion-border-hover);
+      transform: translateY(-1px);
+      box-shadow: var(--fusion-shadow-button), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+    
+    .toolbar button:hover::before {
+      left: 100%;
+    }
+    
+    .toolbar button:active {
+      transform: translateY(0);
+      background: var(--fusion-gradient-active);
+      color: var(--fusion-text-inverse);
+    }
+    
+    .toolbar-separator {
+      width: 1px;
+      height: 20px;
+      background: var(--fusion-border-primary);
+      margin: 0 var(--fusion-spacing-xs);
+      opacity: 0.5;
     }
     
     .toolbar button.toggle-btn.active {
@@ -910,6 +988,51 @@
       margin-top: var(--fusion-spacing-lg) !important;
     }
 
+    /* === MILESTONE 10: ENHANCED SEARCH STYLING === */
+    .search-container {
+      display: flex;
+      align-items: center;
+      gap: var(--fusion-spacing-sm);
+      flex-wrap: wrap;
+    }
+    
+    .search-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    
+    .search-icon {
+      position: absolute;
+      left: var(--fusion-spacing-sm);
+      color: var(--fusion-text-secondary);
+      z-index: 1;
+    }
+    
+    .search-input {
+      padding-left: calc(var(--fusion-spacing-md) + 20px) !important;
+      min-width: 200px;
+    }
+    
+    .filter-buttons {
+      display: flex;
+      gap: var(--fusion-spacing-xs);
+      align-items: center;
+    }
+    
+    .filter-btn.active {
+      background: var(--fusion-gradient-active) !important;
+      color: var(--fusion-text-inverse) !important;
+      box-shadow: var(--fusion-shadow-glow) !important;
+    }
+    
+    .search-results-info {
+      font-size: var(--fusion-font-size-small);
+      color: var(--fusion-text-secondary);
+      margin-left: var(--fusion-spacing-sm);
+      font-style: italic;
+    }
+
     /* === FUSION 360 CONNECTION LINE COLORS === */
     .connection-power { stroke: var(--fusion-connection-power); fill: var(--fusion-connection-power); }
     .connection-data { stroke: var(--fusion-connection-data); fill: var(--fusion-connection-data); }
@@ -920,26 +1043,41 @@
 </head>
 <body>
   <header>
-    <strong>System Blocks Diagram</strong>
+    <div class="header-logo">
+      <span>System Blocks</span>
+    </div>
     <div class="toolbar">
-      <button id="btn-new">New</button>
-      <button id="btn-save">Save</button>
-      <button id="btn-load">Load</button>
-      <div class="separator"></div>
+      <button id="btn-new" class="fusion-button" title="Create New Diagram (Ctrl+N)">
+        <div class="fusion-icon icon-add"></div>
+        New
+      </button>
+      <button id="btn-save" class="fusion-button" title="Save Diagram (Ctrl+S)">
+        <svg class="fusion-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+        </svg>
+        Save
+      </button>
+      <button id="btn-load" class="fusion-button" title="Load Diagram (Ctrl+O)">
+        <svg class="fusion-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z"/>
+        </svg>
+        Load
+      </button>
+      <div class="toolbar-separator"></div>
       <!-- Undo/Redo -->
-      <button id="btn-undo" class="context-btn" disabled title="Undo (Ctrl+Z)">
-        <svg width="16" height="16" viewBox="0 0 12 12">
-          <path d="M2 6h8M6 2l-4 4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <button id="btn-undo" class="fusion-button" disabled title="Undo (Ctrl+Z)">
+        <svg class="fusion-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
         </svg>
         Undo
       </button>
-      <button id="btn-redo" class="context-btn" disabled title="Redo (Ctrl+Y)">
-        <svg width="16" height="16" viewBox="0 0 12 12">
-          <path d="M10 6H2M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <button id="btn-redo" class="fusion-button" disabled title="Redo (Ctrl+Y)">
+        <svg class="fusion-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/>
         </svg>
         Redo
       </button>
-      <div class="separator"></div>
+      <div class="toolbar-separator"></div>
       <!-- Hierarchy Navigation -->
       <button id="btn-go-up" class="context-btn" disabled title="Go to Parent Diagram">
         <svg width="16" height="16" viewBox="0 0 12 12">
@@ -963,13 +1101,31 @@
       <div class="separator"></div>
       <!-- Search and Filter -->
       <div class="search-container">
-        <input type="text" id="search-input" class="search-input" placeholder="Search blocks..." title="Search by name, type, or status (Ctrl+F)">
-        <button id="filter-all" class="filter-btn active" title="Show all blocks">All</button>
-        <button id="filter-placeholder" class="filter-btn" title="Show only Placeholder blocks">Placeholder</button>
-        <button id="filter-implemented" class="filter-btn" title="Show only Implemented blocks">Implemented</button>
+        <div class="search-input-wrapper">
+          <svg class="fusion-icon search-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+          <input type="text" id="search-input" class="fusion-input search-input" placeholder="Search blocks..." title="Search by name, type, or status (Ctrl+F)">
+        </div>
+        <div class="filter-buttons">
+          <button id="filter-all" class="fusion-button filter-btn active" title="Show all blocks">
+            <svg class="fusion-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            </svg>
+            All
+          </button>
+          <button id="filter-placeholder" class="fusion-button filter-btn" title="Show only Placeholder blocks">
+            <div class="fusion-icon icon-status-placeholder"></div>
+            Placeholder
+          </button>
+          <button id="filter-implemented" class="fusion-button filter-btn" title="Show only Implemented blocks">
+            <div class="fusion-icon icon-status-implemented"></div>
+            Implemented
+          </button>
+        </div>
         <span id="search-results" class="search-results-info"></span>
       </div>
-      <div class="separator"></div>
+      <div class="toolbar-separator"></div>
       <!-- Connection Type Selector -->
       <div class="connection-type-container">
         <label for="connection-type-select" class="fusion-label">Connection:</label>

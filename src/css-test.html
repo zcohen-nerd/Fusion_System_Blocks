@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>CSS Test - Milestone 10</title>
+  <link rel="stylesheet" href="fusion-theme.css?v=test123">
+  <link rel="stylesheet" href="fusion-icons.css?v=test123">
+  <style>
+    body {
+      font-family: var(--fusion-font-family);
+      background: var(--fusion-bg-primary);
+      color: var(--fusion-text-primary);
+      padding: 20px;
+    }
+    .test-container {
+      background: var(--fusion-gradient-secondary);
+      padding: 20px;
+      border-radius: var(--fusion-radius-medium);
+      border: 1px solid var(--fusion-border-primary);
+      box-shadow: var(--fusion-shadow-panel);
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .status {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .css-loaded { color: var(--fusion-status-success); }
+    .css-not-loaded { color: var(--fusion-status-error); }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>🎨 Milestone 10 CSS Test</h1>
+    <p>Testing if our professional CSS enhancements are loading...</p>
+    
+    <div id="css-test" class="status css-not-loaded">
+      ❌ CSS Not Loaded - Using browser defaults
+    </div>
+    
+    <div style="margin: 20px 0;">
+      <button class="fusion-button">Test Button</button>
+      <button class="fusion-button primary">Primary Button</button>
+    </div>
+    
+    <div style="margin: 20px 0;">
+      <div class="fusion-icon icon-electrical xl" style="background: #4fc3f7; width: 32px; height: 32px; display: inline-block; border-radius: 4px;"></div>
+      <div class="fusion-icon icon-mechanical xl" style="background: #81c784; width: 32px; height: 32px; display: inline-block; border-radius: 4px; margin-left: 10px;"></div>
+      <div class="fusion-icon icon-software xl" style="background: #ffb74d; width: 32px; height: 32px; display: inline-block; border-radius: 4px; margin-left: 10px;"></div>
+    </div>
+    
+    <p><strong>Expected:</strong> Dark theme, professional gradients, enhanced buttons with hover effects</p>
+  </div>
+
+  <script>
+    // Test if CSS custom properties are loaded
+    function testCSS() {
+      const testElement = document.createElement('div');
+      document.body.appendChild(testElement);
+      
+      const fusionBg = getComputedStyle(testElement).getPropertyValue('--fusion-bg-primary');
+      const statusElement = document.getElementById('css-test');
+      
+      if (fusionBg && fusionBg.trim() === '#2d2d30') {
+        statusElement.textContent = '✅ Professional CSS Loaded Successfully!';
+        statusElement.className = 'status css-loaded';
+      } else {
+        statusElement.innerHTML = `❌ CSS Variables Not Found<br><small>Got: "${fusionBg}" instead of "#2d2d30"</small>`;
+      }
+      
+      document.body.removeChild(testElement);
+    }
+    
+    // Test after page loads
+    window.addEventListener('load', testCSS);
+    
+    // Also test immediately
+    if (document.readyState === 'complete') {
+      testCSS();
+    }
+  </script>
+</body>
+</html>
