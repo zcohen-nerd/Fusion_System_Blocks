@@ -27,7 +27,6 @@ def create_empty_diagram() -> Dict[str, Any]:
         "schema": "system-blocks-v1",
         "blocks": [],
         "connections": [],
-        "metadata": {"created": "", "modified": "", "version": "1.0"},
     }
 
 
@@ -62,7 +61,7 @@ def create_interface(
         "kind": interface_type,  # Use 'kind' instead of 'type' to match tests
         "direction": direction,
         "port": {"side": side, "index": index},
-        "attributes": {},
+        "params": {},
     }
 
 
@@ -188,29 +187,29 @@ def validate_links(block: Dict[str, Any]) -> Tuple[bool, str]:
     links = block.get("links", [])
 
     for link in links:
-        link_type = link.get("type", "")
+        target = link.get("target", "")
 
-        if link_type == "CAD":
-            # CAD links must have occurrenceToken
-            if not link.get("occurrenceToken"):
+        if target == "cad":
+            # CAD links must have occToken
+            if not link.get("occToken"):
                 return (
                     False,
-                    f"CAD link missing occurrenceToken in block '{block.get('name', 'Unknown')}'",
+                    f"CAD link missing occToken in block '{block.get('name', 'Unknown')}'",
                 )
 
-        elif link_type == "ECAD":
+        elif target == "ecad":
             # ECAD links must have device
             if not link.get("device"):
                 return False, f"ECAD link missing device in block '{block.get('name', 'Unknown')}'"
 
-        elif link_type == "External":
-            # External links must have url
-            if not link.get("url"):
-                return False, f"External link missing url in block '{block.get('name', 'Unknown')}'"
+        elif target == "external":
+            # External links must have identifier
+            if not any(link.get(field) for field in ["device", "docPath", "docId"]):
+                return False, f"External link missing identifier in block '{block.get('name', 'Unknown')}'"
         else:
             return (
                 False,
-                f"Unknown link type '{link_type}' in block '{block.get('name', 'Unknown')}'",
+                f"Unknown link target '{target}' in block '{block.get('name', 'Unknown')}'",
             )
 
     return True, ""
@@ -239,8 +238,8 @@ def compute_block_status(block: Dict[str, Any]) -> str:
 
     # Check links
     links = block.get("links", [])
-    has_cad_link = any(link.get("type") == "CAD" for link in links)
-    has_ecad_link = any(link.get("type") == "ECAD" for link in links)
+    has_cad_link = any(link.get("target") == "cad" for link in links)
+    has_ecad_link = any(link.get("target") == "ecad" for link in links)
 
     # Check interfaces
     interfaces = block.get("interfaces", [])
