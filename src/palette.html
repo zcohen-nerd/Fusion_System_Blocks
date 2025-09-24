@@ -3,247 +3,749 @@
 <head>
   <meta charset="utf-8" />
   <title>System Blocks</title>
+  <link rel="stylesheet" href="fusion-theme.css">
   <style>
-    html, body { height:100%; margin:0; font-family: system-ui, sans-serif; }
+    /* === FUSION 360 BASE STYLES === */
+    html, body { 
+      height: 100%; 
+      margin: 0; 
+      font-family: var(--fusion-font-family);
+      background: var(--fusion-bg-primary);
+      color: var(--fusion-text-primary);
+      overflow: hidden;
+    }
     
     header { 
-      padding: 8px 12px; 
-      background: #f0f0f0; 
-      border-bottom: 1px solid #ccc;
+      background: var(--fusion-bg-secondary);
+      border-bottom: 1px solid var(--fusion-border-primary);
+      padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      box-shadow: var(--fusion-shadow-light);
     }
     
     .toolbar {
       display: flex;
-      gap: 8px;
+      gap: var(--fusion-spacing-sm);
+      align-items: center;
     }
     
     .toolbar button {
-      padding: 6px 12px;
-      border: 1px solid #999;
-      background: white;
-      border-radius: 3px;
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-md);
+      border: 1px solid var(--fusion-button-border);
+      background: var(--fusion-button-bg);
+      color: var(--fusion-text-primary);
+      border-radius: var(--fusion-radius-small);
       cursor: pointer;
-      font-size: 12px;
+      font-size: var(--fusion-font-size-normal);
+      font-family: var(--fusion-font-family);
+      transition: var(--fusion-transition);
+      outline: none;
     }
     
     .toolbar button:hover {
-      background: #e6e6e6;
+      background: var(--fusion-button-hover);
+      border-color: var(--fusion-border-hover);
     }
     
     .toolbar button.toggle-btn.active {
-      background: #0066cc;
-      color: white;
+      background: var(--fusion-accent-blue);
+      color: var(--fusion-text-inverse);
+      border-color: var(--fusion-accent-blue);
     }
     
     .toolbar button.toggle-btn:hover {
-      background: #0052a3;
+      background: var(--fusion-accent-blue-dark);
+      border-color: var(--fusion-accent-blue-dark);
     }
     
     .toolbar .separator {
       width: 1px;
       height: 20px;
-      background: #ccc;
-      margin: 0 4px;
+      background: var(--fusion-border-primary);
+      margin: 0 var(--fusion-spacing-xs);
     }
     
     .toolbar button.context-btn:disabled {
-      background: #f5f5f5;
-      color: #999;
+      background: var(--fusion-bg-secondary);
+      color: var(--fusion-text-disabled);
       cursor: not-allowed;
+      border-color: var(--fusion-border-primary);
     }
     
     .toolbar button.context-btn:not(:disabled):hover {
-      background: #e6f3ff;
-      border-color: #0066cc;
+      background: var(--fusion-button-hover);
+      border-color: var(--fusion-accent-blue);
     }
     
     .connection-type-container {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: var(--fusion-spacing-xs);
     }
     
     .connection-type-select {
-      padding: 4px 8px;
-      border: 1px solid #999;
-      border-radius: 3px;
-      font-size: 12px;
-      background: white;
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
+      border: 1px solid var(--fusion-input-border);
+      border-radius: var(--fusion-radius-small);
+      font-size: var(--fusion-font-size-normal);
+      font-family: var(--fusion-font-family);
+      background: var(--fusion-input-bg);
+      color: var(--fusion-text-primary);
       cursor: pointer;
+      transition: var(--fusion-transition);
     }
     
     .connection-type-select:hover {
-      border-color: #0066cc;
+      border-color: var(--fusion-border-hover);
     }
     
     .connection-type-select:focus {
       outline: none;
-      border-color: #0066cc;
-      box-shadow: 0 0 3px rgba(0, 102, 204, 0.3);
+      border-color: var(--fusion-input-focus);
+      box-shadow: 0 0 0 1px var(--fusion-input-focus);
     }
     
     #canvas-container { 
       height: calc(100% - 60px); 
       position: relative;
       overflow: hidden;
+      background: var(--fusion-bg-primary);
     }
     
     #svg-canvas {
       width: 100%;
       height: 100%;
-      background: 
-        radial-gradient(circle, #ddd 1px, transparent 1px);
+      background: var(--fusion-bg-primary);
+      background-image: radial-gradient(circle, var(--fusion-border-primary) 1px, transparent 1px);
       background-size: 20px 20px;
       cursor: grab;
+      transition: var(--fusion-transition);
     }
     
     #svg-canvas:active {
       cursor: grabbing;
     }
     
+    /* ========== FUSION 360 ENHANCED BLOCK STYLES - PHASE 2 ========== */
+    
+    /* Base Block Style - Professional Rounded Rectangle */
     .block {
-      fill: #e6f3ff;
-      stroke: #0066cc;
-      stroke-width: 2;
+      fill: var(--fusion-bg-tertiary);
+      stroke: var(--fusion-border-primary);
+      stroke-width: 1.5;
       cursor: move;
+      rx: var(--fusion-radius-medium);
+      ry: var(--fusion-radius-medium);
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)) drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+      transition: all var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
     }
     
+    /* Enhanced Hover State - Elevated with Glow */
     .block:hover {
-      fill: #cce6ff;
+      fill: var(--fusion-bg-hover);
+      stroke: var(--fusion-accent-blue);
+      stroke-width: 2;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2)) 
+              drop-shadow(0 2px 4px rgba(0,0,0,0.3))
+              drop-shadow(0 0 0 1px var(--fusion-accent-blue));
+      transform: translateY(-1px);
     }
     
+    /* Professional Selected State - Orange Accent with Glow */
     .block.selected {
-      stroke: #ff6600;
-      stroke-width: 3;
+      stroke: var(--fusion-accent-orange);
+      stroke-width: 2.5;
+      fill: var(--fusion-bg-hover);
+      filter: drop-shadow(0 4px 12px rgba(255,102,0,0.3)) 
+              drop-shadow(0 2px 6px rgba(0,0,0,0.25))
+              drop-shadow(0 0 0 2px rgba(255,102,0,0.2));
+      transform: translateY(-2px);
     }
     
+    /* Child Block Indicator - Professional Dashed Pattern */
     .block.has-child {
-      stroke-dasharray: 5,5;
-      stroke-width: 3;
+      stroke: var(--fusion-accent-yellow);
+      stroke-width: 2;
+      stroke-dasharray: 8,4;
+      fill: var(--fusion-bg-tertiary);
+      filter: drop-shadow(0 2px 6px rgba(255,215,0,0.2)) 
+              drop-shadow(0 1px 3px rgba(0,0,0,0.2));
     }
     
+    /* Child Indicator Icon - Professional SVG Icon */
     .block.has-child::after {
-      content: "📁";
+      content: "";
       position: absolute;
-      bottom: 2px;
-      right: 2px;
-      font-size: 10px;
+      bottom: 4px;
+      right: 4px;
+      width: 14px;
+      height: 14px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffc107'%3E%3Cpath d='M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z'/%3E%3C/svg%3E");
+      background-size: contain;
+      background-repeat: no-repeat;
+      opacity: 0.9;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+      transition: all var(--fusion-transition-fast);
     }
     
+    .block.has-child:hover::after {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    
+    /* Enhanced Typography - Professional Text Rendering */
     .block-text {
-      fill: #333;
-      font-family: system-ui, sans-serif;
-      font-size: 12px;
+      fill: var(--fusion-text-primary);
+      font-family: var(--fusion-font-family);
+      font-size: var(--fusion-font-size-normal);
+      font-weight: 500;
       text-anchor: middle;
       dominant-baseline: middle;
       pointer-events: none;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
     
-    .connection {
-      stroke: #666;
+    /* Block Type Indicators - Status-Based Styling */
+    .block[data-status="placeholder"] {
+      fill: var(--fusion-status-placeholder-bg);
+      stroke: var(--fusion-status-placeholder);
+    }
+    
+    .block[data-status="planned"] {
+      fill: var(--fusion-status-planned-bg);
+      stroke: var(--fusion-status-planned);
+    }
+    
+    .block[data-status="in-work"] {
+      fill: var(--fusion-status-in-work-bg);
+      stroke: var(--fusion-status-in-work);
+    }
+    
+    .block[data-status="implemented"] {
+      fill: var(--fusion-status-implemented-bg);
+      stroke: var(--fusion-status-implemented);
+    }
+    
+    .block[data-status="verified"] {
+      fill: var(--fusion-status-verified-bg);
+      stroke: var(--fusion-status-verified);
+    }
+    
+    /* Connection Point Enhancements */
+    .connection-point {
+      fill: var(--fusion-accent-blue);
+      stroke: var(--fusion-bg-primary);
       stroke-width: 2;
-      fill: none;
-      marker-end: url(#arrowhead);
-    }
-    
-    .port {
-      fill: #fff;
-      stroke: #333;
-      stroke-width: 1;
+      r: 4;
+      opacity: 0;
+      transition: all var(--fusion-transition-fast);
       cursor: crosshair;
     }
     
-    .port:hover {
-      fill: #ffff99;
+    .block:hover .connection-point {
+      opacity: 1;
+      r: 5;
+      filter: drop-shadow(0 2px 4px rgba(0,123,204,0.4));
     }
     
+    .connection-point:hover {
+      fill: var(--fusion-accent-orange);
+      r: 6;
+      filter: drop-shadow(0 2px 6px rgba(255,102,0,0.5));
+    }
+    
+    /* Block Size Variants */
+    .block.small {
+      rx: var(--fusion-radius-small);
+      ry: var(--fusion-radius-small);
+    }
+    
+    .block.large {
+      rx: var(--fusion-radius-large);
+      ry: var(--fusion-radius-large);
+    }
+    
+    /* Block Text Size Variants */
+    .block-text.small {
+      font-size: var(--fusion-font-size-small);
+      font-weight: 400;
+    }
+    
+    .block-text.large {
+      font-size: var(--fusion-font-size-large);
+      font-weight: 600;
+    }
+    
+    /* Block Animation for Creation */
+    .block.new {
+      animation: blockAppear 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    @keyframes blockAppear {
+      0% {
+        opacity: 0;
+        transform: scale(0.8) translateY(10px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+    
+    /* ========== FUSION 360 ENHANCED CONNECTION STYLES - PHASE 2 ========== */
+    
+    /* Base Connection Line - Professional with Smooth Curves */
+    .connection {
+      stroke: var(--fusion-text-secondary);
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      marker-end: url(#arrowhead);
+      transition: all var(--fusion-transition-fast) ease;
+      opacity: 0.8;
+    }
+    
+    /* Enhanced Connection Hover - Animated Glow */
+    .connection:hover {
+      stroke-width: 3;
+      opacity: 1;
+      filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 8px rgba(0,123,204,0.3));
+      stroke: var(--fusion-accent-blue);
+    }
+    
+    /* Connection Type Styling - Professional Engineering Colors */
+    .connection[data-type="power"] {
+      stroke: var(--fusion-connection-power);
+      stroke-width: 3;
+    }
+    
+    .connection[data-type="data"] {
+      stroke: var(--fusion-connection-data);
+      stroke-width: 2;
+    }
+    
+    .connection[data-type="electrical"] {
+      stroke: var(--fusion-connection-electrical);
+      stroke-width: 1.5;
+      stroke-dasharray: 5,3;
+    }
+    
+    .connection[data-type="mechanical"] {
+      stroke: var(--fusion-connection-mechanical);
+      stroke-width: 2;
+      stroke-dasharray: 8,4;
+    }
+    
+    /* Enhanced Port Styling - Modern Connection Points */
+    .port {
+      fill: var(--fusion-bg-tertiary);
+      stroke: var(--fusion-accent-blue);
+      stroke-width: 1.5;
+      cursor: crosshair;
+      r: 3;
+      transition: all var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+    }
+    
+    /* Professional Port Hover - Elevated with Glow */
+    .port:hover {
+      fill: var(--fusion-accent-orange);
+      stroke: var(--fusion-accent-orange);
+      stroke-width: 2.5;
+      r: 5;
+      filter: drop-shadow(0 2px 6px rgba(255,102,0,0.4)) 
+              drop-shadow(0 0 0 2px rgba(255,102,0,0.2));
+      transform: scale(1.2);
+    }
+    
+    /* Port Active State - Connected */
+    .port.connected {
+      fill: var(--fusion-accent-green);
+      stroke: var(--fusion-accent-green);
+      stroke-width: 2;
+    }
+    
+    /* Connection Preview - Dotted Line While Dragging */
+    .connection.preview {
+      stroke: var(--fusion-accent-orange);
+      stroke-width: 2;
+      stroke-dasharray: 4,4;
+      opacity: 0.7;
+      animation: dashMove 1s linear infinite;
+    }
+    
+    @keyframes dashMove {
+      0% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: 8; }
+    }
+    
+    /* === FUSION 360 LEGEND STYLES === */
     .status-legend {
       position: absolute;
       top: 60px;
-      right: 10px;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      padding: 8px;
-      font-size: 11px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      right: var(--fusion-spacing-md);
+      background: var(--fusion-panel-bg);
+      border: 1px solid var(--fusion-panel-border);
+      border-radius: var(--fusion-radius-medium);
+      padding: var(--fusion-spacing-md);
+      font-size: var(--fusion-font-size-small);
+      box-shadow: var(--fusion-shadow-medium);
       z-index: 100;
+      color: var(--fusion-text-primary);
     }
     
-    /* Tooltip Styles */
+    /* ========== FUSION 360 ENHANCED TOOLTIP STYLES - PHASE 2 ========== */
+    
+    /* Professional Tooltip - Glass Effect with Enhanced Shadow */
     .tooltip {
       position: absolute;
-      background: rgba(0, 0, 0, 0.9);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-family: system-ui, sans-serif;
+      background: rgba(56, 56, 56, 0.95);
+      backdrop-filter: blur(8px);
+      color: var(--fusion-text-primary);
+      border: 1px solid rgba(70, 70, 70, 0.8);
+      padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
+      border-radius: var(--fusion-radius-medium);
+      font-size: var(--fusion-font-size-normal);
+      font-family: var(--fusion-font-family);
+      font-weight: 400;
       pointer-events: none;
       z-index: 1000;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4), 
+                  0 4px 12px rgba(0,0,0,0.3),
+                  0 0 0 1px rgba(255,255,255,0.1);
       max-width: 300px;
       word-wrap: break-word;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: all var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
     }
     
+    /* Tooltip Show Animation */
+    .tooltip.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* Enhanced Tooltip Arrow - Glass Effect */
     .tooltip::before {
       content: '';
       position: absolute;
       top: 100%;
       left: 50%;
-      margin-left: -5px;
-      border: 5px solid transparent;
-      border-top-color: rgba(0, 0, 0, 0.9);
+      margin-left: -6px;
+      border: 6px solid transparent;
+      border-top-color: rgba(56, 56, 56, 0.95);
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
     }
     
+    /* Tooltip Variants */
+    .tooltip.error {
+      border-color: var(--fusion-status-error);
+      background: rgba(244, 67, 54, 0.15);
+      backdrop-filter: blur(8px);
+    }
+    
+    .tooltip.warning {
+      border-color: var(--fusion-status-warning);
+      background: rgba(255, 152, 0, 0.15);
+      backdrop-filter: blur(8px);
+    }
+    
+    .tooltip.info {
+      border-color: var(--fusion-accent-blue);
+      background: rgba(0, 123, 204, 0.15);
+      backdrop-filter: blur(8px);
+    }
+
+    /* ========== FUSION 360 ENHANCED INTERACTIVE ELEMENTS - PHASE 2 ========== */
+    
+    /* Enhanced Canvas with Grid Pattern */
+    #canvas {
+      background: 
+        radial-gradient(circle at 20px 20px, rgba(150,150,150,0.15) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    
+    /* Professional Selection Rectangle */
+    .selection-rect {
+      fill: rgba(0, 123, 204, 0.1);
+      stroke: var(--fusion-accent-blue);
+      stroke-width: 1;
+      stroke-dasharray: 4,2;
+      opacity: 0.8;
+      animation: selectionPulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes selectionPulse {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 0.4; }
+    }
+    
+    /* Enhanced Drag Ghost - Semi-transparent Block */
+    .drag-ghost {
+      opacity: 0.6;
+      transform: scale(0.95);
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+      transition: none;
+    }
+    
+    /* Drop Zone Highlight */
+    .drop-zone {
+      fill: rgba(76, 175, 80, 0.2);
+      stroke: var(--fusion-accent-green);
+      stroke-width: 2;
+      stroke-dasharray: 6,3;
+      animation: dropZonePulse 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes dropZonePulse {
+      0%, 100% { 
+        stroke-opacity: 1;
+        fill-opacity: 0.2;
+      }
+      50% { 
+        stroke-opacity: 0.5;
+        fill-opacity: 0.1;
+      }
+    }
+    
+    /* Enhanced Focus Styles for Accessibility */
+    .block:focus,
+    .port:focus,
+    .connection:focus {
+      outline: 2px solid var(--fusion-accent-blue);
+      outline-offset: 2px;
+    }
+    
+    /* Keyboard Navigation Hints */
+    .keyboard-hint {
+      position: absolute;
+      bottom: var(--fusion-spacing-md);
+      left: var(--fusion-spacing-md);
+      background: rgba(56, 56, 56, 0.9);
+      color: var(--fusion-text-secondary);
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
+      border-radius: var(--fusion-radius-small);
+      font-size: var(--fusion-font-size-small);
+      font-family: var(--fusion-font-family);
+      opacity: 0;
+      transition: opacity var(--fusion-transition-fast);
+    }
+    
+    .keyboard-hint.show {
+      opacity: 1;
+    }
+    
+    /* Block Label Enhancement */
+    .block-label {
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      text-rendering: optimizeLegibility;
+    }
+    
+    .block-sublabel {
+      font-size: var(--fusion-font-size-small);
+      font-weight: 400;
+      opacity: 0.8;
+    }
+
+    /* ========== FUSION 360 PROFESSIONAL ICONOGRAPHY - PHASE 3 ========== */
+    
+    /* Connection Icon Styling */
+    .connection-icon {
+      margin-right: var(--fusion-spacing-xs);
+      vertical-align: middle;
+      opacity: 0.8;
+      transition: all var(--fusion-transition-fast);
+    }
+    
+    .connection-item:hover .connection-icon {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    
+    /* Toolbar Button Icons */
+    .toolbar button svg {
+      margin-right: var(--fusion-spacing-xs);
+      vertical-align: middle;
+      opacity: 0.8;
+      transition: all var(--fusion-transition-fast);
+    }
+    
+    .toolbar button:hover svg {
+      opacity: 1;
+      transform: translateY(-1px);
+    }
+    
+    .toolbar button:disabled svg {
+      opacity: 0.4;
+    }
+    
+    /* Icon Color Inheritance */
+    .connection-icon,
+    .toolbar button svg {
+      color: currentColor;
+    }
+    
+    /* ========== ADVANCED ANIMATIONS & MICRO-INTERACTIONS - PHASE 3 ========== */
+    
+    /* Pulsing Connection Points */
+    .connection-point.active {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% { 
+        opacity: 0.6;
+        transform: scale(1.2);
+      }
+    }
+    
+    /* Floating Animation for New Blocks */
+    .block.floating {
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+    
+    /* Connection Drawing Animation */
+    .connection.drawing {
+      stroke-dasharray: 300;
+      stroke-dashoffset: 300;
+      animation: drawConnection 0.8s ease-out forwards;
+    }
+    
+    @keyframes drawConnection {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+    
+    /* Block Selection Ripple Effect */
+    .block.selecting::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: rgba(0, 123, 204, 0.2);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      animation: ripple 0.6s ease-out;
+    }
+    
+    @keyframes ripple {
+      to {
+        width: 120%;
+        height: 120%;
+        opacity: 0;
+      }
+    }
+    
+    /* Enhanced Hover Effects */
+    .block-group:hover .block {
+      animation: subtleGlow 2s ease-in-out infinite;
+    }
+    
+    @keyframes subtleGlow {
+      0%, 100% { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)) drop-shadow(0 1px 2px rgba(0,0,0,0.25)); }
+      50% { filter: drop-shadow(0 4px 8px rgba(0,123,204,0.1)) drop-shadow(0 2px 4px rgba(0,0,0,0.25)); }
+    }
+    
+    /* Toolbar Animation */
+    .toolbar {
+      animation: slideInFromTop 0.4s ease-out;
+    }
+    
+    @keyframes slideInFromTop {
+      from {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    /* Legend Panel Slide-in */
+    .status-legend,
+    .connection-legend {
+      animation: slideInFromRight 0.4s ease-out;
+    }
+    
+    @keyframes slideInFromRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
     .status-legend h4 {
-      margin: 0 0 6px 0;
-      font-size: 12px;
-      color: #333;
+      margin: 0 0 var(--fusion-spacing-xs) 0;
+      font-size: var(--fusion-font-size-normal);
+      color: var(--fusion-text-primary);
+      font-weight: 600;
     }
     
     .status-item {
       display: flex;
       align-items: center;
-      margin: 3px 0;
+      margin: var(--fusion-spacing-xs) 0;
     }
     
     .status-color {
       width: 12px;
       height: 12px;
-      border-radius: 2px;
-      margin-right: 6px;
+      border-radius: var(--fusion-radius-small);
+      margin-right: var(--fusion-spacing-xs);
+      border: 1px solid var(--fusion-border-secondary);
     }
     
+    /* === FUSION 360 CONNECTION LEGEND === */
     .connection-legend {
       position: absolute;
       top: 200px;
-      right: 10px;
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      padding: 12px;
-      font-size: 12px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      right: var(--fusion-spacing-md);
+      background: var(--fusion-panel-bg);
+      border: 1px solid var(--fusion-panel-border);
+      border-radius: var(--fusion-radius-medium);
+      padding: var(--fusion-spacing-md);
+      font-size: var(--fusion-font-size-normal);
+      box-shadow: var(--fusion-shadow-medium);
       max-width: 150px;
       max-height: 400px;
       overflow-y: auto;
+      color: var(--fusion-text-primary);
     }
     
     .connection-legend h4 {
-      margin: 0 0 6px 0;
-      font-size: 12px;
-      color: #333;
+      margin: 0 0 var(--fusion-spacing-xs) 0;
+      font-size: var(--fusion-font-size-normal);
+      color: var(--fusion-text-primary);
+      font-weight: 600;
     }
     
     .connection-item {
       display: flex;
       align-items: center;
-      margin: 3px 0;
-      gap: 6px;
+      margin: var(--fusion-spacing-xs) 0;
+      gap: var(--fusion-spacing-xs);
     }
     
     .connection-item svg {
@@ -251,128 +753,169 @@
     }
     
     .connection-item span {
-      font-size: 11px;
-      color: #333;
+      font-size: var(--fusion-font-size-small);
+      color: var(--fusion-text-primary);
     }
     
+    /* === FUSION 360 RULE PANEL === */
     .rule-panel {
       position: absolute;
-      bottom: 10px;
-      right: 10px;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      padding: 8px;
-      font-size: 11px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      bottom: var(--fusion-spacing-md);
+      right: var(--fusion-spacing-md);
+      background: var(--fusion-panel-bg);
+      border: 1px solid var(--fusion-panel-border);
+      border-radius: var(--fusion-radius-medium);
+      padding: var(--fusion-spacing-md);
+      font-size: var(--fusion-font-size-small);
+      box-shadow: var(--fusion-shadow-medium);
       z-index: 100;
       max-width: 350px;
       max-height: 200px;
       overflow-y: auto;
+      color: var(--fusion-text-primary);
     }
     
     .rule-panel h4 {
-      margin: 0 0 6px 0;
-      font-size: 12px;
-      color: #333;
+      margin: 0 0 var(--fusion-spacing-xs) 0;
+      font-size: var(--fusion-font-size-normal);
+      color: var(--fusion-text-primary);
+      font-weight: 600;
     }
     
     .rule-result {
       display: flex;
       align-items: flex-start;
-      margin: 3px 0;
-      padding: 2px;
-      border-radius: 2px;
+      margin: var(--fusion-spacing-xs) 0;
+      padding: var(--fusion-spacing-xs);
+      border-radius: var(--fusion-radius-small);
     }
     
     .rule-result.error {
-      background: #ffeeee;
-      border-left: 3px solid #ff6666;
+      background: var(--fusion-status-error-bg);
+      border-left: 3px solid var(--fusion-status-error);
     }
     
     .rule-result.warning {
-      background: #fff8e1;
-      border-left: 3px solid #ffa726;
+      background: var(--fusion-status-warning-bg);
+      border-left: 3px solid var(--fusion-status-warning);
     }
     
     .rule-result.info {
-      background: #e8f5e8;
-      border-left: 3px solid #66bb6a;
+      background: var(--fusion-status-success-bg);
+      border-left: 3px solid var(--fusion-status-success);
     }
     
     .rule-icon {
-      margin-right: 4px;
+      margin-right: var(--fusion-spacing-xs);
       font-weight: bold;
+      color: var(--fusion-text-primary);
     }
     
     .rule-message {
       flex: 1;
-      font-size: 10px;
+      font-size: var(--fusion-font-size-small);
       line-height: 1.3;
+      color: var(--fusion-text-primary);
     }
     
-    /* Search and Filter Styles */
+    /* === FUSION 360 SEARCH AND FILTER STYLES === */
     .search-container {
       display: flex;
       align-items: center;
-      gap: 5px;
-      margin: 0 5px;
+      gap: var(--fusion-spacing-xs);
+      margin: 0 var(--fusion-spacing-xs);
     }
     
     .search-input {
-      padding: 4px 8px;
-      border: 1px solid #ccc;
-      border-radius: 3px;
-      font-size: 12px;
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
+      border: 1px solid var(--fusion-border-primary);
+      border-radius: var(--fusion-radius-small);
+      font-size: var(--fusion-font-size-normal);
       width: 120px;
+      background: var(--fusion-input-bg);
+      color: var(--fusion-text-primary);
+      transition: var(--fusion-transition-fast);
     }
     
     .search-input:focus {
       outline: none;
-      border-color: #0066cc;
-      box-shadow: 0 0 3px rgba(0,102,204,0.3);
+      border-color: var(--fusion-accent-blue);
+      box-shadow: 0 0 3px var(--fusion-focus-ring);
     }
     
     .filter-btn {
-      padding: 4px 8px;
-      border: 1px solid #ccc;
-      background: white;
-      border-radius: 3px;
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
+      border: 1px solid var(--fusion-border-primary);
+      background: var(--fusion-button-bg);
+      border-radius: var(--fusion-radius-small);
       cursor: pointer;
-      font-size: 11px;
+      font-size: var(--fusion-font-size-small);
       white-space: nowrap;
+      color: var(--fusion-text-primary);
+      transition: var(--fusion-transition-fast);
     }
     
     .filter-btn.active {
-      background: #0066cc;
+      background: var(--fusion-accent-blue);
       color: white;
-      border-color: #0066cc;
+      border-color: var(--fusion-accent-blue);
     }
     
     .filter-btn:hover {
-      background: #f0f0f0;
+      background: var(--fusion-button-hover);
     }
     
     .filter-btn.active:hover {
-      background: #0052a3;
+      background: var(--fusion-accent-blue-dark);
     }
     
     .search-results-info {
-      font-size: 11px;
-      color: #666;
-      margin-left: 5px;
+      font-size: var(--fusion-font-size-small);
+      color: var(--fusion-text-secondary);
+      margin-left: var(--fusion-spacing-xs);
     }
     
-    /* Block highlighting for search */
+    /* === FUSION 360 SEARCH HIGHLIGHTING === */
     .block-group.search-highlight .block {
-      stroke: #ff6600 !important;
+      stroke: var(--fusion-accent-orange) !important;
       stroke-width: 3px !important;
-      filter: drop-shadow(0 0 5px rgba(255,102,0,0.5));
+      filter: drop-shadow(0 0 5px var(--fusion-glow-orange));
     }
     
     .block-group.search-dimmed {
       opacity: 0.3;
     }
+
+    /* === FUSION 360 STATUS COLOR CLASSES === */
+    .status-placeholder { background-color: var(--fusion-status-placeholder); }
+    .status-planned { background-color: var(--fusion-status-planned); }
+    .status-in-work { background-color: var(--fusion-status-in-work); }
+    .status-implemented { background-color: var(--fusion-status-implemented); }
+    .status-verified { background-color: var(--fusion-status-verified); }
+
+    /* === FUSION 360 UTILITY CLASSES === */
+    .fusion-breadcrumb {
+      margin: 0 var(--fusion-spacing-md);
+      font-size: var(--fusion-font-size-normal);
+      color: var(--fusion-text-secondary);
+    }
+
+    .fusion-label {
+      font-size: var(--fusion-font-size-normal);
+      color: var(--fusion-text-secondary);
+      margin-right: var(--fusion-spacing-xs);
+    }
+
+    .fusion-legend-section {
+      margin-top: var(--fusion-spacing-lg) !important;
+    }
+
+    /* === FUSION 360 CONNECTION LINE COLORS === */
+    .connection-power { stroke: var(--fusion-connection-power); fill: var(--fusion-connection-power); }
+    .connection-data { stroke: var(--fusion-connection-data); fill: var(--fusion-connection-data); }
+    .connection-electrical { stroke: var(--fusion-connection-electrical); fill: var(--fusion-connection-electrical); }
+    .connection-mechanical { stroke: var(--fusion-connection-mechanical); fill: var(--fusion-connection-mechanical); }
+    .connection-generic { stroke: var(--fusion-text-secondary); fill: var(--fusion-text-secondary); }
   </style>
 </head>
 <body>
@@ -384,14 +927,39 @@
       <button id="btn-load">Load</button>
       <div class="separator"></div>
       <!-- Undo/Redo -->
-      <button id="btn-undo" class="context-btn" disabled title="Undo (Ctrl+Z)">↶ Undo</button>
-      <button id="btn-redo" class="context-btn" disabled title="Redo (Ctrl+Y)">↷ Redo</button>
+      <button id="btn-undo" class="context-btn" disabled title="Undo (Ctrl+Z)">
+        <svg width="16" height="16" viewBox="0 0 12 12">
+          <path d="M2 6h8M6 2l-4 4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Undo
+      </button>
+      <button id="btn-redo" class="context-btn" disabled title="Redo (Ctrl+Y)">
+        <svg width="16" height="16" viewBox="0 0 12 12">
+          <path d="M10 6H2M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Redo
+      </button>
       <div class="separator"></div>
       <!-- Hierarchy Navigation -->
-      <button id="btn-go-up" class="context-btn" disabled title="Go to Parent Diagram">↑ Up</button>
-      <span id="breadcrumb-path" style="margin: 0 10px; font-size: 12px; color: #666;">Root</span>
-      <button id="btn-drill-down" class="context-btn" disabled title="Open Child Diagram">↓ Drill Down</button>
-      <button id="btn-create-child" class="context-btn" disabled title="Create Child Diagram">+ Child</button>
+      <button id="btn-go-up" class="context-btn" disabled title="Go to Parent Diagram">
+        <svg width="16" height="16" viewBox="0 0 12 12">
+          <use href="#icon-go-up"/>
+        </svg>
+        Up
+      </button>
+      <span id="breadcrumb-path" class="fusion-breadcrumb">Root</span>
+      <button id="btn-drill-down" class="context-btn" disabled title="Open Child Diagram">
+        <svg width="16" height="16" viewBox="0 0 12 12">
+          <use href="#icon-drill-down"/>
+        </svg>
+        Drill Down
+      </button>
+      <button id="btn-create-child" class="context-btn" disabled title="Create Child Diagram">
+        <svg width="16" height="16" viewBox="0 0 12 12">
+          <use href="#icon-add"/>
+        </svg>
+        Child
+      </button>
       <div class="separator"></div>
       <!-- Search and Filter -->
       <div class="search-container">
@@ -404,19 +972,19 @@
       <div class="separator"></div>
       <!-- Connection Type Selector -->
       <div class="connection-type-container">
-        <label for="connection-type-select" style="font-size: 12px; color: #666; margin-right: 5px;">Connection:</label>
+        <label for="connection-type-select" class="fusion-label">Connection:</label>
         <select id="connection-type-select" class="connection-type-select" title="Choose connection type for new connections">
           <option value="auto" selected>Auto</option>
-          <option value="electrical">⚡ Electrical</option>
-          <option value="power">🔌 Power</option>
-          <option value="data">📊 Data</option>
-          <option value="mechanical">⚙️ Mechanical</option>
+          <option value="electrical">Electrical</option>
+          <option value="power">Power</option>
+          <option value="data">Data</option>
+          <option value="mechanical">Mechanical</option>
         </select>
-        <select id="arrow-direction-select" class="connection-type-select" title="Choose arrow direction" style="margin-left: 5px;">
-          <option value="forward" selected>→ Forward</option>
-          <option value="bidirectional">↔ Both</option>
-          <option value="backward">← Backward</option>
-          <option value="none">— None</option>
+        <select id="arrow-direction-select" class="connection-type-select fusion-select" title="Choose arrow direction">
+          <option value="forward" selected>Forward</option>
+          <option value="bidirectional">Bidirectional</option>
+          <option value="backward">Backward</option>
+          <option value="none">None</option>
         </select>
       </div>
       <div class="separator"></div>
@@ -424,7 +992,262 @@
       <button id="btn-connection-templates" class="context-btn" title="Connection Templates">📋 Templates</button>
       <button id="btn-bulk-connections" class="context-btn" title="Bulk Connection Operations">⚡ Bulk</button>
       <div class="separator"></div>
-      <button id="btn-add-block">Add Block</button>
+      <!-- ========== MILESTONE 11: ADVANCED BLOCK TYPES - PHASE 1 ========== -->
+      <button id="btn-add-block" class="context-btn" title="Add Basic Block">
+        <svg width="16" height="16" viewBox="0 0 12 12">
+          <use href="#icon-add"/>
+        </svg>
+        Add Block
+      </button>
+      <div class="block-type-dropdown">
+        <button id="btn-block-types" class="context-btn" title="Add Specialized Block">
+          <svg width="16" height="16" viewBox="0 0 12 12">
+            <use href="#icon-block-component"/>
+          </svg>
+          Block Type
+          <svg width="12" height="12" viewBox="0 0 12 12" class="dropdown-arrow">
+            <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div id="block-type-menu" class="block-type-menu">
+          <div class="block-category">
+            <h4>⚡ Electrical/Electronic</h4>
+            <div class="block-type-item" data-type="microcontroller-arduino">
+              <div class="block-icon" style="background: #007ACC;"></div>
+              <div class="block-info">
+                <span class="block-name">Arduino Uno R3</span>
+                <span class="block-desc">ATMega328P microcontroller</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="microcontroller-esp32">
+              <div class="block-icon" style="background: #FF6B35;"></div>
+              <div class="block-info">
+                <span class="block-name">ESP32 DevKit</span>
+                <span class="block-desc">WiFi+Bluetooth microcontroller</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="power-supply-linear">
+              <div class="block-icon" style="background: #E74C3C;"></div>
+              <div class="block-info">
+                <span class="block-name">Linear PSU</span>
+                <span class="block-desc">Adjustable voltage regulator</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="power-supply-switching">
+              <div class="block-icon" style="background: #8E44AD;"></div>
+              <div class="block-info">
+                <span class="block-name">Switching PSU</span>
+                <span class="block-desc">High-efficiency regulator</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="sensor-temperature">
+              <div class="block-icon" style="background: #F39C12;"></div>
+              <div class="block-info">
+                <span class="block-name">Temperature Sensor</span>
+                <span class="block-desc">Digital I2C temperature</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="sensor-accelerometer">
+              <div class="block-icon" style="background: #16A085;"></div>
+              <div class="block-info">
+                <span class="block-name">Accelerometer</span>
+                <span class="block-desc">3-axis MEMS sensor</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="comm-wifi">
+              <div class="block-icon" style="background: #3498DB;"></div>
+              <div class="block-info">
+                <span class="block-name">WiFi Module</span>
+                <span class="block-desc">802.11n wireless</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="comm-bluetooth">
+              <div class="block-icon" style="background: #9B59B6;"></div>
+              <div class="block-info">
+                <span class="block-name">Bluetooth Module</span>
+                <span class="block-desc">BLE 5.0 communication</span>
+              </div>
+            </div>
+          </div>
+          <div class="block-category">
+            <h4>⚙️ Mechanical Systems</h4>
+            <div class="block-type-item" data-type="motor-servo">
+              <div class="block-icon" style="background: #16A085;"></div>
+              <div class="block-info">
+                <span class="block-name">Servo Motor</span>
+                <span class="block-desc">20 kg⋅cm precision motor</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="motor-stepper">
+              <div class="block-icon" style="background: #16A085;"></div>
+              <div class="block-info">
+                <span class="block-name">Stepper Motor</span>
+                <span class="block-desc">200 steps/revolution</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="actuator-linear">
+              <div class="block-icon" style="background: #16A085;"></div>
+              <div class="block-info">
+                <span class="block-name">Linear Actuator</span>
+                <span class="block-desc">100mm stroke, 200N force</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="sensor-encoder">
+              <div class="block-icon" style="background: #E67E22;"></div>
+              <div class="block-info">
+                <span class="block-name">Rotary Encoder</span>
+                <span class="block-desc">1024 PPR precision</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="sensor-load-cell">
+              <div class="block-icon" style="background: #E67E22;"></div>
+              <div class="block-info">
+                <span class="block-name">Load Cell</span>
+                <span class="block-desc">100kg force sensor</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="sensor-proximity">
+              <div class="block-icon" style="background: #E67E22;"></div>
+              <div class="block-info">
+                <span class="block-name">Proximity Sensor</span>
+                <span class="block-desc">8mm inductive detection</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="structure-bearing">
+              <div class="block-icon" style="background: #7F8C8D;"></div>
+              <div class="block-info">
+                <span class="block-name">Ball Bearing</span>
+                <span class="block-desc">10×30×9mm precision</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="structure-coupling">
+              <div class="block-icon" style="background: #7F8C8D;"></div>
+              <div class="block-info">
+                <span class="block-name">Flexible Coupling</span>
+                <span class="block-desc">5 N⋅m, ±1° misalignment</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="structure-gearbox">
+              <div class="block-icon" style="background: #7F8C8D;"></div>
+              <div class="block-info">
+                <span class="block-name">Planetary Gearbox</span>
+                <span class="block-desc">10:1 reduction, 95% eff.</span>
+              </div>
+            </div>
+          </div>
+          <div class="block-category">
+            <h4>💻 Software & Firmware</h4>
+            <div class="block-type-item" data-type="firmware-pid-controller">
+              <div class="block-icon" style="background: #8E44AD;"></div>
+              <div class="block-info">
+                <span class="block-name">PID Controller</span>
+                <span class="block-desc">Real-time control algorithm</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="firmware-state-machine">
+              <div class="block-icon" style="background: #8E44AD;"></div>
+              <div class="block-info">
+                <span class="block-name">State Machine</span>
+                <span class="block-desc">Hierarchical FSM control</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="firmware-kalman-filter">
+              <div class="block-icon" style="background: #8E44AD;"></div>
+              <div class="block-info">
+                <span class="block-name">Kalman Filter</span>
+                <span class="block-desc">Advanced sensor fusion</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="protocol-modbus">
+              <div class="block-icon" style="background: #3498DB;"></div>
+              <div class="block-info">
+                <span class="block-name">Modbus Protocol</span>
+                <span class="block-desc">Industrial communication</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="protocol-can">
+              <div class="block-icon" style="background: #3498DB;"></div>
+              <div class="block-info">
+                <span class="block-name">CAN Bus Protocol</span>
+                <span class="block-desc">Automotive networking</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="protocol-mqtt">
+              <div class="block-icon" style="background: #3498DB;"></div>
+              <div class="block-info">
+                <span class="block-name">MQTT Protocol</span>
+                <span class="block-desc">IoT publish-subscribe</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="algorithm-fft">
+              <div class="block-icon" style="background: #E67E22;"></div>
+              <div class="block-info">
+                <span class="block-name">FFT Processor</span>
+                <span class="block-desc">Frequency analysis</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="algorithm-machine-learning">
+              <div class="block-icon" style="background: #E67E22;"></div>
+              <div class="block-info">
+                <span class="block-name">ML Inference</span>
+                <span class="block-desc">Embedded AI/ML</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="system-rtos">
+              <div class="block-icon" style="background: #27AE60;"></div>
+              <div class="block-info">
+                <span class="block-name">Real-Time OS</span>
+                <span class="block-desc">Deterministic scheduling</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="system-bootloader">
+              <div class="block-icon" style="background: #27AE60;"></div>
+              <div class="block-info">
+                <span class="block-name">Secure Bootloader</span>
+                <span class="block-desc">Secure boot + updates</span>
+              </div>
+            </div>
+          </div>
+          <div class="block-category">
+            <h4>🎯 System Templates</h4>
+            <div class="block-type-item" data-type="template-motor-controller">
+              <div class="block-icon" style="background: #E74C3C;"></div>
+              <div class="block-info">
+                <span class="block-name">Motor Control System</span>
+                <span class="block-desc">Complete motor control + feedback</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="template-sensor-array">
+              <div class="block-icon" style="background: #F39C12;"></div>
+              <div class="block-info">
+                <span class="block-name">Multi-Sensor Array</span>
+                <span class="block-desc">Temperature + accelerometer + WiFi</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="template-linear-actuator-system">
+              <div class="block-icon" style="background: #16A085;"></div>
+              <div class="block-info">
+                <span class="block-name">Linear Motion System</span>
+                <span class="block-desc">Stepper + gearbox + encoder</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="template-control-loop">
+              <div class="block-icon" style="background: #8E44AD;"></div>
+              <div class="block-info">
+                <span class="block-name">Control Loop System</span>
+                <span class="block-desc">PID + FSM + Kalman filter</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="template-smart-actuator">
+              <div class="block-icon" style="background: #E67E22;"></div>
+              <div class="block-info">
+                <span class="block-name">Smart Actuator System</span>
+                <span class="block-desc">Integrated multi-domain system</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <button id="btn-snap-grid" class="toggle-btn active">Snap to Grid</button>
       <button id="btn-check-rules">Check Rules</button>
       <button id="btn-export-report">Export Report</button>
@@ -438,10 +1261,396 @@
   <div id="canvas-container">
     <svg id="svg-canvas" viewBox="0 0 1000 1000">
       <defs>
+        <!-- Connection Arrow Marker -->
         <marker id="arrowhead" markerWidth="10" markerHeight="7" 
                 refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+          <polygon points="0 0, 10 3.5, 0 7" class="connection-generic" />
         </marker>
+        
+        <!-- ========== FUSION 360 PROFESSIONAL ICON DEFINITIONS - PHASE 3 ========== -->
+        
+        <!-- Power Connection Icon -->
+        <g id="icon-power">
+          <circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 2v4M4 4h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Data Connection Icon -->
+        <g id="icon-data">
+          <rect x="2" y="4" width="8" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 6h4M4 7h2" stroke="currentColor" stroke-width="1" opacity="0.7"/>
+        </g>
+        
+        <!-- Electrical Connection Icon -->
+        <g id="icon-electrical">
+          <path d="M2 6h3l-1 2h2l-3 3 1-2H2l2-3z" fill="currentColor"/>
+        </g>
+        
+        <!-- Mechanical Connection Icon -->
+        <g id="icon-mechanical">
+          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="1.5" fill="currentColor"/>
+          <path d="M6 2v2M10 6h-2M6 10V8M2 6h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Block Type Icons -->
+        <g id="icon-block-system">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M5 5h2M5 7h2" stroke="currentColor" stroke-width="1"/>
+        </g>
+        
+        <g id="icon-block-component">
+          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2" fill="currentColor" opacity="0.3"/>
+        </g>
+        
+        <g id="icon-block-interface">
+          <path d="M2 4h8v4H2z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 2v2M8 2v2M4 8v2M8 8v2" stroke="currentColor" stroke-width="1.5"/>
+        </g>
+        
+        <!-- Status Icons -->
+        <g id="icon-status-verified">
+          <circle cx="6" cy="6" r="5" fill="currentColor" opacity="0.2"/>
+          <path d="M3.5 6l1.5 1.5L8.5 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <g id="icon-status-error">
+          <circle cx="6" cy="6" r="5" fill="currentColor" opacity="0.2"/>
+          <path d="M4 4l4 4M8 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-status-warning">
+          <path d="M6 2L10.5 9H1.5z" fill="currentColor" opacity="0.2"/>
+          <path d="M6 4v3M6 8h0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Navigation Icons -->
+        <g id="icon-drill-down">
+          <path d="M6 2v8M3 7l3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <g id="icon-go-up">
+          <path d="M6 10V2M3 5l3-3 3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <!-- Tool Icons -->
+        <g id="icon-add">
+          <circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 3v6M3 6h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-search">
+          <circle cx="5" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="m8 8 2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-filter">
+          <path d="M2 3h8l-3 4v4l-2-1V7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        </g>
+        
+        <!-- ========== MILESTONE 11: ELECTRICAL BLOCK ICONS - PHASE 1 ========== -->
+        
+        <!-- Microcontroller Icons -->
+        <g id="icon-microcontroller">
+          <rect x="2" y="3" width="8" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="3.5" y="4.5" width="5" height="3" rx="0.5" fill="currentColor" opacity="0.3"/>
+          <circle cx="4" cy="5" r="0.5" fill="currentColor"/>
+          <circle cx="8" cy="7" r="0.5" fill="currentColor"/>
+          <path d="M2 4h-1M2 6h-1M2 8h-1M10 4h1M10 6h1M10 8h1" stroke="currentColor" stroke-width="1"/>
+        </g>
+        
+        <g id="icon-microcontroller-wifi">
+          <rect x="2" y="3" width="8" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="3.5" y="4.5" width="5" height="3" rx="0.5" fill="currentColor" opacity="0.3"/>
+          <path d="M5 6.5c.5-.3 1-.3 1.5 0M4.5 6c.8-.5 1.7-.5 2.5 0M5.5 7c.2-.1.3-.1.5 0" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+          <circle cx="6" cy="7.5" r="0.3" fill="currentColor"/>
+        </g>
+        
+        <!-- Power Supply Icons -->
+        <g id="icon-power-supply">
+          <rect x="2" y="4" width="8" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 6h4M4 7h2" stroke="currentColor" stroke-width="1"/>
+          <circle cx="3" cy="6" r="0.5" fill="currentColor"/>
+          <circle cx="9" cy="6" r="0.5" fill="currentColor"/>
+          <path d="M1 6h1M10 6h1" stroke="currentColor" stroke-width="1.5"/>
+        </g>
+        
+        <g id="icon-power-switching">
+          <rect x="2" y="4" width="8" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 5.5l1 1 1-1 1 1 1-1M4 6.5h4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="3" cy="6" r="0.5" fill="currentColor"/>
+          <circle cx="9" cy="6" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <!-- Sensor Icons -->
+        <g id="icon-sensor-temp">
+          <circle cx="6" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="5.5" y="3" width="1" height="4" fill="currentColor"/>
+          <circle cx="6" cy="7" r="1" fill="currentColor"/>
+          <path d="M8 4h1M8 5h0.5M8 6h1" stroke="currentColor" stroke-width="1"/>
+        </g>
+        
+        <g id="icon-sensor-accel">
+          <rect x="3" y="3" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 4.5v3M4.5 6h3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="6" cy="6" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <!-- Communication Module Icons -->
+        <g id="icon-comm-wifi">
+          <path d="M6 9c2.5-1.5 2.5-4.5 0-6M6 9c-2.5-1.5-2.5-4.5 0-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+          <path d="M6 8.5c1.5-1 1.5-3 0-4M6 8.5c-1.5-1-1.5-3 0-4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+          <path d="M6 8c0.8-0.5 0.8-1.5 0-2M6 8c-0.8-0.5-0.8-1.5 0-2" stroke="currentColor" stroke-width="1" stroke-linecap="round" fill="none"/>
+          <circle cx="6" cy="8" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <g id="icon-comm-bluetooth">
+          <path d="M6 2l2 2-1.5 1.5L8 7l-2 2v-3.5L4.5 7 6 5.5V2z" fill="currentColor"/>
+          <path d="M4 4l4 4M4 8l4-4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Enhanced Block Component Icon -->
+        <g id="icon-block-advanced">
+          <rect x="2" y="2" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="4" y="4" width="4" height="4" rx="0.5" fill="currentColor" opacity="0.2"/>
+          <circle cx="5" cy="5" r="0.5" fill="currentColor"/>
+          <circle cx="7" cy="5" r="0.5" fill="currentColor"/>
+          <circle cx="5" cy="7" r="0.5" fill="currentColor"/>
+          <circle cx="7" cy="7" r="0.5" fill="currentColor"/>
+        </g>
+
+        <!-- ========== MILESTONE 11 PHASE 2: MECHANICAL SYSTEM ICONS ========== -->
+        
+        <!-- Mechanical Category Icon -->
+        <g id="icon-mechanical">
+          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 2v2M6 8v2M2 6h2M8 6h2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Motor Icons -->
+        <g id="icon-motor-servo">
+          <rect x="2" y="4" width="8" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 4.5v3M4.5 6h3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M6 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-motor-stepper">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="3" cy="3" r="0.5" fill="currentColor"/>
+          <circle cx="9" cy="3" r="0.5" fill="currentColor"/>
+          <circle cx="3" cy="9" r="0.5" fill="currentColor"/>
+          <circle cx="9" cy="9" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <g id="icon-actuator-linear">
+          <rect x="2" y="5" width="8" height="2" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="8" y="4" width="2" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 3v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M4 4l2-1 2 1" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <!-- Sensor Icons -->
+        <g id="icon-sensor-encoder">
+          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 2v1M6 9v1M2 6h1M9 6h1" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M8.5 3.5l-0.7 0.7M4.2 8.8l-0.7 0.7M3.5 3.5l0.7 0.7M8.8 8.8l0.7 0.7" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-sensor-load">
+          <rect x="3" y="5" width="6" height="2" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 3v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M5 3h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M4 8v1M8 8v1" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M3 9h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-sensor-proximity">
+          <rect x="3" y="3" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 4.5v3M4.5 6h3" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+          <path d="M6 1v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Structural Element Icons -->
+        <g id="icon-bearing">
+          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="6" cy="6" r="1" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="6" cy="3" r="0.4" fill="currentColor"/>
+          <circle cx="9" cy="6" r="0.4" fill="currentColor"/>
+          <circle cx="6" cy="9" r="0.4" fill="currentColor"/>
+          <circle cx="3" cy="6" r="0.4" fill="currentColor"/>
+        </g>
+        
+        <g id="icon-coupling">
+          <rect x="2" y="5" width="3" height="2" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="7" y="5" width="3" height="2" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M5 6h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M5.5 5.5l1 1M5.5 6.5l1-1" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-gearbox">
+          <rect x="2" y="3" width="8" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="5" cy="6" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="7.5" cy="6" r="1" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6.5 6h1" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M2 5h1M9 5h1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+
+        <!-- ========== MILESTONE 11 PHASE 3: SOFTWARE/FIRMWARE ICONS ========== -->
+        
+        <!-- Software Category Icon -->
+        <g id="icon-software">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 4l2 2-2 2M6 8h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <!-- Control Algorithm Icons -->
+        <g id="icon-software-pid">
+          <rect x="2" y="3" width="8" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 6h6" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M4 5v2M6 4v4M8 5v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          <circle cx="4" cy="5" r="0.3" fill="currentColor"/>
+          <circle cx="6" cy="4" r="0.3" fill="currentColor"/>
+          <circle cx="8" cy="5" r="0.3" fill="currentColor"/>
+        </g>
+        
+        <g id="icon-software-fsm">
+          <circle cx="4" cy="4" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="8" cy="4" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="6" cy="8" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M5.5 4h1M7 5l-0.5 2M5 5l0.5 2" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" marker-end="url(#arrowhead-small)"/>
+        </g>
+        
+        <g id="icon-software-kalman">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 4l4 4M4 8l4-4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="6" cy="6" r="1" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M3 3l1 1M8 3l1 1M3 9l1-1M8 9l1-1" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Communication Protocol Icons -->
+        <g id="icon-software-protocol">
+          <rect x="2" y="4" width="8" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 6h4M4 5.5v1M8 5.5v1" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="2" cy="6" r="0.5" fill="currentColor"/>
+          <circle cx="10" cy="6" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <g id="icon-software-can">
+          <rect x="2" y="4" width="8" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M4 5v2M6 5v2M8 5v2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M2 6h1M9 6h1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-software-mqtt">
+          <path d="M6 2v2M6 8v2M2 6h2M8 6h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="6" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+          <circle cx="6" cy="6" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <!-- Algorithm & Processing Icons -->
+        <g id="icon-software-fft">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 8l1-3 1 2 1-4 1 1 1-2 1 3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 8h6" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-software-ml">
+          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="4" cy="4" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="8" cy="4" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="4" cy="8" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="8" cy="8" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M4.8 4.8l2.4 2.4M7.2 4.8l-2.4 2.4M4.8 7.2l2.4-2.4M7.2 7.2l-2.4-2.4" stroke="currentColor" stroke-width="0.8"/>
+        </g>
+        
+        <!-- System Software Icons -->
+        <g id="icon-software-rtos">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="3" y="4" width="1.5" height="4" fill="currentColor" opacity="0.7"/>
+          <rect x="5.25" y="3" width="1.5" height="5" fill="currentColor" opacity="0.7"/>
+          <rect x="7.5" y="5" width="1.5" height="3" fill="currentColor" opacity="0.7"/>
+          <path d="M3 8h6" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-software-boot">
+          <rect x="2" y="3" width="8" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M6 1v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="6" cy="1.5" r="0.5" fill="currentColor"/>
+        </g>
+
+        <!-- Small arrow marker for FSM -->
+        <marker id="arrowhead-small" markerWidth="6" markerHeight="4" 
+                refX="5" refY="2" orient="auto" markerUnits="strokeWidth">
+          <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+        </marker>
+
+        <!-- ========== MILESTONE 11 PHASE 4: SYSTEM TEMPLATE ICONS ========== -->
+        
+        <!-- Template Category Icon -->
+        <g id="icon-template">
+          <rect x="2" y="2" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="3.5" y="3.5" width="2" height="2" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <rect x="6.5" y="3.5" width="2" height="2" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <rect x="3.5" y="6.5" width="2" height="2" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <rect x="6.5" y="6.5" width="2" height="2" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <path d="M4.5 5.5h3M5.5 4.5v3" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <!-- System Template Icons -->
+        <g id="icon-template-motor-control">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="4" cy="6" r="1.2" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="6.5" y="5" width="2" height="2" rx="0.3" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M5.2 6h1.3M4 4.8v2.4" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+          <path d="M7.5 4v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-template-sensor-array">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="4" cy="4" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="8" cy="4" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="4" cy="8" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="8" cy="8" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M4.8 4.8l2.4 2.4M7.2 4.8l-2.4 2.4" stroke="currentColor" stroke-width="0.6"/>
+        </g>
+        
+        <g id="icon-template-linear-motion">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="3.5" cy="6" r="1" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="5" y="5" width="3" height="2" rx="0.3" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M8.5 6h1M4.5 6h0.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M9 5.5l0.5 0.5-0.5 0.5" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <g id="icon-template-control-loop">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 3.5v1M6 7.5v1M3.5 6h1M7.5 6h1" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="6" cy="6" r="0.8" fill="currentColor" opacity="0.7"/>
+          <path d="M5 5l2 2M7 5l-2 2" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-template-smart-actuator">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="5" cy="5" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="6.5" y="4.5" width="2" height="1" rx="0.2" fill="none" stroke="currentColor" stroke-width="0.8"/>
+          <rect x="3" y="7" width="6" height="1" rx="0.2" fill="currentColor" opacity="0.5"/>
+          <path d="M6 3v1M5 3.5v1M4 3.5v1" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+          <circle cx="5" cy="5" r="0.5" fill="currentColor"/>
+        </g>
       </defs>
       <g id="connections-layer"></g>
       <g id="blocks-layer"></g>
@@ -451,23 +1660,23 @@
     <div class="status-legend">
       <h4>Block Status</h4>
       <div class="status-item">
-        <div class="status-color" style="background-color: #cccccc;"></div>
+        <div class="status-color status-placeholder"></div>
         <span>Placeholder</span>
       </div>
       <div class="status-item">
-        <div class="status-color" style="background-color: #87ceeb;"></div>
+        <div class="status-color status-planned"></div>
         <span>Planned</span>
       </div>
       <div class="status-item">
-        <div class="status-color" style="background-color: #ffd700;"></div>
+        <div class="status-color status-in-work"></div>
         <span>In-Work</span>
       </div>
       <div class="status-item">
-        <div class="status-color" style="background-color: #90ee90;"></div>
+        <div class="status-color status-implemented"></div>
         <span>Implemented</span>
       </div>
       <div class="status-item">
-        <div class="status-color" style="background-color: #00ff00;"></div>
+        <div class="status-color status-verified"></div>
         <span>Verified</span>
       </div>
     </div>
@@ -477,53 +1686,73 @@
       <h4>Connection Types</h4>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#dc3545" stroke-width="3"/>
-          <polygon points="30,6 26,3 26,9" fill="#dc3545"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-power" stroke-width="3"/>
+          <polygon points="30,6 26,3 26,9" class="connection-power"/>
         </svg>
-        <span>🔌 Power</span>
+        <span>
+          <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
+            <use href="#icon-power"/>
+          </svg>
+          Power
+        </span>
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#007bff" stroke-width="2"/>
-          <polygon points="30,6 26,3 26,9" fill="#007bff"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-data" stroke-width="2"/>
+          <polygon points="30,6 26,3 26,9" class="connection-data"/>
         </svg>
-        <span>📊 Data</span>
+        <span>
+          <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
+            <use href="#icon-data"/>
+          </svg>
+          Data
+        </span>
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#28a745" stroke-width="1.5" stroke-dasharray="5,3"/>
-          <polygon points="30,6 26,3 26,9" fill="#28a745"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-electrical" stroke-width="1.5" stroke-dasharray="5,3"/>
+          <polygon points="30,6 26,3 26,9" class="connection-electrical"/>
         </svg>
-        <span>⚡ Electrical</span>
+        <span>
+          <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
+            <use href="#icon-electrical"/>
+          </svg>
+          Electrical
+        </span>
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#6c757d" stroke-width="2" stroke-dasharray="8,4"/>
-          <line x1="30" y1="3" x2="26" y2="6" stroke="#6c757d" stroke-width="2"/>
-          <line x1="30" y1="9" x2="26" y2="6" stroke="#6c757d" stroke-width="2"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-mechanical" stroke-width="2" stroke-dasharray="8,4"/>
+          <line x1="30" y1="3" x2="26" y2="6" class="connection-mechanical" stroke-width="2"/>
+          <line x1="30" y1="9" x2="26" y2="6" class="connection-mechanical" stroke-width="2"/>
         </svg>
-        <span>⚙️ Mechanical</span>
+        <span>
+          <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
+            <use href="#icon-mechanical"/>
+          </svg>
+          Mechanical
+        </span>
       </div>
       
-      <h4 style="margin-top: 15px;">Arrow Types</h4>
+      <h4 class="fusion-legend-section">Arrow Types</h4>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#333" stroke-width="2"/>
-          <polygon points="30,6 26,3 26,9" fill="#333"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-generic" stroke-width="2"/>
+          <polygon points="30,6 26,3 26,9" class="connection-generic"/>
         </svg>
         <span>→ Forward</span>
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#333" stroke-width="2"/>
-          <polygon points="30,6 26,3 26,9" fill="#333"/>
-          <polygon points="0,6 4,3 4,9" fill="#333"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-generic" stroke-width="2"/>
+          <polygon points="30,6 26,3 26,9" class="connection-generic"/>
+          <polygon points="0,6 4,3 4,9" class="connection-generic"/>
         </svg>
         <span>↔ Bidirectional</span>
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#333" stroke-width="2"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-generic" stroke-width="2"/>
         </svg>
         <span>— No Arrow</span>
       </div>
@@ -586,13 +1815,1346 @@
   <div id="dialog-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
                                    background: rgba(0,0,0,0.5); z-index: 999;"></div>
   
+  <!-- ========== FUSION 360 KEYBOARD SHORTCUTS & ACCESSIBILITY - PHASE 3 ========== -->
   <script>
+    // Professional Keyboard Shortcuts System
+    class FusionKeyboardManager {
+      constructor() {
+        this.shortcuts = {
+          // File Operations
+          'Ctrl+N': () => this.triggerAction('btn-new', 'New Diagram'),
+          'Ctrl+S': () => this.triggerAction('btn-save', 'Save Diagram'),
+          'Ctrl+O': () => this.triggerAction('btn-load', 'Load Diagram'),
+          
+          // Edit Operations
+          'Ctrl+Z': () => this.triggerAction('btn-undo', 'Undo'),
+          'Ctrl+Y': () => this.triggerAction('btn-redo', 'Redo'),
+          'Ctrl+Shift+Z': () => this.triggerAction('btn-redo', 'Redo'),
+          
+          // Navigation
+          'Ctrl+F': () => this.focusSearch(),
+          'Escape': () => this.clearSelection(),
+          'Delete': () => this.deleteSelected(),
+          'Backspace': () => this.deleteSelected(),
+          
+          // Hierarchy Navigation
+          'Ctrl+Up': () => this.triggerAction('btn-go-up', 'Go Up'),
+          'Ctrl+Down': () => this.triggerAction('btn-drill-down', 'Drill Down'),
+          'Ctrl+Shift+N': () => this.triggerAction('btn-create-child', 'Create Child'),
+          
+          // Block Operations
+          'Ctrl+A': () => this.selectAll(),
+          'Ctrl+D': () => this.duplicateSelected(),
+          'Insert': () => this.triggerAction('btn-add-block', 'Add Block'),
+          
+          // View Controls
+          'Ctrl+0': () => this.resetZoom(),
+          'Ctrl+=': () => this.zoomIn(),
+          'Ctrl+-': () => this.zoomOut(),
+          
+          // Connection Types (with Shift)
+          'Shift+P': () => this.setConnectionType('power'),
+          'Shift+D': () => this.setConnectionType('data'),
+          'Shift+E': () => this.setConnectionType('electrical'),
+          'Shift+M': () => this.setConnectionType('mechanical'),
+        };
+        
+        this.init();
+      }
+      
+      init() {
+        document.addEventListener('keydown', (e) => this.handleKeydown(e));
+        this.createKeyboardHints();
+        this.setupAccessibility();
+      }
+      
+      handleKeydown(e) {
+        // Don't handle shortcuts when typing in inputs
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+          if (e.key === 'Escape') {
+            e.target.blur();
+          }
+          return;
+        }
+        
+        const key = this.getShortcutKey(e);
+        const handler = this.shortcuts[key];
+        
+        if (handler) {
+          e.preventDefault();
+          handler();
+          this.showKeyboardFeedback(key);
+        }
+      }
+      
+      getShortcutKey(e) {
+        const parts = [];
+        if (e.ctrlKey) parts.push('Ctrl');
+        if (e.shiftKey) parts.push('Shift');
+        if (e.altKey) parts.push('Alt');
+        
+        let key = e.key;
+        if (key === ' ') key = 'Space';
+        parts.push(key);
+        
+        return parts.join('+');
+      }
+      
+      triggerAction(buttonId, actionName) {
+        const button = document.getElementById(buttonId);
+        if (button && !button.disabled) {
+          button.click();
+          this.showToast(`${actionName} (Keyboard Shortcut)`);
+        } else if (button && button.disabled) {
+          this.showToast(`${actionName} not available`, 'warning');
+        }
+      }
+      
+      focusSearch() {
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+          this.showToast('Search focused (Ctrl+F)');
+        }
+      }
+      
+      clearSelection() {
+        // Clear any selections
+        document.querySelectorAll('.block.selected').forEach(block => {
+          block.classList.remove('selected');
+        });
+        this.showToast('Selection cleared');
+      }
+      
+      selectAll() {
+        document.querySelectorAll('.block').forEach(block => {
+          block.classList.add('selected');
+        });
+        this.showToast('All blocks selected (Ctrl+A)');
+      }
+      
+      deleteSelected() {
+        const selected = document.querySelectorAll('.block.selected');
+        if (selected.length > 0) {
+          // Add deletion animation before removing
+          selected.forEach(block => {
+            block.style.animation = 'blockDisappear 0.3s ease-in forwards';
+            setTimeout(() => block.remove(), 300);
+          });
+          this.showToast(`Deleted ${selected.length} block(s)`);
+        }
+      }
+      
+      setConnectionType(type) {
+        const select = document.getElementById('connection-type-select');
+        if (select) {
+          select.value = type;
+          select.dispatchEvent(new Event('change'));
+          this.showToast(`Connection type: ${type.charAt(0).toUpperCase() + type.slice(1)}`);
+        }
+      }
+      
+      showKeyboardFeedback(shortcut) {
+        // Visual feedback for keyboard shortcuts
+        const feedback = document.createElement('div');
+        feedback.className = 'keyboard-feedback';
+        feedback.textContent = shortcut;
+        feedback.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: rgba(0,123,204,0.9);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 4px;
+          font-family: var(--fusion-font-family);
+          font-size: 14px;
+          font-weight: 500;
+          z-index: 10000;
+          opacity: 0;
+          animation: shortcutFeedback 0.8s ease-out;
+        `;
+        
+        document.body.appendChild(feedback);
+        setTimeout(() => feedback.remove(), 800);
+      }
+      
+      showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `fusion-toast ${type}`;
+        toast.textContent = message;
+        toast.style.cssText = `
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          background: var(--fusion-panel-bg);
+          color: var(--fusion-text-primary);
+          border: 1px solid var(--fusion-panel-border);
+          padding: 12px 16px;
+          border-radius: var(--fusion-radius-medium);
+          font-family: var(--fusion-font-family);
+          font-size: var(--fusion-font-size-normal);
+          box-shadow: var(--fusion-shadow-medium);
+          z-index: 10000;
+          opacity: 0;
+          transform: translateY(20px);
+          animation: toastSlideIn 0.3s ease-out forwards;
+        `;
+        
+        if (type === 'warning') {
+          toast.style.borderColor = 'var(--fusion-status-warning)';
+          toast.style.background = 'var(--fusion-status-warning-bg)';
+        }
+        
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.style.animation = 'toastSlideOut 0.3s ease-in forwards';
+          setTimeout(() => toast.remove(), 300);
+        }, 2000);
+      }
+      
+      createKeyboardHints() {
+        const hints = document.createElement('div');
+        hints.className = 'keyboard-hint';
+        hints.innerHTML = `
+          <div>Press <kbd>Ctrl+K</kbd> to show all shortcuts</div>
+        `;
+        document.body.appendChild(hints);
+        
+        // Show hints on first load, then hide
+        setTimeout(() => hints.classList.add('show'), 1000);
+        setTimeout(() => hints.classList.remove('show'), 4000);
+      }
+      
+      setupAccessibility() {
+        // Add ARIA labels and keyboard navigation
+        document.querySelectorAll('.block').forEach((block, index) => {
+          block.setAttribute('tabindex', '0');
+          block.setAttribute('role', 'button');
+          block.setAttribute('aria-label', `Block ${index + 1}`);
+        });
+        
+        // Enhanced focus management
+        document.addEventListener('focusin', (e) => {
+          if (e.target.classList.contains('block')) {
+            e.target.style.outline = '2px solid var(--fusion-accent-blue)';
+            e.target.style.outlineOffset = '2px';
+          }
+        });
+        
+        document.addEventListener('focusout', (e) => {
+          if (e.target.classList.contains('block')) {
+            e.target.style.outline = '';
+            e.target.style.outlineOffset = '';
+          }
+        });
+      }
+    }
+    
+    // Initialize keyboard manager when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      window.fusionKeyboard = new FusionKeyboardManager();
+    });
+    
     // Visual debug function
     function debugLog(message) {
       // Debug logging disabled for clean interface
       // console.log(message);
     }
   </script>
+  
+  <!-- Add CSS for new animations -->
+  <style>
+    @keyframes blockDisappear {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.8); }
+    }
+    
+    @keyframes shortcutFeedback {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+      20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    }
+    
+    @keyframes toastSlideIn {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes toastSlideOut {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(20px); }
+    }
+    
+    kbd {
+      background: var(--fusion-bg-tertiary);
+      border: 1px solid var(--fusion-border-secondary);
+      border-radius: 3px;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-family: monospace;
+      color: var(--fusion-text-primary);
+    }
+
+    /* ========== MILESTONE 11: ADVANCED BLOCK TYPE SELECTOR - PHASE 1 ========== */
+    
+    /* Block Type Dropdown Container */
+    .block-type-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    
+    /* Dropdown Arrow Animation */
+    .dropdown-arrow {
+      margin-left: var(--fusion-spacing-xs);
+      transition: transform var(--fusion-transition-fast);
+    }
+    
+    .block-type-dropdown.open .dropdown-arrow {
+      transform: rotate(180deg);
+    }
+    
+    /* Professional Block Type Menu */
+    .block-type-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      min-width: 320px;
+      max-height: 500px;
+      background: var(--fusion-panel-bg);
+      border: 1px solid var(--fusion-panel-border);
+      border-radius: var(--fusion-radius-medium);
+      box-shadow: var(--fusion-shadow-heavy);
+      overflow-y: auto;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(8px);
+    }
+    
+    .block-type-menu.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    
+    /* Block Category Headers */
+    .block-category {
+      padding: var(--fusion-spacing-sm) 0;
+      border-bottom: 1px solid var(--fusion-border-secondary);
+    }
+    
+    .block-category:last-child {
+      border-bottom: none;
+    }
+    
+    .block-category h4 {
+      margin: 0 0 var(--fusion-spacing-sm) 0;
+      padding: 0 var(--fusion-spacing-md);
+      font-size: var(--fusion-font-size-normal);
+      font-weight: 600;
+      color: var(--fusion-text-primary);
+      display: flex;
+      align-items: center;
+      gap: var(--fusion-spacing-xs);
+    }
+    
+    /* Professional Block Type Items */
+    .block-type-item {
+      display: flex;
+      align-items: center;
+      padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
+      cursor: pointer;
+      transition: all var(--fusion-transition-fast);
+      gap: var(--fusion-spacing-sm);
+    }
+    
+    .block-type-item:hover:not(.disabled) {
+      background: var(--fusion-bg-hover);
+      transform: translateX(2px);
+    }
+    
+    .block-type-item.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    /* Block Icons */
+    .block-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: var(--fusion-radius-small);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .block-icon::before {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      background: rgba(255,255,255,0.2);
+      border-radius: var(--fusion-radius-small);
+    }
+    
+    /* Block Information */
+    .block-info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .block-name {
+      font-size: var(--fusion-font-size-normal);
+      font-weight: 500;
+      color: var(--fusion-text-primary);
+      line-height: 1.2;
+    }
+    
+    .block-desc {
+      font-size: var(--fusion-font-size-small);
+      color: var(--fusion-text-secondary);
+      line-height: 1.2;
+      margin-top: 2px;
+    }
+    
+    /* Enhanced Block Visual States */
+    .block-type-item:not(.disabled):active {
+      transform: translateX(4px) scale(0.98);
+    }
+    
+    /* Block Type Selection Animation */
+    .block-type-item.selected {
+      background: rgba(0, 123, 204, 0.1);
+      border-left: 3px solid var(--fusion-accent-blue);
+      padding-left: calc(var(--fusion-spacing-md) - 3px);
+    }
+    
+    /* Scrollbar Styling */
+    .block-type-menu::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .block-type-menu::-webkit-scrollbar-track {
+      background: var(--fusion-bg-secondary);
+    }
+    
+    .block-type-menu::-webkit-scrollbar-thumb {
+      background: var(--fusion-border-secondary);
+      border-radius: 3px;
+    }
+    
+    .block-type-menu::-webkit-scrollbar-thumb:hover {
+      background: var(--fusion-border-hover);
+    }
+
+    /* ========== SPECIALIZED BLOCK RENDERING ========== */
+    .specialized-block {
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+      stroke-width: 2px !important;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .specialized-block:hover {
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3));
+      transform: scale(1.02);
+    }
+
+    .specialized-text {
+      font-weight: 600;
+      font-size: 12px;
+      fill: var(--fusion-text-primary);
+    }
+
+    .block-type-indicator {
+      font-family: var(--fusion-font-family);
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    /* Block category styling */
+    .specialized-block[data-category="electrical"] {
+      stroke: var(--fusion-primary-color);
+    }
+
+    .specialized-block[data-category="mechanical"] {
+      stroke: #16A085;
+    }
+
+    .specialized-block[data-category="software"] {
+      stroke: #8E44AD;
+    }
+
+    .specialized-block[data-category="firmware"] {
+      stroke: #D35400;
+    }
+
+    .specialized-block[data-category="software"] {
+      stroke: #8E44AD;
+    }
+
+    /* Connection points styling */
+    .connection-point {
+      stroke: rgba(255, 255, 255, 0.8);
+      stroke-width: 1px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .connection-point:hover {
+      r: 6px;
+      stroke-width: 2px;
+    }
+
+    /* Animation effects */
+    @keyframes blockCreated {
+      0% {
+        opacity: 0;
+        transform: scale(0.8) rotate(-5deg);
+      }
+      50% {
+        opacity: 0.8;
+        transform: scale(1.1) rotate(2deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+      }
+    }
+
+    @keyframes floatingEffect {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-2px);
+      }
+    }
+
+    .block-group.new {
+      animation: blockCreated 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .block-group.floating .specialized-block {
+      animation: floatingEffect 3s ease-in-out infinite;
+      animation-delay: calc(var(--block-index, 0) * 0.2s);
+    }
+
+    /* Specifications tooltip styling */
+    .specs-tooltip {
+      background: linear-gradient(135deg, #2C3E50 0%, #34495E 100%);
+      border: 1px solid var(--fusion-primary-color);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      max-width: 300px;
+      min-width: 250px;
+    }
+
+    .specs-tooltip h4 {
+      color: var(--fusion-primary-color);
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(52, 152, 219, 0.3);
+      padding-bottom: 5px;
+    }
+
+    .specs-tooltip div {
+      font-size: 12px;
+      margin: 4px 0;
+      line-height: 1.4;
+    }
+
+    .spec-preview {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      padding: 8px;
+      margin-top: 8px;
+    }
+
+    .spec-section {
+      margin-bottom: 12px;
+    }
+
+    .spec-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .spec-section h5 {
+      color: var(--fusion-accent-blue);
+      margin: 0 0 6px 0;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid rgba(52, 152, 219, 0.2);
+      padding-bottom: 3px;
+    }
+
+    /* Enhanced mechanical connection point styling */
+    .connection-point[stroke-dasharray] {
+      animation: rotate 2s linear infinite;
+    }
+
+    @keyframes rotate {
+      from { stroke-dashoffset: 0; }
+      to { stroke-dashoffset: 6; }
+    }
+
+    /* Category-specific block enhancements */
+    .specialized-block[data-category="mechanical"] .block-type-indicator {
+      color: #16A085;
+    }
+
+    .specialized-block[data-category="software"] .block-type-indicator {
+      color: #8E44AD;
+    }
+
+    /* Software-specific connection point animations */
+    .connection-point[stroke-dasharray*="3,1"] {
+      animation: softwareFlow 1.5s linear infinite;
+    }
+
+    @keyframes softwareFlow {
+      from { stroke-dashoffset: 0; }
+      to { stroke-dashoffset: 8; }
+    }
+
+    /* Enhanced software block styling */
+    .specialized-block[data-category="software"] {
+      filter: drop-shadow(0 4px 12px rgba(142, 68, 173, 0.3));
+    }
+
+    .specialized-block[data-category="software"]:hover {
+      filter: drop-shadow(0 6px 16px rgba(142, 68, 173, 0.4));
+    }
+
+    /* ========== TEMPLATE SYSTEM STYLING ========== */
+    .template-block {
+      filter: drop-shadow(0 6px 20px rgba(231, 76, 60, 0.3));
+    }
+
+    .template-block .specialized-block {
+      stroke: var(--template-color);
+      stroke-width: 3px;
+      stroke-dasharray: 8,2;
+    }
+
+    .template-connection {
+      opacity: 0.8;
+      stroke-dasharray: 10,5;
+      animation: templateConnectionFlow 3s linear infinite;
+    }
+
+    @keyframes templateConnectionFlow {
+      from { stroke-dashoffset: 0; }
+      to { stroke-dashoffset: 30; }
+    }
+
+    @keyframes connectionFlow {
+      0%, 100% { stroke-dashoffset: 100; }
+      50% { stroke-dashoffset: 0; }
+    }
+
+    .template-created {
+      animation: templateCreated 1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes templateCreated {
+      0% {
+        transform: scale(0.8);
+        opacity: 0.5;
+      }
+      50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    /* Template info tooltip styling */
+    .template-info {
+      background: linear-gradient(135deg, #E74C3C 0%, #C0392B 100%);
+      border: 2px solid #E74C3C;
+      border-radius: 12px;
+      box-shadow: 0 12px 36px rgba(231, 76, 60, 0.4);
+      color: white;
+    }
+
+    .template-info h4 {
+      color: white;
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+      padding-bottom: 8px;
+    }
+
+    .template-info p {
+      margin: 0 0 12px 0;
+      opacity: 0.9;
+      line-height: 1.4;
+    }
+
+    .template-stats {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      padding: 8px;
+      margin: 8px 0;
+    }
+
+    .template-stats div {
+      font-size: 12px;
+      margin: 3px 0;
+    }
+
+    .template-specs {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 6px;
+      padding: 8px;
+      margin-top: 8px;
+    }
+
+    .template-specs div {
+      font-size: 11px;
+      margin: 2px 0;
+      opacity: 0.9;
+    }
+
+    /* Enhanced block type menu for templates */
+    .block-category h4:contains("System Templates") {
+      background: linear-gradient(90deg, #E74C3C, #F39C12);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 700;
+    }
+  </style>
+  <script src="./electrical-blocks.js"></script>
+  <script src="./mechanical-blocks.js"></script>
+  <script src="./software-blocks.js"></script>
+  <script src="./block-templates.js"></script>
+  
+  <!-- ========== MILESTONE 11: BLOCK TYPE SELECTOR FUNCTIONALITY - ALL PHASES COMPLETE ========== -->
+  <script>
+    // Professional Block Type Manager for Milestone 11
+    class AdvancedBlockTypeManager {
+      constructor() {
+        this.currentBlockType = null;
+        this.blockTypeMenu = null;
+        this.isMenuOpen = false;
+        this.init();
+      }
+      
+      init() {
+        this.blockTypeMenu = document.getElementById('block-type-menu');
+        this.setupEventListeners();
+        this.setupKeyboardShortcuts();
+      }
+      
+      setupEventListeners() {
+        // Block type button toggle
+        const blockTypeBtn = document.getElementById('btn-block-types');
+        if (blockTypeBtn) {
+          blockTypeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleBlockTypeMenu();
+          });
+        }
+        
+        // Block type selection
+        document.querySelectorAll('.block-type-item:not(.disabled)').forEach(item => {
+          item.addEventListener('click', (e) => {
+            const blockType = e.currentTarget.dataset.type;
+            this.selectBlockType(blockType);
+            this.closeBlockTypeMenu();
+          });
+          
+          // Hover preview
+          item.addEventListener('mouseenter', (e) => {
+            const blockType = e.currentTarget.dataset.type;
+            this.showBlockTypePreview(blockType);
+          });
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('.block-type-dropdown')) {
+            this.closeBlockTypeMenu();
+          }
+        });
+        
+        // Enhanced Add Block functionality
+        const addBlockBtn = document.getElementById('btn-add-block');
+        if (addBlockBtn) {
+          addBlockBtn.addEventListener('click', () => {
+            this.createBasicBlock();
+          });
+        }
+      }
+      
+      setupKeyboardShortcuts() {
+        // Add to existing keyboard manager
+        if (window.fusionKeyboard) {
+          window.fusionKeyboard.shortcuts['Shift+B'] = () => this.toggleBlockTypeMenu();
+          window.fusionKeyboard.shortcuts['Ctrl+Shift+1'] = () => this.quickSelectType('microcontroller-arduino');
+          window.fusionKeyboard.shortcuts['Ctrl+Shift+2'] = () => this.quickSelectType('microcontroller-esp32');
+          window.fusionKeyboard.shortcuts['Ctrl+Shift+P'] = () => this.quickSelectType('power-supply-linear');
+        }
+      }
+      
+      toggleBlockTypeMenu() {
+        if (this.isMenuOpen) {
+          this.closeBlockTypeMenu();
+        } else {
+          this.openBlockTypeMenu();
+        }
+      }
+      
+      openBlockTypeMenu() {
+        this.blockTypeMenu.classList.add('show');
+        document.querySelector('.block-type-dropdown').classList.add('open');
+        this.isMenuOpen = true;
+        
+        // Focus first item for keyboard navigation
+        const firstItem = this.blockTypeMenu.querySelector('.block-type-item:not(.disabled)');
+        if (firstItem) {
+          firstItem.focus();
+        }
+        
+        this.showToast('Block type selector opened (↑↓ to navigate, Enter to select)', 'info');
+      }
+      
+      closeBlockTypeMenu() {
+        this.blockTypeMenu.classList.remove('show');
+        document.querySelector('.block-type-dropdown').classList.remove('open');
+        this.isMenuOpen = false;
+      }
+      
+      selectBlockType(blockType) {
+        this.currentBlockType = blockType;
+        
+        // Update button appearance
+        const blockTypeBtn = document.getElementById('btn-block-types');
+        
+        // Try to get type info from all available libraries and templates
+        let typeInfo = null;
+        let isTemplate = false;
+        
+        // Check if it's a template
+        if (blockType.startsWith('template-') && typeof BlockTemplateSystem !== 'undefined') {
+          typeInfo = BlockTemplateSystem.getTemplate(blockType);
+          isTemplate = true;
+        }
+        
+        // If not a template, check component libraries
+        if (!typeInfo) {
+          typeInfo = ElectricalBlockTypes.getType(blockType);
+        }
+        if (!typeInfo && typeof MechanicalBlockTypes !== 'undefined') {
+          typeInfo = MechanicalBlockTypes.getType(blockType);
+        }
+        if (!typeInfo && typeof SoftwareBlockTypes !== 'undefined') {
+          typeInfo = SoftwareBlockTypes.getType(blockType);
+        }
+        
+        if (typeInfo) {
+          blockTypeBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 12 12">
+              <use href="#icon-${typeInfo.icon || (isTemplate ? 'template' : 'block-advanced')}"/>
+            </svg>
+            ${typeInfo.name}
+            <svg width="12" height="12" viewBox="0 0 12 12" class="dropdown-arrow">
+              <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          `;
+          blockTypeBtn.style.borderColor = typeInfo.color;
+          blockTypeBtn.style.color = typeInfo.color;
+        }
+        
+        // Create block or template
+        if (isTemplate) {
+          this.createFromTemplate(blockType);
+        } else {
+          this.createSpecializedBlock(blockType);
+        }
+        
+        this.showToast(`${isTemplate ? 'Created template' : 'Selected'}: ${typeInfo?.name || blockType}`, 'info');
+      }
+      
+      quickSelectType(blockType) {
+        this.selectBlockType(blockType);
+        this.closeBlockTypeMenu();
+      }
+      
+      createBasicBlock() {
+        // Create standard block (existing functionality)
+        const block = {
+          id: this.generateBlockId(),
+          name: 'New Block',
+          type: 'generic',
+          x: 100 + Math.random() * 200,
+          y: 100 + Math.random() * 200,
+          status: 'Placeholder',
+          attributes: {},
+          interfaces: []
+        };
+        
+        this.addBlockToCanvas(block);
+        this.showToast('Basic block created', 'info');
+      }
+      
+      createFromTemplate(templateId) {
+        if (typeof BlockTemplateSystem === 'undefined') return;
+        
+        const basePosition = { 
+          x: 200 + Math.random() * 300, 
+          y: 200 + Math.random() * 200 
+        };
+        
+        const templateResult = BlockTemplateSystem.createFromTemplate(templateId, basePosition);
+        if (!templateResult) return;
+        
+        const canvas = document.getElementById('svg-canvas');
+        const blocksLayer = document.getElementById('blocks-layer');
+        const connectionsLayer = document.getElementById('connections-layer');
+        
+        // Create all blocks from template
+        const createdBlockElements = [];
+        templateResult.blocks.forEach((block, index) => {
+          const blockElement = this.addBlockToCanvas(block, true);
+          createdBlockElements.push(blockElement);
+          
+          // Add template-specific styling
+          blockElement.classList.add('template-block');
+          blockElement.setAttribute('data-template', templateId);
+          blockElement.style.setProperty('--template-color', templateResult.template.color);
+        });
+        
+        // Create connections between blocks
+        templateResult.connections.forEach(conn => {
+          this.createTemplateConnection(conn, createdBlockElements);
+        });
+        
+        // Show template information
+        this.showTemplateInfo(templateResult.template, templateResult.blocks.length);
+        
+        // Add template completion animation
+        setTimeout(() => {
+          createdBlockElements.forEach((element, index) => {
+            setTimeout(() => {
+              element.classList.add('template-created');
+            }, index * 100);
+          });
+        }, 500);
+      }
+
+      createSpecializedBlock(blockType) {
+        // Try to get type info from all available libraries
+        let typeInfo = ElectricalBlockTypes.getType(blockType);
+        if (!typeInfo && typeof MechanicalBlockTypes !== 'undefined') {
+          typeInfo = MechanicalBlockTypes.getType(blockType);
+        }
+        if (!typeInfo && typeof SoftwareBlockTypes !== 'undefined') {
+          typeInfo = SoftwareBlockTypes.getType(blockType);
+        }
+        
+        if (!typeInfo) return;
+        
+        // Create specialized block with full specifications
+        const block = {
+          id: this.generateBlockId(),
+          name: typeInfo.name,
+          type: blockType,
+          category: typeInfo.category,
+          x: 150 + Math.random() * 300,
+          y: 150 + Math.random() * 200,
+          status: 'Planned',
+          attributes: {
+            specifications: typeInfo.specifications,
+            description: typeInfo.description
+          },
+          interfaces: typeInfo.interfaces.map(iface => ({
+            ...iface,
+            id: `${this.generateBlockId()}_${iface.id}`
+          })),
+          pinout: typeInfo.pinout || null,
+          visualStyle: {
+            color: typeInfo.color,
+            icon: typeInfo.icon
+          }
+        };
+        
+        this.addBlockToCanvas(block, true); // true for specialized rendering
+        this.showToast(`Created ${typeInfo.name}`, 'info');
+        
+        // Show specifications tooltip
+        setTimeout(() => {
+          this.showBlockSpecifications(block);
+        }, 500);
+      }
+      
+      addBlockToCanvas(block, isSpecialized = false) {
+        const canvas = document.getElementById('svg-canvas');
+        const blocksLayer = document.getElementById('blocks-layer');
+        
+        // Create SVG group for the block
+        const blockGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        blockGroup.classList.add('block-group');
+        blockGroup.setAttribute('data-block-id', block.id);
+        blockGroup.setAttribute('transform', `translate(${block.x}, ${block.y})`);
+        
+        // Create block rectangle with specialized styling
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.classList.add('block');
+        if (isSpecialized) {
+          rect.classList.add('specialized-block');
+          rect.setAttribute('data-type', block.type);
+          rect.setAttribute('data-category', block.category);
+        }
+        
+        // Set dimensions based on block type
+        const width = isSpecialized ? 120 : 100;
+        const height = isSpecialized ? 80 : 60;
+        
+        rect.setAttribute('x', -width/2);
+        rect.setAttribute('y', -height/2);
+        rect.setAttribute('width', width);
+        rect.setAttribute('height', height);
+        rect.setAttribute('rx', isSpecialized ? 8 : 6);
+        
+        // Apply specialized styling
+        if (isSpecialized && block.visualStyle) {
+          rect.style.fill = `${block.visualStyle.color}20`; // 20% opacity
+          rect.style.stroke = block.visualStyle.color;
+          rect.style.strokeWidth = '2';
+        }
+        
+        // Create text label
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.classList.add('block-text');
+        if (isSpecialized) {
+          text.classList.add('specialized-text');
+        }
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'middle');
+        text.textContent = block.name;
+        
+        // Add type indicator for specialized blocks
+        if (isSpecialized) {
+          const typeIndicator = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          typeIndicator.classList.add('block-type-indicator');
+          typeIndicator.setAttribute('text-anchor', 'middle');
+          typeIndicator.setAttribute('dominant-baseline', 'middle');
+          typeIndicator.setAttribute('y', '15');
+          typeIndicator.style.fontSize = '10px';
+          typeIndicator.style.opacity = '0.7';
+          typeIndicator.textContent = block.category.toUpperCase();
+          blockGroup.appendChild(typeIndicator);
+        }
+        
+        // Add connection points for interfaces
+        if (block.interfaces && block.interfaces.length > 0) {
+          this.addConnectionPoints(blockGroup, block.interfaces, width, height);
+        }
+        
+        blockGroup.appendChild(rect);
+        blockGroup.appendChild(text);
+        blocksLayer.appendChild(blockGroup);
+        
+        // Add animation
+        blockGroup.classList.add('new');
+        if (isSpecialized) {
+          blockGroup.classList.add('floating');
+        }
+        
+        // Store block data
+        blockGroup.blockData = block;
+        
+        return blockGroup;
+      }
+      
+      addConnectionPoints(blockGroup, interfaces, width, height) {
+        interfaces.forEach((iface, index) => {
+          const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          point.classList.add('connection-point');
+          point.setAttribute('data-interface-id', iface.id);
+          point.setAttribute('data-interface-kind', iface.kind);
+          
+          // Position points around the block perimeter
+          const angle = (index / interfaces.length) * 2 * Math.PI;
+          const x = Math.cos(angle) * (width/2 + 5);
+          const y = Math.sin(angle) * (height/2 + 5);
+          
+          point.setAttribute('cx', x);
+          point.setAttribute('cy', y);
+          point.setAttribute('r', '4');
+          
+          // Color code by interface type with enhanced colors for all categories
+          const colorMap = {
+            'power': '#E74C3C',
+            'data': '#3498DB', 
+            'electrical': '#F39C12',
+            'mechanical': '#16A085'
+          };
+          point.style.fill = colorMap[iface.kind] || '#BDC3C7';
+          
+          // Enhanced software interface styling
+          if (iface.kind === 'data' && block.category === 'software') {
+            point.style.strokeWidth = '2';
+            point.style.stroke = '#8E44AD';
+            
+            // Protocol-specific styling
+            if (iface.protocol === 'api_call' || iface.protocol === 'function_call') {
+              point.setAttribute('stroke-dasharray', '3,1');
+            } else if (iface.protocol === 'interrupt') {
+              point.style.fill = '#E74C3C';
+              point.setAttribute('stroke', '#E74C3C');
+            } else if (iface.protocol === 'dma') {
+              point.setAttribute('stroke-width', '3');
+              point.style.opacity = '0.8';
+            }
+          }
+          
+          // Add mechanical-specific styling
+          if (iface.kind === 'mechanical') {
+            point.setAttribute('stroke-width', '2');
+            if (iface.type === 'rotational') {
+              point.setAttribute('stroke-dasharray', '2,1');
+            } else if (iface.type === 'linear') {
+              point.setAttribute('rx', '2'); // Make rectangular for linear
+            } else if (iface.type === 'force') {
+              point.setAttribute('stroke', '#E67E22');
+              point.setAttribute('stroke-width', '3');
+            }
+          }
+          
+          blockGroup.appendChild(point);
+        });
+      }
+      
+      showBlockSpecifications(block) {
+        if (!block.attributes?.specifications) return;
+        
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip specs-tooltip show';
+        
+        // Get properties from all available libraries
+        let typeInfo = ElectricalBlockTypes.getType(block.type);
+        if (!typeInfo && typeof MechanicalBlockTypes !== 'undefined') {
+          typeInfo = MechanicalBlockTypes.getType(block.type);
+        }
+        if (!typeInfo && typeof SoftwareBlockTypes !== 'undefined') {
+          typeInfo = SoftwareBlockTypes.getType(block.type);
+        }
+        
+        let mechanicalPropsHtml = '';
+        if (typeInfo?.mechanicalProperties) {
+          mechanicalPropsHtml = `
+            <div class="spec-section">
+              <h5>Mechanical Properties</h5>
+              ${Object.entries(typeInfo.mechanicalProperties).map(([key, value]) => 
+                `<div><strong>${key}:</strong> ${value}</div>`
+              ).join('')}
+            </div>
+          `;
+        }
+
+        let softwarePropsHtml = '';
+        if (typeInfo?.softwareProperties) {
+          softwarePropsHtml = `
+            <div class="spec-section">
+              <h5>Software Properties</h5>
+              ${Object.entries(typeInfo.softwareProperties).map(([key, value]) => 
+                `<div><strong>${key}:</strong> ${value}</div>`
+              ).join('')}
+            </div>
+          `;
+        }
+
+        let algorithmsHtml = '';
+        if (typeInfo?.algorithms) {
+          algorithmsHtml = `
+            <div class="spec-section">
+              <h5>Algorithms</h5>
+              ${Object.entries(typeInfo.algorithms).map(([key, value]) => 
+                `<div><strong>${key}:</strong> ${value}</div>`
+              ).join('')}
+            </div>
+          `;
+        }
+        
+        tooltip.innerHTML = `
+          <h4>${block.name} Specifications</h4>
+          <div class="spec-section">
+            <h5>General Specifications</h5>
+            ${Object.entries(block.attributes.specifications).map(([key, value]) => 
+              `<div><strong>${key}:</strong> ${value}</div>`
+            ).join('')}
+          </div>
+          ${mechanicalPropsHtml}
+          ${softwarePropsHtml}
+          ${algorithmsHtml}
+        `;
+        
+        tooltip.style.left = `${block.x + 100}px`;
+        tooltip.style.top = `${block.y - 50}px`;
+        
+        document.body.appendChild(tooltip);
+        
+        setTimeout(() => tooltip.remove(), 7000); // Longer display for more content
+      }
+      
+      showBlockTypePreview(blockType) {
+        // Try to get type info from all available libraries
+        let typeInfo = ElectricalBlockTypes.getType(blockType);
+        if (!typeInfo && typeof MechanicalBlockTypes !== 'undefined') {
+          typeInfo = MechanicalBlockTypes.getType(blockType);
+        }
+        if (!typeInfo && typeof SoftwareBlockTypes !== 'undefined') {
+          typeInfo = SoftwareBlockTypes.getType(blockType);
+        }
+        
+        if (!typeInfo) return;
+        
+        // Show preview tooltip with specifications
+        const preview = document.createElement('div');
+        preview.className = 'tooltip info show';
+        preview.innerHTML = `
+          <h4>${typeInfo.name}</h4>
+          <p>${typeInfo.description}</p>
+          <div class="spec-preview">
+            ${Object.entries(typeInfo.specifications).slice(0, 3).map(([key, value]) => 
+              `<div><strong>${key}:</strong> ${value}</div>`
+            ).join('')}
+          </div>
+        `;
+        
+        const rect = event.target.getBoundingClientRect();
+        preview.style.left = `${rect.right + 10}px`;
+        preview.style.top = `${rect.top}px`;
+        
+        document.body.appendChild(preview);
+        
+        setTimeout(() => preview.remove(), 2000);
+      }
+      
+      generateBlockId() {
+        return 'block_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      }
+      
+      createTemplateConnection(connection, blockElements) {
+        const connectionsLayer = document.getElementById('connections-layer');
+        
+        // Find source and target block elements by template index
+        const sourceElement = blockElements[connection.from.component];
+        const targetElement = blockElements[connection.to.component];
+          
+        if (!sourceElement || !targetElement) return;
+        
+        // Create connection line
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.classList.add('connection', 'template-connection');
+        line.setAttribute('data-connection-type', connection.type);
+        
+        // Get block positions
+        const sourceRect = sourceElement.getBBox();
+        const targetRect = targetElement.getBBox();
+        const sourceTransform = sourceElement.getAttribute('transform');
+        const targetTransform = targetElement.getAttribute('transform');
+        
+        // Extract positions from transform
+        const sourcePos = this.extractPosition(sourceTransform);
+        const targetPos = this.extractPosition(targetTransform);
+        
+        line.setAttribute('x1', sourcePos.x);
+        line.setAttribute('y1', sourcePos.y);
+        line.setAttribute('x2', targetPos.x);
+        line.setAttribute('y2', targetPos.y);
+        
+        // Style based on connection type
+        const connectionStyles = {
+          'power_connection': { stroke: '#E74C3C', strokeWidth: '3' },
+          'control_signal': { stroke: '#3498DB', strokeWidth: '2' },
+          'feedback_signal': { stroke: '#F39C12', strokeWidth: '2' },
+          'data_connection': { stroke: '#8E44AD', strokeWidth: '2' },
+          'mechanical_rotational': { stroke: '#16A085', strokeWidth: '2.5' },
+          'mechanical_linear': { stroke: '#16A085', strokeWidth: '2.5' }
+        };
+        
+        const style = connectionStyles[connection.type] || { stroke: '#BDC3C7', strokeWidth: '2' };
+        line.setAttribute('stroke', style.stroke);
+        line.setAttribute('stroke-width', style.strokeWidth);
+        line.setAttribute('stroke-dasharray', '5,3');
+        line.setAttribute('marker-end', 'url(#arrowhead)');
+        
+        connectionsLayer.appendChild(line);
+        
+        // Add connection animation
+        line.style.strokeDashoffset = '100';
+        line.style.animation = 'connectionFlow 2s ease-in-out infinite';
+      }
+      
+      extractPosition(transform) {
+        if (!transform) return { x: 0, y: 0 };
+        const match = transform.match(/translate\(([^,]+),([^)]+)\)/);
+        return match ? { 
+          x: parseFloat(match[1]), 
+          y: parseFloat(match[2]) 
+        } : { x: 0, y: 0 };
+      }
+      
+      showTemplateInfo(template, blockCount) {
+        const info = document.createElement('div');
+        info.className = 'tooltip template-info show';
+        info.innerHTML = `
+          <h4>🎯 ${template.name}</h4>
+          <p>${template.description}</p>
+          <div class="template-stats">
+            <div><strong>Components:</strong> ${blockCount}</div>
+            <div><strong>Category:</strong> ${template.category}</div>
+            <div><strong>Type:</strong> ${template.subcategory}</div>
+          </div>
+          <div class="template-specs">
+            ${Object.entries(template.specifications).map(([key, value]) => 
+              `<div><strong>${key}:</strong> ${value}</div>`
+            ).join('')}
+          </div>
+        `;
+        
+        info.style.left = '50px';
+        info.style.top = '100px';
+        info.style.maxWidth = '350px';
+        
+        document.body.appendChild(info);
+        
+        setTimeout(() => info.remove(), 8000);
+      }
+
+      showToast(message, type = 'info') {
+        // Use existing toast system from keyboard manager
+        if (window.fusionKeyboard) {
+          window.fusionKeyboard.showToast(message, type);
+        }
+      }
+    }
+    
+    // Initialize Advanced Block Type Manager
+    document.addEventListener('DOMContentLoaded', () => {
+      window.blockTypeManager = new AdvancedBlockTypeManager();
+    });
+  </script>
+  
   <script src="./palette.js"></script>
 </body>
 </html>
