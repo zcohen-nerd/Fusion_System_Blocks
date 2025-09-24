@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Debug Test - Check CSS Changes</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #2d2d30;
+      color: #f0f0f0;
+    }
+    
+    .test-block {
+      width: 120px;
+      height: 60px;
+      background: #464646;
+      border: 2px solid #666;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 20px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.1s ease-out;
+    }
+    
+    .test-block:hover {
+      transform: translateY(-2px) scale(1.02);
+      border-color: #007acc;
+    }
+    
+    .test-block.selected {
+      border-color: #ff8c00;
+      border-width: 3px;
+      transform: translateY(-3px) scale(1.03);
+      animation: selectAnim 0.15s ease-out;
+    }
+    
+    .test-block.selected:hover {
+      transform: translateY(-3px) scale(1.03);
+    }
+    
+    @keyframes selectAnim {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1.03) translateY(-3px); }
+    }
+    
+    .dropdown-test {
+      position: relative;
+      display: inline-block;
+      margin: 20px;
+    }
+    
+    .dropdown-button {
+      background: #464646;
+      color: #f0f0f0;
+      padding: 10px 20px;
+      border: 1px solid #666;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #383838;
+      border: 1px solid #666;
+      border-radius: 4px;
+      min-width: 200px;
+      z-index: 99999;
+      display: none;
+    }
+    
+    .dropdown-menu.show {
+      display: block;
+    }
+    
+    .dropdown-item {
+      padding: 10px 15px;
+      cursor: pointer;
+    }
+    
+    .dropdown-item:hover {
+      background: #464646;
+    }
+  </style>
+</head>
+<body>
+  <h1>Debug Test - Are CSS Changes Working?</h1>
+  
+  <h2>Test 1: Text Contrast</h2>
+  <p>This text should be bright white (#f0f0f0). If it's dim gray, CSS changes aren't loading.</p>
+  
+  <h2>Test 2: Block Animation Speed</h2>
+  <div class="test-block" onclick="this.classList.toggle('selected')">Click me</div>
+  <p>Click the block above. Selection animation should be very fast (0.15s).</p>
+  
+  <h2>Test 3: Selection Hover Jump</h2>
+  <div class="test-block selected">Selected Block</div>
+  <p>Hover over the orange block above, then move mouse away. Should NOT jump.</p>
+  
+  <h2>Test 4: Dropdown Z-Index</h2>
+  <div class="dropdown-test">
+    <div class="dropdown-button" onclick="toggleDropdown()">Test Dropdown</div>
+    <div class="dropdown-menu" id="dropdown">
+      <div class="dropdown-item">Option 1</div>
+      <div class="dropdown-item">Option 2</div>
+      <div class="dropdown-item">Option 3</div>
+    </div>
+  </div>
+  <p>Click dropdown. Menu should appear above this text with z-index 99999.</p>
+
+  <script>
+    function toggleDropdown() {
+      document.getElementById('dropdown').classList.toggle('show');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Context Menu Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #2d2d30;
+      color: #e6e6e6;
+    }
+    
+    .test-block {
+      width: 120px;
+      height: 60px;
+      background: #464646;
+      border: 2px solid #666;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 20px;
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    .context-menu {
+      position: absolute;
+      background: #383838;
+      border: 1px solid #555;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      min-width: 150px;
+      z-index: 10000;
+      display: none;
+    }
+    
+    .context-menu.show {
+      display: block;
+    }
+    
+    .context-menu-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #464646;
+    }
+    
+    .context-menu-item:hover {
+      background: #464646;
+    }
+    
+    .context-menu-item:last-child {
+      border-bottom: none;
+    }
+    
+    #output {
+      margin-top: 20px;
+      padding: 10px;
+      background: #1e1e1e;
+      border-radius: 4px;
+      font-family: monospace;
+      min-height: 100px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Context Menu Test</h1>
+  <p>Right-click on the blocks below to test the context menu:</p>
+  
+  <div class="test-block block-group" data-block-id="test1">Test Block 1</div>
+  <div class="test-block block-group" data-block-id="test2">Test Block 2</div>
+  
+  <div id="context-menu" class="context-menu">
+    <div class="context-menu-item" data-action="edit">Edit Properties</div>
+    <div class="context-menu-item" data-action="duplicate">Duplicate</div>
+    <div class="context-menu-item" data-action="status">Change Status</div>
+    <div class="context-menu-item" data-action="delete">Delete</div>
+  </div>
+  
+  <div id="output">
+    <strong>Console Output:</strong><br>
+  </div>
+
+  <script>
+    let selectedBlock = null;
+    const contextMenu = document.getElementById('context-menu');
+    const output = document.getElementById('output');
+    
+    function log(message) {
+      console.log(message);
+      output.innerHTML += message + '<br>';
+    }
+    
+    // Context menu setup
+    document.addEventListener('contextmenu', (e) => {
+      const blockGroup = e.target.closest('.block-group');
+      if (blockGroup) {
+        e.preventDefault();
+        selectedBlock = blockGroup;
+        showContextMenu(e.clientX, e.clientY);
+        log(`Right-clicked on ${blockGroup.getAttribute('data-block-id')}`);
+      }
+    });
+    
+    function showContextMenu(x, y) {
+      contextMenu.style.left = x + 'px';
+      contextMenu.style.top = y + 'px';
+      contextMenu.classList.add('show');
+      log('Context menu shown');
+    }
+    
+    function hideContextMenu() {
+      contextMenu.classList.remove('show');
+      log('Context menu hidden');
+    }
+    
+    // Hide context menu on click outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.context-menu')) {
+        hideContextMenu();
+      }
+    });
+    
+    // Handle context menu actions
+    contextMenu.addEventListener('click', (e) => {
+      const item = e.target.closest('.context-menu-item');
+      if (item && selectedBlock) {
+        const action = item.getAttribute('data-action');
+        const blockId = selectedBlock.getAttribute('data-block-id');
+        log(`Action: ${action} on block ${blockId}`);
+        
+        switch(action) {
+          case 'edit':
+            log(`Editing properties for ${blockId}`);
+            break;
+          case 'duplicate':
+            log(`Duplicating ${blockId}`);
+            break;
+          case 'status':
+            log(`Changing status for ${blockId}`);
+            break;
+          case 'delete':
+            log(`Deleting ${blockId}`);
+            break;
+        }
+        
+        hideContextMenu();
+      }
+    });
+    
+    log('Context menu test script loaded');
+  </script>
+</body>
+</html>

@@ -53,7 +53,285 @@ class SystemBlocksEditor {
     this.setupEventListeners();
     debugLog("Event listeners set up, initializing search...");
     this.initializeSearch();
+    debugLog("Initializing professional UI enhancements...");
+    this.initializeProfessionalUI();
     debugLog("SystemBlocksEditor constructor complete!");
+  }
+
+  // === MILESTONE 10: PROFESSIONAL UI ENHANCEMENTS ===
+  initializeProfessionalUI() {
+    debugLog("Setting up professional UI enhancements...");
+    
+    // Initialize tooltip system
+    this.setupTooltips();
+    
+    // Initialize context menus
+    this.setupContextMenus();
+    
+    // Initialize loading states
+    this.setupLoadingStates();
+    
+    // Initialize keyboard shortcuts visual feedback
+    this.setupKeyboardHints();
+    
+    // Initialize smooth animations
+    this.enableSmoothAnimations();
+    
+    debugLog("Professional UI enhancements initialized!");
+  }
+
+  setupTooltips() {
+    // Create tooltip element
+    this.tooltip = document.createElement('div');
+    this.tooltip.className = 'fusion-tooltip';
+    document.body.appendChild(this.tooltip);
+
+    // Add tooltips to all buttons and interactive elements
+    const elements = document.querySelectorAll('[title]');
+    elements.forEach(element => {
+      element.addEventListener('mouseenter', (e) => {
+        this.showTooltip(e.target, e.target.getAttribute('title'));
+      });
+      element.addEventListener('mouseleave', () => {
+        this.hideTooltip();
+      });
+    });
+  }
+
+  showTooltip(element, text) {
+    this.tooltip.textContent = text;
+    this.tooltip.classList.add('show');
+    
+    const rect = element.getBoundingClientRect();
+    this.tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+    this.tooltip.style.top = (rect.bottom + 10) + 'px';
+  }
+
+  hideTooltip() {
+    this.tooltip.classList.remove('show');
+  }
+
+  setupContextMenus() {
+    // Create context menu element
+    this.contextMenu = document.createElement('div');
+    this.contextMenu.className = 'fusion-context-menu';
+    this.contextMenu.id = 'fusion-context-menu';  // Add ID for debugging
+    document.body.appendChild(this.contextMenu);
+
+    // Add context menu to blocks
+    document.addEventListener('contextmenu', (e) => {
+      const blockGroup = e.target.closest('.block-group');
+      if (blockGroup) {
+        e.preventDefault();
+        this.selectedBlock = blockGroup;  // Store the selected block
+        this.showContextMenu(e.clientX, e.clientY, 'block');
+      }
+    });
+
+    // Hide context menu on click outside
+    document.addEventListener('click', () => {
+      this.hideContextMenu();
+    });
+  }
+
+  showContextMenu(x, y, type) {
+    const menuItems = this.getContextMenuItems(type);
+    
+    this.contextMenu.innerHTML = menuItems.map(item => 
+      `<div class="fusion-context-menu-item ${item.disabled ? 'disabled' : ''}" data-action="${item.action}">
+        ${item.icon ? `<div class="fusion-icon ${item.icon}"></div>` : ''}
+        ${item.label}
+      </div>`
+    ).join('');
+
+    this.contextMenu.style.left = x + 'px';
+    this.contextMenu.style.top = y + 'px';
+    this.contextMenu.classList.add('show');
+
+    // Add click handlers
+    this.contextMenu.querySelectorAll('.fusion-context-menu-item:not(.disabled)').forEach(item => {
+      item.addEventListener('click', (e) => {
+        const action = e.target.closest('.fusion-context-menu-item').dataset.action;
+        this.handleContextMenuAction(action);
+        this.hideContextMenu();
+      });
+    });
+  }
+
+  getContextMenuItems(type) {
+    if (type === 'block') {
+      return [
+        { label: 'Edit Properties', action: 'edit', icon: 'icon-edit' },
+        { label: 'Duplicate', action: 'duplicate', icon: 'icon-add' },
+        { label: 'Link to CAD', action: 'link-cad', icon: 'icon-mechanical' },
+        { label: 'Change Status', action: 'status', icon: 'icon-status-planned' },
+        { label: 'Delete', action: 'delete', icon: 'icon-delete' }
+      ];
+    }
+    return [];
+  }
+
+  handleContextMenuAction(action) {
+    debugLog(`Context menu action: ${action}`);
+    
+    if (!this.selectedBlock) {
+      debugLog('No block selected for context menu action');
+      return;
+    }
+    
+    const blockId = this.selectedBlock.getAttribute('data-block-id');
+    const block = this.diagram.blocks.find(b => b.id === blockId);
+    
+    if (!block) {
+      debugLog('Block not found for context menu action');
+      return;
+    }
+    
+    switch (action) {
+      case 'edit':
+        this.showBlockPropertiesDialog(block);
+        break;
+      case 'duplicate':
+        this.duplicateBlock(block);
+        break;
+      case 'link-cad':
+        this.showCADLinkDialog(block);
+        break;
+      case 'status':
+        this.showStatusChangeDialog(block);
+        break;
+      case 'delete':
+        this.deleteBlock(block);
+        break;
+      default:
+        debugLog(`Unknown context menu action: ${action}`);
+    }
+  }
+
+  hideContextMenu() {
+    this.contextMenu.classList.remove('show');
+  }
+
+  // Context menu action implementations
+  showBlockPropertiesDialog(block) {
+    this.showNotification(`Editing properties for ${block.name}`, 'info');
+    // Future implementation: Show properties dialog
+  }
+
+  duplicateBlock(block) {
+    const newBlock = {
+      ...block,
+      id: this.generateId(),
+      x: block.x + 20,
+      y: block.y + 20,
+      name: `${block.name} Copy`
+    };
+    this.diagram.blocks.push(newBlock);
+    this.renderDiagram();
+    this.showNotification(`Duplicated ${block.name}`, 'success');
+  }
+
+  showCADLinkDialog(block) {
+    this.showNotification(`CAD linking for ${block.name} coming soon`, 'info');
+    // Future implementation: Show CAD link dialog
+  }
+
+  showStatusChangeDialog(block) {
+    const statuses = ['Placeholder', 'Planning', 'In Progress', 'Review', 'Complete'];
+    const currentIndex = statuses.indexOf(block.status || 'Placeholder');
+    const nextIndex = (currentIndex + 1) % statuses.length;
+    block.status = statuses[nextIndex];
+    this.renderDiagram();
+    this.showNotification(`Status changed to ${block.status}`, 'success');
+  }
+
+  deleteBlock(block) {
+    if (confirm(`Delete ${block.name}?`)) {
+      this.diagram.blocks = this.diagram.blocks.filter(b => b.id !== block.id);
+      this.renderDiagram();
+      this.showNotification(`Deleted ${block.name}`, 'success');
+    }
+  }
+
+  // Simple notification system
+  showNotification(message, type = 'info') {
+    console.log(`[${type.toUpperCase()}] ${message}`);
+    // For now, just use console.log - could implement toast notifications later
+  }
+
+  setupLoadingStates() {
+    // Create loading overlay
+    this.loadingOverlay = document.createElement('div');
+    this.loadingOverlay.innerHTML = `
+      <div class="fusion-loader">
+        <div class="fusion-spinner"></div>
+        <span>Loading...</span>
+      </div>
+    `;
+    this.loadingOverlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(45, 45, 48, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      backdrop-filter: blur(5px);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    `;
+    document.body.appendChild(this.loadingOverlay);
+  }
+
+  showLoading(message = 'Loading...') {
+    this.loadingOverlay.querySelector('span').textContent = message;
+    this.loadingOverlay.style.opacity = '1';
+    this.loadingOverlay.style.visibility = 'visible';
+  }
+
+  hideLoading() {
+    this.loadingOverlay.style.opacity = '0';
+    this.loadingOverlay.style.visibility = 'hidden';
+  }
+
+  setupKeyboardHints() {
+    // Add keyboard shortcuts to buttons
+    const shortcuts = {
+      'btn-new': 'Ctrl+N',
+      'btn-save': 'Ctrl+S',
+      'btn-load': 'Ctrl+O',
+      'btn-undo': 'Ctrl+Z',
+      'btn-redo': 'Ctrl+Y'
+    };
+
+    Object.entries(shortcuts).forEach(([id, shortcut]) => {
+      const element = document.getElementById(id);
+      if (element) {
+        const hint = document.createElement('div');
+        hint.className = 'fusion-shortcut-hint';
+        hint.textContent = shortcut;
+        element.style.position = 'relative';
+        element.appendChild(hint);
+      }
+    });
+  }
+
+  enableSmoothAnimations() {
+    // Add smooth transitions to all buttons
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(button => {
+      button.classList.add('interactive-element');
+    });
+
+    // Add smooth scroll to container
+    const container = document.querySelector('.container');
+    if (container) {
+      container.style.scrollBehavior = 'smooth';
+    }
   }
   
   createEmptyDiagram() {
@@ -419,7 +697,8 @@ class SystemBlocksEditor {
         height: 60,
         interfaces: [],
         links: [],
-        attributes: {}
+        attributes: {},
+        _isNewBlock: true  // Flag for animation
       };
       debugLog("Block object created with ID: " + block.id);
       
@@ -434,9 +713,11 @@ class SystemBlocksEditor {
       this.diagram.blocks.push(block);
       debugLog("Block added to diagram. Total blocks: " + this.diagram.blocks.length);
       
-      debugLog("About to render block...");
-      this.renderBlock(block);
-      debugLog("Block rendered successfully!");
+      // Trigger full diagram re-render instead of individual block render
+      // This prevents duplicate rendering if renderDiagram is called elsewhere
+      debugLog("Triggering full diagram re-render...");
+      this.renderDiagram();
+      debugLog("Diagram re-rendered successfully!");
       
       return block;
     } catch (e) {
@@ -498,7 +779,6 @@ class SystemBlocksEditor {
       statusText.setAttribute('y', block.height / 2 + 12);
       statusText.textContent = block.status;
       statusText.setAttribute('font-size', '10');
-      statusText.setAttribute('opacity', '0.7');
       g.appendChild(statusText);
     }
     
@@ -527,6 +807,17 @@ class SystemBlocksEditor {
     // Add event listeners
     g.addEventListener('mousedown', (e) => this.onBlockMouseDown(e, block));
     
+      // Add new block animation class if this is a newly created block
+      if (block._isNewBlock) {
+        g.classList.add('new-block');
+        
+        // Remove animation class and flag after animation completes
+        setTimeout(() => {
+          g.classList.remove('new-block');
+          delete block._isNewBlock;
+        }, 400); // Match animation duration
+      }
+      
     this.blocksLayer.appendChild(g);
   }
   
@@ -1272,7 +1563,7 @@ class SystemBlocksEditor {
       border: 2px solid #ccc;
       border-radius: 8px;
       padding: 20px;
-      z-index: 1000;
+      z-index: 10000;
       min-width: 500px;
       max-height: 80vh;
       overflow-y: auto;
@@ -2956,6 +3247,7 @@ document.addEventListener('DOMContentLoaded', () => {
   try {
     debugLog('About to create SystemBlocksEditor...');
     editor = new SystemBlocksEditor();
+    window.editor = editor; // Make editor globally accessible
     debugLog('Editor created successfully!');
     console.log('Editor created successfully:', editor);
     
