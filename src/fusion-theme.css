@@ -436,7 +436,7 @@
   box-shadow: var(--fusion-shadow-floating);
   backdrop-filter: blur(15px);
   min-width: 180px;
-  z-index: 1000;
+  z-index: 10000;
   opacity: 0;
   transform: translateY(-10px) scale(0.95);
   visibility: hidden;
@@ -512,7 +512,7 @@
   font-size: var(--fusion-font-size-small);
   font-weight: var(--fusion-font-weight-medium);
   backdrop-filter: blur(10px);
-  z-index: 1001;
+  z-index: 10001;
   opacity: 0;
   transform: translateY(10px);
   visibility: hidden;
@@ -792,7 +792,7 @@
   padding: var(--fusion-spacing-md);
   box-shadow: var(--fusion-shadow-floating);
   backdrop-filter: blur(15px);
-  z-index: 1002;
+  z-index: 10002;
   transform: translateX(100%);
   transition: transform var(--fusion-transition) var(--fusion-ease-out);
   max-width: 300px;
@@ -995,7 +995,7 @@
   border-radius: var(--fusion-radius-medium);
   box-shadow: var(--fusion-shadow-floating);
   backdrop-filter: blur(15px);
-  z-index: 1000;
+  z-index: 10000;
   opacity: 0;
   transform: translateY(-10px);
   visibility: hidden;

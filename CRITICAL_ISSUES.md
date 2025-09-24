@@ -27,6 +27,15 @@
 - **Impact**: HIGH - Core functionality unavailable
 - **Priority**: HIGH - Address after block issues resolved
 
+### **Issue #4: Dialog Z-Index Problem**
+- **Problem**: Block type selection window appears behind the main workspace
+- **Symptoms**: 
+  - Click on block type dropdown/selector
+  - Dialog window opens but is not visible (hidden behind other elements)
+  - User cannot interact with the dialog
+- **Impact**: HIGH - Blocks cannot be configured properly
+- **Priority**: HIGH - Essential for block editing workflow
+
 ## 🎯 **Immediate Action Plan**
 
 1. **Fix duplicate block creation** - Investigate block creation logic in palette.js

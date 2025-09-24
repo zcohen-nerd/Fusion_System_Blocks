@@ -1479,7 +1479,7 @@ class SystemBlocksEditor {
       border: 2px solid #ccc;
       border-radius: 8px;
       padding: 20px;
-      z-index: 1000;
+      z-index: 10000;
       min-width: 500px;
       max-height: 80vh;
       overflow-y: auto;
