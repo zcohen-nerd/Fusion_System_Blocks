@@ -992,7 +992,262 @@
       <button id="btn-connection-templates" class="context-btn" title="Connection Templates">📋 Templates</button>
       <button id="btn-bulk-connections" class="context-btn" title="Bulk Connection Operations">⚡ Bulk</button>
       <div class="separator"></div>
-      <button id="btn-add-block">Add Block</button>
+      <!-- ========== MILESTONE 11: ADVANCED BLOCK TYPES - PHASE 1 ========== -->
+      <button id="btn-add-block" class="context-btn" title="Add Basic Block">
+        <svg width="16" height="16" viewBox="0 0 12 12">
+          <use href="#icon-add"/>
+        </svg>
+        Add Block
+      </button>
+      <div class="block-type-dropdown">
+        <button id="btn-block-types" class="context-btn" title="Add Specialized Block">
+          <svg width="16" height="16" viewBox="0 0 12 12">
+            <use href="#icon-block-component"/>
+          </svg>
+          Block Type
+          <svg width="12" height="12" viewBox="0 0 12 12" class="dropdown-arrow">
+            <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div id="block-type-menu" class="block-type-menu">
+          <div class="block-category">
+            <h4>⚡ Electrical/Electronic</h4>
+            <div class="block-type-item" data-type="microcontroller-arduino">
+              <div class="block-icon" style="background: #007ACC;"></div>
+              <div class="block-info">
+                <span class="block-name">Arduino Uno R3</span>
+                <span class="block-desc">ATMega328P microcontroller</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="microcontroller-esp32">
+              <div class="block-icon" style="background: #FF6B35;"></div>
+              <div class="block-info">
+                <span class="block-name">ESP32 DevKit</span>
+                <span class="block-desc">WiFi+Bluetooth microcontroller</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="power-supply-linear">
+              <div class="block-icon" style="background: #E74C3C;"></div>
+              <div class="block-info">
+                <span class="block-name">Linear PSU</span>
+                <span class="block-desc">Adjustable voltage regulator</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="power-supply-switching">
+              <div class="block-icon" style="background: #8E44AD;"></div>
+              <div class="block-info">
+                <span class="block-name">Switching PSU</span>
+                <span class="block-desc">High-efficiency regulator</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="sensor-temperature">
+              <div class="block-icon" style="background: #F39C12;"></div>
+              <div class="block-info">
+                <span class="block-name">Temperature Sensor</span>
+                <span class="block-desc">Digital I2C temperature</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="sensor-accelerometer">
+              <div class="block-icon" style="background: #16A085;"></div>
+              <div class="block-info">
+                <span class="block-name">Accelerometer</span>
+                <span class="block-desc">3-axis MEMS sensor</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="comm-wifi">
+              <div class="block-icon" style="background: #3498DB;"></div>
+              <div class="block-info">
+                <span class="block-name">WiFi Module</span>
+                <span class="block-desc">802.11n wireless</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="comm-bluetooth">
+              <div class="block-icon" style="background: #9B59B6;"></div>
+              <div class="block-info">
+                <span class="block-name">Bluetooth Module</span>
+                <span class="block-desc">BLE 5.0 communication</span>
+              </div>
+            </div>
+          </div>
+          <div class="block-category">
+            <h4>⚙️ Mechanical Systems</h4>
+            <div class="block-type-item" data-type="motor-servo">
+              <div class="block-icon" style="background: #16A085;"></div>
+              <div class="block-info">
+                <span class="block-name">Servo Motor</span>
+                <span class="block-desc">20 kg⋅cm precision motor</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="motor-stepper">
+              <div class="block-icon" style="background: #16A085;"></div>
+              <div class="block-info">
+                <span class="block-name">Stepper Motor</span>
+                <span class="block-desc">200 steps/revolution</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="actuator-linear">
+              <div class="block-icon" style="background: #16A085;"></div>
+              <div class="block-info">
+                <span class="block-name">Linear Actuator</span>
+                <span class="block-desc">100mm stroke, 200N force</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="sensor-encoder">
+              <div class="block-icon" style="background: #E67E22;"></div>
+              <div class="block-info">
+                <span class="block-name">Rotary Encoder</span>
+                <span class="block-desc">1024 PPR precision</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="sensor-load-cell">
+              <div class="block-icon" style="background: #E67E22;"></div>
+              <div class="block-info">
+                <span class="block-name">Load Cell</span>
+                <span class="block-desc">100kg force sensor</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="sensor-proximity">
+              <div class="block-icon" style="background: #E67E22;"></div>
+              <div class="block-info">
+                <span class="block-name">Proximity Sensor</span>
+                <span class="block-desc">8mm inductive detection</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="structure-bearing">
+              <div class="block-icon" style="background: #7F8C8D;"></div>
+              <div class="block-info">
+                <span class="block-name">Ball Bearing</span>
+                <span class="block-desc">10×30×9mm precision</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="structure-coupling">
+              <div class="block-icon" style="background: #7F8C8D;"></div>
+              <div class="block-info">
+                <span class="block-name">Flexible Coupling</span>
+                <span class="block-desc">5 N⋅m, ±1° misalignment</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="structure-gearbox">
+              <div class="block-icon" style="background: #7F8C8D;"></div>
+              <div class="block-info">
+                <span class="block-name">Planetary Gearbox</span>
+                <span class="block-desc">10:1 reduction, 95% eff.</span>
+              </div>
+            </div>
+          </div>
+          <div class="block-category">
+            <h4>💻 Software & Firmware</h4>
+            <div class="block-type-item" data-type="firmware-pid-controller">
+              <div class="block-icon" style="background: #8E44AD;"></div>
+              <div class="block-info">
+                <span class="block-name">PID Controller</span>
+                <span class="block-desc">Real-time control algorithm</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="firmware-state-machine">
+              <div class="block-icon" style="background: #8E44AD;"></div>
+              <div class="block-info">
+                <span class="block-name">State Machine</span>
+                <span class="block-desc">Hierarchical FSM control</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="firmware-kalman-filter">
+              <div class="block-icon" style="background: #8E44AD;"></div>
+              <div class="block-info">
+                <span class="block-name">Kalman Filter</span>
+                <span class="block-desc">Advanced sensor fusion</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="protocol-modbus">
+              <div class="block-icon" style="background: #3498DB;"></div>
+              <div class="block-info">
+                <span class="block-name">Modbus Protocol</span>
+                <span class="block-desc">Industrial communication</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="protocol-can">
+              <div class="block-icon" style="background: #3498DB;"></div>
+              <div class="block-info">
+                <span class="block-name">CAN Bus Protocol</span>
+                <span class="block-desc">Automotive networking</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="protocol-mqtt">
+              <div class="block-icon" style="background: #3498DB;"></div>
+              <div class="block-info">
+                <span class="block-name">MQTT Protocol</span>
+                <span class="block-desc">IoT publish-subscribe</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="algorithm-fft">
+              <div class="block-icon" style="background: #E67E22;"></div>
+              <div class="block-info">
+                <span class="block-name">FFT Processor</span>
+                <span class="block-desc">Frequency analysis</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="algorithm-machine-learning">
+              <div class="block-icon" style="background: #E67E22;"></div>
+              <div class="block-info">
+                <span class="block-name">ML Inference</span>
+                <span class="block-desc">Embedded AI/ML</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="system-rtos">
+              <div class="block-icon" style="background: #27AE60;"></div>
+              <div class="block-info">
+                <span class="block-name">Real-Time OS</span>
+                <span class="block-desc">Deterministic scheduling</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="system-bootloader">
+              <div class="block-icon" style="background: #27AE60;"></div>
+              <div class="block-info">
+                <span class="block-name">Secure Bootloader</span>
+                <span class="block-desc">Secure boot + updates</span>
+              </div>
+            </div>
+          </div>
+          <div class="block-category">
+            <h4>🎯 System Templates</h4>
+            <div class="block-type-item" data-type="template-motor-controller">
+              <div class="block-icon" style="background: #E74C3C;"></div>
+              <div class="block-info">
+                <span class="block-name">Motor Control System</span>
+                <span class="block-desc">Complete motor control + feedback</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="template-sensor-array">
+              <div class="block-icon" style="background: #F39C12;"></div>
+              <div class="block-info">
+                <span class="block-name">Multi-Sensor Array</span>
+                <span class="block-desc">Temperature + accelerometer + WiFi</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="template-linear-actuator-system">
+              <div class="block-icon" style="background: #16A085;"></div>
+              <div class="block-info">
+                <span class="block-name">Linear Motion System</span>
+                <span class="block-desc">Stepper + gearbox + encoder</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="template-control-loop">
+              <div class="block-icon" style="background: #8E44AD;"></div>
+              <div class="block-info">
+                <span class="block-name">Control Loop System</span>
+                <span class="block-desc">PID + FSM + Kalman filter</span>
+              </div>
+            </div>
+            <div class="block-type-item" data-type="template-smart-actuator">
+              <div class="block-icon" style="background: #E67E22;"></div>
+              <div class="block-info">
+                <span class="block-name">Smart Actuator System</span>
+                <span class="block-desc">Integrated multi-domain system</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <button id="btn-snap-grid" class="toggle-btn active">Snap to Grid</button>
       <button id="btn-check-rules">Check Rules</button>
       <button id="btn-export-report">Export Report</button>
@@ -1092,6 +1347,309 @@
         
         <g id="icon-filter">
           <path d="M2 3h8l-3 4v4l-2-1V7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        </g>
+        
+        <!-- ========== MILESTONE 11: ELECTRICAL BLOCK ICONS - PHASE 1 ========== -->
+        
+        <!-- Microcontroller Icons -->
+        <g id="icon-microcontroller">
+          <rect x="2" y="3" width="8" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="3.5" y="4.5" width="5" height="3" rx="0.5" fill="currentColor" opacity="0.3"/>
+          <circle cx="4" cy="5" r="0.5" fill="currentColor"/>
+          <circle cx="8" cy="7" r="0.5" fill="currentColor"/>
+          <path d="M2 4h-1M2 6h-1M2 8h-1M10 4h1M10 6h1M10 8h1" stroke="currentColor" stroke-width="1"/>
+        </g>
+        
+        <g id="icon-microcontroller-wifi">
+          <rect x="2" y="3" width="8" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="3.5" y="4.5" width="5" height="3" rx="0.5" fill="currentColor" opacity="0.3"/>
+          <path d="M5 6.5c.5-.3 1-.3 1.5 0M4.5 6c.8-.5 1.7-.5 2.5 0M5.5 7c.2-.1.3-.1.5 0" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+          <circle cx="6" cy="7.5" r="0.3" fill="currentColor"/>
+        </g>
+        
+        <!-- Power Supply Icons -->
+        <g id="icon-power-supply">
+          <rect x="2" y="4" width="8" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 6h4M4 7h2" stroke="currentColor" stroke-width="1"/>
+          <circle cx="3" cy="6" r="0.5" fill="currentColor"/>
+          <circle cx="9" cy="6" r="0.5" fill="currentColor"/>
+          <path d="M1 6h1M10 6h1" stroke="currentColor" stroke-width="1.5"/>
+        </g>
+        
+        <g id="icon-power-switching">
+          <rect x="2" y="4" width="8" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 5.5l1 1 1-1 1 1 1-1M4 6.5h4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="3" cy="6" r="0.5" fill="currentColor"/>
+          <circle cx="9" cy="6" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <!-- Sensor Icons -->
+        <g id="icon-sensor-temp">
+          <circle cx="6" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="5.5" y="3" width="1" height="4" fill="currentColor"/>
+          <circle cx="6" cy="7" r="1" fill="currentColor"/>
+          <path d="M8 4h1M8 5h0.5M8 6h1" stroke="currentColor" stroke-width="1"/>
+        </g>
+        
+        <g id="icon-sensor-accel">
+          <rect x="3" y="3" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 4.5v3M4.5 6h3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="6" cy="6" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <!-- Communication Module Icons -->
+        <g id="icon-comm-wifi">
+          <path d="M6 9c2.5-1.5 2.5-4.5 0-6M6 9c-2.5-1.5-2.5-4.5 0-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+          <path d="M6 8.5c1.5-1 1.5-3 0-4M6 8.5c-1.5-1-1.5-3 0-4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+          <path d="M6 8c0.8-0.5 0.8-1.5 0-2M6 8c-0.8-0.5-0.8-1.5 0-2" stroke="currentColor" stroke-width="1" stroke-linecap="round" fill="none"/>
+          <circle cx="6" cy="8" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <g id="icon-comm-bluetooth">
+          <path d="M6 2l2 2-1.5 1.5L8 7l-2 2v-3.5L4.5 7 6 5.5V2z" fill="currentColor"/>
+          <path d="M4 4l4 4M4 8l4-4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Enhanced Block Component Icon -->
+        <g id="icon-block-advanced">
+          <rect x="2" y="2" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="4" y="4" width="4" height="4" rx="0.5" fill="currentColor" opacity="0.2"/>
+          <circle cx="5" cy="5" r="0.5" fill="currentColor"/>
+          <circle cx="7" cy="5" r="0.5" fill="currentColor"/>
+          <circle cx="5" cy="7" r="0.5" fill="currentColor"/>
+          <circle cx="7" cy="7" r="0.5" fill="currentColor"/>
+        </g>
+
+        <!-- ========== MILESTONE 11 PHASE 2: MECHANICAL SYSTEM ICONS ========== -->
+        
+        <!-- Mechanical Category Icon -->
+        <g id="icon-mechanical">
+          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 2v2M6 8v2M2 6h2M8 6h2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Motor Icons -->
+        <g id="icon-motor-servo">
+          <rect x="2" y="4" width="8" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 4.5v3M4.5 6h3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M6 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-motor-stepper">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="3" cy="3" r="0.5" fill="currentColor"/>
+          <circle cx="9" cy="3" r="0.5" fill="currentColor"/>
+          <circle cx="3" cy="9" r="0.5" fill="currentColor"/>
+          <circle cx="9" cy="9" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <g id="icon-actuator-linear">
+          <rect x="2" y="5" width="8" height="2" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="8" y="4" width="2" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 3v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M4 4l2-1 2 1" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <!-- Sensor Icons -->
+        <g id="icon-sensor-encoder">
+          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 2v1M6 9v1M2 6h1M9 6h1" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M8.5 3.5l-0.7 0.7M4.2 8.8l-0.7 0.7M3.5 3.5l0.7 0.7M8.8 8.8l0.7 0.7" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-sensor-load">
+          <rect x="3" y="5" width="6" height="2" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 3v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M5 3h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M4 8v1M8 8v1" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M3 9h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-sensor-proximity">
+          <rect x="3" y="3" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 4.5v3M4.5 6h3" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+          <path d="M6 1v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Structural Element Icons -->
+        <g id="icon-bearing">
+          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="6" cy="6" r="1" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="6" cy="3" r="0.4" fill="currentColor"/>
+          <circle cx="9" cy="6" r="0.4" fill="currentColor"/>
+          <circle cx="6" cy="9" r="0.4" fill="currentColor"/>
+          <circle cx="3" cy="6" r="0.4" fill="currentColor"/>
+        </g>
+        
+        <g id="icon-coupling">
+          <rect x="2" y="5" width="3" height="2" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="7" y="5" width="3" height="2" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M5 6h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M5.5 5.5l1 1M5.5 6.5l1-1" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-gearbox">
+          <rect x="2" y="3" width="8" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="5" cy="6" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="7.5" cy="6" r="1" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6.5 6h1" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M2 5h1M9 5h1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+
+        <!-- ========== MILESTONE 11 PHASE 3: SOFTWARE/FIRMWARE ICONS ========== -->
+        
+        <!-- Software Category Icon -->
+        <g id="icon-software">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 4l2 2-2 2M6 8h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <!-- Control Algorithm Icons -->
+        <g id="icon-software-pid">
+          <rect x="2" y="3" width="8" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 6h6" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M4 5v2M6 4v4M8 5v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          <circle cx="4" cy="5" r="0.3" fill="currentColor"/>
+          <circle cx="6" cy="4" r="0.3" fill="currentColor"/>
+          <circle cx="8" cy="5" r="0.3" fill="currentColor"/>
+        </g>
+        
+        <g id="icon-software-fsm">
+          <circle cx="4" cy="4" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="8" cy="4" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="6" cy="8" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M5.5 4h1M7 5l-0.5 2M5 5l0.5 2" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" marker-end="url(#arrowhead-small)"/>
+        </g>
+        
+        <g id="icon-software-kalman">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 4l4 4M4 8l4-4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="6" cy="6" r="1" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M3 3l1 1M8 3l1 1M3 9l1-1M8 9l1-1" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Communication Protocol Icons -->
+        <g id="icon-software-protocol">
+          <rect x="2" y="4" width="8" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 6h4M4 5.5v1M8 5.5v1" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="2" cy="6" r="0.5" fill="currentColor"/>
+          <circle cx="10" cy="6" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <g id="icon-software-can">
+          <rect x="2" y="4" width="8" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M4 5v2M6 5v2M8 5v2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M2 6h1M9 6h1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-software-mqtt">
+          <path d="M6 2v2M6 8v2M2 6h2M8 6h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="6" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+          <circle cx="6" cy="6" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <!-- Algorithm & Processing Icons -->
+        <g id="icon-software-fft">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 8l1-3 1 2 1-4 1 1 1-2 1 3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 8h6" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-software-ml">
+          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="4" cy="4" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="8" cy="4" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="4" cy="8" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="8" cy="8" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M4.8 4.8l2.4 2.4M7.2 4.8l-2.4 2.4M4.8 7.2l2.4-2.4M7.2 7.2l-2.4-2.4" stroke="currentColor" stroke-width="0.8"/>
+        </g>
+        
+        <!-- System Software Icons -->
+        <g id="icon-software-rtos">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="3" y="4" width="1.5" height="4" fill="currentColor" opacity="0.7"/>
+          <rect x="5.25" y="3" width="1.5" height="5" fill="currentColor" opacity="0.7"/>
+          <rect x="7.5" y="5" width="1.5" height="3" fill="currentColor" opacity="0.7"/>
+          <path d="M3 8h6" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-software-boot">
+          <rect x="2" y="3" width="8" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <path d="M6 1v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="6" cy="1.5" r="0.5" fill="currentColor"/>
+        </g>
+
+        <!-- Small arrow marker for FSM -->
+        <marker id="arrowhead-small" markerWidth="6" markerHeight="4" 
+                refX="5" refY="2" orient="auto" markerUnits="strokeWidth">
+          <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+        </marker>
+
+        <!-- ========== MILESTONE 11 PHASE 4: SYSTEM TEMPLATE ICONS ========== -->
+        
+        <!-- Template Category Icon -->
+        <g id="icon-template">
+          <rect x="2" y="2" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="3.5" y="3.5" width="2" height="2" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <rect x="6.5" y="3.5" width="2" height="2" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <rect x="3.5" y="6.5" width="2" height="2" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <rect x="6.5" y="6.5" width="2" height="2" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <path d="M4.5 5.5h3M5.5 4.5v3" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <!-- System Template Icons -->
+        <g id="icon-template-motor-control">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="4" cy="6" r="1.2" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="6.5" y="5" width="2" height="2" rx="0.3" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M5.2 6h1.3M4 4.8v2.4" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+          <path d="M7.5 4v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-template-sensor-array">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="4" cy="4" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="8" cy="4" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="4" cy="8" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="8" cy="8" r="0.8" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M4.8 4.8l2.4 2.4M7.2 4.8l-2.4 2.4" stroke="currentColor" stroke-width="0.6"/>
+        </g>
+        
+        <g id="icon-template-linear-motion">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="3.5" cy="6" r="1" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="5" y="5" width="3" height="2" rx="0.3" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M8.5 6h1M4.5 6h0.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M9 5.5l0.5 0.5-0.5 0.5" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <g id="icon-template-control-loop">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M6 3.5v1M6 7.5v1M3.5 6h1M7.5 6h1" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="6" cy="6" r="0.8" fill="currentColor" opacity="0.7"/>
+          <path d="M5 5l2 2M7 5l-2 2" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-template-smart-actuator">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="5" cy="5" r="1.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="6.5" y="4.5" width="2" height="1" rx="0.2" fill="none" stroke="currentColor" stroke-width="0.8"/>
+          <rect x="3" y="7" width="6" height="1" rx="0.2" fill="currentColor" opacity="0.5"/>
+          <path d="M6 3v1M5 3.5v1M4 3.5v1" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
+          <circle cx="5" cy="5" r="0.5" fill="currentColor"/>
         </g>
       </defs>
       <g id="connections-layer"></g>
@@ -1540,7 +2098,1063 @@
       font-family: monospace;
       color: var(--fusion-text-primary);
     }
+
+    /* ========== MILESTONE 11: ADVANCED BLOCK TYPE SELECTOR - PHASE 1 ========== */
+    
+    /* Block Type Dropdown Container */
+    .block-type-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    
+    /* Dropdown Arrow Animation */
+    .dropdown-arrow {
+      margin-left: var(--fusion-spacing-xs);
+      transition: transform var(--fusion-transition-fast);
+    }
+    
+    .block-type-dropdown.open .dropdown-arrow {
+      transform: rotate(180deg);
+    }
+    
+    /* Professional Block Type Menu */
+    .block-type-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      min-width: 320px;
+      max-height: 500px;
+      background: var(--fusion-panel-bg);
+      border: 1px solid var(--fusion-panel-border);
+      border-radius: var(--fusion-radius-medium);
+      box-shadow: var(--fusion-shadow-heavy);
+      overflow-y: auto;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(8px);
+    }
+    
+    .block-type-menu.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    
+    /* Block Category Headers */
+    .block-category {
+      padding: var(--fusion-spacing-sm) 0;
+      border-bottom: 1px solid var(--fusion-border-secondary);
+    }
+    
+    .block-category:last-child {
+      border-bottom: none;
+    }
+    
+    .block-category h4 {
+      margin: 0 0 var(--fusion-spacing-sm) 0;
+      padding: 0 var(--fusion-spacing-md);
+      font-size: var(--fusion-font-size-normal);
+      font-weight: 600;
+      color: var(--fusion-text-primary);
+      display: flex;
+      align-items: center;
+      gap: var(--fusion-spacing-xs);
+    }
+    
+    /* Professional Block Type Items */
+    .block-type-item {
+      display: flex;
+      align-items: center;
+      padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
+      cursor: pointer;
+      transition: all var(--fusion-transition-fast);
+      gap: var(--fusion-spacing-sm);
+    }
+    
+    .block-type-item:hover:not(.disabled) {
+      background: var(--fusion-bg-hover);
+      transform: translateX(2px);
+    }
+    
+    .block-type-item.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    /* Block Icons */
+    .block-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: var(--fusion-radius-small);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .block-icon::before {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      background: rgba(255,255,255,0.2);
+      border-radius: var(--fusion-radius-small);
+    }
+    
+    /* Block Information */
+    .block-info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .block-name {
+      font-size: var(--fusion-font-size-normal);
+      font-weight: 500;
+      color: var(--fusion-text-primary);
+      line-height: 1.2;
+    }
+    
+    .block-desc {
+      font-size: var(--fusion-font-size-small);
+      color: var(--fusion-text-secondary);
+      line-height: 1.2;
+      margin-top: 2px;
+    }
+    
+    /* Enhanced Block Visual States */
+    .block-type-item:not(.disabled):active {
+      transform: translateX(4px) scale(0.98);
+    }
+    
+    /* Block Type Selection Animation */
+    .block-type-item.selected {
+      background: rgba(0, 123, 204, 0.1);
+      border-left: 3px solid var(--fusion-accent-blue);
+      padding-left: calc(var(--fusion-spacing-md) - 3px);
+    }
+    
+    /* Scrollbar Styling */
+    .block-type-menu::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .block-type-menu::-webkit-scrollbar-track {
+      background: var(--fusion-bg-secondary);
+    }
+    
+    .block-type-menu::-webkit-scrollbar-thumb {
+      background: var(--fusion-border-secondary);
+      border-radius: 3px;
+    }
+    
+    .block-type-menu::-webkit-scrollbar-thumb:hover {
+      background: var(--fusion-border-hover);
+    }
+
+    /* ========== SPECIALIZED BLOCK RENDERING ========== */
+    .specialized-block {
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+      stroke-width: 2px !important;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .specialized-block:hover {
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3));
+      transform: scale(1.02);
+    }
+
+    .specialized-text {
+      font-weight: 600;
+      font-size: 12px;
+      fill: var(--fusion-text-primary);
+    }
+
+    .block-type-indicator {
+      font-family: var(--fusion-font-family);
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    /* Block category styling */
+    .specialized-block[data-category="electrical"] {
+      stroke: var(--fusion-primary-color);
+    }
+
+    .specialized-block[data-category="mechanical"] {
+      stroke: #16A085;
+    }
+
+    .specialized-block[data-category="software"] {
+      stroke: #8E44AD;
+    }
+
+    .specialized-block[data-category="firmware"] {
+      stroke: #D35400;
+    }
+
+    .specialized-block[data-category="software"] {
+      stroke: #8E44AD;
+    }
+
+    /* Connection points styling */
+    .connection-point {
+      stroke: rgba(255, 255, 255, 0.8);
+      stroke-width: 1px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .connection-point:hover {
+      r: 6px;
+      stroke-width: 2px;
+    }
+
+    /* Animation effects */
+    @keyframes blockCreated {
+      0% {
+        opacity: 0;
+        transform: scale(0.8) rotate(-5deg);
+      }
+      50% {
+        opacity: 0.8;
+        transform: scale(1.1) rotate(2deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+      }
+    }
+
+    @keyframes floatingEffect {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-2px);
+      }
+    }
+
+    .block-group.new {
+      animation: blockCreated 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .block-group.floating .specialized-block {
+      animation: floatingEffect 3s ease-in-out infinite;
+      animation-delay: calc(var(--block-index, 0) * 0.2s);
+    }
+
+    /* Specifications tooltip styling */
+    .specs-tooltip {
+      background: linear-gradient(135deg, #2C3E50 0%, #34495E 100%);
+      border: 1px solid var(--fusion-primary-color);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      max-width: 300px;
+      min-width: 250px;
+    }
+
+    .specs-tooltip h4 {
+      color: var(--fusion-primary-color);
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(52, 152, 219, 0.3);
+      padding-bottom: 5px;
+    }
+
+    .specs-tooltip div {
+      font-size: 12px;
+      margin: 4px 0;
+      line-height: 1.4;
+    }
+
+    .spec-preview {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      padding: 8px;
+      margin-top: 8px;
+    }
+
+    .spec-section {
+      margin-bottom: 12px;
+    }
+
+    .spec-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .spec-section h5 {
+      color: var(--fusion-accent-blue);
+      margin: 0 0 6px 0;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid rgba(52, 152, 219, 0.2);
+      padding-bottom: 3px;
+    }
+
+    /* Enhanced mechanical connection point styling */
+    .connection-point[stroke-dasharray] {
+      animation: rotate 2s linear infinite;
+    }
+
+    @keyframes rotate {
+      from { stroke-dashoffset: 0; }
+      to { stroke-dashoffset: 6; }
+    }
+
+    /* Category-specific block enhancements */
+    .specialized-block[data-category="mechanical"] .block-type-indicator {
+      color: #16A085;
+    }
+
+    .specialized-block[data-category="software"] .block-type-indicator {
+      color: #8E44AD;
+    }
+
+    /* Software-specific connection point animations */
+    .connection-point[stroke-dasharray*="3,1"] {
+      animation: softwareFlow 1.5s linear infinite;
+    }
+
+    @keyframes softwareFlow {
+      from { stroke-dashoffset: 0; }
+      to { stroke-dashoffset: 8; }
+    }
+
+    /* Enhanced software block styling */
+    .specialized-block[data-category="software"] {
+      filter: drop-shadow(0 4px 12px rgba(142, 68, 173, 0.3));
+    }
+
+    .specialized-block[data-category="software"]:hover {
+      filter: drop-shadow(0 6px 16px rgba(142, 68, 173, 0.4));
+    }
+
+    /* ========== TEMPLATE SYSTEM STYLING ========== */
+    .template-block {
+      filter: drop-shadow(0 6px 20px rgba(231, 76, 60, 0.3));
+    }
+
+    .template-block .specialized-block {
+      stroke: var(--template-color);
+      stroke-width: 3px;
+      stroke-dasharray: 8,2;
+    }
+
+    .template-connection {
+      opacity: 0.8;
+      stroke-dasharray: 10,5;
+      animation: templateConnectionFlow 3s linear infinite;
+    }
+
+    @keyframes templateConnectionFlow {
+      from { stroke-dashoffset: 0; }
+      to { stroke-dashoffset: 30; }
+    }
+
+    @keyframes connectionFlow {
+      0%, 100% { stroke-dashoffset: 100; }
+      50% { stroke-dashoffset: 0; }
+    }
+
+    .template-created {
+      animation: templateCreated 1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes templateCreated {
+      0% {
+        transform: scale(0.8);
+        opacity: 0.5;
+      }
+      50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    /* Template info tooltip styling */
+    .template-info {
+      background: linear-gradient(135deg, #E74C3C 0%, #C0392B 100%);
+      border: 2px solid #E74C3C;
+      border-radius: 12px;
+      box-shadow: 0 12px 36px rgba(231, 76, 60, 0.4);
+      color: white;
+    }
+
+    .template-info h4 {
+      color: white;
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+      padding-bottom: 8px;
+    }
+
+    .template-info p {
+      margin: 0 0 12px 0;
+      opacity: 0.9;
+      line-height: 1.4;
+    }
+
+    .template-stats {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      padding: 8px;
+      margin: 8px 0;
+    }
+
+    .template-stats div {
+      font-size: 12px;
+      margin: 3px 0;
+    }
+
+    .template-specs {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 6px;
+      padding: 8px;
+      margin-top: 8px;
+    }
+
+    .template-specs div {
+      font-size: 11px;
+      margin: 2px 0;
+      opacity: 0.9;
+    }
+
+    /* Enhanced block type menu for templates */
+    .block-category h4:contains("System Templates") {
+      background: linear-gradient(90deg, #E74C3C, #F39C12);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 700;
+    }
   </style>
+  <script src="./electrical-blocks.js"></script>
+  <script src="./mechanical-blocks.js"></script>
+  <script src="./software-blocks.js"></script>
+  <script src="./block-templates.js"></script>
+  
+  <!-- ========== MILESTONE 11: BLOCK TYPE SELECTOR FUNCTIONALITY - ALL PHASES COMPLETE ========== -->
+  <script>
+    // Professional Block Type Manager for Milestone 11
+    class AdvancedBlockTypeManager {
+      constructor() {
+        this.currentBlockType = null;
+        this.blockTypeMenu = null;
+        this.isMenuOpen = false;
+        this.init();
+      }
+      
+      init() {
+        this.blockTypeMenu = document.getElementById('block-type-menu');
+        this.setupEventListeners();
+        this.setupKeyboardShortcuts();
+      }
+      
+      setupEventListeners() {
+        // Block type button toggle
+        const blockTypeBtn = document.getElementById('btn-block-types');
+        if (blockTypeBtn) {
+          blockTypeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleBlockTypeMenu();
+          });
+        }
+        
+        // Block type selection
+        document.querySelectorAll('.block-type-item:not(.disabled)').forEach(item => {
+          item.addEventListener('click', (e) => {
+            const blockType = e.currentTarget.dataset.type;
+            this.selectBlockType(blockType);
+            this.closeBlockTypeMenu();
+          });
+          
+          // Hover preview
+          item.addEventListener('mouseenter', (e) => {
+            const blockType = e.currentTarget.dataset.type;
+            this.showBlockTypePreview(blockType);
+          });
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('.block-type-dropdown')) {
+            this.closeBlockTypeMenu();
+          }
+        });
+        
+        // Enhanced Add Block functionality
+        const addBlockBtn = document.getElementById('btn-add-block');
+        if (addBlockBtn) {
+          addBlockBtn.addEventListener('click', () => {
+            this.createBasicBlock();
+          });
+        }
+      }
+      
+      setupKeyboardShortcuts() {
+        // Add to existing keyboard manager
+        if (window.fusionKeyboard) {
+          window.fusionKeyboard.shortcuts['Shift+B'] = () => this.toggleBlockTypeMenu();
+          window.fusionKeyboard.shortcuts['Ctrl+Shift+1'] = () => this.quickSelectType('microcontroller-arduino');
+          window.fusionKeyboard.shortcuts['Ctrl+Shift+2'] = () => this.quickSelectType('microcontroller-esp32');
+          window.fusionKeyboard.shortcuts['Ctrl+Shift+P'] = () => this.quickSelectType('power-supply-linear');
+        }
+      }
+      
+      toggleBlockTypeMenu() {
+        if (this.isMenuOpen) {
+          this.closeBlockTypeMenu();
+        } else {
+          this.openBlockTypeMenu();
+        }
+      }
+      
+      openBlockTypeMenu() {
+        this.blockTypeMenu.classList.add('show');
+        document.querySelector('.block-type-dropdown').classList.add('open');
+        this.isMenuOpen = true;
+        
+        // Focus first item for keyboard navigation
+        const firstItem = this.blockTypeMenu.querySelector('.block-type-item:not(.disabled)');
+        if (firstItem) {
+          firstItem.focus();
+        }
+        
+        this.showToast('Block type selector opened (↑↓ to navigate, Enter to select)', 'info');
+      }
+      
+      closeBlockTypeMenu() {
+        this.blockTypeMenu.classList.remove('show');
+        document.querySelector('.block-type-dropdown').classList.remove('open');
+        this.isMenuOpen = false;
+      }
+      
+      selectBlockType(blockType) {
+        this.currentBlockType = blockType;
+        
+        // Update button appearance
+        const blockTypeBtn = document.getElementById('btn-block-types');
+        
+        // Try to get type info from all available libraries and templates
+        let typeInfo = null;
+        let isTemplate = false;
+        
+        // Check if it's a template
+        if (blockType.startsWith('template-') && typeof BlockTemplateSystem !== 'undefined') {
+          typeInfo = BlockTemplateSystem.getTemplate(blockType);
+          isTemplate = true;
+        }
+        
+        // If not a template, check component libraries
+        if (!typeInfo) {
+          typeInfo = ElectricalBlockTypes.getType(blockType);
+        }
+        if (!typeInfo && typeof MechanicalBlockTypes !== 'undefined') {
+          typeInfo = MechanicalBlockTypes.getType(blockType);
+        }
+        if (!typeInfo && typeof SoftwareBlockTypes !== 'undefined') {
+          typeInfo = SoftwareBlockTypes.getType(blockType);
+        }
+        
+        if (typeInfo) {
+          blockTypeBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 12 12">
+              <use href="#icon-${typeInfo.icon || (isTemplate ? 'template' : 'block-advanced')}"/>
+            </svg>
+            ${typeInfo.name}
+            <svg width="12" height="12" viewBox="0 0 12 12" class="dropdown-arrow">
+              <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          `;
+          blockTypeBtn.style.borderColor = typeInfo.color;
+          blockTypeBtn.style.color = typeInfo.color;
+        }
+        
+        // Create block or template
+        if (isTemplate) {
+          this.createFromTemplate(blockType);
+        } else {
+          this.createSpecializedBlock(blockType);
+        }
+        
+        this.showToast(`${isTemplate ? 'Created template' : 'Selected'}: ${typeInfo?.name || blockType}`, 'info');
+      }
+      
+      quickSelectType(blockType) {
+        this.selectBlockType(blockType);
+        this.closeBlockTypeMenu();
+      }
+      
+      createBasicBlock() {
+        // Create standard block (existing functionality)
+        const block = {
+          id: this.generateBlockId(),
+          name: 'New Block',
+          type: 'generic',
+          x: 100 + Math.random() * 200,
+          y: 100 + Math.random() * 200,
+          status: 'Placeholder',
+          attributes: {},
+          interfaces: []
+        };
+        
+        this.addBlockToCanvas(block);
+        this.showToast('Basic block created', 'info');
+      }
+      
+      createFromTemplate(templateId) {
+        if (typeof BlockTemplateSystem === 'undefined') return;
+        
+        const basePosition = { 
+          x: 200 + Math.random() * 300, 
+          y: 200 + Math.random() * 200 
+        };
+        
+        const templateResult = BlockTemplateSystem.createFromTemplate(templateId, basePosition);
+        if (!templateResult) return;
+        
+        const canvas = document.getElementById('svg-canvas');
+        const blocksLayer = document.getElementById('blocks-layer');
+        const connectionsLayer = document.getElementById('connections-layer');
+        
+        // Create all blocks from template
+        const createdBlockElements = [];
+        templateResult.blocks.forEach((block, index) => {
+          const blockElement = this.addBlockToCanvas(block, true);
+          createdBlockElements.push(blockElement);
+          
+          // Add template-specific styling
+          blockElement.classList.add('template-block');
+          blockElement.setAttribute('data-template', templateId);
+          blockElement.style.setProperty('--template-color', templateResult.template.color);
+        });
+        
+        // Create connections between blocks
+        templateResult.connections.forEach(conn => {
+          this.createTemplateConnection(conn, createdBlockElements);
+        });
+        
+        // Show template information
+        this.showTemplateInfo(templateResult.template, templateResult.blocks.length);
+        
+        // Add template completion animation
+        setTimeout(() => {
+          createdBlockElements.forEach((element, index) => {
+            setTimeout(() => {
+              element.classList.add('template-created');
+            }, index * 100);
+          });
+        }, 500);
+      }
+
+      createSpecializedBlock(blockType) {
+        // Try to get type info from all available libraries
+        let typeInfo = ElectricalBlockTypes.getType(blockType);
+        if (!typeInfo && typeof MechanicalBlockTypes !== 'undefined') {
+          typeInfo = MechanicalBlockTypes.getType(blockType);
+        }
+        if (!typeInfo && typeof SoftwareBlockTypes !== 'undefined') {
+          typeInfo = SoftwareBlockTypes.getType(blockType);
+        }
+        
+        if (!typeInfo) return;
+        
+        // Create specialized block with full specifications
+        const block = {
+          id: this.generateBlockId(),
+          name: typeInfo.name,
+          type: blockType,
+          category: typeInfo.category,
+          x: 150 + Math.random() * 300,
+          y: 150 + Math.random() * 200,
+          status: 'Planned',
+          attributes: {
+            specifications: typeInfo.specifications,
+            description: typeInfo.description
+          },
+          interfaces: typeInfo.interfaces.map(iface => ({
+            ...iface,
+            id: `${this.generateBlockId()}_${iface.id}`
+          })),
+          pinout: typeInfo.pinout || null,
+          visualStyle: {
+            color: typeInfo.color,
+            icon: typeInfo.icon
+          }
+        };
+        
+        this.addBlockToCanvas(block, true); // true for specialized rendering
+        this.showToast(`Created ${typeInfo.name}`, 'info');
+        
+        // Show specifications tooltip
+        setTimeout(() => {
+          this.showBlockSpecifications(block);
+        }, 500);
+      }
+      
+      addBlockToCanvas(block, isSpecialized = false) {
+        const canvas = document.getElementById('svg-canvas');
+        const blocksLayer = document.getElementById('blocks-layer');
+        
+        // Create SVG group for the block
+        const blockGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        blockGroup.classList.add('block-group');
+        blockGroup.setAttribute('data-block-id', block.id);
+        blockGroup.setAttribute('transform', `translate(${block.x}, ${block.y})`);
+        
+        // Create block rectangle with specialized styling
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.classList.add('block');
+        if (isSpecialized) {
+          rect.classList.add('specialized-block');
+          rect.setAttribute('data-type', block.type);
+          rect.setAttribute('data-category', block.category);
+        }
+        
+        // Set dimensions based on block type
+        const width = isSpecialized ? 120 : 100;
+        const height = isSpecialized ? 80 : 60;
+        
+        rect.setAttribute('x', -width/2);
+        rect.setAttribute('y', -height/2);
+        rect.setAttribute('width', width);
+        rect.setAttribute('height', height);
+        rect.setAttribute('rx', isSpecialized ? 8 : 6);
+        
+        // Apply specialized styling
+        if (isSpecialized && block.visualStyle) {
+          rect.style.fill = `${block.visualStyle.color}20`; // 20% opacity
+          rect.style.stroke = block.visualStyle.color;
+          rect.style.strokeWidth = '2';
+        }
+        
+        // Create text label
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.classList.add('block-text');
+        if (isSpecialized) {
+          text.classList.add('specialized-text');
+        }
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'middle');
+        text.textContent = block.name;
+        
+        // Add type indicator for specialized blocks
+        if (isSpecialized) {
+          const typeIndicator = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          typeIndicator.classList.add('block-type-indicator');
+          typeIndicator.setAttribute('text-anchor', 'middle');
+          typeIndicator.setAttribute('dominant-baseline', 'middle');
+          typeIndicator.setAttribute('y', '15');
+          typeIndicator.style.fontSize = '10px';
+          typeIndicator.style.opacity = '0.7';
+          typeIndicator.textContent = block.category.toUpperCase();
+          blockGroup.appendChild(typeIndicator);
+        }
+        
+        // Add connection points for interfaces
+        if (block.interfaces && block.interfaces.length > 0) {
+          this.addConnectionPoints(blockGroup, block.interfaces, width, height);
+        }
+        
+        blockGroup.appendChild(rect);
+        blockGroup.appendChild(text);
+        blocksLayer.appendChild(blockGroup);
+        
+        // Add animation
+        blockGroup.classList.add('new');
+        if (isSpecialized) {
+          blockGroup.classList.add('floating');
+        }
+        
+        // Store block data
+        blockGroup.blockData = block;
+        
+        return blockGroup;
+      }
+      
+      addConnectionPoints(blockGroup, interfaces, width, height) {
+        interfaces.forEach((iface, index) => {
+          const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          point.classList.add('connection-point');
+          point.setAttribute('data-interface-id', iface.id);
+          point.setAttribute('data-interface-kind', iface.kind);
+          
+          // Position points around the block perimeter
+          const angle = (index / interfaces.length) * 2 * Math.PI;
+          const x = Math.cos(angle) * (width/2 + 5);
+          const y = Math.sin(angle) * (height/2 + 5);
+          
+          point.setAttribute('cx', x);
+          point.setAttribute('cy', y);
+          point.setAttribute('r', '4');
+          
+          // Color code by interface type with enhanced colors for all categories
+          const colorMap = {
+            'power': '#E74C3C',
+            'data': '#3498DB', 
+            'electrical': '#F39C12',
+            'mechanical': '#16A085'
+          };
+          point.style.fill = colorMap[iface.kind] || '#BDC3C7';
+          
+          // Enhanced software interface styling
+          if (iface.kind === 'data' && block.category === 'software') {
+            point.style.strokeWidth = '2';
+            point.style.stroke = '#8E44AD';
+            
+            // Protocol-specific styling
+            if (iface.protocol === 'api_call' || iface.protocol === 'function_call') {
+              point.setAttribute('stroke-dasharray', '3,1');
+            } else if (iface.protocol === 'interrupt') {
+              point.style.fill = '#E74C3C';
+              point.setAttribute('stroke', '#E74C3C');
+            } else if (iface.protocol === 'dma') {
+              point.setAttribute('stroke-width', '3');
+              point.style.opacity = '0.8';
+            }
+          }
+          
+          // Add mechanical-specific styling
+          if (iface.kind === 'mechanical') {
+            point.setAttribute('stroke-width', '2');
+            if (iface.type === 'rotational') {
+              point.setAttribute('stroke-dasharray', '2,1');
+            } else if (iface.type === 'linear') {
+              point.setAttribute('rx', '2'); // Make rectangular for linear
+            } else if (iface.type === 'force') {
+              point.setAttribute('stroke', '#E67E22');
+              point.setAttribute('stroke-width', '3');
+            }
+          }
+          
+          blockGroup.appendChild(point);
+        });
+      }
+      
+      showBlockSpecifications(block) {
+        if (!block.attributes?.specifications) return;
+        
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip specs-tooltip show';
+        
+        // Get properties from all available libraries
+        let typeInfo = ElectricalBlockTypes.getType(block.type);
+        if (!typeInfo && typeof MechanicalBlockTypes !== 'undefined') {
+          typeInfo = MechanicalBlockTypes.getType(block.type);
+        }
+        if (!typeInfo && typeof SoftwareBlockTypes !== 'undefined') {
+          typeInfo = SoftwareBlockTypes.getType(block.type);
+        }
+        
+        let mechanicalPropsHtml = '';
+        if (typeInfo?.mechanicalProperties) {
+          mechanicalPropsHtml = `
+            <div class="spec-section">
+              <h5>Mechanical Properties</h5>
+              ${Object.entries(typeInfo.mechanicalProperties).map(([key, value]) => 
+                `<div><strong>${key}:</strong> ${value}</div>`
+              ).join('')}
+            </div>
+          `;
+        }
+
+        let softwarePropsHtml = '';
+        if (typeInfo?.softwareProperties) {
+          softwarePropsHtml = `
+            <div class="spec-section">
+              <h5>Software Properties</h5>
+              ${Object.entries(typeInfo.softwareProperties).map(([key, value]) => 
+                `<div><strong>${key}:</strong> ${value}</div>`
+              ).join('')}
+            </div>
+          `;
+        }
+
+        let algorithmsHtml = '';
+        if (typeInfo?.algorithms) {
+          algorithmsHtml = `
+            <div class="spec-section">
+              <h5>Algorithms</h5>
+              ${Object.entries(typeInfo.algorithms).map(([key, value]) => 
+                `<div><strong>${key}:</strong> ${value}</div>`
+              ).join('')}
+            </div>
+          `;
+        }
+        
+        tooltip.innerHTML = `
+          <h4>${block.name} Specifications</h4>
+          <div class="spec-section">
+            <h5>General Specifications</h5>
+            ${Object.entries(block.attributes.specifications).map(([key, value]) => 
+              `<div><strong>${key}:</strong> ${value}</div>`
+            ).join('')}
+          </div>
+          ${mechanicalPropsHtml}
+          ${softwarePropsHtml}
+          ${algorithmsHtml}
+        `;
+        
+        tooltip.style.left = `${block.x + 100}px`;
+        tooltip.style.top = `${block.y - 50}px`;
+        
+        document.body.appendChild(tooltip);
+        
+        setTimeout(() => tooltip.remove(), 7000); // Longer display for more content
+      }
+      
+      showBlockTypePreview(blockType) {
+        // Try to get type info from all available libraries
+        let typeInfo = ElectricalBlockTypes.getType(blockType);
+        if (!typeInfo && typeof MechanicalBlockTypes !== 'undefined') {
+          typeInfo = MechanicalBlockTypes.getType(blockType);
+        }
+        if (!typeInfo && typeof SoftwareBlockTypes !== 'undefined') {
+          typeInfo = SoftwareBlockTypes.getType(blockType);
+        }
+        
+        if (!typeInfo) return;
+        
+        // Show preview tooltip with specifications
+        const preview = document.createElement('div');
+        preview.className = 'tooltip info show';
+        preview.innerHTML = `
+          <h4>${typeInfo.name}</h4>
+          <p>${typeInfo.description}</p>
+          <div class="spec-preview">
+            ${Object.entries(typeInfo.specifications).slice(0, 3).map(([key, value]) => 
+              `<div><strong>${key}:</strong> ${value}</div>`
+            ).join('')}
+          </div>
+        `;
+        
+        const rect = event.target.getBoundingClientRect();
+        preview.style.left = `${rect.right + 10}px`;
+        preview.style.top = `${rect.top}px`;
+        
+        document.body.appendChild(preview);
+        
+        setTimeout(() => preview.remove(), 2000);
+      }
+      
+      generateBlockId() {
+        return 'block_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      }
+      
+      createTemplateConnection(connection, blockElements) {
+        const connectionsLayer = document.getElementById('connections-layer');
+        
+        // Find source and target block elements by template index
+        const sourceElement = blockElements[connection.from.component];
+        const targetElement = blockElements[connection.to.component];
+          
+        if (!sourceElement || !targetElement) return;
+        
+        // Create connection line
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.classList.add('connection', 'template-connection');
+        line.setAttribute('data-connection-type', connection.type);
+        
+        // Get block positions
+        const sourceRect = sourceElement.getBBox();
+        const targetRect = targetElement.getBBox();
+        const sourceTransform = sourceElement.getAttribute('transform');
+        const targetTransform = targetElement.getAttribute('transform');
+        
+        // Extract positions from transform
+        const sourcePos = this.extractPosition(sourceTransform);
+        const targetPos = this.extractPosition(targetTransform);
+        
+        line.setAttribute('x1', sourcePos.x);
+        line.setAttribute('y1', sourcePos.y);
+        line.setAttribute('x2', targetPos.x);
+        line.setAttribute('y2', targetPos.y);
+        
+        // Style based on connection type
+        const connectionStyles = {
+          'power_connection': { stroke: '#E74C3C', strokeWidth: '3' },
+          'control_signal': { stroke: '#3498DB', strokeWidth: '2' },
+          'feedback_signal': { stroke: '#F39C12', strokeWidth: '2' },
+          'data_connection': { stroke: '#8E44AD', strokeWidth: '2' },
+          'mechanical_rotational': { stroke: '#16A085', strokeWidth: '2.5' },
+          'mechanical_linear': { stroke: '#16A085', strokeWidth: '2.5' }
+        };
+        
+        const style = connectionStyles[connection.type] || { stroke: '#BDC3C7', strokeWidth: '2' };
+        line.setAttribute('stroke', style.stroke);
+        line.setAttribute('stroke-width', style.strokeWidth);
+        line.setAttribute('stroke-dasharray', '5,3');
+        line.setAttribute('marker-end', 'url(#arrowhead)');
+        
+        connectionsLayer.appendChild(line);
+        
+        // Add connection animation
+        line.style.strokeDashoffset = '100';
+        line.style.animation = 'connectionFlow 2s ease-in-out infinite';
+      }
+      
+      extractPosition(transform) {
+        if (!transform) return { x: 0, y: 0 };
+        const match = transform.match(/translate\(([^,]+),([^)]+)\)/);
+        return match ? { 
+          x: parseFloat(match[1]), 
+          y: parseFloat(match[2]) 
+        } : { x: 0, y: 0 };
+      }
+      
+      showTemplateInfo(template, blockCount) {
+        const info = document.createElement('div');
+        info.className = 'tooltip template-info show';
+        info.innerHTML = `
+          <h4>🎯 ${template.name}</h4>
+          <p>${template.description}</p>
+          <div class="template-stats">
+            <div><strong>Components:</strong> ${blockCount}</div>
+            <div><strong>Category:</strong> ${template.category}</div>
+            <div><strong>Type:</strong> ${template.subcategory}</div>
+          </div>
+          <div class="template-specs">
+            ${Object.entries(template.specifications).map(([key, value]) => 
+              `<div><strong>${key}:</strong> ${value}</div>`
+            ).join('')}
+          </div>
+        `;
+        
+        info.style.left = '50px';
+        info.style.top = '100px';
+        info.style.maxWidth = '350px';
+        
+        document.body.appendChild(info);
+        
+        setTimeout(() => info.remove(), 8000);
+      }
+
+      showToast(message, type = 'info') {
+        // Use existing toast system from keyboard manager
+        if (window.fusionKeyboard) {
+          window.fusionKeyboard.showToast(message, type);
+        }
+      }
+    }
+    
+    // Initialize Advanced Block Type Manager
+    document.addEventListener('DOMContentLoaded', () => {
+      window.blockTypeManager = new AdvancedBlockTypeManager();
+    });
+  </script>
+  
   <script src="./palette.js"></script>
 </body>
 </html>
