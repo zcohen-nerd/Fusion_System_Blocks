@@ -164,10 +164,11 @@ class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
                     # Send CAD link data back to palette
                     palette = UI.palettes.itemById("sysBlocksPalette")
                     if palette:
-                        script = f"receiveCADLinkFromPython('{self.block_id}', '{occ_token}', '{doc_id}', '');"
+                        script = (f"receiveCADLinkFromPython('{self.block_id}', '{occ_token}', "
+                                  f"'{doc_id}', '');")
                         palette.sendInfoToHTML("cad-link-response", script)
 
-                    UI.messageBox(f"CAD component linked successfully")
+                    UI.messageBox("CAD component linked successfully")
                 else:
                     UI.messageBox("Selected entity does not have a valid token")
             else:

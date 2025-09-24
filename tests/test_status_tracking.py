@@ -2,19 +2,19 @@
 Test module for status tracking functionality in diagram_data.py
 """
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 # Add src directory to path so we can import diagram_data
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from diagram_data import (
+from diagram_data import (  # noqa: E402
     compute_block_status,
     update_block_statuses,
     get_status_color,
     create_block,
-    create_empty_diagram,
 )
 
 

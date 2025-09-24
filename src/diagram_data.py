@@ -306,7 +306,8 @@ def check_logic_level_compatibility(diagram: Dict[str, Any]) -> List[Dict[str, A
                     {
                         "type": "logic_level_mismatch",
                         "severity": "error",
-                        "message": f"Logic level mismatch: {from_block['name']} ({from_level}) → {to_block['name']} ({to_level})",
+                        "message": (f"Logic level mismatch: {from_block['name']} ({from_level}) → "
+                                    f"{to_block['name']} ({to_level})"),
                         "blocks": [from_block["id"], to_block["id"]],
                         "connection": connection["id"],
                     }
@@ -349,7 +350,8 @@ def check_power_budget(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
             {
                 "type": "power_budget_exceeded",
                 "severity": "error",
-                "message": f"Power consumption ({total_consumption}mW) exceeds supply ({total_supply}mW)",
+                "message": (f"Power consumption ({total_consumption}mW) exceeds supply "
+                            f"({total_supply}mW)"),
                 "blocks": [block["id"] for block, _ in power_consumers],
                 "details": {
                     "total_supply": total_supply,
