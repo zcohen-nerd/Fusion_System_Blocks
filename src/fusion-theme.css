@@ -12,11 +12,11 @@
   --fusion-bg-hover: #464646;             /* Hover states */
   --fusion-bg-active: #007acc;            /* Active/selected states */
   
-  /* Text Colors */
-  --fusion-text-primary: #cccccc;         /* Primary text */
-  --fusion-text-secondary: #969696;       /* Secondary text */
-  --fusion-text-disabled: #6d6d6d;        /* Disabled text */
-  --fusion-text-inverse: #ffffff;         /* Text on dark backgrounds */
+  /* Text Colors - FORCED HIGH CONTRAST */
+  --fusion-text-primary: #f0f0f0 !important;         /* Primary text - maximum contrast */
+  --fusion-text-secondary: #d0d0d0 !important;       /* Secondary text - high contrast */  
+  --fusion-text-disabled: #909090 !important;        /* Disabled text - improved contrast */
+  --fusion-text-inverse: #ffffff !important;         /* Text on dark backgrounds */
   
   /* Border Colors */
   --fusion-border-primary: #464646;       /* Primary borders */
@@ -101,10 +101,10 @@
   --fusion-focus-ring: rgba(0, 123, 204, 0.3);
   --fusion-glow-orange: rgba(255, 102, 0, 0.5);
   
-  /* Transition Timings */
-  --fusion-transition-fast: 0.15s;
-  --fusion-transition: 0.25s;
-  --fusion-transition-slow: 0.35s;
+  /* Transition Timings - FORCED FAST */
+  --fusion-transition-fast: 0.1s !important;
+  --fusion-transition: 0.2s !important;
+  --fusion-transition-slow: 0.25s !important;
   
   /* Connection Type Colors */
   --fusion-connection-power: #dc3545;
@@ -189,16 +189,7 @@
   transform: translateY(-2px) scale(1.02);
 }
 
-/* Enhanced Selected State */
-.block.selected {
-  stroke: var(--fusion-accent-orange);
-  stroke-width: var(--fusion-border-thick);
-  fill: var(--fusion-gradient-active);
-  filter: drop-shadow(0 6px 16px rgba(255,140,0,0.4)) 
-          drop-shadow(0 3px 8px rgba(0,0,0,0.3))
-          drop-shadow(0 0 0 3px rgba(255,140,0,0.25));
-  transform: translateY(-3px) scale(1.03);
-}
+/* Enhanced Selected State - consolidated below with animation */
 
 /* Block Type Styling - Engineering Disciplines */
 .block[data-type*="electrical"] {
@@ -275,8 +266,17 @@
   font-size: var(--fusion-font-size-normal);
   text-anchor: middle;
   dominant-baseline: central;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   transition: all var(--fusion-transition-fast) var(--fusion-ease-out);
+}
+
+.status-text {
+  fill: var(--fusion-text-secondary);
+  font-family: var(--fusion-font-family);
+  font-weight: var(--fusion-font-weight-medium);
+  text-anchor: middle;
+  dominant-baseline: central;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 .block:hover .block-text {
@@ -715,18 +715,30 @@
 }
 
 .block-group.new-block {
-  animation: blockAppear 0.6s var(--fusion-ease-bounce);
+  animation: blockAppear 0.4s var(--fusion-ease-bounce);
 }
 
-/* Block selection animation */
+/* Block selection animation - Fast and immediate */
 @keyframes blockSelect {
   0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  30% { transform: scale(1.04); }
   100% { transform: scale(1.02); }
 }
 
 .block.selected {
-  animation: blockSelect 0.3s var(--fusion-ease-out);
+  stroke: var(--fusion-accent-orange);
+  stroke-width: var(--fusion-border-thick);
+  fill: var(--fusion-gradient-active);
+  filter: drop-shadow(0 6px 16px rgba(255,140,0,0.4)) 
+          drop-shadow(0 3px 8px rgba(0,0,0,0.3))
+          drop-shadow(0 0 0 3px rgba(255,140,0,0.25));
+  transform: translateY(-3px) scale(1.03);
+  animation: blockSelect 0.08s var(--fusion-ease-out) !important;
+}
+
+/* Selected blocks should maintain their transform even on hover - FORCED */
+.block.selected:hover {
+  transform: translateY(-3px) scale(1.03) !important;
 }
 
 /* Connection creation animation */

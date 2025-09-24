@@ -115,12 +115,15 @@ class SystemBlocksEditor {
     // Create context menu element
     this.contextMenu = document.createElement('div');
     this.contextMenu.className = 'fusion-context-menu';
+    this.contextMenu.id = 'fusion-context-menu';  // Add ID for debugging
     document.body.appendChild(this.contextMenu);
 
     // Add context menu to blocks
     document.addEventListener('contextmenu', (e) => {
-      if (e.target.closest('.block-group')) {
+      const blockGroup = e.target.closest('.block-group');
+      if (blockGroup) {
         e.preventDefault();
+        this.selectedBlock = blockGroup;  // Store the selected block
         this.showContextMenu(e.clientX, e.clientY, 'block');
       }
     });
@@ -133,6 +136,7 @@ class SystemBlocksEditor {
 
   showContextMenu(x, y, type) {
     const menuItems = this.getContextMenuItems(type);
+    
     this.contextMenu.innerHTML = menuItems.map(item => 
       `<div class="fusion-context-menu-item ${item.disabled ? 'disabled' : ''}" data-action="${item.action}">
         ${item.icon ? `<div class="fusion-icon ${item.icon}"></div>` : ''}
@@ -169,11 +173,90 @@ class SystemBlocksEditor {
 
   handleContextMenuAction(action) {
     debugLog(`Context menu action: ${action}`);
-    // Implement context menu actions here
+    
+    if (!this.selectedBlock) {
+      debugLog('No block selected for context menu action');
+      return;
+    }
+    
+    const blockId = this.selectedBlock.getAttribute('data-block-id');
+    const block = this.diagram.blocks.find(b => b.id === blockId);
+    
+    if (!block) {
+      debugLog('Block not found for context menu action');
+      return;
+    }
+    
+    switch (action) {
+      case 'edit':
+        this.showBlockPropertiesDialog(block);
+        break;
+      case 'duplicate':
+        this.duplicateBlock(block);
+        break;
+      case 'link-cad':
+        this.showCADLinkDialog(block);
+        break;
+      case 'status':
+        this.showStatusChangeDialog(block);
+        break;
+      case 'delete':
+        this.deleteBlock(block);
+        break;
+      default:
+        debugLog(`Unknown context menu action: ${action}`);
+    }
   }
 
   hideContextMenu() {
     this.contextMenu.classList.remove('show');
+  }
+
+  // Context menu action implementations
+  showBlockPropertiesDialog(block) {
+    this.showNotification(`Editing properties for ${block.name}`, 'info');
+    // Future implementation: Show properties dialog
+  }
+
+  duplicateBlock(block) {
+    const newBlock = {
+      ...block,
+      id: this.generateId(),
+      x: block.x + 20,
+      y: block.y + 20,
+      name: `${block.name} Copy`
+    };
+    this.diagram.blocks.push(newBlock);
+    this.renderDiagram();
+    this.showNotification(`Duplicated ${block.name}`, 'success');
+  }
+
+  showCADLinkDialog(block) {
+    this.showNotification(`CAD linking for ${block.name} coming soon`, 'info');
+    // Future implementation: Show CAD link dialog
+  }
+
+  showStatusChangeDialog(block) {
+    const statuses = ['Placeholder', 'Planning', 'In Progress', 'Review', 'Complete'];
+    const currentIndex = statuses.indexOf(block.status || 'Placeholder');
+    const nextIndex = (currentIndex + 1) % statuses.length;
+    block.status = statuses[nextIndex];
+    this.renderDiagram();
+    this.showNotification(`Status changed to ${block.status}`, 'success');
+  }
+
+  deleteBlock(block) {
+    if (confirm(`Delete ${block.name}?`)) {
+      this.diagram.blocks = this.diagram.blocks.filter(b => b.id !== block.id);
+      this.renderDiagram();
+      this.showNotification(`Deleted ${block.name}`, 'success');
+    }
+  }
+
+  // Simple notification system
+  showNotification(message, type = 'info') {
+    console.log(`[${type.toUpperCase()}] ${message}`);
+    // For now, just use console.log - could implement toast notifications later
   }
 
   setupLoadingStates() {
@@ -696,7 +779,6 @@ class SystemBlocksEditor {
       statusText.setAttribute('y', block.height / 2 + 12);
       statusText.textContent = block.status;
       statusText.setAttribute('font-size', '10');
-      statusText.setAttribute('opacity', '0.7');
       g.appendChild(statusText);
     }
     
@@ -733,8 +815,10 @@ class SystemBlocksEditor {
         setTimeout(() => {
           g.classList.remove('new-block');
           delete block._isNewBlock;
-        }, 600); // Match animation duration
-      }    this.blocksLayer.appendChild(g);
+        }, 400); // Match animation duration
+      }
+      
+    this.blocksLayer.appendChild(g);
   }
   
   renderPort(block, intf, index) {
@@ -3163,6 +3247,7 @@ document.addEventListener('DOMContentLoaded', () => {
   try {
     debugLog('About to create SystemBlocksEditor...');
     editor = new SystemBlocksEditor();
+    window.editor = editor; // Make editor globally accessible
     debugLog('Editor created successfully!');
     console.log('Editor created successfully:', editor);
     

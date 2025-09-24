@@ -3,9 +3,29 @@
 <head>
   <meta charset="utf-8" />
   <title>System Blocks</title>
-  <link rel="stylesheet" href="fusion-theme.css?v=milestone10">
-  <link rel="stylesheet" href="fusion-icons.css?v=milestone10">
+  <link rel="stylesheet" href="fusion-theme.css?v=milestone10-final4">
+  <link rel="stylesheet" href="fusion-icons.css?v=milestone10-final4">
   <style>
+    /* === FORCED CSS OVERRIDES === */
+    :root {
+      --fusion-text-primary: #f0f0f0 !important;
+      --fusion-text-secondary: #d0d0d0 !important;
+      --fusion-transition-fast: 0.1s !important;
+      --fusion-transition: 0.2s !important;
+    }
+    
+    .block.selected {
+      animation: blockSelect 0.15s ease-out !important;
+    }
+    
+    .block.selected:hover {
+      transform: translateY(-3px) scale(1.03) !important;
+    }
+    
+    .block-type-menu {
+      z-index: 99999 !important;
+    }
+    
     /* === FUSION 360 BASE STYLES === */
     html, body { 
       height: 100%; 
@@ -69,6 +89,8 @@
       border-radius: var(--fusion-radius-medium);
       box-shadow: var(--fusion-shadow-light);
       backdrop-filter: blur(5px);
+      position: relative;
+      z-index: 100000 !important;
     }
     
     .toolbar button {
@@ -190,6 +212,7 @@
       position: relative;
       overflow: hidden;
       background: var(--fusion-bg-primary);
+      z-index: 1 !important;
     }
     
     #svg-canvas {
@@ -1165,245 +1188,8 @@
             <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <div id="block-type-menu" class="block-type-menu">
-          <div class="block-category">
-            <h4>⚡ Electrical/Electronic</h4>
-            <div class="block-type-item" data-type="microcontroller-arduino">
-              <div class="block-icon" style="background: #007ACC;"></div>
-              <div class="block-info">
-                <span class="block-name">Arduino Uno R3</span>
-                <span class="block-desc">ATMega328P microcontroller</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="microcontroller-esp32">
-              <div class="block-icon" style="background: #FF6B35;"></div>
-              <div class="block-info">
-                <span class="block-name">ESP32 DevKit</span>
-                <span class="block-desc">WiFi+Bluetooth microcontroller</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="power-supply-linear">
-              <div class="block-icon" style="background: #E74C3C;"></div>
-              <div class="block-info">
-                <span class="block-name">Linear PSU</span>
-                <span class="block-desc">Adjustable voltage regulator</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="power-supply-switching">
-              <div class="block-icon" style="background: #8E44AD;"></div>
-              <div class="block-info">
-                <span class="block-name">Switching PSU</span>
-                <span class="block-desc">High-efficiency regulator</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="sensor-temperature">
-              <div class="block-icon" style="background: #F39C12;"></div>
-              <div class="block-info">
-                <span class="block-name">Temperature Sensor</span>
-                <span class="block-desc">Digital I2C temperature</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="sensor-accelerometer">
-              <div class="block-icon" style="background: #16A085;"></div>
-              <div class="block-info">
-                <span class="block-name">Accelerometer</span>
-                <span class="block-desc">3-axis MEMS sensor</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="comm-wifi">
-              <div class="block-icon" style="background: #3498DB;"></div>
-              <div class="block-info">
-                <span class="block-name">WiFi Module</span>
-                <span class="block-desc">802.11n wireless</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="comm-bluetooth">
-              <div class="block-icon" style="background: #9B59B6;"></div>
-              <div class="block-info">
-                <span class="block-name">Bluetooth Module</span>
-                <span class="block-desc">BLE 5.0 communication</span>
-              </div>
-            </div>
-          </div>
-          <div class="block-category">
-            <h4>⚙️ Mechanical Systems</h4>
-            <div class="block-type-item" data-type="motor-servo">
-              <div class="block-icon" style="background: #16A085;"></div>
-              <div class="block-info">
-                <span class="block-name">Servo Motor</span>
-                <span class="block-desc">20 kg⋅cm precision motor</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="motor-stepper">
-              <div class="block-icon" style="background: #16A085;"></div>
-              <div class="block-info">
-                <span class="block-name">Stepper Motor</span>
-                <span class="block-desc">200 steps/revolution</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="actuator-linear">
-              <div class="block-icon" style="background: #16A085;"></div>
-              <div class="block-info">
-                <span class="block-name">Linear Actuator</span>
-                <span class="block-desc">100mm stroke, 200N force</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="sensor-encoder">
-              <div class="block-icon" style="background: #E67E22;"></div>
-              <div class="block-info">
-                <span class="block-name">Rotary Encoder</span>
-                <span class="block-desc">1024 PPR precision</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="sensor-load-cell">
-              <div class="block-icon" style="background: #E67E22;"></div>
-              <div class="block-info">
-                <span class="block-name">Load Cell</span>
-                <span class="block-desc">100kg force sensor</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="sensor-proximity">
-              <div class="block-icon" style="background: #E67E22;"></div>
-              <div class="block-info">
-                <span class="block-name">Proximity Sensor</span>
-                <span class="block-desc">8mm inductive detection</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="structure-bearing">
-              <div class="block-icon" style="background: #7F8C8D;"></div>
-              <div class="block-info">
-                <span class="block-name">Ball Bearing</span>
-                <span class="block-desc">10×30×9mm precision</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="structure-coupling">
-              <div class="block-icon" style="background: #7F8C8D;"></div>
-              <div class="block-info">
-                <span class="block-name">Flexible Coupling</span>
-                <span class="block-desc">5 N⋅m, ±1° misalignment</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="structure-gearbox">
-              <div class="block-icon" style="background: #7F8C8D;"></div>
-              <div class="block-info">
-                <span class="block-name">Planetary Gearbox</span>
-                <span class="block-desc">10:1 reduction, 95% eff.</span>
-              </div>
-            </div>
-          </div>
-          <div class="block-category">
-            <h4>💻 Software & Firmware</h4>
-            <div class="block-type-item" data-type="firmware-pid-controller">
-              <div class="block-icon" style="background: #8E44AD;"></div>
-              <div class="block-info">
-                <span class="block-name">PID Controller</span>
-                <span class="block-desc">Real-time control algorithm</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="firmware-state-machine">
-              <div class="block-icon" style="background: #8E44AD;"></div>
-              <div class="block-info">
-                <span class="block-name">State Machine</span>
-                <span class="block-desc">Hierarchical FSM control</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="firmware-kalman-filter">
-              <div class="block-icon" style="background: #8E44AD;"></div>
-              <div class="block-info">
-                <span class="block-name">Kalman Filter</span>
-                <span class="block-desc">Advanced sensor fusion</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="protocol-modbus">
-              <div class="block-icon" style="background: #3498DB;"></div>
-              <div class="block-info">
-                <span class="block-name">Modbus Protocol</span>
-                <span class="block-desc">Industrial communication</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="protocol-can">
-              <div class="block-icon" style="background: #3498DB;"></div>
-              <div class="block-info">
-                <span class="block-name">CAN Bus Protocol</span>
-                <span class="block-desc">Automotive networking</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="protocol-mqtt">
-              <div class="block-icon" style="background: #3498DB;"></div>
-              <div class="block-info">
-                <span class="block-name">MQTT Protocol</span>
-                <span class="block-desc">IoT publish-subscribe</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="algorithm-fft">
-              <div class="block-icon" style="background: #E67E22;"></div>
-              <div class="block-info">
-                <span class="block-name">FFT Processor</span>
-                <span class="block-desc">Frequency analysis</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="algorithm-machine-learning">
-              <div class="block-icon" style="background: #E67E22;"></div>
-              <div class="block-info">
-                <span class="block-name">ML Inference</span>
-                <span class="block-desc">Embedded AI/ML</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="system-rtos">
-              <div class="block-icon" style="background: #27AE60;"></div>
-              <div class="block-info">
-                <span class="block-name">Real-Time OS</span>
-                <span class="block-desc">Deterministic scheduling</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="system-bootloader">
-              <div class="block-icon" style="background: #27AE60;"></div>
-              <div class="block-info">
-                <span class="block-name">Secure Bootloader</span>
-                <span class="block-desc">Secure boot + updates</span>
-              </div>
-            </div>
-          </div>
-          <div class="block-category">
-            <h4>🎯 System Templates</h4>
-            <div class="block-type-item" data-type="template-motor-controller">
-              <div class="block-icon" style="background: #E74C3C;"></div>
-              <div class="block-info">
-                <span class="block-name">Motor Control System</span>
-                <span class="block-desc">Complete motor control + feedback</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="template-sensor-array">
-              <div class="block-icon" style="background: #F39C12;"></div>
-              <div class="block-info">
-                <span class="block-name">Multi-Sensor Array</span>
-                <span class="block-desc">Temperature + accelerometer + WiFi</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="template-linear-actuator-system">
-              <div class="block-icon" style="background: #16A085;"></div>
-              <div class="block-info">
-                <span class="block-name">Linear Motion System</span>
-                <span class="block-desc">Stepper + gearbox + encoder</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="template-control-loop">
-              <div class="block-icon" style="background: #8E44AD;"></div>
-              <div class="block-info">
-                <span class="block-name">Control Loop System</span>
-                <span class="block-desc">PID + FSM + Kalman filter</span>
-              </div>
-            </div>
-            <div class="block-type-item" data-type="template-smart-actuator">
-              <div class="block-icon" style="background: #E67E22;"></div>
-              <div class="block-info">
-                <span class="block-name">Smart Actuator System</span>
-                <span class="block-desc">Integrated multi-domain system</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
+
       <button id="btn-snap-grid" class="toggle-btn active">Snap to Grid</button>
       <button id="btn-check-rules">Check Rules</button>
       <button id="btn-export-report">Export Report</button>
@@ -2275,9 +2061,9 @@
     
     /* Professional Block Type Menu */
     .block-type-menu {
-      position: absolute;
-      top: 100%;
-      left: 0;
+      position: fixed;
+      top: 60px;
+      left: 120px;
       min-width: 320px;
       max-height: 500px;
       background: var(--fusion-panel-bg);
@@ -2285,7 +2071,7 @@
       border-radius: var(--fusion-radius-medium);
       box-shadow: var(--fusion-shadow-heavy);
       overflow-y: auto;
-      z-index: 10000;
+      z-index: 999999 !important;
       opacity: 0;
       visibility: hidden;
       transform: translateY(-10px);
@@ -2739,7 +2525,11 @@
           // Hover preview
           item.addEventListener('mouseenter', (e) => {
             const blockType = e.currentTarget.dataset.type;
-            this.showBlockTypePreview(blockType);
+            this.showBlockTypePreview(blockType, e);
+          });
+          
+          item.addEventListener('mouseleave', (e) => {
+            this.hideBlockTypePreview();
           });
         });
         
@@ -2750,13 +2540,8 @@
           }
         });
         
-        // Enhanced Add Block functionality
-        const addBlockBtn = document.getElementById('btn-add-block');
-        if (addBlockBtn) {
-          addBlockBtn.addEventListener('click', () => {
-            this.createBasicBlock();
-          });
-        }
+        // Note: Add Block functionality is handled by the main editor in palette.js
+        // Don't override the existing functionality
       }
       
       setupKeyboardShortcuts() {
@@ -2778,6 +2563,14 @@
       }
       
       openBlockTypeMenu() {
+        // Position the dropdown based on button location
+        const blockTypeBtn = document.getElementById('btn-block-types');
+        const btnRect = blockTypeBtn.getBoundingClientRect();
+        
+        // Position dropdown below the button
+        this.blockTypeMenu.style.top = (btnRect.bottom + 5) + 'px';
+        this.blockTypeMenu.style.left = btnRect.left + 'px';
+        
         this.blockTypeMenu.classList.add('show');
         document.querySelector('.block-type-dropdown').classList.add('open');
         this.isMenuOpen = true;
@@ -2798,6 +2591,15 @@
       }
       
       selectBlockType(blockType) {
+        console.log('selectBlockType called with:', blockType);
+        
+        // Check if editor is ready
+        if (!window.editor) {
+          console.error('Editor not ready yet');
+          this.showToast('Editor not ready - please wait a moment and try again', 'warning');
+          return;
+        }
+        
         this.currentBlockType = blockType;
         
         // Update button appearance
@@ -2853,22 +2655,7 @@
         this.closeBlockTypeMenu();
       }
       
-      createBasicBlock() {
-        // Create standard block (existing functionality)
-        const block = {
-          id: this.generateBlockId(),
-          name: 'New Block',
-          type: 'generic',
-          x: 100 + Math.random() * 200,
-          y: 100 + Math.random() * 200,
-          status: 'Placeholder',
-          attributes: {},
-          interfaces: []
-        };
-        
-        this.addBlockToCanvas(block);
-        this.showToast('Basic block created', 'info');
-      }
+
       
       createFromTemplate(templateId) {
         if (typeof BlockTemplateSystem === 'undefined') return;
@@ -2929,29 +2716,103 @@
         
         // Create specialized block with full specifications
         const block = {
-          id: this.generateBlockId(),
+          id: window.editor ? window.editor.generateId() : this.generateBlockId(),
           name: typeInfo.name,
           type: blockType,
           category: typeInfo.category,
           x: 150 + Math.random() * 300,
           y: 150 + Math.random() * 200,
+          width: 120,
+          height: 60,
           status: 'Planned',
+          links: [],
           attributes: {
             specifications: typeInfo.specifications,
             description: typeInfo.description
           },
-          interfaces: typeInfo.interfaces.map(iface => ({
-            ...iface,
-            id: `${this.generateBlockId()}_${iface.id}`
-          })),
+          interfaces: (typeInfo.interfaces && typeInfo.interfaces.length > 0) ? 
+            typeInfo.interfaces.map((iface, index) => {
+              // Ensure interface has the correct structure for rendering
+              return {
+                id: window.editor ? window.editor.generateId() : `${this.generateBlockId()}_${iface.id || iface.name}`,
+                name: iface.name,
+                kind: iface.kind || iface.type || 'data',
+                direction: iface.direction || 'input',
+                port: {
+                  side: iface.side || (iface.direction === 'output' ? 'right' : 'left'),
+                  index: iface.index !== undefined ? iface.index : index
+                },
+                params: iface.params || {}
+              };
+            }) : 
+            // Fallback to standard interfaces if none provided
+            [
+              {
+                id: window.editor ? window.editor.generateId() : `${this.generateBlockId()}_vcc`,
+                name: 'VCC',
+                kind: 'power',
+                direction: 'input',
+                port: { side: 'left', index: 0 },
+                params: {}
+              },
+              {
+                id: window.editor ? window.editor.generateId() : `${this.generateBlockId()}_gnd`,
+                name: 'GND', 
+                kind: 'power',
+                direction: 'input',
+                port: { side: 'left', index: 1 },
+                params: {}
+              },
+              {
+                id: window.editor ? window.editor.generateId() : `${this.generateBlockId()}_out`,
+                name: 'OUT',
+                kind: 'data',
+                direction: 'output', 
+                port: { side: 'right', index: 0 },
+                params: {}
+              }
+            ],
           pinout: typeInfo.pinout || null,
           visualStyle: {
             color: typeInfo.color,
             icon: typeInfo.icon
-          }
+          },
+          _isNewBlock: true  // Flag for animation
         };
         
-        this.addBlockToCanvas(block, true); // true for specialized rendering
+        // Add specialized block directly to avoid interface conflicts
+        if (window.editor) {
+          try {
+            console.log('Creating specialized block:', typeInfo.name);
+            
+            // Save state for undo
+            window.editor.saveState();
+            
+            // Snap position to grid
+            const snappedPos = window.editor.snapPointToGrid(block.x, block.y);
+            block.x = snappedPos.x;
+            block.y = snappedPos.y;
+            
+            // Add the complete block directly to the diagram
+            console.log('Adding block to diagram. Current block count:', window.editor.diagram.blocks.length);
+            window.editor.diagram.blocks.push(block);
+            console.log('Block added. New block count:', window.editor.diagram.blocks.length);
+            console.log('Block structure:', block);
+            
+            // Render the diagram to show the new block with proper event listeners
+            console.log('Rendering diagram...');
+            window.editor.renderDiagram();
+            console.log('Diagram rendered successfully');
+            
+            console.log('Specialized block created and rendered successfully');
+          } catch (error) {
+            console.error('Error creating specialized block:', error);
+            this.showToast('Error creating block: ' + error.message, 'error');
+          }
+        } else {
+          console.error('window.editor is not available');
+          this.showToast('Editor not ready - please try again', 'error');
+        }
         this.showToast(`Created ${typeInfo.name}`, 'info');
         
         // Show specifications tooltip
@@ -3171,7 +3032,10 @@
         setTimeout(() => tooltip.remove(), 7000); // Longer display for more content
       }
       
-      showBlockTypePreview(blockType) {
+      showBlockTypePreview(blockType, event) {
+        // Clear any existing preview
+        this.hideBlockTypePreview();
+        
         // Try to get type info from all available libraries
         let typeInfo = ElectricalBlockTypes.getType(blockType);
         if (!typeInfo && typeof MechanicalBlockTypes !== 'undefined') {
@@ -3184,9 +3048,9 @@
         if (!typeInfo) return;
         
         // Show preview tooltip with specifications
-        const preview = document.createElement('div');
-        preview.className = 'tooltip info show';
-        preview.innerHTML = `
+        this.currentPreview = document.createElement('div');
+        this.currentPreview.className = 'tooltip info show';
+        this.currentPreview.innerHTML = `
           <h4>${typeInfo.name}</h4>
           <p>${typeInfo.description}</p>
           <div class="spec-preview">
@@ -3197,12 +3061,17 @@
         `;
         
         const rect = event.target.getBoundingClientRect();
-        preview.style.left = `${rect.right + 10}px`;
-        preview.style.top = `${rect.top}px`;
+        this.currentPreview.style.left = `${rect.right + 10}px`;
+        this.currentPreview.style.top = `${rect.top}px`;
         
-        document.body.appendChild(preview);
-        
-        setTimeout(() => preview.remove(), 2000);
+        document.body.appendChild(this.currentPreview);
+      }
+      
+      hideBlockTypePreview() {
+        if (this.currentPreview) {
+          this.currentPreview.remove();
+          this.currentPreview = null;
+        }
       }
       
       generateBlockId() {
@@ -3311,6 +3180,246 @@
     });
   </script>
   
-  <script src="./palette.js"></script>
+  <script src="./palette.js?v=final2"></script>
+
+  <!-- Dropdown menu moved to body level to escape stacking context issues -->
+  <div id="block-type-menu" class="block-type-menu">
+    <div class="block-category">
+      <h4>⚡ Electrical/Electronic</h4>
+      <div class="block-type-item" data-type="microcontroller-arduino">
+        <div class="block-icon" style="background: #007ACC;"></div>
+        <div class="block-info">
+          <span class="block-name">Arduino Uno R3</span>
+          <span class="block-desc">ATMega328P microcontroller</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="microcontroller-esp32">
+        <div class="block-icon" style="background: #FF6B35;"></div>
+        <div class="block-info">
+          <span class="block-name">ESP32 DevKit</span>
+          <span class="block-desc">WiFi+Bluetooth microcontroller</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="power-supply-linear">
+        <div class="block-icon" style="background: #E74C3C;"></div>
+        <div class="block-info">
+          <span class="block-name">Linear PSU</span>
+          <span class="block-desc">Adjustable voltage regulator</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="power-supply-switching">
+        <div class="block-icon" style="background: #8E44AD;"></div>
+        <div class="block-info">
+          <span class="block-name">Switching PSU</span>
+          <span class="block-desc">High-efficiency regulator</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="sensor-temperature">
+        <div class="block-icon" style="background: #F39C12;"></div>
+        <div class="block-info">
+          <span class="block-name">Temperature Sensor</span>
+          <span class="block-desc">Digital I2C temperature</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="sensor-accelerometer">
+        <div class="block-icon" style="background: #16A085;"></div>
+        <div class="block-info">
+          <span class="block-name">Accelerometer</span>
+          <span class="block-desc">3-axis MEMS sensor</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="comm-wifi">
+        <div class="block-icon" style="background: #3498DB;"></div>
+        <div class="block-info">
+          <span class="block-name">WiFi Module</span>
+          <span class="block-desc">802.11n wireless</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="comm-bluetooth">
+        <div class="block-icon" style="background: #9B59B6;"></div>
+        <div class="block-info">
+          <span class="block-name">Bluetooth Module</span>
+          <span class="block-desc">BLE 5.0 communication</span>
+        </div>
+      </div>
+    </div>
+    <div class="block-category">
+      <h4>⚙️ Mechanical Systems</h4>
+      <div class="block-type-item" data-type="motor-servo">
+        <div class="block-icon" style="background: #16A085;"></div>
+        <div class="block-info">
+          <span class="block-name">Servo Motor</span>
+          <span class="block-desc">20 kg⋅cm precision motor</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="motor-stepper">
+        <div class="block-icon" style="background: #16A085;"></div>
+        <div class="block-info">
+          <span class="block-name">Stepper Motor</span>
+          <span class="block-desc">200 steps/revolution</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="actuator-linear">
+        <div class="block-icon" style="background: #16A085;"></div>
+        <div class="block-info">
+          <span class="block-name">Linear Actuator</span>
+          <span class="block-desc">100mm stroke, 200N force</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="sensor-encoder">
+        <div class="block-icon" style="background: #E67E22;"></div>
+        <div class="block-info">
+          <span class="block-name">Rotary Encoder</span>
+          <span class="block-desc">1024 PPR precision</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="sensor-load-cell">
+        <div class="block-icon" style="background: #E67E22;"></div>
+        <div class="block-info">
+          <span class="block-name">Load Cell</span>
+          <span class="block-desc">100kg force sensor</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="sensor-proximity">
+        <div class="block-icon" style="background: #E67E22;"></div>
+        <div class="block-info">
+          <span class="block-name">Proximity Sensor</span>
+          <span class="block-desc">8mm inductive detection</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="structure-bearing">
+        <div class="block-icon" style="background: #7F8C8D;"></div>
+        <div class="block-info">
+          <span class="block-name">Ball Bearing</span>
+          <span class="block-desc">10×30×9mm precision</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="structure-coupling">
+        <div class="block-icon" style="background: #7F8C8D;"></div>
+        <div class="block-info">
+          <span class="block-name">Flexible Coupling</span>
+          <span class="block-desc">5 N⋅m, ±1° misalignment</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="structure-gearbox">
+        <div class="block-icon" style="background: #7F8C8D;"></div>
+        <div class="block-info">
+          <span class="block-name">Planetary Gearbox</span>
+          <span class="block-desc">10:1 reduction, 95% eff.</span>
+        </div>
+      </div>
+    </div>
+    <div class="block-category">
+      <h4>💻 Software & Firmware</h4>
+      <div class="block-type-item" data-type="firmware-pid-controller">
+        <div class="block-icon" style="background: #8E44AD;"></div>
+        <div class="block-info">
+          <span class="block-name">PID Controller</span>
+          <span class="block-desc">Real-time control algorithm</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="firmware-state-machine">
+        <div class="block-icon" style="background: #8E44AD;"></div>
+        <div class="block-info">
+          <span class="block-name">State Machine</span>
+          <span class="block-desc">Hierarchical FSM control</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="firmware-kalman-filter">
+        <div class="block-icon" style="background: #8E44AD;"></div>
+        <div class="block-info">
+          <span class="block-name">Kalman Filter</span>
+          <span class="block-desc">Advanced sensor fusion</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="protocol-modbus">
+        <div class="block-icon" style="background: #3498DB;"></div>
+        <div class="block-info">
+          <span class="block-name">Modbus Protocol</span>
+          <span class="block-desc">Industrial communication</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="protocol-can">
+        <div class="block-icon" style="background: #3498DB;"></div>
+        <div class="block-info">
+          <span class="block-name">CAN Bus Protocol</span>
+          <span class="block-desc">Automotive networking</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="protocol-mqtt">
+        <div class="block-icon" style="background: #3498DB;"></div>
+        <div class="block-info">
+          <span class="block-name">MQTT Protocol</span>
+          <span class="block-desc">IoT publish-subscribe</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="algorithm-fft">
+        <div class="block-icon" style="background: #E67E22;"></div>
+        <div class="block-info">
+          <span class="block-name">FFT Processor</span>
+          <span class="block-desc">Frequency analysis</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="algorithm-machine-learning">
+        <div class="block-icon" style="background: #E67E22;"></div>
+        <div class="block-info">
+          <span class="block-name">ML Inference</span>
+          <span class="block-desc">Embedded AI/ML</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="system-rtos">
+        <div class="block-icon" style="background: #27AE60;"></div>
+        <div class="block-info">
+          <span class="block-name">Real-Time OS</span>
+          <span class="block-desc">Deterministic scheduling</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="system-bootloader">
+        <div class="block-icon" style="background: #27AE60;"></div>
+        <div class="block-info">
+          <span class="block-name">Secure Bootloader</span>
+          <span class="block-desc">Secure boot + updates</span>
+        </div>
+      </div>
+    </div>
+    <div class="block-category">
+      <h4>🎯 System Templates</h4>
+      <div class="block-type-item" data-type="template-motor-controller">
+        <div class="block-icon" style="background: #E74C3C;"></div>
+        <div class="block-info">
+          <span class="block-name">Motor Control System</span>
+          <span class="block-desc">Complete motor control + feedback</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="template-sensor-array">
+        <div class="block-icon" style="background: #F39C12;"></div>
+        <div class="block-info">
+          <span class="block-name">Multi-Sensor Array</span>
+          <span class="block-desc">Temperature + accelerometer + WiFi</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="template-linear-actuator-system">
+        <div class="block-icon" style="background: #16A085;"></div>
+        <div class="block-info">
+          <span class="block-name">Linear Motion System</span>
+          <span class="block-desc">Stepper + gearbox + encoder</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="template-control-loop">
+        <div class="block-icon" style="background: #8E44AD;"></div>
+        <div class="block-info">
+          <span class="block-name">Control Loop System</span>
+          <span class="block-desc">PID + FSM + Kalman filter</span>
+        </div>
+      </div>
+      <div class="block-type-item" data-type="template-smart-actuator">
+        <div class="block-icon" style="background: #E67E22;"></div>
+        <div class="block-info">
+          <span class="block-name">Smart Actuator System</span>
+          <span class="block-desc">Integrated multi-domain system</span>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
