@@ -1,18 +1,16 @@
 """Test export functionality for Fusion System Blocks."""
 
-import pytest
-import json
-import os
-import tempfile
-from unittest.mock import patch, MagicMock
 import sys
 import pathlib
+from unittest.mock import patch, MagicMock
+
+import pytest
 
 # Add src to path
 src_path = pathlib.Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-import diagram_data
+import diagram_data  # noqa: E402
 
 
 class TestExportFunctions:
