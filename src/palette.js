@@ -614,7 +614,8 @@ class SystemBlocksEditor {
         height: 60,
         interfaces: [],
         links: [],
-        attributes: {}
+        attributes: {},
+        _isNewBlock: true  // Flag for animation
       };
       debugLog("Block object created with ID: " + block.id);
       
@@ -629,9 +630,11 @@ class SystemBlocksEditor {
       this.diagram.blocks.push(block);
       debugLog("Block added to diagram. Total blocks: " + this.diagram.blocks.length);
       
-      debugLog("About to render block...");
-      this.renderBlock(block);
-      debugLog("Block rendered successfully!");
+      // Trigger full diagram re-render instead of individual block render
+      // This prevents duplicate rendering if renderDiagram is called elsewhere
+      debugLog("Triggering full diagram re-render...");
+      this.renderDiagram();
+      debugLog("Diagram re-rendered successfully!");
       
       return block;
     } catch (e) {
@@ -722,7 +725,16 @@ class SystemBlocksEditor {
     // Add event listeners
     g.addEventListener('mousedown', (e) => this.onBlockMouseDown(e, block));
     
-    this.blocksLayer.appendChild(g);
+      // Add new block animation class if this is a newly created block
+      if (block._isNewBlock) {
+        g.classList.add('new-block');
+        
+        // Remove animation class and flag after animation completes
+        setTimeout(() => {
+          g.classList.remove('new-block');
+          delete block._isNewBlock;
+        }, 600); // Match animation duration
+      }    this.blocksLayer.appendChild(g);
   }
   
   renderPort(block, intf, index) {
