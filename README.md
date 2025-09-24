@@ -247,14 +247,17 @@ This project demonstrates the power of **AI-assisted development** - built using
 
 ## 📄 **License**
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for complete details.
+This project is licensed under the **Beta Free Use License** - see the [LICENSE](LICENSE) file for complete details.
 
-**MIT License Summary:**
-- ✅ **Commercial Use** - Use in commercial projects
-- ✅ **Modification** - Modify and adapt the code  
-- ✅ **Distribution** - Share and distribute freely
-- ✅ **Private Use** - Use for personal/internal projects
+**Beta Free Use License Summary:**
+- ✅ **Personal Use** - Use for personal and educational purposes
+- ✅ **Educational Use** - Perfect for learning and research projects  
+- ✅ **Non-Commercial Research** - Academic and research applications
+- ✅ **Modification** - Modify and adapt the code for permitted uses
 - ⚠️ **Attribution Required** - Credit original authors
+- ❌ **Commercial Use Restricted** - Contact for commercial licensing
+
+**Note:** This project is in **beta**. A separate commercial license will be available at 1.0 release.
 
 ---
 
