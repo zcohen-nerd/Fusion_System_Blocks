@@ -3,247 +3,749 @@
 <head>
   <meta charset="utf-8" />
   <title>System Blocks</title>
+  <link rel="stylesheet" href="fusion-theme.css">
   <style>
-    html, body { height:100%; margin:0; font-family: system-ui, sans-serif; }
+    /* === FUSION 360 BASE STYLES === */
+    html, body { 
+      height: 100%; 
+      margin: 0; 
+      font-family: var(--fusion-font-family);
+      background: var(--fusion-bg-primary);
+      color: var(--fusion-text-primary);
+      overflow: hidden;
+    }
     
     header { 
-      padding: 8px 12px; 
-      background: #f0f0f0; 
-      border-bottom: 1px solid #ccc;
+      background: var(--fusion-bg-secondary);
+      border-bottom: 1px solid var(--fusion-border-primary);
+      padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      box-shadow: var(--fusion-shadow-light);
     }
     
     .toolbar {
       display: flex;
-      gap: 8px;
+      gap: var(--fusion-spacing-sm);
+      align-items: center;
     }
     
     .toolbar button {
-      padding: 6px 12px;
-      border: 1px solid #999;
-      background: white;
-      border-radius: 3px;
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-md);
+      border: 1px solid var(--fusion-button-border);
+      background: var(--fusion-button-bg);
+      color: var(--fusion-text-primary);
+      border-radius: var(--fusion-radius-small);
       cursor: pointer;
-      font-size: 12px;
+      font-size: var(--fusion-font-size-normal);
+      font-family: var(--fusion-font-family);
+      transition: var(--fusion-transition);
+      outline: none;
     }
     
     .toolbar button:hover {
-      background: #e6e6e6;
+      background: var(--fusion-button-hover);
+      border-color: var(--fusion-border-hover);
     }
     
     .toolbar button.toggle-btn.active {
-      background: #0066cc;
-      color: white;
+      background: var(--fusion-accent-blue);
+      color: var(--fusion-text-inverse);
+      border-color: var(--fusion-accent-blue);
     }
     
     .toolbar button.toggle-btn:hover {
-      background: #0052a3;
+      background: var(--fusion-accent-blue-dark);
+      border-color: var(--fusion-accent-blue-dark);
     }
     
     .toolbar .separator {
       width: 1px;
       height: 20px;
-      background: #ccc;
-      margin: 0 4px;
+      background: var(--fusion-border-primary);
+      margin: 0 var(--fusion-spacing-xs);
     }
     
     .toolbar button.context-btn:disabled {
-      background: #f5f5f5;
-      color: #999;
+      background: var(--fusion-bg-secondary);
+      color: var(--fusion-text-disabled);
       cursor: not-allowed;
+      border-color: var(--fusion-border-primary);
     }
     
     .toolbar button.context-btn:not(:disabled):hover {
-      background: #e6f3ff;
-      border-color: #0066cc;
+      background: var(--fusion-button-hover);
+      border-color: var(--fusion-accent-blue);
     }
     
     .connection-type-container {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: var(--fusion-spacing-xs);
     }
     
     .connection-type-select {
-      padding: 4px 8px;
-      border: 1px solid #999;
-      border-radius: 3px;
-      font-size: 12px;
-      background: white;
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
+      border: 1px solid var(--fusion-input-border);
+      border-radius: var(--fusion-radius-small);
+      font-size: var(--fusion-font-size-normal);
+      font-family: var(--fusion-font-family);
+      background: var(--fusion-input-bg);
+      color: var(--fusion-text-primary);
       cursor: pointer;
+      transition: var(--fusion-transition);
     }
     
     .connection-type-select:hover {
-      border-color: #0066cc;
+      border-color: var(--fusion-border-hover);
     }
     
     .connection-type-select:focus {
       outline: none;
-      border-color: #0066cc;
-      box-shadow: 0 0 3px rgba(0, 102, 204, 0.3);
+      border-color: var(--fusion-input-focus);
+      box-shadow: 0 0 0 1px var(--fusion-input-focus);
     }
     
     #canvas-container { 
       height: calc(100% - 60px); 
       position: relative;
       overflow: hidden;
+      background: var(--fusion-bg-primary);
     }
     
     #svg-canvas {
       width: 100%;
       height: 100%;
-      background: 
-        radial-gradient(circle, #ddd 1px, transparent 1px);
+      background: var(--fusion-bg-primary);
+      background-image: radial-gradient(circle, var(--fusion-border-primary) 1px, transparent 1px);
       background-size: 20px 20px;
       cursor: grab;
+      transition: var(--fusion-transition);
     }
     
     #svg-canvas:active {
       cursor: grabbing;
     }
     
+    /* ========== FUSION 360 ENHANCED BLOCK STYLES - PHASE 2 ========== */
+    
+    /* Base Block Style - Professional Rounded Rectangle */
     .block {
-      fill: #e6f3ff;
-      stroke: #0066cc;
-      stroke-width: 2;
+      fill: var(--fusion-bg-tertiary);
+      stroke: var(--fusion-border-primary);
+      stroke-width: 1.5;
       cursor: move;
+      rx: var(--fusion-radius-medium);
+      ry: var(--fusion-radius-medium);
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)) drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+      transition: all var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
     }
     
+    /* Enhanced Hover State - Elevated with Glow */
     .block:hover {
-      fill: #cce6ff;
+      fill: var(--fusion-bg-hover);
+      stroke: var(--fusion-accent-blue);
+      stroke-width: 2;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2)) 
+              drop-shadow(0 2px 4px rgba(0,0,0,0.3))
+              drop-shadow(0 0 0 1px var(--fusion-accent-blue));
+      transform: translateY(-1px);
     }
     
+    /* Professional Selected State - Orange Accent with Glow */
     .block.selected {
-      stroke: #ff6600;
-      stroke-width: 3;
+      stroke: var(--fusion-accent-orange);
+      stroke-width: 2.5;
+      fill: var(--fusion-bg-hover);
+      filter: drop-shadow(0 4px 12px rgba(255,102,0,0.3)) 
+              drop-shadow(0 2px 6px rgba(0,0,0,0.25))
+              drop-shadow(0 0 0 2px rgba(255,102,0,0.2));
+      transform: translateY(-2px);
     }
     
+    /* Child Block Indicator - Professional Dashed Pattern */
     .block.has-child {
-      stroke-dasharray: 5,5;
-      stroke-width: 3;
+      stroke: var(--fusion-accent-yellow);
+      stroke-width: 2;
+      stroke-dasharray: 8,4;
+      fill: var(--fusion-bg-tertiary);
+      filter: drop-shadow(0 2px 6px rgba(255,215,0,0.2)) 
+              drop-shadow(0 1px 3px rgba(0,0,0,0.2));
     }
     
+    /* Child Indicator Icon - Professional SVG Icon */
     .block.has-child::after {
-      content: "📁";
+      content: "";
       position: absolute;
-      bottom: 2px;
-      right: 2px;
-      font-size: 10px;
+      bottom: 4px;
+      right: 4px;
+      width: 14px;
+      height: 14px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffc107'%3E%3Cpath d='M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z'/%3E%3C/svg%3E");
+      background-size: contain;
+      background-repeat: no-repeat;
+      opacity: 0.9;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+      transition: all var(--fusion-transition-fast);
     }
     
+    .block.has-child:hover::after {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    
+    /* Enhanced Typography - Professional Text Rendering */
     .block-text {
-      fill: #333;
-      font-family: system-ui, sans-serif;
-      font-size: 12px;
+      fill: var(--fusion-text-primary);
+      font-family: var(--fusion-font-family);
+      font-size: var(--fusion-font-size-normal);
+      font-weight: 500;
       text-anchor: middle;
       dominant-baseline: middle;
       pointer-events: none;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
     
-    .connection {
-      stroke: #666;
+    /* Block Type Indicators - Status-Based Styling */
+    .block[data-status="placeholder"] {
+      fill: var(--fusion-status-placeholder-bg);
+      stroke: var(--fusion-status-placeholder);
+    }
+    
+    .block[data-status="planned"] {
+      fill: var(--fusion-status-planned-bg);
+      stroke: var(--fusion-status-planned);
+    }
+    
+    .block[data-status="in-work"] {
+      fill: var(--fusion-status-in-work-bg);
+      stroke: var(--fusion-status-in-work);
+    }
+    
+    .block[data-status="implemented"] {
+      fill: var(--fusion-status-implemented-bg);
+      stroke: var(--fusion-status-implemented);
+    }
+    
+    .block[data-status="verified"] {
+      fill: var(--fusion-status-verified-bg);
+      stroke: var(--fusion-status-verified);
+    }
+    
+    /* Connection Point Enhancements */
+    .connection-point {
+      fill: var(--fusion-accent-blue);
+      stroke: var(--fusion-bg-primary);
       stroke-width: 2;
-      fill: none;
-      marker-end: url(#arrowhead);
-    }
-    
-    .port {
-      fill: #fff;
-      stroke: #333;
-      stroke-width: 1;
+      r: 4;
+      opacity: 0;
+      transition: all var(--fusion-transition-fast);
       cursor: crosshair;
     }
     
-    .port:hover {
-      fill: #ffff99;
+    .block:hover .connection-point {
+      opacity: 1;
+      r: 5;
+      filter: drop-shadow(0 2px 4px rgba(0,123,204,0.4));
     }
     
+    .connection-point:hover {
+      fill: var(--fusion-accent-orange);
+      r: 6;
+      filter: drop-shadow(0 2px 6px rgba(255,102,0,0.5));
+    }
+    
+    /* Block Size Variants */
+    .block.small {
+      rx: var(--fusion-radius-small);
+      ry: var(--fusion-radius-small);
+    }
+    
+    .block.large {
+      rx: var(--fusion-radius-large);
+      ry: var(--fusion-radius-large);
+    }
+    
+    /* Block Text Size Variants */
+    .block-text.small {
+      font-size: var(--fusion-font-size-small);
+      font-weight: 400;
+    }
+    
+    .block-text.large {
+      font-size: var(--fusion-font-size-large);
+      font-weight: 600;
+    }
+    
+    /* Block Animation for Creation */
+    .block.new {
+      animation: blockAppear 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    @keyframes blockAppear {
+      0% {
+        opacity: 0;
+        transform: scale(0.8) translateY(10px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+    
+    /* ========== FUSION 360 ENHANCED CONNECTION STYLES - PHASE 2 ========== */
+    
+    /* Base Connection Line - Professional with Smooth Curves */
+    .connection {
+      stroke: var(--fusion-text-secondary);
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      marker-end: url(#arrowhead);
+      transition: all var(--fusion-transition-fast) ease;
+      opacity: 0.8;
+    }
+    
+    /* Enhanced Connection Hover - Animated Glow */
+    .connection:hover {
+      stroke-width: 3;
+      opacity: 1;
+      filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 8px rgba(0,123,204,0.3));
+      stroke: var(--fusion-accent-blue);
+    }
+    
+    /* Connection Type Styling - Professional Engineering Colors */
+    .connection[data-type="power"] {
+      stroke: var(--fusion-connection-power);
+      stroke-width: 3;
+    }
+    
+    .connection[data-type="data"] {
+      stroke: var(--fusion-connection-data);
+      stroke-width: 2;
+    }
+    
+    .connection[data-type="electrical"] {
+      stroke: var(--fusion-connection-electrical);
+      stroke-width: 1.5;
+      stroke-dasharray: 5,3;
+    }
+    
+    .connection[data-type="mechanical"] {
+      stroke: var(--fusion-connection-mechanical);
+      stroke-width: 2;
+      stroke-dasharray: 8,4;
+    }
+    
+    /* Enhanced Port Styling - Modern Connection Points */
+    .port {
+      fill: var(--fusion-bg-tertiary);
+      stroke: var(--fusion-accent-blue);
+      stroke-width: 1.5;
+      cursor: crosshair;
+      r: 3;
+      transition: all var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+    }
+    
+    /* Professional Port Hover - Elevated with Glow */
+    .port:hover {
+      fill: var(--fusion-accent-orange);
+      stroke: var(--fusion-accent-orange);
+      stroke-width: 2.5;
+      r: 5;
+      filter: drop-shadow(0 2px 6px rgba(255,102,0,0.4)) 
+              drop-shadow(0 0 0 2px rgba(255,102,0,0.2));
+      transform: scale(1.2);
+    }
+    
+    /* Port Active State - Connected */
+    .port.connected {
+      fill: var(--fusion-accent-green);
+      stroke: var(--fusion-accent-green);
+      stroke-width: 2;
+    }
+    
+    /* Connection Preview - Dotted Line While Dragging */
+    .connection.preview {
+      stroke: var(--fusion-accent-orange);
+      stroke-width: 2;
+      stroke-dasharray: 4,4;
+      opacity: 0.7;
+      animation: dashMove 1s linear infinite;
+    }
+    
+    @keyframes dashMove {
+      0% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: 8; }
+    }
+    
+    /* === FUSION 360 LEGEND STYLES === */
     .status-legend {
       position: absolute;
       top: 60px;
-      right: 10px;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      padding: 8px;
-      font-size: 11px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      right: var(--fusion-spacing-md);
+      background: var(--fusion-panel-bg);
+      border: 1px solid var(--fusion-panel-border);
+      border-radius: var(--fusion-radius-medium);
+      padding: var(--fusion-spacing-md);
+      font-size: var(--fusion-font-size-small);
+      box-shadow: var(--fusion-shadow-medium);
       z-index: 100;
+      color: var(--fusion-text-primary);
     }
     
-    /* Tooltip Styles */
+    /* ========== FUSION 360 ENHANCED TOOLTIP STYLES - PHASE 2 ========== */
+    
+    /* Professional Tooltip - Glass Effect with Enhanced Shadow */
     .tooltip {
       position: absolute;
-      background: rgba(0, 0, 0, 0.9);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-family: system-ui, sans-serif;
+      background: rgba(56, 56, 56, 0.95);
+      backdrop-filter: blur(8px);
+      color: var(--fusion-text-primary);
+      border: 1px solid rgba(70, 70, 70, 0.8);
+      padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
+      border-radius: var(--fusion-radius-medium);
+      font-size: var(--fusion-font-size-normal);
+      font-family: var(--fusion-font-family);
+      font-weight: 400;
       pointer-events: none;
       z-index: 1000;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4), 
+                  0 4px 12px rgba(0,0,0,0.3),
+                  0 0 0 1px rgba(255,255,255,0.1);
       max-width: 300px;
       word-wrap: break-word;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: all var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
     }
     
+    /* Tooltip Show Animation */
+    .tooltip.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* Enhanced Tooltip Arrow - Glass Effect */
     .tooltip::before {
       content: '';
       position: absolute;
       top: 100%;
       left: 50%;
-      margin-left: -5px;
-      border: 5px solid transparent;
-      border-top-color: rgba(0, 0, 0, 0.9);
+      margin-left: -6px;
+      border: 6px solid transparent;
+      border-top-color: rgba(56, 56, 56, 0.95);
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
     }
     
+    /* Tooltip Variants */
+    .tooltip.error {
+      border-color: var(--fusion-status-error);
+      background: rgba(244, 67, 54, 0.15);
+      backdrop-filter: blur(8px);
+    }
+    
+    .tooltip.warning {
+      border-color: var(--fusion-status-warning);
+      background: rgba(255, 152, 0, 0.15);
+      backdrop-filter: blur(8px);
+    }
+    
+    .tooltip.info {
+      border-color: var(--fusion-accent-blue);
+      background: rgba(0, 123, 204, 0.15);
+      backdrop-filter: blur(8px);
+    }
+
+    /* ========== FUSION 360 ENHANCED INTERACTIVE ELEMENTS - PHASE 2 ========== */
+    
+    /* Enhanced Canvas with Grid Pattern */
+    #canvas {
+      background: 
+        radial-gradient(circle at 20px 20px, rgba(150,150,150,0.15) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    
+    /* Professional Selection Rectangle */
+    .selection-rect {
+      fill: rgba(0, 123, 204, 0.1);
+      stroke: var(--fusion-accent-blue);
+      stroke-width: 1;
+      stroke-dasharray: 4,2;
+      opacity: 0.8;
+      animation: selectionPulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes selectionPulse {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 0.4; }
+    }
+    
+    /* Enhanced Drag Ghost - Semi-transparent Block */
+    .drag-ghost {
+      opacity: 0.6;
+      transform: scale(0.95);
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+      transition: none;
+    }
+    
+    /* Drop Zone Highlight */
+    .drop-zone {
+      fill: rgba(76, 175, 80, 0.2);
+      stroke: var(--fusion-accent-green);
+      stroke-width: 2;
+      stroke-dasharray: 6,3;
+      animation: dropZonePulse 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes dropZonePulse {
+      0%, 100% { 
+        stroke-opacity: 1;
+        fill-opacity: 0.2;
+      }
+      50% { 
+        stroke-opacity: 0.5;
+        fill-opacity: 0.1;
+      }
+    }
+    
+    /* Enhanced Focus Styles for Accessibility */
+    .block:focus,
+    .port:focus,
+    .connection:focus {
+      outline: 2px solid var(--fusion-accent-blue);
+      outline-offset: 2px;
+    }
+    
+    /* Keyboard Navigation Hints */
+    .keyboard-hint {
+      position: absolute;
+      bottom: var(--fusion-spacing-md);
+      left: var(--fusion-spacing-md);
+      background: rgba(56, 56, 56, 0.9);
+      color: var(--fusion-text-secondary);
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
+      border-radius: var(--fusion-radius-small);
+      font-size: var(--fusion-font-size-small);
+      font-family: var(--fusion-font-family);
+      opacity: 0;
+      transition: opacity var(--fusion-transition-fast);
+    }
+    
+    .keyboard-hint.show {
+      opacity: 1;
+    }
+    
+    /* Block Label Enhancement */
+    .block-label {
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      text-rendering: optimizeLegibility;
+    }
+    
+    .block-sublabel {
+      font-size: var(--fusion-font-size-small);
+      font-weight: 400;
+      opacity: 0.8;
+    }
+
+    /* ========== FUSION 360 PROFESSIONAL ICONOGRAPHY - PHASE 3 ========== */
+    
+    /* Connection Icon Styling */
+    .connection-icon {
+      margin-right: var(--fusion-spacing-xs);
+      vertical-align: middle;
+      opacity: 0.8;
+      transition: all var(--fusion-transition-fast);
+    }
+    
+    .connection-item:hover .connection-icon {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    
+    /* Toolbar Button Icons */
+    .toolbar button svg {
+      margin-right: var(--fusion-spacing-xs);
+      vertical-align: middle;
+      opacity: 0.8;
+      transition: all var(--fusion-transition-fast);
+    }
+    
+    .toolbar button:hover svg {
+      opacity: 1;
+      transform: translateY(-1px);
+    }
+    
+    .toolbar button:disabled svg {
+      opacity: 0.4;
+    }
+    
+    /* Icon Color Inheritance */
+    .connection-icon,
+    .toolbar button svg {
+      color: currentColor;
+    }
+    
+    /* ========== ADVANCED ANIMATIONS & MICRO-INTERACTIONS - PHASE 3 ========== */
+    
+    /* Pulsing Connection Points */
+    .connection-point.active {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% { 
+        opacity: 0.6;
+        transform: scale(1.2);
+      }
+    }
+    
+    /* Floating Animation for New Blocks */
+    .block.floating {
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+    
+    /* Connection Drawing Animation */
+    .connection.drawing {
+      stroke-dasharray: 300;
+      stroke-dashoffset: 300;
+      animation: drawConnection 0.8s ease-out forwards;
+    }
+    
+    @keyframes drawConnection {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+    
+    /* Block Selection Ripple Effect */
+    .block.selecting::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: rgba(0, 123, 204, 0.2);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      animation: ripple 0.6s ease-out;
+    }
+    
+    @keyframes ripple {
+      to {
+        width: 120%;
+        height: 120%;
+        opacity: 0;
+      }
+    }
+    
+    /* Enhanced Hover Effects */
+    .block-group:hover .block {
+      animation: subtleGlow 2s ease-in-out infinite;
+    }
+    
+    @keyframes subtleGlow {
+      0%, 100% { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)) drop-shadow(0 1px 2px rgba(0,0,0,0.25)); }
+      50% { filter: drop-shadow(0 4px 8px rgba(0,123,204,0.1)) drop-shadow(0 2px 4px rgba(0,0,0,0.25)); }
+    }
+    
+    /* Toolbar Animation */
+    .toolbar {
+      animation: slideInFromTop 0.4s ease-out;
+    }
+    
+    @keyframes slideInFromTop {
+      from {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    /* Legend Panel Slide-in */
+    .status-legend,
+    .connection-legend {
+      animation: slideInFromRight 0.4s ease-out;
+    }
+    
+    @keyframes slideInFromRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
     .status-legend h4 {
-      margin: 0 0 6px 0;
-      font-size: 12px;
-      color: #333;
+      margin: 0 0 var(--fusion-spacing-xs) 0;
+      font-size: var(--fusion-font-size-normal);
+      color: var(--fusion-text-primary);
+      font-weight: 600;
     }
     
     .status-item {
       display: flex;
       align-items: center;
-      margin: 3px 0;
+      margin: var(--fusion-spacing-xs) 0;
     }
     
     .status-color {
       width: 12px;
       height: 12px;
-      border-radius: 2px;
-      margin-right: 6px;
+      border-radius: var(--fusion-radius-small);
+      margin-right: var(--fusion-spacing-xs);
+      border: 1px solid var(--fusion-border-secondary);
     }
     
+    /* === FUSION 360 CONNECTION LEGEND === */
     .connection-legend {
       position: absolute;
       top: 200px;
-      right: 10px;
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      padding: 12px;
-      font-size: 12px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      right: var(--fusion-spacing-md);
+      background: var(--fusion-panel-bg);
+      border: 1px solid var(--fusion-panel-border);
+      border-radius: var(--fusion-radius-medium);
+      padding: var(--fusion-spacing-md);
+      font-size: var(--fusion-font-size-normal);
+      box-shadow: var(--fusion-shadow-medium);
       max-width: 150px;
       max-height: 400px;
       overflow-y: auto;
+      color: var(--fusion-text-primary);
     }
     
     .connection-legend h4 {
-      margin: 0 0 6px 0;
-      font-size: 12px;
-      color: #333;
+      margin: 0 0 var(--fusion-spacing-xs) 0;
+      font-size: var(--fusion-font-size-normal);
+      color: var(--fusion-text-primary);
+      font-weight: 600;
     }
     
     .connection-item {
       display: flex;
       align-items: center;
-      margin: 3px 0;
-      gap: 6px;
+      margin: var(--fusion-spacing-xs) 0;
+      gap: var(--fusion-spacing-xs);
     }
     
     .connection-item svg {
@@ -251,128 +753,169 @@
     }
     
     .connection-item span {
-      font-size: 11px;
-      color: #333;
+      font-size: var(--fusion-font-size-small);
+      color: var(--fusion-text-primary);
     }
     
+    /* === FUSION 360 RULE PANEL === */
     .rule-panel {
       position: absolute;
-      bottom: 10px;
-      right: 10px;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      padding: 8px;
-      font-size: 11px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      bottom: var(--fusion-spacing-md);
+      right: var(--fusion-spacing-md);
+      background: var(--fusion-panel-bg);
+      border: 1px solid var(--fusion-panel-border);
+      border-radius: var(--fusion-radius-medium);
+      padding: var(--fusion-spacing-md);
+      font-size: var(--fusion-font-size-small);
+      box-shadow: var(--fusion-shadow-medium);
       z-index: 100;
       max-width: 350px;
       max-height: 200px;
       overflow-y: auto;
+      color: var(--fusion-text-primary);
     }
     
     .rule-panel h4 {
-      margin: 0 0 6px 0;
-      font-size: 12px;
-      color: #333;
+      margin: 0 0 var(--fusion-spacing-xs) 0;
+      font-size: var(--fusion-font-size-normal);
+      color: var(--fusion-text-primary);
+      font-weight: 600;
     }
     
     .rule-result {
       display: flex;
       align-items: flex-start;
-      margin: 3px 0;
-      padding: 2px;
-      border-radius: 2px;
+      margin: var(--fusion-spacing-xs) 0;
+      padding: var(--fusion-spacing-xs);
+      border-radius: var(--fusion-radius-small);
     }
     
     .rule-result.error {
-      background: #ffeeee;
-      border-left: 3px solid #ff6666;
+      background: var(--fusion-status-error-bg);
+      border-left: 3px solid var(--fusion-status-error);
     }
     
     .rule-result.warning {
-      background: #fff8e1;
-      border-left: 3px solid #ffa726;
+      background: var(--fusion-status-warning-bg);
+      border-left: 3px solid var(--fusion-status-warning);
     }
     
     .rule-result.info {
-      background: #e8f5e8;
-      border-left: 3px solid #66bb6a;
+      background: var(--fusion-status-success-bg);
+      border-left: 3px solid var(--fusion-status-success);
     }
     
     .rule-icon {
-      margin-right: 4px;
+      margin-right: var(--fusion-spacing-xs);
       font-weight: bold;
+      color: var(--fusion-text-primary);
     }
     
     .rule-message {
       flex: 1;
-      font-size: 10px;
+      font-size: var(--fusion-font-size-small);
       line-height: 1.3;
+      color: var(--fusion-text-primary);
     }
     
-    /* Search and Filter Styles */
+    /* === FUSION 360 SEARCH AND FILTER STYLES === */
     .search-container {
       display: flex;
       align-items: center;
-      gap: 5px;
-      margin: 0 5px;
+      gap: var(--fusion-spacing-xs);
+      margin: 0 var(--fusion-spacing-xs);
     }
     
     .search-input {
-      padding: 4px 8px;
-      border: 1px solid #ccc;
-      border-radius: 3px;
-      font-size: 12px;
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
+      border: 1px solid var(--fusion-border-primary);
+      border-radius: var(--fusion-radius-small);
+      font-size: var(--fusion-font-size-normal);
       width: 120px;
+      background: var(--fusion-input-bg);
+      color: var(--fusion-text-primary);
+      transition: var(--fusion-transition-fast);
     }
     
     .search-input:focus {
       outline: none;
-      border-color: #0066cc;
-      box-shadow: 0 0 3px rgba(0,102,204,0.3);
+      border-color: var(--fusion-accent-blue);
+      box-shadow: 0 0 3px var(--fusion-focus-ring);
     }
     
     .filter-btn {
-      padding: 4px 8px;
-      border: 1px solid #ccc;
-      background: white;
-      border-radius: 3px;
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
+      border: 1px solid var(--fusion-border-primary);
+      background: var(--fusion-button-bg);
+      border-radius: var(--fusion-radius-small);
       cursor: pointer;
-      font-size: 11px;
+      font-size: var(--fusion-font-size-small);
       white-space: nowrap;
+      color: var(--fusion-text-primary);
+      transition: var(--fusion-transition-fast);
     }
     
     .filter-btn.active {
-      background: #0066cc;
+      background: var(--fusion-accent-blue);
       color: white;
-      border-color: #0066cc;
+      border-color: var(--fusion-accent-blue);
     }
     
     .filter-btn:hover {
-      background: #f0f0f0;
+      background: var(--fusion-button-hover);
     }
     
     .filter-btn.active:hover {
-      background: #0052a3;
+      background: var(--fusion-accent-blue-dark);
     }
     
     .search-results-info {
-      font-size: 11px;
-      color: #666;
-      margin-left: 5px;
+      font-size: var(--fusion-font-size-small);
+      color: var(--fusion-text-secondary);
+      margin-left: var(--fusion-spacing-xs);
     }
     
-    /* Block highlighting for search */
+    /* === FUSION 360 SEARCH HIGHLIGHTING === */
     .block-group.search-highlight .block {
-      stroke: #ff6600 !important;
+      stroke: var(--fusion-accent-orange) !important;
       stroke-width: 3px !important;
-      filter: drop-shadow(0 0 5px rgba(255,102,0,0.5));
+      filter: drop-shadow(0 0 5px var(--fusion-glow-orange));
     }
     
     .block-group.search-dimmed {
       opacity: 0.3;
     }
+
+    /* === FUSION 360 STATUS COLOR CLASSES === */
+    .status-placeholder { background-color: var(--fusion-status-placeholder); }
+    .status-planned { background-color: var(--fusion-status-planned); }
+    .status-in-work { background-color: var(--fusion-status-in-work); }
+    .status-implemented { background-color: var(--fusion-status-implemented); }
+    .status-verified { background-color: var(--fusion-status-verified); }
+
+    /* === FUSION 360 UTILITY CLASSES === */
+    .fusion-breadcrumb {
+      margin: 0 var(--fusion-spacing-md);
+      font-size: var(--fusion-font-size-normal);
+      color: var(--fusion-text-secondary);
+    }
+
+    .fusion-label {
+      font-size: var(--fusion-font-size-normal);
+      color: var(--fusion-text-secondary);
+      margin-right: var(--fusion-spacing-xs);
+    }
+
+    .fusion-legend-section {
+      margin-top: var(--fusion-spacing-lg) !important;
+    }
+
+    /* === FUSION 360 CONNECTION LINE COLORS === */
+    .connection-power { stroke: var(--fusion-connection-power); fill: var(--fusion-connection-power); }
+    .connection-data { stroke: var(--fusion-connection-data); fill: var(--fusion-connection-data); }
+    .connection-electrical { stroke: var(--fusion-connection-electrical); fill: var(--fusion-connection-electrical); }
+    .connection-mechanical { stroke: var(--fusion-connection-mechanical); fill: var(--fusion-connection-mechanical); }
+    .connection-generic { stroke: var(--fusion-text-secondary); fill: var(--fusion-text-secondary); }
   </style>
 </head>
 <body>
@@ -384,14 +927,39 @@
       <button id="btn-load">Load</button>
       <div class="separator"></div>
       <!-- Undo/Redo -->
-      <button id="btn-undo" class="context-btn" disabled title="Undo (Ctrl+Z)">↶ Undo</button>
-      <button id="btn-redo" class="context-btn" disabled title="Redo (Ctrl+Y)">↷ Redo</button>
+      <button id="btn-undo" class="context-btn" disabled title="Undo (Ctrl+Z)">
+        <svg width="16" height="16" viewBox="0 0 12 12">
+          <path d="M2 6h8M6 2l-4 4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Undo
+      </button>
+      <button id="btn-redo" class="context-btn" disabled title="Redo (Ctrl+Y)">
+        <svg width="16" height="16" viewBox="0 0 12 12">
+          <path d="M10 6H2M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Redo
+      </button>
       <div class="separator"></div>
       <!-- Hierarchy Navigation -->
-      <button id="btn-go-up" class="context-btn" disabled title="Go to Parent Diagram">↑ Up</button>
-      <span id="breadcrumb-path" style="margin: 0 10px; font-size: 12px; color: #666;">Root</span>
-      <button id="btn-drill-down" class="context-btn" disabled title="Open Child Diagram">↓ Drill Down</button>
-      <button id="btn-create-child" class="context-btn" disabled title="Create Child Diagram">+ Child</button>
+      <button id="btn-go-up" class="context-btn" disabled title="Go to Parent Diagram">
+        <svg width="16" height="16" viewBox="0 0 12 12">
+          <use href="#icon-go-up"/>
+        </svg>
+        Up
+      </button>
+      <span id="breadcrumb-path" class="fusion-breadcrumb">Root</span>
+      <button id="btn-drill-down" class="context-btn" disabled title="Open Child Diagram">
+        <svg width="16" height="16" viewBox="0 0 12 12">
+          <use href="#icon-drill-down"/>
+        </svg>
+        Drill Down
+      </button>
+      <button id="btn-create-child" class="context-btn" disabled title="Create Child Diagram">
+        <svg width="16" height="16" viewBox="0 0 12 12">
+          <use href="#icon-add"/>
+        </svg>
+        Child
+      </button>
       <div class="separator"></div>
       <!-- Search and Filter -->
       <div class="search-container">
@@ -404,19 +972,19 @@
       <div class="separator"></div>
       <!-- Connection Type Selector -->
       <div class="connection-type-container">
-        <label for="connection-type-select" style="font-size: 12px; color: #666; margin-right: 5px;">Connection:</label>
+        <label for="connection-type-select" class="fusion-label">Connection:</label>
         <select id="connection-type-select" class="connection-type-select" title="Choose connection type for new connections">
           <option value="auto" selected>Auto</option>
-          <option value="electrical">⚡ Electrical</option>
-          <option value="power">🔌 Power</option>
-          <option value="data">📊 Data</option>
-          <option value="mechanical">⚙️ Mechanical</option>
+          <option value="electrical">Electrical</option>
+          <option value="power">Power</option>
+          <option value="data">Data</option>
+          <option value="mechanical">Mechanical</option>
         </select>
-        <select id="arrow-direction-select" class="connection-type-select" title="Choose arrow direction" style="margin-left: 5px;">
-          <option value="forward" selected>→ Forward</option>
-          <option value="bidirectional">↔ Both</option>
-          <option value="backward">← Backward</option>
-          <option value="none">— None</option>
+        <select id="arrow-direction-select" class="connection-type-select fusion-select" title="Choose arrow direction">
+          <option value="forward" selected>Forward</option>
+          <option value="bidirectional">Bidirectional</option>
+          <option value="backward">Backward</option>
+          <option value="none">None</option>
         </select>
       </div>
       <div class="separator"></div>
@@ -438,10 +1006,93 @@
   <div id="canvas-container">
     <svg id="svg-canvas" viewBox="0 0 1000 1000">
       <defs>
+        <!-- Connection Arrow Marker -->
         <marker id="arrowhead" markerWidth="10" markerHeight="7" 
                 refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+          <polygon points="0 0, 10 3.5, 0 7" class="connection-generic" />
         </marker>
+        
+        <!-- ========== FUSION 360 PROFESSIONAL ICON DEFINITIONS - PHASE 3 ========== -->
+        
+        <!-- Power Connection Icon -->
+        <g id="icon-power">
+          <circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 2v4M4 4h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Data Connection Icon -->
+        <g id="icon-data">
+          <rect x="2" y="4" width="8" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 6h4M4 7h2" stroke="currentColor" stroke-width="1" opacity="0.7"/>
+        </g>
+        
+        <!-- Electrical Connection Icon -->
+        <g id="icon-electrical">
+          <path d="M2 6h3l-1 2h2l-3 3 1-2H2l2-3z" fill="currentColor"/>
+        </g>
+        
+        <!-- Mechanical Connection Icon -->
+        <g id="icon-mechanical">
+          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="1.5" fill="currentColor"/>
+          <path d="M6 2v2M10 6h-2M6 10V8M2 6h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Block Type Icons -->
+        <g id="icon-block-system">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M5 5h2M5 7h2" stroke="currentColor" stroke-width="1"/>
+        </g>
+        
+        <g id="icon-block-component">
+          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="6" r="2" fill="currentColor" opacity="0.3"/>
+        </g>
+        
+        <g id="icon-block-interface">
+          <path d="M2 4h8v4H2z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 2v2M8 2v2M4 8v2M8 8v2" stroke="currentColor" stroke-width="1.5"/>
+        </g>
+        
+        <!-- Status Icons -->
+        <g id="icon-status-verified">
+          <circle cx="6" cy="6" r="5" fill="currentColor" opacity="0.2"/>
+          <path d="M3.5 6l1.5 1.5L8.5 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <g id="icon-status-error">
+          <circle cx="6" cy="6" r="5" fill="currentColor" opacity="0.2"/>
+          <path d="M4 4l4 4M8 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-status-warning">
+          <path d="M6 2L10.5 9H1.5z" fill="currentColor" opacity="0.2"/>
+          <path d="M6 4v3M6 8h0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Navigation Icons -->
+        <g id="icon-drill-down">
+          <path d="M6 2v8M3 7l3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <g id="icon-go-up">
+          <path d="M6 10V2M3 5l3-3 3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <!-- Tool Icons -->
+        <g id="icon-add">
+          <circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 3v6M3 6h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-search">
+          <circle cx="5" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="m8 8 2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-filter">
+          <path d="M2 3h8l-3 4v4l-2-1V7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        </g>
       </defs>
       <g id="connections-layer"></g>
       <g id="blocks-layer"></g>
@@ -451,23 +1102,23 @@
     <div class="status-legend">
       <h4>Block Status</h4>
       <div class="status-item">
-        <div class="status-color" style="background-color: #cccccc;"></div>
+        <div class="status-color status-placeholder"></div>
         <span>Placeholder</span>
       </div>
       <div class="status-item">
-        <div class="status-color" style="background-color: #87ceeb;"></div>
+        <div class="status-color status-planned"></div>
         <span>Planned</span>
       </div>
       <div class="status-item">
-        <div class="status-color" style="background-color: #ffd700;"></div>
+        <div class="status-color status-in-work"></div>
         <span>In-Work</span>
       </div>
       <div class="status-item">
-        <div class="status-color" style="background-color: #90ee90;"></div>
+        <div class="status-color status-implemented"></div>
         <span>Implemented</span>
       </div>
       <div class="status-item">
-        <div class="status-color" style="background-color: #00ff00;"></div>
+        <div class="status-color status-verified"></div>
         <span>Verified</span>
       </div>
     </div>
@@ -477,53 +1128,73 @@
       <h4>Connection Types</h4>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#dc3545" stroke-width="3"/>
-          <polygon points="30,6 26,3 26,9" fill="#dc3545"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-power" stroke-width="3"/>
+          <polygon points="30,6 26,3 26,9" class="connection-power"/>
         </svg>
-        <span>🔌 Power</span>
+        <span>
+          <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
+            <use href="#icon-power"/>
+          </svg>
+          Power
+        </span>
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#007bff" stroke-width="2"/>
-          <polygon points="30,6 26,3 26,9" fill="#007bff"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-data" stroke-width="2"/>
+          <polygon points="30,6 26,3 26,9" class="connection-data"/>
         </svg>
-        <span>📊 Data</span>
+        <span>
+          <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
+            <use href="#icon-data"/>
+          </svg>
+          Data
+        </span>
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#28a745" stroke-width="1.5" stroke-dasharray="5,3"/>
-          <polygon points="30,6 26,3 26,9" fill="#28a745"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-electrical" stroke-width="1.5" stroke-dasharray="5,3"/>
+          <polygon points="30,6 26,3 26,9" class="connection-electrical"/>
         </svg>
-        <span>⚡ Electrical</span>
+        <span>
+          <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
+            <use href="#icon-electrical"/>
+          </svg>
+          Electrical
+        </span>
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#6c757d" stroke-width="2" stroke-dasharray="8,4"/>
-          <line x1="30" y1="3" x2="26" y2="6" stroke="#6c757d" stroke-width="2"/>
-          <line x1="30" y1="9" x2="26" y2="6" stroke="#6c757d" stroke-width="2"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-mechanical" stroke-width="2" stroke-dasharray="8,4"/>
+          <line x1="30" y1="3" x2="26" y2="6" class="connection-mechanical" stroke-width="2"/>
+          <line x1="30" y1="9" x2="26" y2="6" class="connection-mechanical" stroke-width="2"/>
         </svg>
-        <span>⚙️ Mechanical</span>
+        <span>
+          <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
+            <use href="#icon-mechanical"/>
+          </svg>
+          Mechanical
+        </span>
       </div>
       
-      <h4 style="margin-top: 15px;">Arrow Types</h4>
+      <h4 class="fusion-legend-section">Arrow Types</h4>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#333" stroke-width="2"/>
-          <polygon points="30,6 26,3 26,9" fill="#333"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-generic" stroke-width="2"/>
+          <polygon points="30,6 26,3 26,9" class="connection-generic"/>
         </svg>
         <span>→ Forward</span>
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#333" stroke-width="2"/>
-          <polygon points="30,6 26,3 26,9" fill="#333"/>
-          <polygon points="0,6 4,3 4,9" fill="#333"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-generic" stroke-width="2"/>
+          <polygon points="30,6 26,3 26,9" class="connection-generic"/>
+          <polygon points="0,6 4,3 4,9" class="connection-generic"/>
         </svg>
         <span>↔ Bidirectional</span>
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" stroke="#333" stroke-width="2"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-generic" stroke-width="2"/>
         </svg>
         <span>— No Arrow</span>
       </div>
@@ -586,13 +1257,290 @@
   <div id="dialog-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
                                    background: rgba(0,0,0,0.5); z-index: 999;"></div>
   
+  <!-- ========== FUSION 360 KEYBOARD SHORTCUTS & ACCESSIBILITY - PHASE 3 ========== -->
   <script>
+    // Professional Keyboard Shortcuts System
+    class FusionKeyboardManager {
+      constructor() {
+        this.shortcuts = {
+          // File Operations
+          'Ctrl+N': () => this.triggerAction('btn-new', 'New Diagram'),
+          'Ctrl+S': () => this.triggerAction('btn-save', 'Save Diagram'),
+          'Ctrl+O': () => this.triggerAction('btn-load', 'Load Diagram'),
+          
+          // Edit Operations
+          'Ctrl+Z': () => this.triggerAction('btn-undo', 'Undo'),
+          'Ctrl+Y': () => this.triggerAction('btn-redo', 'Redo'),
+          'Ctrl+Shift+Z': () => this.triggerAction('btn-redo', 'Redo'),
+          
+          // Navigation
+          'Ctrl+F': () => this.focusSearch(),
+          'Escape': () => this.clearSelection(),
+          'Delete': () => this.deleteSelected(),
+          'Backspace': () => this.deleteSelected(),
+          
+          // Hierarchy Navigation
+          'Ctrl+Up': () => this.triggerAction('btn-go-up', 'Go Up'),
+          'Ctrl+Down': () => this.triggerAction('btn-drill-down', 'Drill Down'),
+          'Ctrl+Shift+N': () => this.triggerAction('btn-create-child', 'Create Child'),
+          
+          // Block Operations
+          'Ctrl+A': () => this.selectAll(),
+          'Ctrl+D': () => this.duplicateSelected(),
+          'Insert': () => this.triggerAction('btn-add-block', 'Add Block'),
+          
+          // View Controls
+          'Ctrl+0': () => this.resetZoom(),
+          'Ctrl+=': () => this.zoomIn(),
+          'Ctrl+-': () => this.zoomOut(),
+          
+          // Connection Types (with Shift)
+          'Shift+P': () => this.setConnectionType('power'),
+          'Shift+D': () => this.setConnectionType('data'),
+          'Shift+E': () => this.setConnectionType('electrical'),
+          'Shift+M': () => this.setConnectionType('mechanical'),
+        };
+        
+        this.init();
+      }
+      
+      init() {
+        document.addEventListener('keydown', (e) => this.handleKeydown(e));
+        this.createKeyboardHints();
+        this.setupAccessibility();
+      }
+      
+      handleKeydown(e) {
+        // Don't handle shortcuts when typing in inputs
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+          if (e.key === 'Escape') {
+            e.target.blur();
+          }
+          return;
+        }
+        
+        const key = this.getShortcutKey(e);
+        const handler = this.shortcuts[key];
+        
+        if (handler) {
+          e.preventDefault();
+          handler();
+          this.showKeyboardFeedback(key);
+        }
+      }
+      
+      getShortcutKey(e) {
+        const parts = [];
+        if (e.ctrlKey) parts.push('Ctrl');
+        if (e.shiftKey) parts.push('Shift');
+        if (e.altKey) parts.push('Alt');
+        
+        let key = e.key;
+        if (key === ' ') key = 'Space';
+        parts.push(key);
+        
+        return parts.join('+');
+      }
+      
+      triggerAction(buttonId, actionName) {
+        const button = document.getElementById(buttonId);
+        if (button && !button.disabled) {
+          button.click();
+          this.showToast(`${actionName} (Keyboard Shortcut)`);
+        } else if (button && button.disabled) {
+          this.showToast(`${actionName} not available`, 'warning');
+        }
+      }
+      
+      focusSearch() {
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+          this.showToast('Search focused (Ctrl+F)');
+        }
+      }
+      
+      clearSelection() {
+        // Clear any selections
+        document.querySelectorAll('.block.selected').forEach(block => {
+          block.classList.remove('selected');
+        });
+        this.showToast('Selection cleared');
+      }
+      
+      selectAll() {
+        document.querySelectorAll('.block').forEach(block => {
+          block.classList.add('selected');
+        });
+        this.showToast('All blocks selected (Ctrl+A)');
+      }
+      
+      deleteSelected() {
+        const selected = document.querySelectorAll('.block.selected');
+        if (selected.length > 0) {
+          // Add deletion animation before removing
+          selected.forEach(block => {
+            block.style.animation = 'blockDisappear 0.3s ease-in forwards';
+            setTimeout(() => block.remove(), 300);
+          });
+          this.showToast(`Deleted ${selected.length} block(s)`);
+        }
+      }
+      
+      setConnectionType(type) {
+        const select = document.getElementById('connection-type-select');
+        if (select) {
+          select.value = type;
+          select.dispatchEvent(new Event('change'));
+          this.showToast(`Connection type: ${type.charAt(0).toUpperCase() + type.slice(1)}`);
+        }
+      }
+      
+      showKeyboardFeedback(shortcut) {
+        // Visual feedback for keyboard shortcuts
+        const feedback = document.createElement('div');
+        feedback.className = 'keyboard-feedback';
+        feedback.textContent = shortcut;
+        feedback.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: rgba(0,123,204,0.9);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 4px;
+          font-family: var(--fusion-font-family);
+          font-size: 14px;
+          font-weight: 500;
+          z-index: 10000;
+          opacity: 0;
+          animation: shortcutFeedback 0.8s ease-out;
+        `;
+        
+        document.body.appendChild(feedback);
+        setTimeout(() => feedback.remove(), 800);
+      }
+      
+      showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `fusion-toast ${type}`;
+        toast.textContent = message;
+        toast.style.cssText = `
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          background: var(--fusion-panel-bg);
+          color: var(--fusion-text-primary);
+          border: 1px solid var(--fusion-panel-border);
+          padding: 12px 16px;
+          border-radius: var(--fusion-radius-medium);
+          font-family: var(--fusion-font-family);
+          font-size: var(--fusion-font-size-normal);
+          box-shadow: var(--fusion-shadow-medium);
+          z-index: 10000;
+          opacity: 0;
+          transform: translateY(20px);
+          animation: toastSlideIn 0.3s ease-out forwards;
+        `;
+        
+        if (type === 'warning') {
+          toast.style.borderColor = 'var(--fusion-status-warning)';
+          toast.style.background = 'var(--fusion-status-warning-bg)';
+        }
+        
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.style.animation = 'toastSlideOut 0.3s ease-in forwards';
+          setTimeout(() => toast.remove(), 300);
+        }, 2000);
+      }
+      
+      createKeyboardHints() {
+        const hints = document.createElement('div');
+        hints.className = 'keyboard-hint';
+        hints.innerHTML = `
+          <div>Press <kbd>Ctrl+K</kbd> to show all shortcuts</div>
+        `;
+        document.body.appendChild(hints);
+        
+        // Show hints on first load, then hide
+        setTimeout(() => hints.classList.add('show'), 1000);
+        setTimeout(() => hints.classList.remove('show'), 4000);
+      }
+      
+      setupAccessibility() {
+        // Add ARIA labels and keyboard navigation
+        document.querySelectorAll('.block').forEach((block, index) => {
+          block.setAttribute('tabindex', '0');
+          block.setAttribute('role', 'button');
+          block.setAttribute('aria-label', `Block ${index + 1}`);
+        });
+        
+        // Enhanced focus management
+        document.addEventListener('focusin', (e) => {
+          if (e.target.classList.contains('block')) {
+            e.target.style.outline = '2px solid var(--fusion-accent-blue)';
+            e.target.style.outlineOffset = '2px';
+          }
+        });
+        
+        document.addEventListener('focusout', (e) => {
+          if (e.target.classList.contains('block')) {
+            e.target.style.outline = '';
+            e.target.style.outlineOffset = '';
+          }
+        });
+      }
+    }
+    
+    // Initialize keyboard manager when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      window.fusionKeyboard = new FusionKeyboardManager();
+    });
+    
     // Visual debug function
     function debugLog(message) {
       // Debug logging disabled for clean interface
       // console.log(message);
     }
   </script>
+  
+  <!-- Add CSS for new animations -->
+  <style>
+    @keyframes blockDisappear {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.8); }
+    }
+    
+    @keyframes shortcutFeedback {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+      20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    }
+    
+    @keyframes toastSlideIn {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes toastSlideOut {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(20px); }
+    }
+    
+    kbd {
+      background: var(--fusion-bg-tertiary);
+      border: 1px solid var(--fusion-border-secondary);
+      border-radius: 3px;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-family: monospace;
+      color: var(--fusion-text-primary);
+    }
+  </style>
   <script src="./palette.js"></script>
 </body>
 </html>

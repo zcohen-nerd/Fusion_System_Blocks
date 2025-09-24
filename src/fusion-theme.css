@@ -1,0 +1,360 @@
+/* Fusion 360 Theme CSS
+ * This file contains the authentic Fusion 360 color scheme and styling patterns
+ * to make the System Blocks palette feel native to Fusion 360
+ */
+
+/* === FUSION 360 COLOR PALETTE === */
+:root {
+  /* Primary Colors */
+  --fusion-bg-primary: #2d2d30;           /* Main dark background */
+  --fusion-bg-secondary: #383838;         /* Secondary panels */
+  --fusion-bg-tertiary: #404040;          /* Lighter panels */
+  --fusion-bg-hover: #464646;             /* Hover states */
+  --fusion-bg-active: #007acc;            /* Active/selected states */
+  
+  /* Text Colors */
+  --fusion-text-primary: #cccccc;         /* Primary text */
+  --fusion-text-secondary: #969696;       /* Secondary text */
+  --fusion-text-disabled: #6d6d6d;        /* Disabled text */
+  --fusion-text-inverse: #ffffff;         /* Text on dark backgrounds */
+  
+  /* Border Colors */
+  --fusion-border-primary: #464646;       /* Primary borders */
+  --fusion-border-secondary: #555555;     /* Secondary borders */
+  --fusion-border-focus: #007acc;         /* Focus borders */
+  --fusion-border-hover: #5a5a5a;         /* Hover borders */
+  
+  /* Accent Colors */
+  --fusion-accent-blue: #007acc;          /* Primary blue accent */
+  --fusion-accent-orange: #ff8c00;        /* Orange accent (warnings/selections) */
+  --fusion-accent-green: #4caf50;         /* Success green */
+  --fusion-accent-red: #f44336;           /* Error red */
+  --fusion-accent-yellow: #ffc107;        /* Warning yellow */
+  
+  /* Component-specific Colors */
+  --fusion-button-bg: #404040;
+  --fusion-button-hover: #464646;
+  --fusion-button-active: #007acc;
+  --fusion-button-border: #555555;
+  
+  --fusion-input-bg: #2d2d30;
+  --fusion-input-border: #555555;
+  --fusion-input-focus: #007acc;
+  
+  --fusion-panel-bg: #383838;
+  --fusion-panel-border: #464646;
+  
+  /* Typography */
+  --fusion-font-family: 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', sans-serif;
+  --fusion-font-size-small: 11px;
+  --fusion-font-size-normal: 12px;
+  --fusion-font-size-large: 14px;
+  
+  /* Spacing */
+  --fusion-spacing-xs: 4px;
+  --fusion-spacing-sm: 8px;
+  --fusion-spacing-md: 12px;
+  --fusion-spacing-lg: 16px;
+  --fusion-spacing-xl: 20px;
+  
+  /* Shadows */
+  --fusion-shadow-light: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --fusion-shadow-medium: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --fusion-shadow-heavy: 0 4px 12px rgba(0, 0, 0, 0.4);
+  
+  /* Border Radius */
+  --fusion-radius-small: 2px;
+  --fusion-radius-medium: 4px;
+  --fusion-radius-large: 6px;
+  
+  /* Status Colors - Enhanced for Phase 2 */
+  --fusion-status-placeholder: #969696;
+  --fusion-status-placeholder-bg: rgba(150, 150, 150, 0.1);
+  
+  --fusion-status-planned: #87ceeb;
+  --fusion-status-planned-bg: rgba(135, 206, 235, 0.1);
+  
+  --fusion-status-in-work: #ffc107;
+  --fusion-status-in-work-bg: rgba(255, 193, 7, 0.1);
+  
+  --fusion-status-implemented: #4caf50;
+  --fusion-status-implemented-bg: rgba(76, 175, 80, 0.1);
+  
+  --fusion-status-verified: #00ff00;
+  --fusion-status-verified-bg: rgba(0, 255, 0, 0.1);
+  
+  /* Status Indicators for Error/Warning/Success */
+  --fusion-status-error: #f44336;
+  --fusion-status-error-bg: rgba(244, 67, 54, 0.1);
+  
+  --fusion-status-warning: #ff9800;
+  --fusion-status-warning-bg: rgba(255, 152, 0, 0.1);
+  
+  --fusion-status-success: #4caf50;
+  --fusion-status-success-bg: rgba(76, 175, 80, 0.1);
+  
+  /* Enhanced Color Variants */
+  --fusion-accent-blue-dark: #005a9e;
+  --fusion-accent-blue-light: #1e88e5;
+  
+  /* Focus and Glow Effects */
+  --fusion-focus-ring: rgba(0, 123, 204, 0.3);
+  --fusion-glow-orange: rgba(255, 102, 0, 0.5);
+  
+  /* Transition Timings */
+  --fusion-transition-fast: 0.15s;
+  --fusion-transition: 0.25s;
+  --fusion-transition-slow: 0.35s;
+  
+  /* Connection Type Colors */
+  --fusion-connection-power: #dc3545;
+  --fusion-connection-data: #007bff;
+  --fusion-connection-electrical: #28a745;
+  --fusion-connection-mechanical: #6c757d;
+}
+
+/* === FUSION 360 COMPONENT STYLES === */
+
+/* Buttons */
+.fusion-button {
+  background: var(--fusion-button-bg);
+  border: 1px solid var(--fusion-button-border);
+  color: var(--fusion-text-primary);
+  font-family: var(--fusion-font-family);
+  font-size: var(--fusion-font-size-normal);
+  padding: var(--fusion-spacing-xs) var(--fusion-spacing-md);
+  border-radius: var(--fusion-radius-small);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.fusion-button:hover {
+  background: var(--fusion-button-hover);
+  border-color: var(--fusion-border-hover);
+}
+
+.fusion-button:active {
+  background: var(--fusion-button-active);
+  border-color: var(--fusion-accent-blue);
+  color: var(--fusion-text-inverse);
+}
+
+.fusion-button:disabled {
+  background: var(--fusion-bg-secondary);
+  color: var(--fusion-text-disabled);
+  cursor: not-allowed;
+  border-color: var(--fusion-border-primary);
+}
+
+.fusion-button.primary {
+  background: var(--fusion-accent-blue);
+  color: var(--fusion-text-inverse);
+  border-color: var(--fusion-accent-blue);
+}
+
+.fusion-button.primary:hover {
+  background: #005a9e;
+  border-color: #005a9e;
+}
+
+/* Input Controls */
+.fusion-input,
+.fusion-select {
+  background: var(--fusion-input-bg);
+  border: 1px solid var(--fusion-input-border);
+  color: var(--fusion-text-primary);
+  font-family: var(--fusion-font-family);
+  font-size: var(--fusion-font-size-normal);
+  padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
+  border-radius: var(--fusion-radius-small);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.fusion-input:focus,
+.fusion-select:focus {
+  border-color: var(--fusion-input-focus);
+  box-shadow: 0 0 0 1px var(--fusion-input-focus);
+}
+
+.fusion-input:hover,
+.fusion-select:hover {
+  border-color: var(--fusion-border-hover);
+}
+
+/* Panels */
+.fusion-panel {
+  background: var(--fusion-panel-bg);
+  border: 1px solid var(--fusion-panel-border);
+  border-radius: var(--fusion-radius-medium);
+  padding: var(--fusion-spacing-md);
+  color: var(--fusion-text-primary);
+}
+
+.fusion-toolbar {
+  background: var(--fusion-bg-secondary);
+  border-bottom: 1px solid var(--fusion-border-primary);
+  padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--fusion-spacing-sm);
+}
+
+/* Status Colors */
+.fusion-status-placeholder {
+  color: var(--fusion-text-secondary);
+  border-color: var(--fusion-border-secondary);
+}
+
+.fusion-status-planned {
+  color: var(--fusion-accent-yellow);
+  border-color: var(--fusion-accent-yellow);
+}
+
+.fusion-status-in-work {
+  color: var(--fusion-accent-blue);
+  border-color: var(--fusion-accent-blue);
+}
+
+.fusion-status-implemented {
+  color: var(--fusion-accent-green);
+  border-color: var(--fusion-accent-green);
+}
+
+/* Connection Type Colors - Professional Engineering */
+.fusion-connection-power {
+  stroke: var(--fusion-accent-red);
+  stroke-width: 3px;
+}
+
+.fusion-connection-data {
+  stroke: var(--fusion-accent-blue);
+  stroke-width: 2px;
+}
+
+.fusion-connection-electrical {
+  stroke: var(--fusion-accent-green);
+  stroke-width: 2px;
+  stroke-dasharray: 4,2;
+}
+
+.fusion-connection-mechanical {
+  stroke: var(--fusion-text-secondary);
+  stroke-width: 2px;
+  stroke-dasharray: 8,4;
+}
+
+/* Typography */
+.fusion-text-primary {
+  color: var(--fusion-text-primary);
+  font-family: var(--fusion-font-family);
+}
+
+.fusion-text-secondary {
+  color: var(--fusion-text-secondary);
+  font-family: var(--fusion-font-family);
+}
+
+.fusion-text-small {
+  font-size: var(--fusion-font-size-small);
+}
+
+.fusion-text-normal {
+  font-size: var(--fusion-font-size-normal);
+}
+
+.fusion-text-large {
+  font-size: var(--fusion-font-size-large);
+}
+
+/* Icons */
+.fusion-icon {
+  width: 16px;
+  height: 16px;
+  fill: var(--fusion-text-primary);
+  transition: fill 0.15s ease;
+}
+
+.fusion-icon.small {
+  width: 12px;
+  height: 12px;
+}
+
+.fusion-icon.large {
+  width: 20px;
+  height: 20px;
+}
+
+/* Animations */
+.fusion-transition {
+  transition: all 0.15s ease;
+}
+
+.fusion-transition-fast {
+  transition: all 0.1s ease;
+}
+
+.fusion-transition-slow {
+  transition: all 0.3s ease;
+}
+
+/* Grid pattern - matching Fusion 360's design grid */
+.fusion-grid-pattern {
+  background-image: 
+    radial-gradient(circle, var(--fusion-border-primary) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: 0 0;
+}
+
+/* Scrollbars */
+.fusion-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.fusion-scrollbar::-webkit-scrollbar-track {
+  background: var(--fusion-bg-primary);
+}
+
+.fusion-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--fusion-border-secondary);
+  border-radius: 4px;
+}
+
+.fusion-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--fusion-border-hover);
+}
+
+/* Context Menu */
+.fusion-context-menu {
+  background: var(--fusion-panel-bg);
+  border: 1px solid var(--fusion-panel-border);
+  border-radius: var(--fusion-radius-small);
+  box-shadow: var(--fusion-shadow-medium);
+  padding: var(--fusion-spacing-xs) 0;
+  min-width: 150px;
+}
+
+.fusion-context-menu-item {
+  padding: var(--fusion-spacing-xs) var(--fusion-spacing-md);
+  color: var(--fusion-text-primary);
+  cursor: pointer;
+  font-family: var(--fusion-font-family);
+  font-size: var(--fusion-font-size-normal);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.fusion-context-menu-item:hover {
+  background: var(--fusion-bg-hover);
+}
+
+.fusion-context-menu-separator {
+  height: 1px;
+  background: var(--fusion-border-primary);
+  margin: var(--fusion-spacing-xs) 0;
+}
