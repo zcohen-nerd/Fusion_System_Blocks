@@ -170,19 +170,19 @@ def load_schema() -> Dict[str, Any]:
         }
 
 
-def validate_diagram(diagram: Dict[str, Any]) -> Tuple[bool, str]:
+def validate_diagram(diagram: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
     """Validate a diagram against the JSON schema."""
     try:
         schema = load_schema()
         jsonschema.validate(diagram, schema)
-        return True, ""
+        return True, None
     except jsonschema.ValidationError as e:
         return False, str(e)
     except Exception as e:
         return False, f"Validation error: {e}"
 
 
-def validate_links(block: Dict[str, Any]) -> Tuple[bool, str]:
+def validate_links(block: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
     """Validate the links in a block."""
     links = block.get("links", [])
 
@@ -215,7 +215,7 @@ def validate_links(block: Dict[str, Any]) -> Tuple[bool, str]:
                 f"Unknown link target '{target}' in block '{block.get('name', 'Unknown')}'",
             )
 
-    return True, ""
+    return True, None
 
 
 def validate_diagram_links(diagram: Dict[str, Any]) -> Tuple[bool, List[str]]:
@@ -411,7 +411,7 @@ def generate_markdown_report(diagram: Dict[str, Any]) -> str:
     report = []
 
     # Header
-    report.append("# System Blocks Diagram Report")
+    report.append("# System Blocks Report")
     report.append("")
 
     # Summary
@@ -461,7 +461,7 @@ def generate_markdown_report(diagram: Dict[str, Any]) -> str:
 
     # Blocks table
     if blocks:
-        report.append("## Blocks")
+        report.append("## Block Details")
         report.append("| Name | Type | Status | Interfaces | Links |")
         report.append("|------|------|--------|------------|-------|")
 
@@ -509,7 +509,7 @@ def generate_pin_map_csv(diagram: Dict[str, Any]) -> str:
 
     # Header
     writer.writerow(
-        ["Signal", "Source Block", "Dest Block", "Source Pin", "Dest Pin", "Protocol", "Notes"]
+        ["Signal", "Source Block", "Source Interface", "Dest Block", "Dest Interface", "Protocol", "Notes"]
     )
 
     # Process connections
@@ -539,7 +539,7 @@ def generate_pin_map_csv(diagram: Dict[str, Any]) -> str:
         notes_str = "; ".join(notes)
 
         writer.writerow(
-            [signal_name, source_name, dest_name, source_pin, dest_pin, protocol, notes_str]
+            [signal_name, source_name, source_pin, dest_name, dest_pin, protocol, notes_str]
         )
 
     return output.getvalue()
@@ -552,8 +552,8 @@ def generate_pin_map_header(diagram: Dict[str, Any]) -> str:
     lines.append("// Generated pin map definitions")
     lines.append("// Auto-generated from System Blocks diagram")
     lines.append("")
-    lines.append("#ifndef SYSTEM_BLOCKS_PINS_H")
-    lines.append("#define SYSTEM_BLOCKS_PINS_H")
+    lines.append("#ifndef PIN_DEFINITIONS_H")
+    lines.append("#define PIN_DEFINITIONS_H")
     lines.append("")
 
     # Generate pin definitions for blocks with pin attributes
@@ -584,12 +584,12 @@ def generate_pin_map_header(diagram: Dict[str, Any]) -> str:
                 pin_counter += 1
 
     lines.append("")
-    lines.append("#endif // SYSTEM_BLOCKS_PINS_H")
+    lines.append("#endif // PIN_DEFINITIONS_H")
 
     return "\n".join(lines)
 
 
-def export_report_files(diagram: Dict[str, Any], output_dir: str = None) -> List[str]:
+def export_report_files(diagram: Dict[str, Any], output_dir: str = None) -> Dict[str, str]:
     """Export all report files to the specified directory."""
     if output_dir is None:
         output_dir = "exports"
@@ -597,7 +597,7 @@ def export_report_files(diagram: Dict[str, Any], output_dir: str = None) -> List
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
-    created_files = []
+    results = {}
 
     try:
         # Generate markdown report
@@ -605,26 +605,26 @@ def export_report_files(diagram: Dict[str, Any], output_dir: str = None) -> List
         markdown_path = os.path.join(output_dir, "system_blocks_report.md")
         with open(markdown_path, "w") as f:
             f.write(markdown_content)
-        created_files.append(markdown_path)
+        results["markdown"] = markdown_path
 
         # Generate CSV pin map
         csv_content = generate_pin_map_csv(diagram)
         csv_path = os.path.join(output_dir, "pin_map.csv")
         with open(csv_path, "w") as f:
             f.write(csv_content)
-        created_files.append(csv_path)
+        results["csv"] = csv_path
 
         # Generate C header
         header_content = generate_pin_map_header(diagram)
         header_path = os.path.join(output_dir, "pins.h")
         with open(header_path, "w") as f:
             f.write(header_content)
-        created_files.append(header_path)
+        results["header"] = header_path
 
     except Exception as e:
-        raise RuntimeError(f"Failed to export files: {e}")
+        results["error"] = str(e)
 
-    return created_files
+    return results
 
 
 # ==================== IMPORT FUNCTIONALITY ====================
@@ -729,10 +729,10 @@ def import_from_csv(blocks_csv: str, connections_csv: str = None) -> Dict[str, A
         if not name:
             continue
 
-        block_type = row.get("type", "Generic").strip()
+        block_type = (row.get("type") or "Generic").strip()
         x = int(row.get("x", x_position))
         y = int(row.get("y", y_position))
-        status = row.get("status", "Placeholder").strip()
+        status = (row.get("status") or "Placeholder").strip()
 
         block = create_block(name, x, y, block_type, status)
 
