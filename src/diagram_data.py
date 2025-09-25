@@ -205,7 +205,10 @@ def validate_links(block: Dict[str, Any]) -> Tuple[bool, str]:
         elif target == "external":
             # External links must have identifier
             if not any(link.get(field) for field in ["device", "docPath", "docId"]):
-                return False, f"External link missing identifier in block '{block.get('name', 'Unknown')}'"
+                return (
+                    False,
+                    f"External link missing identifier in block '{block.get('name', 'Unknown')}'",
+                )
         else:
             return (
                 False,
