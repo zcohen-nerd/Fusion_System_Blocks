@@ -609,7 +609,11 @@ def generate_live_thumbnail(block_id, view_angle, size):
         # 3. Capture viewport image at specified size
         # 4. Convert to base64 and update block data
 
-        thumbnail_data = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+        thumbnail_data = (
+            "data:image/png;base64,"
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/"
+            "PchI7wAAAABJRU5ErkJggg=="
+        )
 
         # Update block with live thumbnail
         updated_block = diagram_data.update_live_thumbnail(target_block, thumbnail_data)
@@ -648,7 +652,10 @@ def generate_assembly_sequence_from_diagram(diagram):
         # Send response to JavaScript
         palette = UI.palettes.itemById("sysBlocksPalette")
         if palette:
-            script = f"if(editor && editor.displayAssemblySequence) {{ editor.displayAssemblySequence({json.dumps(assembly_sequence)}); }}"
+            script = (
+                f"if(editor && editor.displayAssemblySequence) {{ "
+                f"editor.displayAssemblySequence({json.dumps(assembly_sequence)}); }}"
+            )
             palette.sendInfoToHTML("assembly-sequence", script)
 
     except Exception as e:
@@ -673,7 +680,10 @@ def generate_living_bom_from_diagram(diagram):
         # Send response to JavaScript
         palette = UI.palettes.itemById("sysBlocksPalette")
         if palette:
-            script = f"if(editor && editor.displayLivingBOM) {{ editor.displayLivingBOM({json.dumps(living_bom)}); }}"
+            script = (
+                f"if(editor && editor.displayLivingBOM) {{ "
+                f"editor.displayLivingBOM({json.dumps(living_bom)}); }}"
+            )
             palette.sendInfoToHTML("living-bom", script)
 
     except Exception as e:
@@ -750,7 +760,10 @@ def analyze_change_impact_for_block(block_id, diagram):
         # Send to JavaScript
         palette = UI.palettes.itemById("sysBlocksPalette")
         if palette:
-            script = f"if(editor && editor.displayChangeImpact) {{ editor.displayChangeImpact({json.dumps(impact_analysis)}); }}"
+            script = (
+                f"if(editor && editor.displayChangeImpact) {{ "
+                f"editor.displayChangeImpact({json.dumps(impact_analysis)}); }}"
+            )
             palette.sendInfoToHTML("change-impact", script)
 
     except Exception as e:
@@ -900,14 +913,20 @@ class PaletteMessageHandler(adsk.core.HTMLEventHandler):
                             "results": sync_results,
                             "componentStatuses": get_all_component_statuses(diagram),
                         }
-                        script = f"if(editor) {{ editor.handleComponentSyncResponse({json.dumps(response)}); }}"
+                        script = (
+                            f"if(editor) {{ "
+                            f"editor.handleComponentSyncResponse({json.dumps(response)}); }}"
+                        )
                         palette.sendInfoToHTML("sync-response", script)
 
                 except Exception as e:
                     palette = UI.palettes.itemById("sysBlocksPalette")
                     if palette:
                         response = {"success": False, "error": f"Component sync failed: {str(e)}"}
-                        script = f"if(editor) {{ editor.handleComponentSyncResponse({json.dumps(response)}); }}"
+                        script = (
+                            f"if(editor) {{ "
+                            f"editor.handleComponentSyncResponse({json.dumps(response)}); }}"
+                        )
                         palette.sendInfoToHTML("sync-response", script)
 
             elif action == "get-component-dashboard":
@@ -919,7 +938,10 @@ class PaletteMessageHandler(adsk.core.HTMLEventHandler):
                     palette = UI.palettes.itemById("sysBlocksPalette")
                     if palette:
                         response = {"success": True, "dashboard": dashboard_data}
-                        script = f"if(editor) {{ editor.handleDashboardResponse({json.dumps(response)}); }}"
+                        script = (
+                            f"if(editor) {{ "
+                            f"editor.handleDashboardResponse({json.dumps(response)}); }}"
+                        )
                         palette.sendInfoToHTML("dashboard-response", script)
 
                 except Exception as e:
@@ -929,7 +951,10 @@ class PaletteMessageHandler(adsk.core.HTMLEventHandler):
                             "success": False,
                             "error": f"Dashboard generation failed: {str(e)}",
                         }
-                        script = f"if(editor) {{ editor.handleDashboardResponse({json.dumps(response)}); }}"
+                        script = (
+                            f"if(editor) {{ "
+                            f"editor.handleDashboardResponse({json.dumps(response)}); }}"
+                        )
                         palette.sendInfoToHTML("dashboard-response", script)
 
             elif action == "enhanced-link-to-cad":
