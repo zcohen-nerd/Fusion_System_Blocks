@@ -249,10 +249,12 @@ def compute_block_status(block: Dict[str, Any]) -> str:
     has_interfaces = len(interfaces) > 0
 
     # Status logic
-    if has_cad_link and has_ecad_link:
+    if has_cad_link and has_ecad_link and has_attributes and has_interfaces:
         return "Verified"
-    elif has_cad_link or has_ecad_link:
-        return "Implemented"
+    elif has_cad_link and has_ecad_link:
+        return "Implemented" 
+    elif (has_cad_link or has_ecad_link) and not (has_attributes and has_interfaces):
+        return "In-Work"
     elif has_attributes and has_interfaces:
         return "In-Work"
     elif has_attributes or has_interfaces:
@@ -261,11 +263,16 @@ def compute_block_status(block: Dict[str, Any]) -> str:
         return "Placeholder"
 
 
-def update_block_statuses(diagram: Dict[str, Any]) -> None:
+def update_block_statuses(diagram: Dict[str, Any]) -> Dict[str, Any]:
     """Update the status of all blocks in a diagram."""
+    if not diagram:
+        return diagram
+        
     for block in diagram.get("blocks", []):
         computed_status = compute_block_status(block)
         block["status"] = computed_status
+    
+    return diagram
 
 
 def get_status_color(status: str) -> str:
@@ -283,7 +290,7 @@ def get_status_color(status: str) -> str:
 # ==================== RULE CHECKING ====================
 
 
-def check_logic_level_compatibility(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
+def check_logic_level_compatibility_bulk(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Check for logic level compatibility issues between connected blocks."""
     violations = []
 
@@ -318,7 +325,7 @@ def check_logic_level_compatibility(diagram: Dict[str, Any]) -> List[Dict[str, A
     return violations
 
 
-def check_power_budget(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
+def check_power_budget_bulk(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Check if power consumption exceeds power supply capability."""
     violations = []
 
@@ -366,7 +373,7 @@ def check_power_budget(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     return violations
 
 
-def check_implementation_completeness(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
+def check_implementation_completeness_bulk(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Check if all blocks have sufficient implementation details."""
     violations = []
 
@@ -390,9 +397,9 @@ def run_all_rule_checks(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Run all rule checks and return combined results."""
     all_violations = []
 
-    all_violations.extend(check_logic_level_compatibility(diagram))
-    all_violations.extend(check_power_budget(diagram))
-    all_violations.extend(check_implementation_completeness(diagram))
+    all_violations.extend(check_logic_level_compatibility_bulk(diagram))
+    all_violations.extend(check_power_budget_bulk(diagram))
+    all_violations.extend(check_implementation_completeness_bulk(diagram))
 
     return all_violations
 
@@ -401,6 +408,125 @@ def get_rule_failures(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Get only the error-level rule violations."""
     all_violations = run_all_rule_checks(diagram)
     return [v for v in all_violations if v.get("severity") == "error"]
+
+
+# ==================== SINGLE RULE CHECK WRAPPERS (for tests) ====================
+
+def check_logic_level_compatibility(connection: Dict[str, Any], diagram: Dict[str, Any]) -> Dict[str, Any]:
+    """Check logic level compatibility for a single connection."""
+    from_block = find_block_by_id(diagram, connection["from"]["blockId"])
+    to_block = find_block_by_id(diagram, connection["to"]["blockId"])
+    
+    if not from_block or not to_block:
+        return {
+            "success": False,
+            "rule": "logic_level_compatibility",
+            "message": "Could not find connected blocks"
+        }
+    
+    # Get logic levels from block attributes  
+    from_level = from_block.get("attributes", {}).get("logic_level", "")
+    to_level = to_block.get("attributes", {}).get("logic_level", "")
+    
+    # If no logic levels specified, assume compatible
+    if not from_level or not to_level:
+        return {
+            "success": True,
+            "rule": "logic_level_compatibility", 
+            "message": "Compatible logic levels"
+        }
+    
+    # Check compatibility
+    if from_level == to_level:
+        return {
+            "success": True,
+            "rule": "logic_level_compatibility",
+            "message": "Compatible logic levels"
+        }
+    
+    # Allow some compatible combinations
+    compatible_pairs = [("3.3V", "5V_tolerant"), ("5V_tolerant", "3.3V")]
+    if (from_level, to_level) in compatible_pairs:
+        return {
+            "success": True,
+            "rule": "logic_level_compatibility", 
+            "message": "Compatible logic levels"
+        }
+    
+    return {
+        "success": False,
+        "rule": "logic_level_compatibility",
+        "message": f"Logic level mismatch: {from_level} → {to_level}"
+    }
+
+def check_power_budget(diagram: Dict[str, Any]) -> Dict[str, Any]:
+    """Check power budget for entire diagram."""
+    # Find power supply blocks
+    power_supplies = []
+    power_consumers = []
+
+    for block in diagram.get("blocks", []):
+        attributes = block.get("attributes", {})
+        power_supply = attributes.get("power_supply_mw")
+        power_consumption = attributes.get("power_consumption_mw")
+
+        if power_supply:
+            try:
+                power_supplies.append((block, float(power_supply)))
+            except ValueError:
+                pass
+
+        if power_consumption:
+            try:
+                power_consumers.append((block, float(power_consumption)))
+            except ValueError:
+                pass
+
+    # Calculate totals
+    total_supply = sum(supply for _, supply in power_supplies)
+    total_consumption = sum(consumption for _, consumption in power_consumers)
+    
+    if not power_supplies or not power_consumers:
+        return {
+            "success": True,
+            "rule": "power_budget",
+            "message": "No power constraints specified"
+        }
+
+    if total_consumption <= total_supply:
+        return {
+            "success": True,
+            "rule": "power_budget", 
+            "message": f"Power budget OK: {total_consumption}mW used of {total_supply}mW available"
+        }
+    else:
+        return {
+            "success": False,
+            "rule": "power_budget",
+            "message": f"Power budget exceeded: {total_consumption}mW required, {total_supply}mW available"
+        }
+
+def check_implementation_completeness(diagram: Dict[str, Any]) -> Dict[str, Any]:
+    """Check implementation completeness for diagram."""
+    incomplete_blocks = []
+    
+    for block in diagram.get("blocks", []):
+        status = block.get("status", "Placeholder")
+        if status == "Placeholder":
+            incomplete_blocks.append(block.get("name", "Unnamed"))
+    
+    if not incomplete_blocks:
+        return {
+            "success": True,
+            "rule": "implementation_completeness",
+            "message": "All blocks have implementation status"
+        }
+    else:
+        return {
+            "success": False, 
+            "rule": "implementation_completeness",
+            "message": f"Incomplete blocks: {', '.join(incomplete_blocks)}"
+        }
 
 
 # ==================== EXPORT AND REPORTING ====================
@@ -481,6 +607,27 @@ def generate_markdown_report(diagram: Dict[str, Any]) -> str:
                 f"| {name} | {block_type} | {status} | {interface_count} | {link_count} |"
             )
 
+        report.append("")
+
+    # Interface details
+    all_interfaces = []
+    for block in blocks:
+        for interface in block.get("interfaces", []):
+            all_interfaces.append({
+                "block_name": block.get("name", "Unnamed"),
+                "interface_name": interface.get("name", "Unnamed Interface"),
+                "direction": interface.get("direction", "bidirectional"),
+                "protocol": interface.get("protocol", "data")
+            })
+    
+    if all_interfaces:
+        report.append("## Interface Details")
+        report.append("| Block | Interface | Direction | Protocol |")
+        report.append("|-------|-----------|-----------|----------|")
+        
+        for intf in all_interfaces:
+            report.append(f"| {intf['block_name']} | {intf['interface_name']} | {intf['direction']} | {intf['protocol']} |")
+        
         report.append("")
 
     # Connections table
@@ -661,15 +808,17 @@ def parse_mermaid_flowchart(mermaid_text: str) -> Dict[str, Any]:
         if connection_match:
             from_id, to_id = connection_match.groups()
 
-            # Create blocks if they don't exist
+            # Create blocks if they don't exist (use node names as IDs for Mermaid compatibility)
             if from_id not in blocks_created:
                 block = create_block(from_id, x_position, y_position, "Generic", "Placeholder")
+                block["id"] = from_id  # Override UUID with node name for Mermaid compatibility
                 blocks_created[from_id] = block
                 add_block_to_diagram(diagram, block)
                 x_position += 150
 
             if to_id not in blocks_created:
                 block = create_block(to_id, x_position, y_position, "Generic", "Placeholder")
+                block["id"] = to_id  # Override UUID with node name for Mermaid compatibility
                 blocks_created[to_id] = block
                 add_block_to_diagram(diagram, block)
                 x_position += 150
@@ -701,6 +850,7 @@ def parse_mermaid_flowchart(mermaid_text: str) -> Dict[str, Any]:
                     block_type = "Decision"
 
                 block = create_block(label, x_position, y_position, block_type, "Placeholder")
+                block["id"] = node_id  # Override UUID with node name for Mermaid compatibility
                 blocks_created[node_id] = block
                 add_block_to_diagram(diagram, block)
                 x_position += 150
@@ -761,25 +911,29 @@ def import_from_csv(blocks_csv: str, connections_csv: str = None) -> Dict[str, A
         for row in connections_reader:
             from_name = row.get("from", "").strip()
             to_name = row.get("to", "").strip()
-            protocol = row.get("protocol", "data").strip()
+            kind = row.get("kind", "data").strip()
+            protocol = row.get("protocol", "").strip()
 
             if from_name in blocks_map and to_name in blocks_map:
                 conn = create_connection(
-                    blocks_map[from_name]["id"], blocks_map[to_name]["id"], protocol
+                    blocks_map[from_name]["id"], blocks_map[to_name]["id"], kind
                 )
+                # Add protocol as attribute if specified
+                if protocol:
+                    conn["attributes"] = conn.get("attributes", {})
+                    conn["attributes"]["protocol"] = protocol
                 add_connection_to_diagram(diagram, conn)
 
     return diagram
 
 
-def validate_imported_diagram(diagram: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def validate_imported_diagram(diagram: Dict[str, Any]) -> Tuple[bool, str]:
     """Validate an imported diagram for common issues."""
     errors = []
 
     # Check if diagram is empty
     if not diagram.get("blocks"):
-        errors.append("Diagram contains no blocks")
-        return False, errors
+        return False, "Diagram must contain at least one block"
 
     # Check for duplicate block names
     block_names = [block.get("name", "") for block in diagram["blocks"]]
@@ -802,7 +956,10 @@ def validate_imported_diagram(diagram: Dict[str, Any]) -> Tuple[bool, List[str]]
                 f"Connection references unknown destination block ID: {conn['to']['blockId']}"
             )
 
-    return len(errors) == 0, errors
+    if errors:
+        return False, "; ".join(errors)
+    else:
+        return True, "Import validation successful"
 
 
 # ==================== HIERARCHY FUNCTIONS ====================
@@ -932,12 +1089,12 @@ def find_block_path(
     # Check current level blocks
     for block in diagram.get("blocks", []):
         if block["id"] == target_block_id:
-            return path + [block["name"]]
+            return path + [block["id"]]
 
         # Check child diagrams
         if has_child_diagram(block):
             child_diagram = get_child_diagram(block)
-            child_path = find_block_path(child_diagram, target_block_id, path + [block["name"]])
+            child_path = find_block_path(child_diagram, target_block_id, path + [block["id"]])
             if child_path:
                 return child_path
 
