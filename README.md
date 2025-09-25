@@ -1,7 +1,6 @@
 # Fusion 360 System Blocks Add-in
 
-> **🎉 DEPLOYED & FUNCTIONAL** - A professional block diagram editor running natively inside Fusion 360!
-
+> **🎉 DEPLOYED & BETA FUNCTIONAL** - Close to being ready for full release!
 ## 📌 Overview
 
 **Transform your system design workflow** with integrated block diagramming inside Fusion 360. This add-in bridges the gap between high-level system architecture and detailed CAD/ECAD implementation by providing a native workspace for creating, managing, and validating system block diagrams.
