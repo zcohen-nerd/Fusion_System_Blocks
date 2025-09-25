@@ -23,6 +23,11 @@
           "id": { "type": "string" },
           "name": { "type": "string" },
           "type": { "type": "string" },
+          "shape": {
+            "type": "string",
+            "enum": ["rectangle", "circle", "diamond", "hexagon", "parallelogram", "oval", "trapezoid", "cylinder", "cloud", "star"],
+            "default": "rectangle"
+          },
           "status": {
             "type": "string",
             "enum": ["Placeholder", "Planned", "In-Work", "Implemented", "Verified"]
@@ -69,7 +74,45 @@
                 "occToken": { "type": "string" },
                 "docPath": { "type": "string" },
                 "device": { "type": "string" },
-                "footprint": { "type": "string" }
+                "footprint": { "type": "string" },
+                "componentProperties": {
+                  "type": "object",
+                  "properties": {
+                    "material": { "type": "string" },
+                    "mass": { "type": "number" },
+                    "volume": { "type": "number" },
+                    "boundingBox": {
+                      "type": "object",
+                      "properties": {
+                        "min": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+                        "max": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+                      }
+                    },
+                    "customProperties": { "type": "object", "additionalProperties": true }
+                  },
+                  "additionalProperties": true
+                },
+                "syncStatus": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "enum": ["synchronized", "modified", "missing", "error", "unknown"] },
+                    "lastSync": { "type": "string", "format": "date-time" },
+                    "lastModified": { "type": "string", "format": "date-time" },
+                    "syncErrors": { "type": "array", "items": { "type": "string" } },
+                    "changesSinceSync": { "type": "array", "items": { "type": "string" } }
+                  },
+                  "additionalProperties": false
+                },
+                "thumbnail": {
+                  "type": "object",
+                  "properties": {
+                    "dataUrl": { "type": "string" },
+                    "width": { "type": "integer" },
+                    "height": { "type": "integer" },
+                    "generatedAt": { "type": "string", "format": "date-time" }
+                  },
+                  "additionalProperties": false
+                }
               },
               "additionalProperties": true
             }
@@ -84,6 +127,119 @@
               "connections": {
                 "type": "array", 
                 "items": { "$ref": "#/properties/connections/items" }
+              }
+            },
+            "additionalProperties": false
+          },
+          "visualization3D": {
+            "type": "object",
+            "description": "MILESTONE 13: 3D visualization and living documentation properties",
+            "properties": {
+              "overlayPosition": {
+                "type": "object",
+                "description": "Position of block overlay in 3D viewport",
+                "properties": {
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "z": { "type": "number" }
+                }
+              },
+              "highlightColor": {
+                "type": "string",
+                "description": "Color for highlighting related 3D components",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "groupBoundary": {
+                "type": "object",
+                "description": "3D boundary visualization for system grouping",
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+                  "opacity": { "type": "number", "minimum": 0, "maximum": 1 }
+                }
+              },
+              "liveThumbnail": {
+                "type": "object",
+                "description": "Live 3D thumbnail properties",
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "updateInterval": { "type": "integer", "minimum": 1000 },
+                  "viewAngle": { "type": "string", "enum": ["iso", "front", "top", "side"] },
+                  "lastUpdated": { "type": "string", "format": "date-time" }
+                }
+              },
+              "propertyDisplay": {
+                "type": "object",
+                "description": "Enhanced property display configuration",
+                "properties": {
+                  "showInTooltip": { "type": "array", "items": { "type": "string" } },
+                  "showOnBlock": { "type": "array", "items": { "type": "string" } },
+                  "progressBar": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": { "type": "boolean" },
+                      "type": { "type": "string", "enum": ["assembly", "design", "manufacturing"] }
+                    }
+                  }
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "livingDocumentation": {
+            "type": "object",
+            "description": "MILESTONE 13: Living documentation and auto-generation properties",
+            "properties": {
+              "assemblySequence": {
+                "type": "object",
+                "properties": {
+                  "order": { "type": "integer", "minimum": 1 },
+                  "dependencies": { "type": "array", "items": { "type": "string" } },
+                  "estimatedTime": { "type": "number", "minimum": 0 },
+                  "complexity": { "type": "string", "enum": ["simple", "moderate", "complex", "critical"] }
+                }
+              },
+              "bomEntry": {
+                "type": "object",
+                "description": "Bill of Materials entry for this block",
+                "properties": {
+                  "partNumber": { "type": "string" },
+                  "quantity": { "type": "integer", "minimum": 1 },
+                  "supplier": { "type": "string" },
+                  "cost": { "type": "number", "minimum": 0 },
+                  "leadTime": { "type": "integer", "minimum": 0 },
+                  "category": { "type": "string" }
+                }
+              },
+              "serviceManual": {
+                "type": "object",
+                "description": "Service manual generation data",
+                "properties": {
+                  "maintenanceInterval": { "type": "integer", "minimum": 0 },
+                  "replacementParts": { "type": "array", "items": { "type": "string" } },
+                  "troubleshootingSteps": { "type": "array", "items": { "type": "string" } },
+                  "safetyNotes": { "type": "array", "items": { "type": "string" } }
+                }
+              },
+              "changeImpact": {
+                "type": "object",
+                "description": "Change impact tracking",
+                "properties": {
+                  "lastChanged": { "type": "string", "format": "date-time" },
+                  "affectedBlocks": { "type": "array", "items": { "type": "string" } },
+                  "impactLevel": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+                  "changeReason": { "type": "string" }
+                }
+              },
+              "manufacturingProgress": {
+                "type": "object",
+                "description": "Manufacturing and progress tracking",
+                "properties": {
+                  "stage": { "type": "string", "enum": ["design", "prototype", "production", "complete"] },
+                  "completionPercentage": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "qualityChecks": { "type": "array", "items": { "type": "string" } },
+                  "certifications": { "type": "array", "items": { "type": "string" } }
+                }
               }
             },
             "additionalProperties": false
@@ -122,7 +278,49 @@
             "enum": ["electrical", "power", "data", "mechanical"]
           },
           "protocol": { "type": "string" },
-          "attributes": { "type": "object" }
+          "attributes": { "type": "object" },
+          "visualization3D": {
+            "type": "object",
+            "description": "MILESTONE 13: 3D connection visualization",
+            "properties": {
+              "routePath": {
+                "type": "array",
+                "description": "3D path for connection routing visualization",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "x": { "type": "number" },
+                    "y": { "type": "number" },
+                    "z": { "type": "number" }
+                  }
+                }
+              },
+              "routingStatus": {
+                "type": "string",
+                "enum": ["routed", "planned", "missing", "conflict"],
+                "description": "Status of physical connection routing"
+              },
+              "cableProperties": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string" },
+                  "gauge": { "type": "string" },
+                  "length": { "type": "number", "minimum": 0 },
+                  "color": { "type": "string" }
+                }
+              },
+              "visualStyle": {
+                "type": "object",
+                "properties": {
+                  "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+                  "thickness": { "type": "number", "minimum": 0.1 },
+                  "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "animated": { "type": "boolean" }
+                }
+              }
+            },
+            "additionalProperties": false
+          }
         },
         "additionalProperties": true
       }

@@ -80,6 +80,226 @@ class SystemBlocksEditor {
     debugLog("Professional UI enhancements initialized!");
   }
 
+  // === BLOCK SHAPE SYSTEM ===
+  // Create different block shapes for different purposes
+  createBlockShape(shape, width, height, x, y, isHalo) {
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    const radius = Math.min(width, height) / 2;
+    
+    switch (shape) {
+      case 'rectangle':
+      case 'process':
+        return this.createRectangleBlock(width, height, x, y, isHalo);
+        
+      case 'circle':
+      case 'connector':
+        return this.createCircleBlock(radius, centerX, centerY, isHalo);
+        
+      case 'diamond':
+      case 'decision':
+        return this.createDiamondBlock(width, height, centerX, centerY, isHalo);
+        
+      case 'hexagon':
+      case 'preparation':
+        return this.createHexagonBlock(width, height, centerX, centerY, isHalo);
+        
+      case 'parallelogram':
+      case 'data':
+        return this.createParallelogramBlock(width, height, x, y, isHalo);
+        
+      case 'oval':
+      case 'terminal':
+        return this.createOvalBlock(width, height, centerX, centerY, isHalo);
+        
+      case 'trapezoid':
+      case 'manual':
+        return this.createTrapezoidBlock(width, height, x, y, isHalo);
+        
+      case 'cylinder':
+      case 'database':
+        return this.createCylinderBlock(width, height, centerX, centerY, isHalo);
+        
+      case 'cloud':
+      case 'service':
+        return this.createCloudBlock(width, height, centerX, centerY, isHalo);
+        
+      case 'star':
+      case 'checkpoint':
+        return this.createStarBlock(radius, centerX, centerY, isHalo);
+        
+      default:
+        return this.createRectangleBlock(width, height, x, y, isHalo);
+    }
+  }
+  
+  createRectangleBlock(width, height, x, y, isHalo) {
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('width', width);
+    rect.setAttribute('height', height);
+    rect.setAttribute('x', x);
+    rect.setAttribute('y', y);
+    rect.setAttribute('rx', isHalo ? '8' : '4');
+    return rect;
+  }
+  
+  createCircleBlock(radius, centerX, centerY, isHalo) {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('r', radius + (isHalo ? 3 : 0));
+    circle.setAttribute('cx', centerX);
+    circle.setAttribute('cy', centerY);
+    return circle;
+  }
+  
+  createDiamondBlock(width, height, centerX, centerY, isHalo) {
+    const diamond = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const w = width / 2 + (isHalo ? 3 : 0);
+    const h = height / 2 + (isHalo ? 3 : 0);
+    const points = [
+      `${centerX},${centerY - h}`,      // top
+      `${centerX + w},${centerY}`,      // right
+      `${centerX},${centerY + h}`,      // bottom
+      `${centerX - w},${centerY}`       // left
+    ].join(' ');
+    diamond.setAttribute('points', points);
+    return diamond;
+  }
+  
+  createHexagonBlock(width, height, centerX, centerY, isHalo) {
+    const hexagon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const w = width / 2 + (isHalo ? 3 : 0);
+    const h = height / 2 + (isHalo ? 3 : 0);
+    const offset = w * 0.25; // 25% offset for hexagon shape
+    const points = [
+      `${centerX - w + offset},${centerY - h}`,    // top-left
+      `${centerX + w - offset},${centerY - h}`,    // top-right
+      `${centerX + w},${centerY}`,                 // right
+      `${centerX + w - offset},${centerY + h}`,    // bottom-right
+      `${centerX - w + offset},${centerY + h}`,    // bottom-left
+      `${centerX - w},${centerY}`                  // left
+    ].join(' ');
+    hexagon.setAttribute('points', points);
+    return hexagon;
+  }
+  
+  createParallelogramBlock(width, height, x, y, isHalo) {
+    const parallelogram = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const offset = width * 0.15; // 15% skew
+    const w = width + (isHalo ? 6 : 0);
+    const h = height + (isHalo ? 6 : 0);
+    const startX = x - (isHalo ? 3 : 0);
+    const startY = y - (isHalo ? 3 : 0);
+    const points = [
+      `${startX + offset},${startY}`,           // top-left
+      `${startX + w},${startY}`,                // top-right
+      `${startX + w - offset},${startY + h}`,   // bottom-right
+      `${startX},${startY + h}`                 // bottom-left
+    ].join(' ');
+    parallelogram.setAttribute('points', points);
+    return parallelogram;
+  }
+  
+  createOvalBlock(width, height, centerX, centerY, isHalo) {
+    const oval = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+    oval.setAttribute('rx', width / 2 + (isHalo ? 3 : 0));
+    oval.setAttribute('ry', height / 2 + (isHalo ? 3 : 0));
+    oval.setAttribute('cx', centerX);
+    oval.setAttribute('cy', centerY);
+    return oval;
+  }
+  
+  createTrapezoidBlock(width, height, x, y, isHalo) {
+    const trapezoid = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const offset = width * 0.2; // 20% inset for trapezoid
+    const w = width + (isHalo ? 6 : 0);
+    const h = height + (isHalo ? 6 : 0);
+    const startX = x - (isHalo ? 3 : 0);
+    const startY = y - (isHalo ? 3 : 0);
+    const points = [
+      `${startX + offset},${startY}`,           // top-left
+      `${startX + w - offset},${startY}`,       // top-right
+      `${startX + w},${startY + h}`,            // bottom-right
+      `${startX},${startY + h}`                 // bottom-left
+    ].join(' ');
+    trapezoid.setAttribute('points', points);
+    return trapezoid;
+  }
+  
+  createCylinderBlock(width, height, centerX, centerY, isHalo) {
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const w = width / 2 + (isHalo ? 3 : 0);
+    const h = height / 2 + (isHalo ? 3 : 0);
+    const ellipseH = h * 0.15; // Height of cylinder top/bottom
+    
+    // Main cylinder body
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('width', w * 2);
+    rect.setAttribute('height', h * 2 - ellipseH * 2);
+    rect.setAttribute('x', centerX - w);
+    rect.setAttribute('y', centerY - h + ellipseH);
+    group.appendChild(rect);
+    
+    // Top ellipse
+    const topEllipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+    topEllipse.setAttribute('rx', w);
+    topEllipse.setAttribute('ry', ellipseH);
+    topEllipse.setAttribute('cx', centerX);
+    topEllipse.setAttribute('cy', centerY - h + ellipseH);
+    group.appendChild(topEllipse);
+    
+    // Bottom ellipse
+    const bottomEllipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+    bottomEllipse.setAttribute('rx', w);
+    bottomEllipse.setAttribute('ry', ellipseH);
+    bottomEllipse.setAttribute('cx', centerX);
+    bottomEllipse.setAttribute('cy', centerY + h - ellipseH);
+    bottomEllipse.setAttribute('fill', 'none');
+    bottomEllipse.setAttribute('stroke', 'currentColor');
+    bottomEllipse.setAttribute('stroke-width', '1');
+    group.appendChild(bottomEllipse);
+    
+    return group;
+  }
+  
+  createCloudBlock(width, height, centerX, centerY, isHalo) {
+    const cloud = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const w = width / 2 + (isHalo ? 3 : 0);
+    const h = height / 2 + (isHalo ? 3 : 0);
+    
+    // Create cloud shape using bezier curves
+    const pathData = [
+      `M ${centerX - w * 0.6} ${centerY}`,
+      `C ${centerX - w} ${centerY - h * 0.6} ${centerX - w * 0.2} ${centerY - h} ${centerX + w * 0.2} ${centerY - h * 0.8}`,
+      `C ${centerX + w * 0.4} ${centerY - h} ${centerX + w} ${centerY - h * 0.6} ${centerX + w * 0.8} ${centerY - h * 0.2}`,
+      `C ${centerX + w} ${centerY} ${centerX + w * 0.8} ${centerY + h * 0.4} ${centerX + w * 0.4} ${centerY + h * 0.6}`,
+      `C ${centerX + w * 0.2} ${centerY + h} ${centerX - w * 0.2} ${centerY + h} ${centerX - w * 0.4} ${centerY + h * 0.6}`,
+      `C ${centerX - w * 0.8} ${centerY + h * 0.4} ${centerX - w} ${centerY + h * 0.2} ${centerX - w * 0.6} ${centerY}`,
+      'Z'
+    ].join(' ');
+    
+    cloud.setAttribute('d', pathData);
+    return cloud;
+  }
+  
+  createStarBlock(radius, centerX, centerY, isHalo) {
+    const star = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const r = radius + (isHalo ? 3 : 0);
+    const innerR = r * 0.4; // Inner radius for star points
+    const points = [];
+    
+    // Create 5-pointed star
+    for (let i = 0; i < 10; i++) {
+      const angle = (i * Math.PI) / 5 - Math.PI / 2;
+      const currentR = i % 2 === 0 ? r : innerR;
+      const x = centerX + Math.cos(angle) * currentR;
+      const y = centerY + Math.sin(angle) * currentR;
+      points.push(`${x},${y}`);
+    }
+    
+    star.setAttribute('points', points.join(' '));
+    return star;
+  }
+
   setupTooltips() {
     // Create tooltip element
     this.tooltip = document.createElement('div');
@@ -162,6 +382,7 @@ class SystemBlocksEditor {
     if (type === 'block') {
       return [
         { label: 'Edit Properties', action: 'edit', icon: 'icon-edit' },
+        { label: 'Change Shape', action: 'change-shape', icon: 'icon-blocks' },
         { label: 'Duplicate', action: 'duplicate', icon: 'icon-add' },
         { label: 'Link to CAD', action: 'link-cad', icon: 'icon-mechanical' },
         { label: 'Change Status', action: 'status', icon: 'icon-status-planned' },
@@ -190,6 +411,9 @@ class SystemBlocksEditor {
     switch (action) {
       case 'edit':
         this.showBlockPropertiesDialog(block);
+        break;
+      case 'change-shape':
+        this.showShapeChangeDialog(block);
         break;
       case 'duplicate':
         this.duplicateBlock(block);
@@ -243,6 +467,190 @@ class SystemBlocksEditor {
     block.status = statuses[nextIndex];
     this.renderDiagram();
     this.showNotification(`Status changed to ${block.status}`, 'success');
+  }
+
+  showShapeChangeDialog(block) {
+    // Create shape change dialog
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      backdrop-filter: blur(2px);
+    `;
+    
+    const dialog = document.createElement('div');
+    dialog.className = 'shape-change-dialog';
+    dialog.style.cssText = `
+      background: var(--fusion-bg-primary);
+      border: 1px solid var(--fusion-border);
+      border-radius: 8px;
+      padding: 24px;
+      min-width: 400px;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    `;
+    
+    dialog.innerHTML = `
+      <h3 style="margin: 0 0 20px 0; color: var(--fusion-text-primary); font-size: 18px;">Change Block Shape</h3>
+      
+      <div style="margin-bottom: 16px;">
+        <p style="color: var(--fusion-text-secondary); margin: 0 0 12px 0;">Current block: <strong>${block.name}</strong></p>
+        <p style="color: var(--fusion-text-secondary); margin: 0 0 16px 0;">Current shape: <strong>${this.getShapeDisplayName(block.shape || 'rectangle')}</strong></p>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 12px; color: var(--fusion-text-primary); font-weight: 500;">New Shape:</label>
+        <div id="shape-change-selector" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+          <!-- Shape options will be added here -->
+        </div>
+      </div>
+      
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <button id="cancel-shape-btn" style="padding: 8px 16px; border: 1px solid var(--fusion-border); 
+                background: var(--fusion-bg-secondary); color: var(--fusion-text-primary); border-radius: 4px; cursor: pointer;">
+          Cancel
+        </button>
+        <button id="apply-shape-btn" style="padding: 8px 16px; border: none; 
+                background: var(--fusion-accent); color: white; border-radius: 4px; cursor: pointer;">
+          Apply Shape
+        </button>
+      </div>
+    `;
+    
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    
+    // Populate shape selector
+    this.populateShapeChangerSelector(block.shape || 'rectangle');
+    
+    let selectedShape = block.shape || 'rectangle';
+    
+    // Handle shape selection
+    document.querySelectorAll('.shape-change-option').forEach(option => {
+      option.addEventListener('click', () => {
+        document.querySelectorAll('.shape-change-option').forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+        selectedShape = option.dataset.shape;
+      });
+    });
+    
+    const closeDialog = () => {
+      document.body.removeChild(overlay);
+    };
+    
+    // Event listeners
+    document.getElementById('cancel-shape-btn').addEventListener('click', closeDialog);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeDialog();
+    });
+    
+    document.getElementById('apply-shape-btn').addEventListener('click', () => {
+      if (selectedShape !== block.shape) {
+        this.saveState(); // Save for undo
+        const oldShape = block.shape || 'rectangle';
+        block.shape = selectedShape;
+        
+        // Adjust dimensions for the new shape
+        const newDimensions = this.getOptimalDimensionsForShape(selectedShape);
+        block.width = newDimensions.width;
+        block.height = newDimensions.height;
+        
+        this.renderDiagram();
+        this.showNotification(`Changed shape from ${this.getShapeDisplayName(oldShape)} to ${this.getShapeDisplayName(selectedShape)}`, 'success');
+      }
+      closeDialog();
+    });
+  }
+
+  populateShapeChangerSelector(currentShape) {
+    const shapeSelector = document.getElementById('shape-change-selector');
+    const shapes = [
+      { name: 'Rectangle', shape: 'rectangle', icon: '⬜', description: 'Process/Component' },
+      { name: 'Circle', shape: 'circle', icon: '⭕', description: 'Connector/Node' },
+      { name: 'Diamond', shape: 'diamond', icon: '◆', description: 'Decision/Logic' },
+      { name: 'Hexagon', shape: 'hexagon', icon: '⬡', description: 'Preparation/Setup' },
+      { name: 'Parallelogram', shape: 'parallelogram', icon: '▱', description: 'Data/Input/Output' },
+      { name: 'Oval', shape: 'oval', icon: '⬭', description: 'Terminal/Start/End' },
+      { name: 'Trapezoid', shape: 'trapezoid', icon: '⏢', description: 'Manual Operation' },
+      { name: 'Cylinder', shape: 'cylinder', icon: '🗄️', description: 'Database/Storage' },
+      { name: 'Cloud', shape: 'cloud', icon: '☁️', description: 'Cloud Service/External' },
+      { name: 'Star', shape: 'star', icon: '⭐', description: 'Checkpoint/Important' }
+    ];
+    
+    shapes.forEach(shape => {
+      const option = document.createElement('div');
+      option.className = 'shape-change-option';
+      option.dataset.shape = shape.shape;
+      
+      const isSelected = shape.shape === currentShape;
+      
+      option.style.cssText = `
+        padding: 12px;
+        border: 2px solid ${isSelected ? 'var(--fusion-accent)' : 'var(--fusion-border)'};
+        border-radius: 6px;
+        text-align: center;
+        cursor: pointer;
+        background: ${isSelected ? 'var(--fusion-accent-hover)' : 'var(--fusion-bg-secondary)'};
+        transition: all 0.2s ease;
+        min-height: 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        ${isSelected ? 'box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2);' : ''}
+      `;
+      
+      if (isSelected) {
+        option.classList.add('selected');
+      }
+      
+      option.innerHTML = `
+        <div style="font-size: 24px; margin-bottom: 4px;">${shape.icon}</div>
+        <div style="font-size: 12px; font-weight: 500; color: var(--fusion-text-primary); margin-bottom: 2px;">${shape.name}</div>
+        <div style="font-size: 10px; color: var(--fusion-text-secondary); text-align: center; line-height: 1.2;">${shape.description}</div>
+      `;
+      
+      option.addEventListener('mouseenter', () => {
+        if (!option.classList.contains('selected')) {
+          option.style.borderColor = 'var(--fusion-accent)';
+          option.style.background = 'var(--fusion-bg-hover)';
+        }
+      });
+      
+      option.addEventListener('mouseleave', () => {
+        if (!option.classList.contains('selected')) {
+          option.style.borderColor = 'var(--fusion-border)';
+          option.style.background = 'var(--fusion-bg-secondary)';
+        }
+      });
+      
+      shapeSelector.appendChild(option);
+    });
+  }
+
+  getShapeDisplayName(shape) {
+    const shapeNames = {
+      'rectangle': 'Rectangle',
+      'circle': 'Circle',
+      'diamond': 'Diamond',
+      'hexagon': 'Hexagon',
+      'parallelogram': 'Parallelogram',
+      'oval': 'Oval',
+      'trapezoid': 'Trapezoid',
+      'cylinder': 'Cylinder',
+      'cloud': 'Cloud',
+      'star': 'Star'
+    };
+    return shapeNames[shape] || 'Rectangle';
   }
 
   deleteBlock(block) {
@@ -674,7 +1082,11 @@ class SystemBlocksEditor {
   }
   
   addBlock(name, x, y, type = "Custom") {
-    debugLog("addBlock called with: " + name + " at (" + x + ", " + y + ")");
+    return this.addBlockWithShape(name, x, y, type, "rectangle");
+  }
+  
+  addBlockWithShape(name, x, y, type = "Custom", shape = "rectangle") {
+    debugLog("addBlockWithShape called with: " + name + " at (" + x + ", " + y + ") shape: " + shape);
     
     try {
       debugLog("About to save state...");
@@ -686,21 +1098,25 @@ class SystemBlocksEditor {
       const snappedPos = this.snapPointToGrid(x, y);
       debugLog("Snapped position: " + snappedPos.x + ", " + snappedPos.y);
       
+      // Adjust dimensions based on shape for better visual appearance
+      const dimensions = this.getOptimalDimensionsForShape(shape);
+      
       const block = {
         id: this.generateId(),
         name: name,
         type: type,
+        shape: shape, // Add shape property to block
         status: "Placeholder",
         x: snappedPos.x,
         y: snappedPos.y,
-        width: 120,
-        height: 60,
+        width: dimensions.width,
+        height: dimensions.height,
         interfaces: [],
         links: [],
         attributes: {},
         _isNewBlock: true  // Flag for animation
       };
-      debugLog("Block object created with ID: " + block.id);
+      debugLog("Block object created with ID: " + block.id + " and shape: " + shape);
       
       // Add default interfaces
       debugLog("Adding default interfaces...");
@@ -721,8 +1137,33 @@ class SystemBlocksEditor {
       
       return block;
     } catch (e) {
-      debugLog("ERROR in addBlock: " + e.message);
+      debugLog("ERROR in addBlockWithShape: " + e.message);
       throw e;
+    }
+  }
+  
+  getOptimalDimensionsForShape(shape) {
+    // Return optimal width/height for different shapes
+    switch (shape) {
+      case 'circle':
+      case 'star':
+        return { width: 80, height: 80 }; // Square for circular shapes
+      case 'diamond':
+        return { width: 100, height: 80 }; // Slightly wider for diamond
+      case 'hexagon':
+        return { width: 140, height: 80 }; // Wider for hexagon
+      case 'parallelogram':
+      case 'trapezoid':
+        return { width: 140, height: 70 }; // Wider and shorter for skewed shapes
+      case 'oval':
+        return { width: 140, height: 70 }; // Wider oval
+      case 'cylinder':
+        return { width: 100, height: 90 }; // Taller for cylinder
+      case 'cloud':
+        return { width: 140, height: 90 }; // Larger for cloud
+      case 'rectangle':
+      default:
+        return { width: 120, height: 60 }; // Default rectangular
     }
   }
   
@@ -743,25 +1184,20 @@ class SystemBlocksEditor {
     g.setAttribute('data-block-id', block.id);
     g.setAttribute('transform', `translate(${block.x}, ${block.y})`);
     
-    // Status halo (background border)
-    const statusHalo = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    // Get block shape (default to rectangle if not specified)
+    const shape = block.shape || 'rectangle';
+    
+    // Status halo (background border) - shape-aware
+    const statusHalo = this.createBlockShape(shape, block.width + 6, block.height + 6, -3, -3, true);
     statusHalo.setAttribute('class', 'status-halo');
-    statusHalo.setAttribute('width', block.width + 6);
-    statusHalo.setAttribute('height', block.height + 6);
-    statusHalo.setAttribute('x', -3);
-    statusHalo.setAttribute('y', -3);
-    statusHalo.setAttribute('rx', '6');
     statusHalo.setAttribute('fill', this.getStatusColor(block.status || 'Placeholder'));
     statusHalo.setAttribute('opacity', '0.3');
     g.appendChild(statusHalo);
     
-    // Block rectangle
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('class', 'block');
-    rect.setAttribute('width', block.width);
-    rect.setAttribute('height', block.height);
-    rect.setAttribute('rx', '4');
-    g.appendChild(rect);
+    // Block shape (main visual element)
+    const blockShape = this.createBlockShape(shape, block.width, block.height, 0, 0, false);
+    blockShape.setAttribute('class', 'block');
+    g.appendChild(blockShape);
     
     // Block text
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -2158,24 +2594,202 @@ class SystemBlocksEditor {
   
   promptAddBlock() {
     debugLog("promptAddBlock called");
-    const name = prompt("Enter block name:", "New Block");
-    debugLog("User entered name: " + name);
-    if (name) {
-      debugLog("About to call addBlock with name: " + name);
-      try {
-        // Calculate position with offset to avoid overlap
-        const blockCount = this.diagram.blocks.length;
-        const offsetX = 100 + (blockCount * 30); // Move right by 30px for each block
-        const offsetY = 100 + (blockCount * 30); // Move down by 30px for each block
-        
-        const result = this.addBlock(name, offsetX, offsetY);
-        debugLog("addBlock returned: " + (result ? "success" : "failed"));
-      } catch (e) {
-        debugLog("ERROR in addBlock: " + e.message);
+    this.showBlockCreationDialog();
+  }
+  
+  showBlockCreationDialog() {
+    // Create dialog overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      backdrop-filter: blur(2px);
+    `;
+    
+    // Create dialog
+    const dialog = document.createElement('div');
+    dialog.className = 'block-creation-dialog';
+    dialog.style.cssText = `
+      background: var(--fusion-bg-primary);
+      border: 1px solid var(--fusion-border);
+      border-radius: 8px;
+      padding: 24px;
+      min-width: 400px;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    `;
+    
+    dialog.innerHTML = `
+      <h3 style="margin: 0 0 20px 0; color: var(--fusion-text-primary); font-size: 18px;">Create New Block</h3>
+      
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 8px; color: var(--fusion-text-primary); font-weight: 500;">Block Name:</label>
+        <input type="text" id="block-name-input" value="New Block" 
+               style="width: 100%; padding: 8px 12px; border: 1px solid var(--fusion-border); 
+                      border-radius: 4px; background: var(--fusion-bg-secondary); color: var(--fusion-text-primary);">
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 12px; color: var(--fusion-text-primary); font-weight: 500;">Block Shape:</label>
+        <div id="shape-selector" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+          <!-- Shape options will be added here -->
+        </div>
+      </div>
+      
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <button id="cancel-block-btn" style="padding: 8px 16px; border: 1px solid var(--fusion-border); 
+                background: var(--fusion-bg-secondary); color: var(--fusion-text-primary); border-radius: 4px; cursor: pointer;">
+          Cancel
+        </button>
+        <button id="create-block-btn" style="padding: 8px 16px; border: none; 
+                background: var(--fusion-accent); color: white; border-radius: 4px; cursor: pointer;">
+          Create Block
+        </button>
+      </div>
+    `;
+    
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    
+    // Add shape options
+    this.populateShapeSelector();
+    
+    // Set up event listeners
+    const nameInput = document.getElementById('block-name-input');
+    const cancelBtn = document.getElementById('cancel-block-btn');
+    const createBtn = document.getElementById('create-block-btn');
+    
+    nameInput.focus();
+    nameInput.select();
+    
+    let selectedShape = 'rectangle'; // Default shape
+    
+    // Handle shape selection
+    document.querySelectorAll('.shape-option').forEach(option => {
+      option.addEventListener('click', () => {
+        document.querySelectorAll('.shape-option').forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+        selectedShape = option.dataset.shape;
+      });
+    });
+    
+    // Select default shape
+    document.querySelector('.shape-option[data-shape="rectangle"]')?.classList.add('selected');
+    
+    const closeDialog = () => {
+      document.body.removeChild(overlay);
+    };
+    
+    cancelBtn.addEventListener('click', closeDialog);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeDialog();
+    });
+    
+    createBtn.addEventListener('click', () => {
+      const name = nameInput.value.trim();
+      if (name) {
+        debugLog("About to call addBlock with name: " + name + " and shape: " + selectedShape);
+        try {
+          // Calculate position with offset to avoid overlap
+          const blockCount = this.diagram.blocks.length;
+          const offsetX = 100 + (blockCount * 30);
+          const offsetY = 100 + (blockCount * 30);
+          
+          const result = this.addBlockWithShape(name, offsetX, offsetY, "Custom", selectedShape);
+          debugLog("addBlockWithShape returned: " + (result ? "success" : "failed"));
+          closeDialog();
+        } catch (e) {
+          debugLog("ERROR in addBlockWithShape: " + e.message);
+        }
       }
-    } else {
-      debugLog("User cancelled or entered empty name");
-    }
+    });
+    
+    // Handle Enter key
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        createBtn.click();
+      } else if (e.key === 'Escape') {
+        closeDialog();
+      }
+    });
+  }
+  
+  populateShapeSelector() {
+    const shapeSelector = document.getElementById('shape-selector');
+    const shapes = [
+      { name: 'Rectangle', shape: 'rectangle', icon: '⬜', description: 'Process/Component' },
+      { name: 'Circle', shape: 'circle', icon: '⭕', description: 'Connector/Node' },
+      { name: 'Diamond', shape: 'diamond', icon: '◆', description: 'Decision/Logic' },
+      { name: 'Hexagon', shape: 'hexagon', icon: '⬡', description: 'Preparation/Setup' },
+      { name: 'Parallelogram', shape: 'parallelogram', icon: '▱', description: 'Data/Input/Output' },
+      { name: 'Oval', shape: 'oval', icon: '⬭', description: 'Terminal/Start/End' },
+      { name: 'Trapezoid', shape: 'trapezoid', icon: '⏢', description: 'Manual Operation' },
+      { name: 'Cylinder', shape: 'cylinder', icon: '🗄️', description: 'Database/Storage' },
+      { name: 'Cloud', shape: 'cloud', icon: '☁️', description: 'Cloud Service/External' },
+      { name: 'Star', shape: 'star', icon: '⭐', description: 'Checkpoint/Important' }
+    ];
+    
+    shapes.forEach(shape => {
+      const option = document.createElement('div');
+      option.className = 'shape-option';
+      option.dataset.shape = shape.shape;
+      option.style.cssText = `
+        padding: 12px;
+        border: 2px solid var(--fusion-border);
+        border-radius: 6px;
+        text-align: center;
+        cursor: pointer;
+        background: var(--fusion-bg-secondary);
+        transition: all 0.2s ease;
+        min-height: 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      `;
+      
+      option.innerHTML = `
+        <div style="font-size: 24px; margin-bottom: 4px;">${shape.icon}</div>
+        <div style="font-size: 12px; font-weight: 500; color: var(--fusion-text-primary); margin-bottom: 2px;">${shape.name}</div>
+        <div style="font-size: 10px; color: var(--fusion-text-secondary); text-align: center; line-height: 1.2;">${shape.description}</div>
+      `;
+      
+      option.addEventListener('mouseenter', () => {
+        if (!option.classList.contains('selected')) {
+          option.style.borderColor = 'var(--fusion-accent)';
+          option.style.background = 'var(--fusion-bg-hover)';
+        }
+      });
+      
+      option.addEventListener('mouseleave', () => {
+        if (!option.classList.contains('selected')) {
+          option.style.borderColor = 'var(--fusion-border)';
+          option.style.background = 'var(--fusion-bg-secondary)';
+        }
+      });
+      
+      shapeSelector.appendChild(option);
+    });
+    
+    // Add CSS for selected state
+    const style = document.createElement('style');
+    style.textContent = `
+      .shape-option.selected {
+        border-color: var(--fusion-accent) !important;
+        background: var(--fusion-accent-hover) !important;
+        box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2);
+      }
+    `;
+    document.head.appendChild(style);
   }
   
   toggleSnapToGrid() {
@@ -3855,3 +4469,1251 @@ function receiveImportFromPython(responseData) {
     editor.handleImportResponse(responseData);
   }
 }
+
+// ============================================================================
+// MILESTONE 12: ENHANCED CAD LINKING SYSTEM - JAVASCRIPT INTEGRATION
+// Revolutionary living integration between block diagrams and Fusion 360
+// ============================================================================
+
+// Enhanced CAD Linking Methods
+SystemBlocksEditor.prototype.initializeEnhancedCADLinking = function() {
+  debugLog("Initializing Enhanced CAD Linking System...");
+  
+  // Initialize component status tracking
+  this.componentStatusCache = new Map();
+  this.componentSyncInProgress = false;
+  
+  // Add CAD sync controls to toolbar
+  this.addCADSyncControls();
+  
+  // Start periodic component status checking (every 30 seconds)
+  this.startComponentStatusMonitoring();
+  
+  debugLog("Enhanced CAD Linking System initialized!");
+};
+
+SystemBlocksEditor.prototype.addCADSyncControls = function() {
+  // Find toolbar or create CAD section
+  const toolbar = document.querySelector('.toolbar') || document.querySelector('.fusion-toolbar');
+  if (!toolbar) return;
+  
+  // Create CAD sync section
+  const cadSection = document.createElement('div');
+  cadSection.className = 'cad-sync-section';
+  cadSection.style.cssText = `
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 0 12px;
+    border-left: 1px solid var(--fusion-border);
+    margin-left: 12px;
+  `;
+  
+  // Sync All Components button
+  const syncAllBtn = document.createElement('button');
+  syncAllBtn.className = 'fusion-btn fusion-btn-secondary';
+  syncAllBtn.innerHTML = `
+    <span class="icon-refresh"></span>
+    <span>Sync All</span>
+  `;
+  syncAllBtn.title = 'Synchronize all CAD components';
+  syncAllBtn.addEventListener('click', () => this.syncAllComponents());
+  
+  // Component Health Dashboard button
+  const dashboardBtn = document.createElement('button');
+  dashboardBtn.className = 'fusion-btn fusion-btn-secondary';
+  dashboardBtn.innerHTML = `
+    <span class="icon-chart"></span>
+    <span>Dashboard</span>
+  `;
+  dashboardBtn.title = 'Show component health dashboard';
+  dashboardBtn.addEventListener('click', () => this.showComponentDashboard());
+  
+  // Component status indicator
+  const statusIndicator = document.createElement('div');
+  statusIndicator.id = 'component-status-indicator';
+  statusIndicator.className = 'component-status-indicator';
+  statusIndicator.style.cssText = `
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--fusion-text-secondary);
+    position: relative;
+    cursor: pointer;
+  `;
+  statusIndicator.title = 'Overall component health status';
+  statusIndicator.addEventListener('click', () => this.showComponentDashboard());
+  
+  cadSection.appendChild(syncAllBtn);
+  cadSection.appendChild(dashboardBtn);
+  cadSection.appendChild(statusIndicator);
+  toolbar.appendChild(cadSection);
+};
+
+SystemBlocksEditor.prototype.syncAllComponents = function() {
+  if (this.componentSyncInProgress) {
+    this.showNotification('Component sync already in progress', 'warning');
+    return;
+  }
+  
+  debugLog("Starting component sync for all blocks...");
+  this.componentSyncInProgress = true;
+  this.updateSyncButtonState(true);
+  
+  // Send sync request to Python
+  const message = {
+    action: 'sync-all-components',
+    diagram: this.diagram
+  };
+  
+  if (window.adsk && window.adsk.fusion && window.adsk.fusion.palettes) {
+    window.adsk.fusion.palettes.sendMessage('palette-message', JSON.stringify(message));
+  } else {
+    // Development mode - simulate sync
+    setTimeout(() => {
+      this.handleComponentSyncResponse({
+        success: true,
+        results: {
+          total_blocks: this.diagram.blocks.length,
+          blocks_with_cad: this.diagram.blocks.filter(b => 
+            b.links && b.links.some(l => l.target === 'cad')).length,
+          total_components: this.diagram.blocks.reduce((sum, b) => 
+            sum + (b.links ? b.links.filter(l => l.target === 'cad').length : 0), 0),
+          sync_successful: 5,
+          sync_failed: 0,
+          errors: []
+        }
+      });
+    }, 2000);
+  }
+};
+
+SystemBlocksEditor.prototype.handleComponentSyncResponse = function(response) {
+  this.componentSyncInProgress = false;
+  this.updateSyncButtonState(false);
+  
+  if (response.success) {
+    const results = response.results;
+    this.showNotification(
+      `Sync complete: ${results.sync_successful}/${results.total_components} components synchronized`,
+      'success'
+    );
+    
+    // Update component status cache
+    this.updateComponentStatusCache(response.componentStatuses || {});
+    
+    // Refresh diagram to show updated status
+    this.renderDiagram();
+    
+    // Update status indicator
+    this.updateComponentStatusIndicator();
+    
+  } else {
+    this.showNotification(`Component sync failed: ${response.error}`, 'error');
+  }
+  
+  debugLog("Component sync response handled");
+};
+
+SystemBlocksEditor.prototype.updateSyncButtonState = function(syncing) {
+  const syncBtn = document.querySelector('.cad-sync-section button');
+  if (syncBtn) {
+    if (syncing) {
+      syncBtn.disabled = true;
+      syncBtn.innerHTML = `
+        <span class="icon-loading spinning"></span>
+        <span>Syncing...</span>
+      `;
+    } else {
+      syncBtn.disabled = false;
+      syncBtn.innerHTML = `
+        <span class="icon-refresh"></span>
+        <span>Sync All</span>
+      `;
+    }
+  }
+};
+
+SystemBlocksEditor.prototype.updateComponentStatusCache = function(statuses) {
+  // Update our local cache with latest component statuses
+  Object.entries(statuses).forEach(([blockId, status]) => {
+    this.componentStatusCache.set(blockId, status);
+  });
+};
+
+SystemBlocksEditor.prototype.updateComponentStatusIndicator = function() {
+  const indicator = document.getElementById('component-status-indicator');
+  if (!indicator) return;
+  
+  // Calculate overall health from all blocks
+  let totalComponents = 0;
+  let healthyComponents = 0;
+  let warningComponents = 0;
+  let criticalComponents = 0;
+  
+  this.diagram.blocks.forEach(block => {
+    const cadLinks = (block.links || []).filter(link => link.target === 'cad');
+    totalComponents += cadLinks.length;
+    
+    cadLinks.forEach(link => {
+      const syncStatus = link.syncStatus?.status || 'unknown';
+      if (syncStatus === 'synchronized') {
+        healthyComponents++;
+      } else if (syncStatus === 'modified' || syncStatus === 'unknown') {
+        warningComponents++;
+      } else {
+        criticalComponents++;
+      }
+    });
+  });
+  
+  let statusColor = 'var(--fusion-text-secondary)';
+  let statusTitle = 'No CAD components';
+  
+  if (totalComponents > 0) {
+    if (criticalComponents > totalComponents * 0.3) {
+      statusColor = '#ff4444';
+      statusTitle = `Critical: ${criticalComponents}/${totalComponents} components need attention`;
+    } else if (warningComponents > 0 || criticalComponents > 0) {
+      statusColor = '#ffaa00';
+      statusTitle = `Warning: ${warningComponents + criticalComponents}/${totalComponents} components need sync`;
+    } else {
+      statusColor = '#00cc66';
+      statusTitle = `Healthy: All ${totalComponents} components synchronized`;
+    }
+  }
+  
+  indicator.style.background = statusColor;
+  indicator.title = statusTitle;
+  
+  // Add pulse animation for critical status
+  if (criticalComponents > totalComponents * 0.3) {
+    indicator.style.animation = 'pulse 2s infinite';
+  } else {
+    indicator.style.animation = 'none';
+  }
+};
+
+SystemBlocksEditor.prototype.showComponentDashboard = function() {
+  debugLog("Showing component health dashboard...");
+  
+  // Create dashboard overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'dashboard-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(3px);
+  `;
+  
+  // Create dashboard dialog
+  const dashboard = document.createElement('div');
+  dashboard.className = 'component-dashboard';
+  dashboard.style.cssText = `
+    background: var(--fusion-bg-primary);
+    border: 1px solid var(--fusion-border);
+    border-radius: 12px;
+    padding: 24px;
+    min-width: 600px;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+  `;
+  
+  // Generate dashboard content
+  const dashboardData = this.generateDashboardData();
+  dashboard.innerHTML = this.createDashboardHTML(dashboardData);
+  
+  overlay.appendChild(dashboard);
+  document.body.appendChild(overlay);
+  
+  // Close on overlay click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      document.body.removeChild(overlay);
+    }
+  });
+  
+  // Add close button handler
+  const closeBtn = dashboard.querySelector('.close-dashboard');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      document.body.removeChild(overlay);
+    });
+  }
+};
+
+SystemBlocksEditor.prototype.generateDashboardData = function() {
+  // Generate dashboard data from current diagram
+  const data = {
+    overview: {
+      total_blocks: this.diagram.blocks.length,
+      blocks_with_cad: 0,
+      total_components: 0,
+      overall_health: 'unknown'
+    },
+    status_summary: {
+      synchronized: 0,
+      modified: 0,
+      missing: 0,
+      error: 0,
+      unknown: 0
+    },
+    completion_stats: {
+      average_completion: 0.0,
+      blocks_by_completion: {
+        '0-25%': 0,
+        '26-50%': 0,
+        '51-75%': 0,
+        '76-100%': 0
+      }
+    },
+    block_details: [],
+    issues: [],
+    recommendations: []
+  };
+  
+  let totalCompletion = 0;
+  
+  this.diagram.blocks.forEach(block => {
+    const cadLinks = (block.links || []).filter(link => link.target === 'cad');
+    
+    if (cadLinks.length > 0) {
+      data.overview.blocks_with_cad++;
+      data.overview.total_components += cadLinks.length;
+      
+      // Calculate completion for this block
+      let blockCompletion = 0;
+      cadLinks.forEach(link => {
+        const syncStatus = link.syncStatus?.status || 'unknown';
+        data.status_summary[syncStatus]++;
+        
+        // Simple completion calculation
+        if (syncStatus === 'synchronized') blockCompletion += 100;
+        else if (syncStatus === 'modified') blockCompletion += 75;
+        else if (syncStatus === 'unknown') blockCompletion += 25;
+      });
+      
+      blockCompletion = cadLinks.length > 0 ? blockCompletion / cadLinks.length : 0;
+      totalCompletion += blockCompletion;
+      
+      // Categorize by completion
+      if (blockCompletion <= 25) data.completion_stats.blocks_by_completion['0-25%']++;
+      else if (blockCompletion <= 50) data.completion_stats.blocks_by_completion['26-50%']++;
+      else if (blockCompletion <= 75) data.completion_stats.blocks_by_completion['51-75%']++;
+      else data.completion_stats.blocks_by_completion['76-100%']++;
+      
+      // Add block details
+      data.block_details.push({
+        name: block.name,
+        component_count: cadLinks.length,
+        completion: blockCompletion,
+        status: this.getBlockOverallStatus(cadLinks)
+      });
+    }
+  });
+  
+  // Calculate averages and overall health
+  if (data.overview.blocks_with_cad > 0) {
+    data.completion_stats.average_completion = totalCompletion / data.overview.blocks_with_cad;
+    
+    const totalComponents = data.overview.total_components;
+    if (data.status_summary.missing > totalComponents * 0.3) {
+      data.overview.overall_health = 'critical';
+    } else if (data.status_summary.error > 0 || data.status_summary.missing > 0) {
+      data.overview.overall_health = 'warning';
+    } else if (data.status_summary.synchronized === totalComponents) {
+      data.overview.overall_health = 'healthy';
+    } else {
+      data.overview.overall_health = 'needs_attention';
+    }
+  }
+  
+  return data;
+};
+
+SystemBlocksEditor.prototype.getBlockOverallStatus = function(cadLinks) {
+  const statuses = cadLinks.map(link => link.syncStatus?.status || 'unknown');
+  
+  if (statuses.includes('missing') || statuses.includes('error')) return 'critical';
+  if (statuses.includes('modified')) return 'warning';
+  if (statuses.every(s => s === 'synchronized')) return 'healthy';
+  return 'unknown';
+};
+
+SystemBlocksEditor.prototype.createDashboardHTML = function(data) {
+  const getHealthColor = (health) => {
+    switch (health) {
+      case 'healthy': return '#00cc66';
+      case 'warning': return '#ffaa00';
+      case 'critical': return '#ff4444';
+      default: return 'var(--fusion-text-secondary)';
+    }
+  };
+  
+  return `
+    <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <h2 style="margin: 0; color: var(--fusion-text-primary); font-size: 24px;">
+        🔧 Component Health Dashboard
+      </h2>
+      <button class="close-dashboard fusion-btn fusion-btn-secondary" style="padding: 8px 12px;">
+        ✕ Close
+      </button>
+    </div>
+    
+    <div class="dashboard-overview" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px;">
+      <div class="stat-card" style="background: var(--fusion-bg-secondary); padding: 16px; border-radius: 8px; text-align: center;">
+        <div style="font-size: 32px; font-weight: bold; color: var(--fusion-accent);">${data.overview.total_blocks}</div>
+        <div style="color: var(--fusion-text-secondary); font-size: 14px;">Total Blocks</div>
+      </div>
+      <div class="stat-card" style="background: var(--fusion-bg-secondary); padding: 16px; border-radius: 8px; text-align: center;">
+        <div style="font-size: 32px; font-weight: bold; color: var(--fusion-accent);">${data.overview.blocks_with_cad}</div>
+        <div style="color: var(--fusion-text-secondary); font-size: 14px;">With CAD Links</div>
+      </div>
+      <div class="stat-card" style="background: var(--fusion-bg-secondary); padding: 16px; border-radius: 8px; text-align: center;">
+        <div style="font-size: 32px; font-weight: bold; color: var(--fusion-accent);">${data.overview.total_components}</div>
+        <div style="color: var(--fusion-text-secondary); font-size: 14px;">Components</div>
+      </div>
+      <div class="stat-card" style="background: var(--fusion-bg-secondary); padding: 16px; border-radius: 8px; text-align: center;">
+        <div style="font-size: 32px; font-weight: bold; color: ${getHealthColor(data.overview.overall_health)};">
+          ${data.completion_stats.average_completion.toFixed(0)}%
+        </div>
+        <div style="color: var(--fusion-text-secondary); font-size: 14px;">Avg Completion</div>
+      </div>
+    </div>
+    
+    <div class="dashboard-charts" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+      <div class="status-chart" style="background: var(--fusion-bg-secondary); padding: 20px; border-radius: 8px;">
+        <h3 style="margin: 0 0 16px 0; color: var(--fusion-text-primary);">Component Status</h3>
+        <div class="status-bars">
+          ${Object.entries(data.status_summary).map(([status, count]) => `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 8px 0;">
+              <span style="color: var(--fusion-text-primary); text-transform: capitalize;">${status}</span>
+              <div style="flex: 1; margin: 0 12px; height: 8px; background: var(--fusion-bg-primary); border-radius: 4px; overflow: hidden;">
+                <div style="width: ${data.overview.total_components > 0 ? (count / data.overview.total_components) * 100 : 0}%; height: 100%; background: ${getHealthColor(status === 'synchronized' ? 'healthy' : status === 'modified' ? 'warning' : 'critical')}; transition: width 0.3s ease;"></div>
+              </div>
+              <span style="color: var(--fusion-text-secondary); font-weight: bold; min-width: 30px; text-align: right;">${count}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      
+      <div class="completion-chart" style="background: var(--fusion-bg-secondary); padding: 20px; border-radius: 8px;">
+        <h3 style="margin: 0 0 16px 0; color: var(--fusion-text-primary);">Completion Distribution</h3>
+        <div class="completion-bars">
+          ${Object.entries(data.completion_stats.blocks_by_completion).map(([range, count]) => `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 8px 0;">
+              <span style="color: var(--fusion-text-primary);">${range}</span>
+              <div style="flex: 1; margin: 0 12px; height: 8px; background: var(--fusion-bg-primary); border-radius: 4px; overflow: hidden;">
+                <div style="width: ${data.overview.blocks_with_cad > 0 ? (count / data.overview.blocks_with_cad) * 100 : 0}%; height: 100%; background: var(--fusion-accent); transition: width 0.3s ease;"></div>
+              </div>
+              <span style="color: var(--fusion-text-secondary); font-weight: bold; min-width: 30px; text-align: right;">${count}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+    
+    ${data.block_details.length > 0 ? `
+    <div class="block-details" style="background: var(--fusion-bg-secondary); padding: 20px; border-radius: 8px;">
+      <h3 style="margin: 0 0 16px 0; color: var(--fusion-text-primary);">Block Details</h3>
+      <div class="block-list" style="max-height: 200px; overflow-y: auto;">
+        ${data.block_details.map(block => `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--fusion-border);">
+            <div>
+              <div style="color: var(--fusion-text-primary); font-weight: 500;">${block.name}</div>
+              <div style="color: var(--fusion-text-secondary); font-size: 12px;">${block.component_count} component${block.component_count !== 1 ? 's' : ''}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="color: ${getHealthColor(block.status)}; font-weight: bold;">${block.completion.toFixed(0)}%</div>
+              <div style="color: var(--fusion-text-secondary); font-size: 12px; text-transform: capitalize;">${block.status}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    ` : ''}
+  `;
+};
+
+SystemBlocksEditor.prototype.startComponentStatusMonitoring = function() {
+  // Check component status every 30 seconds
+  setInterval(() => {
+    if (!this.componentSyncInProgress) {
+      this.updateComponentStatusIndicator();
+    }
+  }, 30000);
+};
+
+// Enhanced block rendering with component status
+SystemBlocksEditor.prototype.renderBlockWithComponentStatus = function(block) {
+  // Get original block group
+  const originalGroup = this.renderBlock(block);
+  
+  // Add component status indicators if block has CAD links
+  const cadLinks = (block.links || []).filter(link => link.target === 'cad');
+  
+  if (cadLinks.length > 0) {
+    // Add component count badge
+    const badge = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    badge.setAttribute('class', 'component-badge');
+    
+    const badgeBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    badgeBg.setAttribute('cx', block.width - 10);
+    badgeBg.setAttribute('cy', 10);
+    badgeBg.setAttribute('r', 8);
+    badgeBg.setAttribute('fill', 'var(--fusion-accent)');
+    badgeBg.setAttribute('stroke', 'var(--fusion-bg-primary)');
+    badgeBg.setAttribute('stroke-width', '1');
+    
+    const badgeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    badgeText.setAttribute('x', block.width - 10);
+    badgeText.setAttribute('y', 10);
+    badgeText.setAttribute('text-anchor', 'middle');
+    badgeText.setAttribute('dominant-baseline', 'middle');
+    badgeText.setAttribute('font-size', '10');
+    badgeText.setAttribute('font-weight', 'bold');
+    badgeText.setAttribute('fill', 'white');
+    badgeText.textContent = cadLinks.length;
+    
+    badge.appendChild(badgeBg);
+    badge.appendChild(badgeText);
+    originalGroup.appendChild(badge);
+    
+    // Add status indicator
+    const hasIssues = cadLinks.some(link => {
+      const status = link.syncStatus?.status || 'unknown';
+      return status === 'missing' || status === 'error';
+    });
+    
+    if (hasIssues) {
+      const warningIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      warningIcon.setAttribute('x', block.width - 30);
+      warningIcon.setAttribute('y', 15);
+      warningIcon.setAttribute('font-size', '12');
+      warningIcon.setAttribute('fill', '#ff4444');
+      warningIcon.textContent = '⚠️';
+      originalGroup.appendChild(warningIcon);
+    }
+  }
+  
+  return originalGroup;
+};
+
+// Initialize Enhanced CAD Linking when editor is created
+if (typeof SystemBlocksEditor !== 'undefined') {
+  const originalConstructor = SystemBlocksEditor;
+  const originalInitializeUI = SystemBlocksEditor.prototype.initializeUI;
+  
+  SystemBlocksEditor.prototype.initializeUI = function() {
+    originalInitializeUI.call(this);
+    this.initializeEnhancedCADLinking();
+    this.initializeVisualIntegration(); // MILESTONE 13
+  };
+}
+
+// ============================================================================
+// MILESTONE 13: VISUAL INTEGRATION & LIVING DOCUMENTATION - JAVASCRIPT
+// ============================================================================
+
+// Extend SystemBlocksEditor with 3D visualization and living documentation
+SystemBlocksEditor.prototype.initializeVisualIntegration = function() {
+  debugLog("Initializing Visual Integration & Living Documentation...");
+  
+  // Initialize 3D visualization state
+  this.visualization3D = {
+    overlayMode: false,
+    highlightedBlocks: new Set(),
+    groupColors: new Map(),
+    connectionRoutes: new Map(),
+    liveThumbnailsEnabled: true,
+    lastThumbnailUpdate: new Map()
+  };
+  
+  // Initialize living documentation state
+  this.livingDocumentation = {
+    assemblySequence: [],
+    currentBOM: null,
+    changeTracking: new Map(),
+    manufacturingProgress: new Map()
+  };
+  
+  // Add 3D visualization controls to UI
+  this.add3DVisualizationControls();
+  
+  // Add living documentation panel
+  this.addLivingDocumentationPanel();
+  
+  debugLog("Visual Integration & Living Documentation initialized!");
+};
+
+// 3D Visualization Methods
+SystemBlocksEditor.prototype.add3DVisualizationControls = function() {
+  const controlsContainer = document.getElementById('controls-container') || 
+                           document.createElement('div');
+  
+  if (!document.getElementById('controls-container')) {
+    controlsContainer.id = 'controls-container';
+    document.body.appendChild(controlsContainer);
+  }
+  
+  const visualizationPanel = document.createElement('div');
+  visualizationPanel.className = 'visualization-panel';
+  visualizationPanel.innerHTML = `
+    <div class="panel-header">
+      <h3>🎨 3D Visualization</h3>
+      <button onclick="window.systemBlocksEditor.toggleVisualizationPanel()" class="collapse-btn">−</button>
+    </div>
+    <div class="panel-content">
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="overlay-mode" onchange="window.systemBlocksEditor.toggleOverlayMode(this.checked)">
+          3D Overlay Mode
+        </label>
+      </div>
+      
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="live-thumbnails" checked onchange="window.systemBlocksEditor.toggleLiveThumbnails(this.checked)">
+          Live 3D Thumbnails
+        </label>
+      </div>
+      
+      <div class="control-group">
+        <button onclick="window.systemBlocksEditor.highlightSelectedComponents()" class="action-btn">
+          Highlight Components
+        </button>
+      </div>
+      
+      <div class="control-group">
+        <button onclick="window.systemBlocksEditor.showConnectionRoutes()" class="action-btn">
+          Show Connection Routes
+        </button>
+      </div>
+      
+      <div class="control-group">
+        <label for="group-color">Group Color:</label>
+        <input type="color" id="group-color" value="#2196F3" onchange="window.systemBlocksEditor.updateGroupColor(this.value)">
+      </div>
+      
+      <div class="control-group">
+        <button onclick="window.systemBlocksEditor.createSystemGrouping()" class="action-btn">
+          Create System Group
+        </button>
+      </div>
+    </div>
+  `;
+  
+  controlsContainer.appendChild(visualizationPanel);
+};
+
+SystemBlocksEditor.prototype.toggleOverlayMode = function(enabled) {
+  this.visualization3D.overlayMode = enabled;
+  debugLog(`3D Overlay Mode: ${enabled ? 'ON' : 'OFF'}`);
+  
+  if (enabled) {
+    // Enable 3D overlay visualization
+    this.sendMessage('enable-3d-overlay', {
+      diagram: this.diagram,
+      viewBox: this.viewBox
+    });
+  } else {
+    // Disable 3D overlay
+    this.sendMessage('disable-3d-overlay', {});
+  }
+};
+
+SystemBlocksEditor.prototype.toggleLiveThumbnails = function(enabled) {
+  this.visualization3D.liveThumbnailsEnabled = enabled;
+  debugLog(`Live 3D Thumbnails: ${enabled ? 'ON' : 'OFF'}`);
+  
+  if (enabled) {
+    this.updateAllLiveThumbnails();
+  }
+};
+
+SystemBlocksEditor.prototype.highlightSelectedComponents = function() {
+  if (this.selectedBlock) {
+    const blockId = this.selectedBlock.id;
+    this.visualization3D.highlightedBlocks.add(blockId);
+    
+    // Send highlight request to Fusion 360
+    this.sendMessage('highlight-components', {
+      blockId: blockId,
+      highlightColor: '#4CAF50'
+    });
+    
+    debugLog(`Highlighting components for block: ${this.selectedBlock.name}`);
+  } else {
+    debugLog("No block selected for highlighting");
+  }
+};
+
+SystemBlocksEditor.prototype.showConnectionRoutes = function() {
+  const connections = this.diagram.connections || [];
+  
+  for (const connection of connections) {
+    // Generate 3D route path for connection
+    this.sendMessage('create-connection-route', {
+      connectionId: connection.id,
+      fromBlockId: connection.from.blockId,
+      toBlockId: connection.to.blockId,
+      routeStyle: {
+        color: '#757575',
+        thickness: 2.0,
+        animated: true
+      }
+    });
+  }
+  
+  debugLog(`Showing routes for ${connections.length} connections`);
+};
+
+SystemBlocksEditor.prototype.updateGroupColor = function(color) {
+  const selectedBlocks = this.getSelectedBlocks();
+  if (selectedBlocks.length > 0) {
+    for (const block of selectedBlocks) {
+      this.visualization3D.groupColors.set(block.id, color);
+    }
+    
+    // Apply grouping in Fusion 360
+    this.sendMessage('create-system-group', {
+      blockIds: selectedBlocks.map(b => b.id),
+      groupColor: color
+    });
+    
+    debugLog(`Applied group color ${color} to ${selectedBlocks.length} blocks`);
+  }
+};
+
+SystemBlocksEditor.prototype.createSystemGrouping = function() {
+  const selectedBlocks = this.getSelectedBlocks();
+  if (selectedBlocks.length < 2) {
+    debugLog("Select at least 2 blocks to create a system group");
+    return;
+  }
+  
+  const groupColor = document.getElementById('group-color').value;
+  this.updateGroupColor(groupColor);
+};
+
+SystemBlocksEditor.prototype.updateAllLiveThumbnails = function() {
+  if (!this.visualization3D.liveThumbnailsEnabled) return;
+  
+  const blocks = this.diagram.blocks || [];
+  const blocksWithCAD = blocks.filter(block => 
+    block.links && block.links.some(link => link.target === 'cad')
+  );
+  
+  for (const block of blocksWithCAD) {
+    this.requestLiveThumbnail(block.id);
+  }
+  
+  debugLog(`Updating live thumbnails for ${blocksWithCAD.length} blocks`);
+};
+
+SystemBlocksEditor.prototype.requestLiveThumbnail = function(blockId) {
+  this.sendMessage('generate-live-thumbnail', {
+    blockId: blockId,
+    viewAngle: 'iso',
+    size: { width: 150, height: 150 }
+  });
+};
+
+// Living Documentation Methods
+SystemBlocksEditor.prototype.addLivingDocumentationPanel = function() {
+  const controlsContainer = document.getElementById('controls-container');
+  
+  const documentationPanel = document.createElement('div');
+  documentationPanel.className = 'documentation-panel';
+  documentationPanel.innerHTML = `
+    <div class="panel-header">
+      <h3>📋 Living Documentation</h3>
+      <button onclick="window.systemBlocksEditor.toggleDocumentationPanel()" class="collapse-btn">−</button>
+    </div>
+    <div class="panel-content">
+      <div class="control-group">
+        <button onclick="window.systemBlocksEditor.generateAssemblySequence()" class="action-btn">
+          Generate Assembly Sequence
+        </button>
+      </div>
+      
+      <div class="control-group">
+        <button onclick="window.systemBlocksEditor.generateLivingBOM()" class="action-btn">
+          Generate Living BOM
+        </button>
+      </div>
+      
+      <div class="control-group">
+        <button onclick="window.systemBlocksEditor.showServiceManual()" class="action-btn">
+          Service Manual
+        </button>
+      </div>
+      
+      <div class="control-group">
+        <button onclick="window.systemBlocksEditor.showChangeImpact()" class="action-btn">
+          Change Impact Analysis
+        </button>
+      </div>
+      
+      <div class="control-group">
+        <button onclick="window.systemBlocksEditor.showManufacturingProgress()" class="action-btn">
+          Manufacturing Progress
+        </button>
+      </div>
+      
+      <div id="documentation-results" class="results-panel"></div>
+    </div>
+  `;
+  
+  controlsContainer.appendChild(documentationPanel);
+};
+
+SystemBlocksEditor.prototype.generateAssemblySequence = function() {
+  debugLog("Generating assembly sequence...");
+  
+  this.sendMessage('generate-assembly-sequence', {
+    diagram: this.diagram
+  }, (result) => {
+    if (result && result.success) {
+      this.livingDocumentation.assemblySequence = result.sequence;
+      this.displayAssemblySequence(result.sequence);
+    } else {
+      debugLog("Failed to generate assembly sequence");
+    }
+  });
+};
+
+SystemBlocksEditor.prototype.displayAssemblySequence = function(sequence) {
+  const resultsPanel = document.getElementById('documentation-results');
+  
+  let html = `
+    <h4>🔧 Assembly Sequence</h4>
+    <div class="sequence-list">
+  `;
+  
+  for (const step of sequence) {
+    const complexityColor = {
+      'simple': '#4CAF50',
+      'moderate': '#FF9800', 
+      'complex': '#FF5722',
+      'critical': '#F44336'
+    }[step.complexity] || '#757575';
+    
+    html += `
+      <div class="sequence-step">
+        <div class="step-header">
+          <span class="step-number">${step.order}</span>
+          <span class="step-name">${step.blockName}</span>
+          <span class="complexity-badge" style="background-color: ${complexityColor}">
+            ${step.complexity}
+          </span>
+        </div>
+        <div class="step-details">
+          <div class="step-time">⏱ ${step.estimatedTime.toFixed(1)} min</div>
+          ${step.dependencies.length > 0 ? 
+            `<div class="step-deps">📋 Depends on: ${step.dependencies.join(', ')}</div>` : ''
+          }
+          <div class="step-instructions">
+            ${step.instructions.map(instruction => `<div>• ${instruction}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  html += '</div>';
+  resultsPanel.innerHTML = html;
+};
+
+SystemBlocksEditor.prototype.generateLivingBOM = function() {
+  debugLog("Generating living BOM...");
+  
+  this.sendMessage('generate-living-bom', {
+    diagram: this.diagram
+  }, (result) => {
+    if (result && result.success) {
+      this.livingDocumentation.currentBOM = result.bom;
+      this.displayLivingBOM(result.bom);
+    } else {
+      debugLog("Failed to generate living BOM");
+    }
+  });
+};
+
+SystemBlocksEditor.prototype.displayLivingBOM = function(bom) {
+  const resultsPanel = document.getElementById('documentation-results');
+  
+  let html = `
+    <h4>📦 Living Bill of Materials</h4>
+    <div class="bom-summary">
+      <div class="bom-stat">
+        <span class="stat-label">Total Items:</span>
+        <span class="stat-value">${bom.summary.totalItems}</span>
+      </div>
+      <div class="bom-stat">
+        <span class="stat-label">Total Cost:</span>
+        <span class="stat-value">$${bom.summary.totalCost.toFixed(2)}</span>
+      </div>
+      <div class="bom-stat">
+        <span class="stat-label">Max Lead Time:</span>
+        <span class="stat-value">${bom.summary.maxLeadTime} days</span>
+      </div>
+    </div>
+    
+    <div class="bom-items">
+      <table class="bom-table">
+        <thead>
+          <tr>
+            <th>Part Number</th>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Unit Cost</th>
+            <th>Total Cost</th>
+            <th>Lead Time</th>
+            <th>Supplier</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  for (const item of bom.items) {
+    html += `
+      <tr>
+        <td>${item.partNumber}</td>
+        <td>${item.blockName}</td>
+        <td>${item.quantity}</td>
+        <td>$${item.cost.toFixed(2)}</td>
+        <td>$${item.totalCost.toFixed(2)}</td>
+        <td>${item.leadTime} days</td>
+        <td>${item.supplier}</td>
+      </tr>
+    `;
+  }
+  
+  html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+  
+  resultsPanel.innerHTML = html;
+};
+
+SystemBlocksEditor.prototype.showServiceManual = function() {
+  if (this.selectedBlock) {
+    this.sendMessage('generate-service-manual', {
+      blockId: this.selectedBlock.id,
+      diagram: this.diagram
+    }, (result) => {
+      if (result && result.success) {
+        this.displayServiceManual(result.manual);
+      }
+    });
+  } else {
+    debugLog("Select a block to generate service manual");
+  }
+};
+
+SystemBlocksEditor.prototype.showChangeImpact = function() {
+  if (this.selectedBlock) {
+    this.sendMessage('analyze-change-impact', {
+      blockId: this.selectedBlock.id,
+      diagram: this.diagram
+    }, (result) => {
+      if (result && result.success) {
+        this.displayChangeImpact(result.impact);
+      }
+    });
+  } else {
+    debugLog("Select a block to analyze change impact");
+  }
+};
+
+SystemBlocksEditor.prototype.displayChangeImpact = function(impact) {
+  const resultsPanel = document.getElementById('documentation-results');
+  
+  const impactColors = {
+    'low': '#4CAF50',
+    'medium': '#FF9800',
+    'high': '#FF5722',
+    'critical': '#F44336'
+  };
+  
+  let html = `
+    <h4>⚡ Change Impact Analysis</h4>
+    <div class="impact-summary">
+      <div class="impact-level" style="background-color: ${impactColors[impact.impactLevel]}">
+        Impact Level: ${impact.impactLevel.toUpperCase()}
+      </div>
+      <div class="affected-count">
+        Affected Blocks: ${impact.affectedBlocks.length}
+      </div>
+    </div>
+    
+    <div class="impact-details">
+      <div class="change-reason">
+        <strong>Change Reason:</strong> ${impact.changeReason}
+      </div>
+      <div class="timestamp">
+        <strong>Analysis Time:</strong> ${new Date(impact.timestamp).toLocaleString()}
+      </div>
+      
+      ${impact.affectedBlocks.length > 0 ? `
+        <div class="affected-blocks">
+          <h5>Affected Blocks:</h5>
+          <ul>
+            ${impact.affectedBlocks.map(blockId => {
+              const block = this.diagram.blocks.find(b => b.id === blockId);
+              return `<li>${block ? block.name : blockId}</li>`;
+            }).join('')}
+          </ul>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  
+  resultsPanel.innerHTML = html;
+};
+
+SystemBlocksEditor.prototype.showManufacturingProgress = function() {
+  const blocks = this.diagram.blocks || [];
+  
+  let html = `
+    <h4>🏭 Manufacturing Progress</h4>
+    <div class="progress-overview">
+  `;
+  
+  for (const block of blocks) {
+    const progress = block.livingDocumentation?.manufacturingProgress || {
+      stage: 'design',
+      completionPercentage: 0
+    };
+    
+    const stageColors = {
+      'design': '#2196F3',
+      'prototype': '#FF9800', 
+      'production': '#FF5722',
+      'complete': '#4CAF50'
+    };
+    
+    html += `
+      <div class="progress-item">
+        <div class="progress-header">
+          <span class="block-name">${block.name}</span>
+          <span class="stage-badge" style="background-color: ${stageColors[progress.stage]}">
+            ${progress.stage}
+          </span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: ${progress.completionPercentage}%; background-color: ${stageColors[progress.stage]}"></div>
+          <span class="progress-text">${progress.completionPercentage.toFixed(1)}%</span>
+        </div>
+      </div>
+    `;
+  }
+  
+  html += '</div>';
+  
+  const resultsPanel = document.getElementById('documentation-results');
+  resultsPanel.innerHTML = html;
+};
+
+// Utility Methods
+SystemBlocksEditor.prototype.getSelectedBlocks = function() {
+  // For now, return selected block as array, but this could be extended for multi-select
+  if (this.selectedBlock) {
+    return [this.selectedBlock];
+  }
+  return [];
+};
+
+SystemBlocksEditor.prototype.toggleVisualizationPanel = function() {
+  const panel = document.querySelector('.visualization-panel .panel-content');
+  const button = document.querySelector('.visualization-panel .collapse-btn');
+  
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    button.textContent = '−';
+  } else {
+    panel.style.display = 'none';
+    button.textContent = '+';
+  }
+};
+
+SystemBlocksEditor.prototype.toggleDocumentationPanel = function() {
+  const panel = document.querySelector('.documentation-panel .panel-content');
+  const button = document.querySelector('.documentation-panel .collapse-btn');
+  
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    button.textContent = '−';
+  } else {
+    panel.style.display = 'none';
+    button.textContent = '+';
+  }
+};
+
+// CSS for 3D Visualization and Living Documentation panels
+const visualIntegrationCSS = `
+  .visualization-panel, .documentation-panel {
+    background: #2b2b2b;
+    border: 1px solid #555;
+    border-radius: 6px;
+    margin: 10px 0;
+    color: #ffffff;
+  }
+  
+  .panel-header {
+    background: #404040;
+    padding: 8px 12px;
+    border-radius: 6px 6px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .panel-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  
+  .collapse-btn {
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+  }
+  
+  .panel-content {
+    padding: 12px;
+  }
+  
+  .control-group {
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .action-btn {
+    background: #0078d4;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  
+  .action-btn:hover {
+    background: #106ebe;
+  }
+  
+  .results-panel {
+    margin-top: 12px;
+    padding: 12px;
+    background: #1e1e1e;
+    border-radius: 4px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  
+  .sequence-step {
+    margin: 8px 0;
+    padding: 8px;
+    background: #333;
+    border-radius: 4px;
+  }
+  
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  
+  .step-number {
+    background: #0078d4;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+  
+  .complexity-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    color: white;
+  }
+  
+  .bom-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  
+  .bom-table th, .bom-table td {
+    padding: 4px 8px;
+    border: 1px solid #555;
+    text-align: left;
+  }
+  
+  .bom-table th {
+    background: #404040;
+  }
+  
+  .progress-item {
+    margin: 8px 0;
+    padding: 8px;
+    background: #333;
+    border-radius: 4px;
+  }
+  
+  .progress-bar {
+    position: relative;
+    background: #555;
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+  
+  .progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 10px;
+    font-weight: bold;
+    color: white;
+  }
+`;
+
+// Inject CSS for visual integration
+const styleSheet = document.createElement('style');
+styleSheet.textContent = visualIntegrationCSS;
+document.head.appendChild(styleSheet);
