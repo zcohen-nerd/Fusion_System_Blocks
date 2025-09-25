@@ -179,6 +179,130 @@
       border-color: var(--fusion-accent-blue);
     }
     
+    /* === MILESTONE 14: ADVANCED DIAGRAM FEATURES TOOLBAR STYLING === */
+    .toolbar-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--fusion-spacing-xs);
+      padding: var(--fusion-spacing-xs);
+      border-radius: var(--fusion-radius-small);
+      background: var(--fusion-gradient-subtle);
+      border: 1px solid var(--fusion-border-light);
+      position: relative;
+    }
+    
+    .toolbar-group .group-label {
+      font-size: var(--fusion-font-size-small);
+      color: var(--fusion-text-secondary);
+      font-weight: var(--fusion-font-weight-medium);
+      margin-bottom: var(--fusion-spacing-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .toolbar-group .fusion-button {
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
+      min-width: 60px;
+      font-size: var(--fusion-font-size-small);
+      text-align: center;
+    }
+    
+    .toolbar-group .fusion-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: var(--fusion-bg-disabled);
+      color: var(--fusion-text-disabled);
+    }
+    
+    .toolbar-group .fusion-button:not(:disabled):hover {
+      background: var(--fusion-button-hover);
+      transform: translateY(-1px);
+      box-shadow: var(--fusion-shadow-button);
+    }
+    
+    .toolbar-group .fusion-icon {
+      margin-right: var(--fusion-spacing-xs);
+      font-size: var(--fusion-font-size-normal);
+    }
+    
+    /* === MILESTONE 14: ADVANCED SELECTION AND ANNOTATION STYLING === */
+    .block-selected {
+      stroke: var(--fusion-accent-orange) !important;
+      stroke-width: 3px !important;
+      filter: drop-shadow(0 0 8px rgba(255, 152, 0, 0.6));
+    }
+    
+    .selection-box {
+      fill: rgba(0, 120, 212, 0.1);
+      stroke: var(--fusion-accent-blue);
+      stroke-width: 1;
+      stroke-dasharray: 4,4;
+      pointer-events: none;
+    }
+    
+    .group-indicator {
+      fill: none;
+      stroke: var(--fusion-accent-yellow);
+      stroke-width: 2;
+      stroke-dasharray: 6,4;
+      opacity: 0.8;
+      pointer-events: none;
+    }
+    
+    .annotation-text {
+      font-family: var(--fusion-font-family);
+      fill: var(--fusion-text-primary);
+      user-select: none;
+      pointer-events: none;
+    }
+    
+    .annotation-note {
+      filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+    }
+    
+    .annotation-dimension {
+      stroke: var(--fusion-accent-green);
+      fill: var(--fusion-accent-green);
+      font-size: 11px;
+    }
+    
+    .annotation-callout {
+      filter: drop-shadow(1px 1px 3px rgba(0,0,0,0.2));
+    }
+    
+    .notification {
+      animation: slideInFromRight 0.3s ease-out;
+    }
+    
+    @keyframes slideInFromRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    /* Responsive toolbar adjustments */
+    @media (max-width: 768px) {
+      .toolbar-group {
+        flex-direction: row;
+        gap: var(--fusion-spacing-xs);
+      }
+      
+      .toolbar-group .fusion-button {
+        min-width: 40px;
+        padding: var(--fusion-spacing-xs);
+      }
+      
+      .group-label {
+        display: none;
+      }
+    }
+    
     .connection-type-container {
       display: flex;
       align-items: center;
@@ -1189,6 +1313,67 @@
           </svg>
         </button>
       </div>
+
+      <!-- MILESTONE 14: Advanced Diagram Features Toolbar -->
+      <div class="toolbar-group" id="layout-tools">
+        <span class="group-label">Layout</span>
+        <button id="btn-auto-layout" class="fusion-button" title="Auto-arrange blocks with smart layout">
+          <i class="fusion-icon">🔄</i> Auto Layout
+        </button>
+        <button id="btn-align-left" class="fusion-button" title="Align selected blocks to left edge" disabled>
+          <i class="fusion-icon">📐</i> ⬅
+        </button>
+        <button id="btn-align-center" class="fusion-button" title="Align selected blocks to center" disabled>
+          <i class="fusion-icon">📐</i> ↕
+        </button>
+        <button id="btn-align-right" class="fusion-button" title="Align selected blocks to right edge" disabled>
+          <i class="fusion-icon">📐</i> ➡
+        </button>
+        <button id="btn-distribute-h" class="fusion-button" title="Distribute selected blocks horizontally" disabled>
+          <i class="fusion-icon">↔</i> H
+        </button>
+        <button id="btn-distribute-v" class="fusion-button" title="Distribute selected blocks vertically" disabled>
+          <i class="fusion-icon">↕</i> V
+        </button>
+      </div>
+      
+      <div class="separator"></div>
+      
+      <div class="toolbar-group" id="selection-tools">
+        <span class="group-label">Selection</span>
+        <button id="btn-select-all" class="fusion-button" title="Select all blocks (Ctrl+A)">
+          <i class="fusion-icon">☑</i> All
+        </button>
+        <button id="btn-select-none" class="fusion-button" title="Clear selection (Esc)">
+          <i class="fusion-icon">☐</i> None
+        </button>
+        <button id="btn-group-create" class="fusion-button" title="Create group from selected blocks" disabled>
+          <i class="fusion-icon">📦</i> Group
+        </button>
+        <button id="btn-group-ungroup" class="fusion-button" title="Ungroup selected groups" disabled>
+          <i class="fusion-icon">📤</i> Ungroup
+        </button>
+      </div>
+      
+      <div class="separator"></div>
+      
+      <div class="toolbar-group" id="annotation-tools">
+        <span class="group-label">Annotations</span>
+        <button id="btn-add-text" class="fusion-button" title="Add text label">
+          <i class="fusion-icon">📝</i> Text
+        </button>
+        <button id="btn-add-note" class="fusion-button" title="Add sticky note">
+          <i class="fusion-icon">📌</i> Note
+        </button>
+        <button id="btn-add-dimension" class="fusion-button" title="Add dimension line">
+          <i class="fusion-icon">📏</i> Dimension
+        </button>
+        <button id="btn-add-callout" class="fusion-button" title="Add callout with leader">
+          <i class="fusion-icon">💬</i> Callout
+        </button>
+      </div>
+      
+      <div class="separator"></div>
 
       <button id="btn-snap-grid" class="toggle-btn active">Snap to Grid</button>
       <button id="btn-check-rules">Check Rules</button>

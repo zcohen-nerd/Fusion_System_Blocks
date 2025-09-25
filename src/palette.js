@@ -47,6 +47,18 @@ class SystemBlocksEditor {
     this.maxUndoLevels = 50; // Limit memory usage
     this.isPerformingUndoRedo = false; // Prevent undo/redo loops
     
+    // MILESTONE 14: Advanced Diagram Features
+    this.selectedBlocks = new Set(); // Multi-selection support
+    this.isMultiSelectMode = false; // Multi-select with Ctrl+click
+    this.selectionBox = null; // Selection box for lasso selection
+    this.isDrawingSelectionBox = false;
+    this.selectionStart = { x: 0, y: 0 };
+    this.groups = new Map(); // Block groups management
+    this.annotations = []; // Text labels, notes, dimensions, callouts
+    this.layers = new Map(); // Layer management system
+    this.currentLayer = 'default'; // Current active layer
+    this.layoutEngine = null; // Auto-layout algorithms
+    
     debugLog("About to initialize UI...");
     this.initializeUI();
     debugLog("UI initialized, setting up event listeners...");
@@ -55,6 +67,8 @@ class SystemBlocksEditor {
     this.initializeSearch();
     debugLog("Initializing professional UI enhancements...");
     this.initializeProfessionalUI();
+    debugLog("Initializing advanced diagram features (Milestone 14)...");
+    this.initializeAdvancedFeatures();
     debugLog("SystemBlocksEditor constructor complete!");
   }
 
@@ -2518,7 +2532,21 @@ class SystemBlocksEditor {
   
   onBlockMouseDown(e, block) {
     e.stopPropagation();
-    this.saveState(); // Save for undo before starting drag
+    
+    // MILESTONE 14: Enhanced multi-selection support
+    if (e.ctrlKey) {
+      // Multi-selection with Ctrl+click
+      this.toggleMultiSelect(block, true);
+      return; // Don't start dragging in multi-select mode
+    } else {
+      // Single selection or drag operation
+      if (!this.selectedBlocks.has(block)) {
+        // If clicking on a non-selected block, select only this one
+        this.saveState(); // Save for undo before starting drag
+        this.toggleMultiSelect(block, false);
+      }
+    }
+    
     this.selectedBlock = block;
     this.isDragging = true;
     
@@ -2531,28 +2559,23 @@ class SystemBlocksEditor {
       y: svgY - block.y
     };
     
+    // Legacy support - also call the old selectBlock method
     this.selectBlock(block);
   }
   
   selectBlock(block) {
-    // Remove previous selection
-    document.querySelectorAll('.block.selected').forEach(el => {
-      el.classList.remove('selected');
-    });
+    // MILESTONE 14: Enhanced to work with multi-selection
+    // This method maintains legacy compatibility while supporting new features
     
     this.selectedBlock = block;
     
-    // Add selection to new block
-    if (block) {
-      const blockElement = document.querySelector(`[data-block-id="${block.id}"] .block`);
-      if (blockElement) {
-        blockElement.classList.add('selected');
-      }
-    }
+    // Update visual selection indicators (handled by updateSelectionVisuals)
+    this.updateSelectionVisuals();
     
     // Update context buttons
     this.updateContextButtons(block);
     this.updateHierarchyButtons();
+    this.updateToolbarButtonStates();
   }
   
   updateContextButtons(selectedBlock) {
@@ -3850,6 +3873,782 @@ class SystemBlocksEditor {
     }
     
     // TODO: Render connections
+  }
+
+  // ========== MILESTONE 14: ADVANCED DIAGRAM FEATURES ==========
+  
+  // Initialize all advanced diagram features
+  initializeAdvancedFeatures() {
+    debugLog("Initializing advanced diagram features...");
+    
+    // Initialize multi-selection system
+    this.initializeMultiSelection();
+    
+    // Initialize layout and alignment tools
+    this.initializeLayoutTools();
+    
+    // Initialize annotation system
+    this.initializeAnnotationSystem();
+    
+    // Initialize group management
+    this.initializeGroupSystem();
+    
+    // Initialize layer management
+    this.initializeLayerSystem();
+    
+    // Setup advanced event listeners
+    this.setupAdvancedEventListeners();
+    
+    debugLog("Advanced diagram features initialized!");
+  }
+
+  // === MULTI-SELECTION SYSTEM ===
+  initializeMultiSelection() {
+    this.selectedBlocks = new Set();
+    this.isMultiSelectMode = false;
+    this.selectionBox = null;
+    this.isDrawingSelectionBox = false;
+    this.selectionStart = { x: 0, y: 0 };
+  }
+
+  toggleMultiSelect(block, ctrlKey = false) {
+    if (!ctrlKey) {
+      // Single selection - clear all others
+      this.clearSelection();
+      this.selectedBlocks.add(block);
+    } else {
+      // Multi-selection - toggle this block
+      if (this.selectedBlocks.has(block)) {
+        this.selectedBlocks.delete(block);
+      } else {
+        this.selectedBlocks.add(block);
+      }
+    }
+    this.updateSelectionVisuals();
+    this.updateToolbarButtonStates();
+  }
+
+  clearSelection() {
+    this.selectedBlocks.clear();
+    this.updateSelectionVisuals();
+    this.updateToolbarButtonStates();
+  }
+
+  selectAll() {
+    this.selectedBlocks.clear();
+    this.diagram.blocks.forEach(block => {
+      this.selectedBlocks.add(block);
+    });
+    this.updateSelectionVisuals();
+    this.updateToolbarButtonStates();
+  }
+
+  updateSelectionVisuals() {
+    // Remove existing selection indicators
+    document.querySelectorAll('.block-selected').forEach(el => {
+      el.classList.remove('block-selected');
+    });
+
+    // Add selection indicators to selected blocks
+    this.selectedBlocks.forEach(block => {
+      const blockElement = document.querySelector(`[data-block-id="${block.id}"]`);
+      if (blockElement) {
+        blockElement.classList.add('block-selected');
+      }
+    });
+  }
+
+  // === LAYOUT AND ALIGNMENT TOOLS ===
+  initializeLayoutTools() {
+    this.layoutEngine = new LayoutEngine();
+  }
+
+  autoLayout() {
+    if (this.diagram.blocks.length === 0) return;
+    
+    const layoutedBlocks = this.layoutEngine.hierarchicalLayout(this.diagram.blocks, this.diagram.connections);
+    
+    // Save state for undo
+    this.saveState();
+    
+    // Update block positions
+    layoutedBlocks.forEach(layoutBlock => {
+      const block = this.diagram.blocks.find(b => b.id === layoutBlock.id);
+      if (block) {
+        block.x = layoutBlock.x;
+        block.y = layoutBlock.y;
+      }
+    });
+    
+    this.renderDiagram();
+    debugLog("Auto-layout applied successfully");
+  }
+
+  alignBlocks(alignType) {
+    const selectedArray = Array.from(this.selectedBlocks);
+    if (selectedArray.length < 2) {
+      this.showNotification("Please select at least 2 blocks to align", "warning");
+      return;
+    }
+
+    this.saveState();
+
+    switch (alignType) {
+      case 'left':
+        const leftX = Math.min(...selectedArray.map(b => b.x));
+        selectedArray.forEach(block => block.x = leftX);
+        break;
+      case 'center':
+        const centerX = selectedArray.reduce((sum, b) => sum + b.x + b.width/2, 0) / selectedArray.length;
+        selectedArray.forEach(block => block.x = centerX - block.width/2);
+        break;
+      case 'right':
+        const rightX = Math.max(...selectedArray.map(b => b.x + b.width));
+        selectedArray.forEach(block => block.x = rightX - block.width);
+        break;
+    }
+
+    this.renderDiagram();
+    this.showNotification(`Aligned ${selectedArray.length} blocks to ${alignType}`, "success");
+  }
+
+  distributeBlocks(direction) {
+    const selectedArray = Array.from(this.selectedBlocks);
+    if (selectedArray.length < 3) {
+      this.showNotification("Please select at least 3 blocks to distribute", "warning");
+      return;
+    }
+
+    this.saveState();
+
+    if (direction === 'horizontal') {
+      selectedArray.sort((a, b) => a.x - b.x);
+      const totalWidth = selectedArray[selectedArray.length - 1].x - selectedArray[0].x;
+      const spacing = totalWidth / (selectedArray.length - 1);
+      
+      selectedArray.forEach((block, index) => {
+        if (index > 0 && index < selectedArray.length - 1) {
+          block.x = selectedArray[0].x + spacing * index;
+        }
+      });
+    } else if (direction === 'vertical') {
+      selectedArray.sort((a, b) => a.y - b.y);
+      const totalHeight = selectedArray[selectedArray.length - 1].y - selectedArray[0].y;
+      const spacing = totalHeight / (selectedArray.length - 1);
+      
+      selectedArray.forEach((block, index) => {
+        if (index > 0 && index < selectedArray.length - 1) {
+          block.y = selectedArray[0].y + spacing * index;
+        }
+      });
+    }
+
+    this.renderDiagram();
+    this.showNotification(`Distributed ${selectedArray.length} blocks ${direction}ly`, "success");
+  }
+
+  // === ANNOTATION SYSTEM ===
+  initializeAnnotationSystem() {
+    this.annotations = [];
+    this.annotationCounter = 1;
+  }
+
+  addTextAnnotation(x, y, text = "Text Label") {
+    const annotation = {
+      id: `annotation-${this.annotationCounter++}`,
+      type: 'text',
+      x: x || 100,
+      y: y || 100,
+      text: text,
+      fontSize: 14,
+      color: '#ffffff',
+      backgroundColor: 'transparent',
+      borderColor: 'transparent'
+    };
+
+    this.annotations.push(annotation);
+    this.renderAnnotation(annotation);
+    this.saveState();
+    
+    return annotation;
+  }
+
+  addStickyNote(x, y, text = "Note") {
+    const annotation = {
+      id: `annotation-${this.annotationCounter++}`,
+      type: 'note',
+      x: x || 150,
+      y: y || 150,
+      text: text,
+      width: 120,
+      height: 80,
+      fontSize: 12,
+      color: '#000000',
+      backgroundColor: '#ffeb3b',
+      borderColor: '#fbc02d'
+    };
+
+    this.annotations.push(annotation);
+    this.renderAnnotation(annotation);
+    this.saveState();
+    
+    return annotation;
+  }
+
+  addDimensionLine(x1, y1, x2, y2, label = "100mm") {
+    const annotation = {
+      id: `annotation-${this.annotationCounter++}`,
+      type: 'dimension',
+      x1: x1 || 100,
+      y1: y1 || 100,
+      x2: x2 || 200,
+      y2: y2 || 100,
+      label: label,
+      fontSize: 12,
+      color: '#00ff00',
+      offset: 20
+    };
+
+    this.annotations.push(annotation);
+    this.renderAnnotation(annotation);
+    this.saveState();
+    
+    return annotation;
+  }
+
+  addCallout(x, y, targetX, targetY, text = "Callout") {
+    const annotation = {
+      id: `annotation-${this.annotationCounter++}`,
+      type: 'callout',
+      x: x || 200,
+      y: y || 200,
+      targetX: targetX || 100,
+      targetY: targetY || 100,
+      text: text,
+      width: 100,
+      height: 60,
+      fontSize: 12,
+      color: '#000000',
+      backgroundColor: '#ffffff',
+      borderColor: '#cccccc'
+    };
+
+    this.annotations.push(annotation);
+    this.renderAnnotation(annotation);
+    this.saveState();
+    
+    return annotation;
+  }
+
+  renderAnnotation(annotation) {
+    const svg = document.getElementById('svg-canvas');
+    const annotationsLayer = svg.querySelector('#annotations-layer') || this.createAnnotationsLayer();
+
+    let element;
+    
+    switch (annotation.type) {
+      case 'text':
+        element = this.createTextElement(annotation);
+        break;
+      case 'note':
+        element = this.createNoteElement(annotation);
+        break;
+      case 'dimension':
+        element = this.createDimensionElement(annotation);
+        break;
+      case 'callout':
+        element = this.createCalloutElement(annotation);
+        break;
+    }
+
+    if (element) {
+      element.setAttribute('data-annotation-id', annotation.id);
+      annotationsLayer.appendChild(element);
+    }
+  }
+
+  createAnnotationsLayer() {
+    const svg = document.getElementById('svg-canvas');
+    const layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    layer.id = 'annotations-layer';
+    layer.style.pointerEvents = 'none'; // Don't interfere with block interactions
+    svg.appendChild(layer);
+    return layer;
+  }
+
+  createTextElement(annotation) {
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', annotation.x);
+    text.setAttribute('y', annotation.y);
+    text.setAttribute('fill', annotation.color);
+    text.setAttribute('font-size', annotation.fontSize);
+    text.setAttribute('font-family', 'Arial, sans-serif');
+    text.textContent = annotation.text;
+    return text;
+  }
+
+  createNoteElement(annotation) {
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    
+    // Note background
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', annotation.x);
+    rect.setAttribute('y', annotation.y);
+    rect.setAttribute('width', annotation.width);
+    rect.setAttribute('height', annotation.height);
+    rect.setAttribute('fill', annotation.backgroundColor);
+    rect.setAttribute('stroke', annotation.borderColor);
+    rect.setAttribute('stroke-width', '1');
+    rect.setAttribute('rx', '4');
+    
+    // Note text
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', annotation.x + 8);
+    text.setAttribute('y', annotation.y + 20);
+    text.setAttribute('fill', annotation.color);
+    text.setAttribute('font-size', annotation.fontSize);
+    text.setAttribute('font-family', 'Arial, sans-serif');
+    text.textContent = annotation.text;
+    
+    group.appendChild(rect);
+    group.appendChild(text);
+    return group;
+  }
+
+  createDimensionElement(annotation) {
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    
+    // Dimension line
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', annotation.x1);
+    line.setAttribute('y1', annotation.y1 - annotation.offset);
+    line.setAttribute('x2', annotation.x2);
+    line.setAttribute('y2', annotation.y2 - annotation.offset);
+    line.setAttribute('stroke', annotation.color);
+    line.setAttribute('stroke-width', '1');
+    
+    // Extension lines
+    const ext1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    ext1.setAttribute('x1', annotation.x1);
+    ext1.setAttribute('y1', annotation.y1);
+    ext1.setAttribute('x2', annotation.x1);
+    ext1.setAttribute('y2', annotation.y1 - annotation.offset - 5);
+    ext1.setAttribute('stroke', annotation.color);
+    ext1.setAttribute('stroke-width', '1');
+    
+    const ext2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    ext2.setAttribute('x1', annotation.x2);
+    ext2.setAttribute('y1', annotation.y2);
+    ext2.setAttribute('x2', annotation.x2);
+    ext2.setAttribute('y2', annotation.y2 - annotation.offset - 5);
+    ext2.setAttribute('stroke', annotation.color);
+    ext2.setAttribute('stroke-width', '1');
+    
+    // Label
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const midX = (annotation.x1 + annotation.x2) / 2;
+    const midY = annotation.y1 - annotation.offset - 8;
+    text.setAttribute('x', midX);
+    text.setAttribute('y', midY);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('fill', annotation.color);
+    text.setAttribute('font-size', annotation.fontSize);
+    text.setAttribute('font-family', 'Arial, sans-serif');
+    text.textContent = annotation.label;
+    
+    group.appendChild(line);
+    group.appendChild(ext1);
+    group.appendChild(ext2);
+    group.appendChild(text);
+    return group;
+  }
+
+  createCalloutElement(annotation) {
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    
+    // Leader line
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', annotation.targetX);
+    line.setAttribute('y1', annotation.targetY);
+    line.setAttribute('x2', annotation.x);
+    line.setAttribute('y2', annotation.y + annotation.height / 2);
+    line.setAttribute('stroke', annotation.borderColor);
+    line.setAttribute('stroke-width', '1');
+    line.setAttribute('marker-end', 'url(#arrowhead)');
+    
+    // Callout box
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', annotation.x);
+    rect.setAttribute('y', annotation.y);
+    rect.setAttribute('width', annotation.width);
+    rect.setAttribute('height', annotation.height);
+    rect.setAttribute('fill', annotation.backgroundColor);
+    rect.setAttribute('stroke', annotation.borderColor);
+    rect.setAttribute('stroke-width', '1');
+    rect.setAttribute('rx', '4');
+    
+    // Callout text
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', annotation.x + 8);
+    text.setAttribute('y', annotation.y + 20);
+    text.setAttribute('fill', annotation.color);
+    text.setAttribute('font-size', annotation.fontSize);
+    text.setAttribute('font-family', 'Arial, sans-serif');
+    text.textContent = annotation.text;
+    
+    group.appendChild(line);
+    group.appendChild(rect);
+    group.appendChild(text);
+    return group;
+  }
+
+  // === GROUP MANAGEMENT SYSTEM ===
+  initializeGroupSystem() {
+    this.groups = new Map();
+    this.groupCounter = 1;
+  }
+
+  createGroup() {
+    const selectedArray = Array.from(this.selectedBlocks);
+    if (selectedArray.length < 2) {
+      this.showNotification("Please select at least 2 blocks to create a group", "warning");
+      return;
+    }
+
+    const groupId = `group-${this.groupCounter++}`;
+    const group = {
+      id: groupId,
+      name: `Group ${this.groupCounter - 1}`,
+      blocks: selectedArray.map(b => b.id),
+      locked: false,
+      visible: true
+    };
+
+    this.groups.set(groupId, group);
+    
+    // Mark blocks as grouped
+    selectedArray.forEach(block => {
+      block.groupId = groupId;
+    });
+
+    this.updateGroupVisuals(group);
+    this.saveState();
+    this.showNotification(`Created group with ${selectedArray.length} blocks`, "success");
+  }
+
+  ungroupSelected() {
+    const groupIds = new Set();
+    this.selectedBlocks.forEach(block => {
+      if (block.groupId) {
+        groupIds.add(block.groupId);
+      }
+    });
+
+    if (groupIds.size === 0) {
+      this.showNotification("No groups selected to ungroup", "warning");
+      return;
+    }
+
+    groupIds.forEach(groupId => {
+      const group = this.groups.get(groupId);
+      if (group) {
+        // Remove group marking from blocks
+        group.blocks.forEach(blockId => {
+          const block = this.diagram.blocks.find(b => b.id === blockId);
+          if (block) {
+            delete block.groupId;
+          }
+        });
+        
+        // Remove group
+        this.groups.delete(groupId);
+        this.removeGroupVisuals(groupId);
+      }
+    });
+
+    this.saveState();
+    this.showNotification(`Ungrouped ${groupIds.size} group(s)`, "success");
+  }
+
+  updateGroupVisuals(group) {
+    // Add visual indicators for grouped blocks
+    const groupBlocks = group.blocks.map(id => this.diagram.blocks.find(b => b.id === id)).filter(b => b);
+    
+    // Calculate group bounds
+    const bounds = this.calculateGroupBounds(groupBlocks);
+    
+    // Create group visual indicator
+    this.createGroupIndicator(group.id, bounds);
+  }
+
+  calculateGroupBounds(blocks) {
+    const minX = Math.min(...blocks.map(b => b.x));
+    const minY = Math.min(...blocks.map(b => b.y));
+    const maxX = Math.max(...blocks.map(b => b.x + b.width));
+    const maxY = Math.max(...blocks.map(b => b.y + b.height));
+    
+    return {
+      x: minX - 10,
+      y: minY - 10,
+      width: maxX - minX + 20,
+      height: maxY - minY + 20
+    };
+  }
+
+  createGroupIndicator(groupId, bounds) {
+    const svg = document.getElementById('svg-canvas');
+    const groupsLayer = svg.querySelector('#groups-layer') || this.createGroupsLayer();
+    
+    // Remove existing indicator
+    const existing = groupsLayer.querySelector(`[data-group-id="${groupId}"]`);
+    if (existing) existing.remove();
+    
+    // Create group boundary rectangle
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('data-group-id', groupId);
+    rect.setAttribute('x', bounds.x);
+    rect.setAttribute('y', bounds.y);
+    rect.setAttribute('width', bounds.width);
+    rect.setAttribute('height', bounds.height);
+    rect.setAttribute('fill', 'none');
+    rect.setAttribute('stroke', '#ffeb3b');
+    rect.setAttribute('stroke-width', '2');
+    rect.setAttribute('stroke-dasharray', '5,5');
+    rect.setAttribute('opacity', '0.7');
+    rect.setAttribute('pointer-events', 'none');
+    
+    groupsLayer.appendChild(rect);
+  }
+
+  createGroupsLayer() {
+    const svg = document.getElementById('svg-canvas');
+    const layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    layer.id = 'groups-layer';
+    layer.style.pointerEvents = 'none';
+    svg.insertBefore(layer, svg.querySelector('#blocks-layer'));
+    return layer;
+  }
+
+  removeGroupVisuals(groupId) {
+    const groupsLayer = document.getElementById('groups-layer');
+    if (groupsLayer) {
+      const indicator = groupsLayer.querySelector(`[data-group-id="${groupId}"]`);
+      if (indicator) indicator.remove();
+    }
+  }
+
+  // === LAYER MANAGEMENT SYSTEM ===
+  initializeLayerSystem() {
+    this.layers = new Map();
+    this.currentLayer = 'default';
+    
+    // Create default layer
+    this.layers.set('default', {
+      id: 'default',
+      name: 'Default',
+      visible: true,
+      locked: false,
+      color: '#ffffff'
+    });
+  }
+
+  // === ADVANCED EVENT LISTENERS ===
+  setupAdvancedEventListeners() {
+    // Layout and alignment buttons
+    document.getElementById('btn-auto-layout')?.addEventListener('click', () => this.autoLayout());
+    document.getElementById('btn-align-left')?.addEventListener('click', () => this.alignBlocks('left'));
+    document.getElementById('btn-align-center')?.addEventListener('click', () => this.alignBlocks('center'));
+    document.getElementById('btn-align-right')?.addEventListener('click', () => this.alignBlocks('right'));
+    document.getElementById('btn-distribute-h')?.addEventListener('click', () => this.distributeBlocks('horizontal'));
+    document.getElementById('btn-distribute-v')?.addEventListener('click', () => this.distributeBlocks('vertical'));
+
+    // Selection buttons
+    document.getElementById('btn-select-all')?.addEventListener('click', () => this.selectAll());
+    document.getElementById('btn-select-none')?.addEventListener('click', () => this.clearSelection());
+    document.getElementById('btn-group-create')?.addEventListener('click', () => this.createGroup());
+    document.getElementById('btn-group-ungroup')?.addEventListener('click', () => this.ungroupSelected());
+
+    // Annotation buttons
+    document.getElementById('btn-add-text')?.addEventListener('click', () => this.addTextAnnotation());
+    document.getElementById('btn-add-note')?.addEventListener('click', () => this.addStickyNote());
+    document.getElementById('btn-add-dimension')?.addEventListener('click', () => this.addDimensionLine());
+    document.getElementById('btn-add-callout')?.addEventListener('click', () => this.addCallout());
+
+    // Enhanced keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'a') {
+        e.preventDefault();
+        this.selectAll();
+      } else if (e.key === 'Escape') {
+        this.clearSelection();
+      } else if (e.key === 'Delete' && this.selectedBlocks.size > 0) {
+        this.deleteSelectedBlocks();
+      }
+    });
+  }
+
+  updateToolbarButtonStates() {
+    const selectedCount = this.selectedBlocks.size;
+    
+    // Alignment buttons - need at least 2 blocks
+    const alignButtons = ['btn-align-left', 'btn-align-center', 'btn-align-right'];
+    alignButtons.forEach(btnId => {
+      const btn = document.getElementById(btnId);
+      if (btn) btn.disabled = selectedCount < 2;
+    });
+    
+    // Distribution buttons - need at least 3 blocks
+    const distributeButtons = ['btn-distribute-h', 'btn-distribute-v'];
+    distributeButtons.forEach(btnId => {
+      const btn = document.getElementById(btnId);
+      if (btn) btn.disabled = selectedCount < 3;
+    });
+    
+    // Group buttons
+    const groupBtn = document.getElementById('btn-group-create');
+    if (groupBtn) groupBtn.disabled = selectedCount < 2;
+    
+    const ungroupBtn = document.getElementById('btn-group-ungroup');
+    if (ungroupBtn) {
+      const hasGroupedBlocks = Array.from(this.selectedBlocks).some(block => block.groupId);
+      ungroupBtn.disabled = !hasGroupedBlocks;
+    }
+  }
+
+  deleteSelectedBlocks() {
+    if (this.selectedBlocks.size === 0) return;
+    
+    this.saveState();
+    
+    const selectedIds = Array.from(this.selectedBlocks).map(block => block.id);
+    
+    // Remove blocks from diagram
+    this.diagram.blocks = this.diagram.blocks.filter(block => !selectedIds.includes(block.id));
+    
+    // Remove connections involving deleted blocks
+    this.diagram.connections = this.diagram.connections.filter(conn => 
+      !selectedIds.includes(conn.from) && !selectedIds.includes(conn.to)
+    );
+    
+    // Clear selection
+    this.clearSelection();
+    
+    // Re-render
+    this.renderDiagram();
+    
+    this.showNotification(`Deleted ${selectedIds.length} block(s)`, "success");
+  }
+
+  // Enhanced notification system
+  showNotification(message, type = "info") {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    // Style the notification
+    Object.assign(notification.style, {
+      position: 'fixed',
+      top: '80px',
+      right: '20px',
+      background: type === 'success' ? '#4caf50' : type === 'warning' ? '#ff9800' : '#2196f3',
+      color: 'white',
+      padding: '12px 20px',
+      borderRadius: '4px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+      zIndex: '10000',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '14px',
+      maxWidth: '300px',
+      wordWrap: 'break-word'
+    });
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 3000);
+  }
+}
+
+// === LAYOUT ENGINE ===
+class LayoutEngine {
+  hierarchicalLayout(blocks, connections) {
+    // Simple hierarchical layout algorithm
+    const positioned = new Set();
+    const result = [];
+    
+    // Find root nodes (no incoming connections)
+    const incomingCounts = new Map();
+    blocks.forEach(block => incomingCounts.set(block.id, 0));
+    connections.forEach(conn => {
+      incomingCounts.set(conn.to, (incomingCounts.get(conn.to) || 0) + 1);
+    });
+    
+    const roots = blocks.filter(block => incomingCounts.get(block.id) === 0);
+    
+    let currentX = 50;
+    let currentY = 50;
+    const levelHeight = 150;
+    const blockSpacing = 200;
+    
+    // Layout root nodes
+    roots.forEach((block, index) => {
+      result.push({
+        id: block.id,
+        x: currentX + index * blockSpacing,
+        y: currentY
+      });
+      positioned.add(block.id);
+    });
+    
+    // Layout remaining blocks level by level
+    let level = 1;
+    while (positioned.size < blocks.length && level < 20) { // Prevent infinite loops
+      const levelBlocks = [];
+      
+      blocks.forEach(block => {
+        if (positioned.has(block.id)) return;
+        
+        // Check if all dependencies are positioned
+        const dependencies = connections
+          .filter(conn => conn.to === block.id)
+          .map(conn => conn.from);
+        
+        if (dependencies.every(dep => positioned.has(dep))) {
+          levelBlocks.push(block);
+        }
+      });
+      
+      if (levelBlocks.length === 0) break; // No more blocks can be positioned
+      
+      // Position blocks in this level
+      levelBlocks.forEach((block, index) => {
+        result.push({
+          id: block.id,
+          x: currentX + index * blockSpacing,
+          y: currentY + level * levelHeight
+        });
+        positioned.add(block.id);
+      });
+      
+      level++;
+    }
+    
+    // Position any remaining blocks (in case of cycles)
+    blocks.forEach(block => {
+      if (!positioned.has(block.id)) {
+        result.push({
+          id: block.id,
+          x: block.x || (50 + Math.random() * 500),
+          y: block.y || (50 + Math.random() * 500)
+        });
+      }
+    });
+    
+    return result;
   }
 }
 
