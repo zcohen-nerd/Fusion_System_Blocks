@@ -165,28 +165,21 @@
 
 /* === MILESTONE 10: PROFESSIONAL BLOCK STYLING === */
 
-/* Enhanced Block Base Style */
+/* Enhanced Block Base Style - PERFORMANCE OPTIMIZED */
 .block {
-  fill: var(--fusion-gradient-secondary);
-  stroke: var(--fusion-border-primary);
-  stroke-width: var(--fusion-border-thin);
+  fill: #383838;
+  stroke: #464646;
+  stroke-width: 1;
   cursor: move;
-  rx: var(--fusion-radius-large);
-  ry: var(--fusion-radius-large);
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2)) drop-shadow(0 1px 3px rgba(0,0,0,0.3));
-  transition: all var(--fusion-transition) var(--fusion-ease-in-out);
-  transform-origin: center;
+  rx: 6;
+  ry: 6;
 }
 
-/* Professional Block Hover Effect */
+/* Professional Block Hover Effect - SIMPLIFIED */
 .block:hover {
-  fill: var(--fusion-gradient-button-hover);
-  stroke: var(--fusion-accent-blue);
-  stroke-width: var(--fusion-border-medium);
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.25)) 
-          drop-shadow(0 2px 6px rgba(0,0,0,0.35))
-          drop-shadow(0 0 0 2px rgba(0, 122, 204, 0.3));
-  transform: translateY(-2px) scale(1.02);
+  fill: #464646;
+  stroke: #007acc;
+  stroke-width: 2;
 }
 
 /* Enhanced Selected State - consolidated below with animation */
@@ -217,91 +210,67 @@
   fill: linear-gradient(135deg, #2d2d30 0%, rgba(100, 181, 246, 0.1) 100%);
 }
 
-/* Professional Status Indicators */
+/* Professional Status Indicators - PERFORMANCE OPTIMIZED */
 .block[data-status="placeholder"] {
-  stroke: var(--fusion-status-placeholder);
+  stroke: #969696;
   stroke-dasharray: 5,3;
-  fill: var(--fusion-status-placeholder-bg);
-  animation: placeholderPulse 2s ease-in-out infinite;
+  fill: rgba(150, 150, 150, 0.1);
 }
 
 .block[data-status="planned"] {
-  stroke: var(--fusion-status-planned);
-  fill: var(--fusion-status-planned-bg);
+  stroke: #87ceeb;
+  fill: rgba(135, 206, 235, 0.1);
 }
 
 .block[data-status="in-work"] {
-  stroke: var(--fusion-status-in-work);
-  fill: var(--fusion-status-in-work-bg);
-  animation: inWorkGlow 3s ease-in-out infinite alternate;
+  stroke: #ffc107;
+  fill: rgba(255, 193, 7, 0.1);
 }
 
 .block[data-status="implemented"] {
-  stroke: var(--fusion-status-implemented);
-  fill: var(--fusion-status-implemented-bg);
+  stroke: #4caf50;
+  fill: rgba(76, 175, 80, 0.1);
 }
 
 .block[data-status="verified"] {
-  stroke: var(--fusion-status-verified);
-  fill: var(--fusion-status-verified-bg);
-  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+  stroke: #00ff00;
+  fill: rgba(0, 255, 0, 0.1);
 }
 
-/* Professional Animations */
-@keyframes placeholderPulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-
-@keyframes inWorkGlow {
-  0% { filter: drop-shadow(0 0 5px rgba(255, 193, 7, 0.3)); }
-  100% { filter: drop-shadow(0 0 15px rgba(255, 193, 7, 0.6)); }
-}
-
-/* Enhanced Typography for Blocks */
+/* Enhanced Typography for Blocks - PERFORMANCE OPTIMIZED */
 .block-text {
-  fill: var(--fusion-text-primary);
-  font-family: var(--fusion-font-family);
-  font-weight: var(--fusion-font-weight-medium);
-  font-size: var(--fusion-font-size-normal);
+  fill: #f0f0f0;
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   text-anchor: middle;
   dominant-baseline: central;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  transition: all var(--fusion-transition-fast) var(--fusion-ease-out);
 }
 
 .status-text {
-  fill: var(--fusion-text-secondary);
-  font-family: var(--fusion-font-family);
-  font-weight: var(--fusion-font-weight-medium);
+  fill: #d0d0d0;
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: 500;
   text-anchor: middle;
   dominant-baseline: central;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
-.block:hover .block-text {
-  fill: var(--fusion-text-inverse);
-  font-weight: var(--fusion-font-weight-bold);
-}
-
-/* === MILESTONE 10 PHASE 2: ADVANCED BLOCK FEATURES === */
+/* === MILESTONE 10 PHASE 2: ADVANCED BLOCK FEATURES - PERFORMANCE OPTIMIZED === */
 
 /* Dynamic Block Sizing Based on Content */
 .block.compact {
-  rx: var(--fusion-radius-small);
-  ry: var(--fusion-radius-small);
-  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.15));
+  rx: 2;
+  ry: 2;
 }
 
 .block.standard {
-  rx: var(--fusion-radius-medium);
-  ry: var(--fusion-radius-medium);
+  rx: 4;
+  ry: 4;
 }
 
 .block.expanded {
-  rx: var(--fusion-radius-large);
-  ry: var(--fusion-radius-large);
-  filter: drop-shadow(0 3px 8px rgba(0,0,0,0.25)) drop-shadow(0 1px 4px rgba(0,0,0,0.35));
+  rx: 6;
+  ry: 6;
 }
 
 /* Block Thumbnails and Preview System */
@@ -342,19 +311,16 @@
   pointer-events: none;
 }
 
-/* Professional Connection Path Styling */
+/* Professional Connection Path Styling - PERFORMANCE OPTIMIZED */
 .connection-path {
   stroke-width: 2px;
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: all var(--fusion-transition) var(--fusion-ease-in-out);
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
 }
 
 .connection-path:hover {
   stroke-width: 3px;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)) drop-shadow(0 0 8px currentColor);
 }
 
 .connection-path.power {
@@ -427,26 +393,19 @@
 
 /* === MILESTONE 10 PHASE 3: PROFESSIONAL POLISH & INTERACTIONS === */
 
-/* Enhanced Context Menu System */
+/* Enhanced Context Menu System - PERFORMANCE OPTIMIZED */
 .fusion-context-menu {
   position: absolute;
-  background: var(--fusion-gradient-primary);
-  border: 1px solid var(--fusion-border-secondary);
-  border-radius: var(--fusion-radius-medium);
-  box-shadow: var(--fusion-shadow-floating);
-  backdrop-filter: blur(15px);
+  background: #2d2d30;
+  border: 1px solid #555555;
+  border-radius: 4px;
   min-width: 180px;
   z-index: 10000;
-  opacity: 0;
-  transform: translateY(-10px) scale(0.95);
-  visibility: hidden;
-  transition: all var(--fusion-transition) var(--fusion-ease-out);
+  display: none;
 }
 
 .fusion-context-menu.show {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  visibility: visible;
+  display: block;
 }
 
 .fusion-context-menu-item {
@@ -500,31 +459,24 @@
   opacity: 0.5;
 }
 
-/* Enhanced Tooltips System */
+/* Enhanced Tooltips System - PERFORMANCE OPTIMIZED */
 .fusion-tooltip {
   position: absolute;
-  background: var(--fusion-bg-primary);
-  color: var(--fusion-text-primary);
-  padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
-  border-radius: var(--fusion-radius-medium);
-  border: 1px solid var(--fusion-border-secondary);
-  box-shadow: var(--fusion-shadow-floating);
-  font-size: var(--fusion-font-size-small);
-  font-weight: var(--fusion-font-weight-medium);
-  backdrop-filter: blur(10px);
+  background: #2d2d30;
+  color: #f0f0f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #555555;
+  font-size: 11px;
+  font-weight: 500;
   z-index: 10001;
-  opacity: 0;
-  transform: translateY(10px);
-  visibility: hidden;
-  transition: all var(--fusion-transition) var(--fusion-ease-out);
+  display: none;
   max-width: 250px;
   line-height: 1.4;
 }
 
 .fusion-tooltip.show {
-  opacity: 1;
-  transform: translateY(0);
-  visibility: visible;
+  display: block;
 }
 
 .fusion-tooltip::before {
@@ -638,19 +590,7 @@
   outline-offset: 2px;
 }
 
-/* Enhanced Hover Effects for Interactive Elements */
-.interactive-element {
-  transition: all var(--fusion-transition) var(--fusion-ease-in-out);
-  position: relative;
-}
-
-.interactive-element:hover {
-  transform: translateY(-1px);
-}
-
-.interactive-element:active {
-  transform: translateY(0);
-}
+/* Interactive Elements - PERFORMANCE OPTIMIZED - Removed expensive effects */
 
 /* Professional Status Indicators */
 .status-indicator {
@@ -696,44 +636,38 @@
   50% { opacity: 0.5; }
 }
 
-/* === MILESTONE 10: ENHANCED BLOCK ANIMATIONS === */
+/* === MILESTONE 10: BLOCK ANIMATIONS DISABLED FOR PERFORMANCE === */
 
-/* Block creation animation */
-@keyframes blockAppear {
-  0% {
-    opacity: 0;
-    transform: scale(0.8) rotate(-5deg);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05) rotate(2deg);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) rotate(0deg);
-  }
+/* Block selection styling applied to child elements to preserve text readability */
+
+.block-selected rect,
+.block-selected ellipse,
+.block-selected polygon,
+.block-selected path {
+  stroke: var(--fusion-accent-orange) !important;
+  stroke-width: 3 !important;
+  /* Disable expensive filters for better performance */
+  /* filter: drop-shadow(0 2px 8px rgba(255,140,0,0.4)) 
+          drop-shadow(0 0 0 2px rgba(255,140,0,0.3)); */
 }
 
-.block-group.new-block {
-  animation: blockAppear 0.4s var(--fusion-ease-bounce);
+.block-selected text {
+  /* Preserve text readability - NO stroke effects on text */
+  fill: var(--fusion-text-primary) !important;
+  font-weight: 500 !important;
+  /* Explicitly remove any stroke effects */
+  stroke: none !important;
+  stroke-width: 0 !important;
 }
 
-/* Block selection animation - Fast and immediate */
-@keyframes blockSelect {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.04); }
-  100% { transform: scale(1.02); }
-}
-
-.block.selected {
-  stroke: var(--fusion-accent-orange);
-  stroke-width: var(--fusion-border-thick);
-  fill: var(--fusion-gradient-active);
-  filter: drop-shadow(0 6px 16px rgba(255,140,0,0.4)) 
-          drop-shadow(0 3px 8px rgba(0,0,0,0.3))
-          drop-shadow(0 0 0 3px rgba(255,140,0,0.25));
-  transform: translateY(-3px) scale(1.03);
-  animation: blockSelect 0.08s var(--fusion-ease-out) !important;
+/* Lasso selection rectangle styling */
+.lasso-selection {
+  fill: rgba(0, 122, 204, 0.1);
+  stroke: var(--fusion-accent-blue);
+  stroke-width: 1;
+  stroke-dasharray: 3,3;
+  pointer-events: none;
+  /* Remove animation for better performance */
 }
 
 /* Selected blocks should maintain their transform even on hover - FORCED */
@@ -741,41 +675,13 @@
   transform: translateY(-3px) scale(1.03) !important;
 }
 
-/* Connection creation animation */
-@keyframes connectionDraw {
-  0% {
-    stroke-dasharray: 1000;
-    stroke-dashoffset: 1000;
-  }
-  100% {
-    stroke-dasharray: 1000;
-    stroke-dashoffset: 0;
-  }
-}
+/* Animations disabled for performance */
 
-.connection-path.new-connection {
-  animation: connectionDraw 0.8s var(--fusion-ease-out);
-}
-
-/* Professional hover lift effect */
-.block-group:hover .block {
-  transform: translateY(-2px);
-  transition: transform var(--fusion-transition) var(--fusion-ease-out);
-}
-
-/* Enhanced focus ring */
+/* Enhanced focus ring - PERFORMANCE OPTIMIZED */
 .block:focus,
 .block-group:focus-within .block {
-  outline: 3px solid var(--fusion-accent-blue);
+  outline: 3px solid #007acc;
   outline-offset: 3px;
-  filter: drop-shadow(0 0 20px rgba(0, 122, 204, 0.4));
-}
-
-/* Professional page transitions */
-.page-transition {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all var(--fusion-transition-slow) var(--fusion-ease-out);
 }
 
 .page-transition.loaded {

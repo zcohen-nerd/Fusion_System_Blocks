@@ -4,15 +4,16 @@ console.error("=== JS ERROR TEST ===");
 
 // Visual debug function for when console doesn't work
 function debugLog(message) {
-  try {
-    const debugDiv = document.getElementById('debug-log');
-    if (debugDiv) {
-      debugDiv.innerHTML += message + '<br>';
-      debugDiv.scrollTop = debugDiv.scrollHeight;
-    }
-  } catch (e) {
-    // Ignore errors if debug div doesn't exist yet
-  }
+  // Disabled for performance - only enable for debugging
+  // try {
+  //   const debugDiv = document.getElementById('debug-log');
+  //   if (debugDiv) {
+  //     debugDiv.innerHTML += message + '<br>';
+  //     debugDiv.scrollTop = debugDiv.scrollHeight;
+  //   }
+  // } catch (e) {
+  //   // Ignore errors if debug div doesn't exist yet
+  // }
 }
 
 debugLog("=== JAVASCRIPT FILE LOADED ===");
@@ -21,15 +22,14 @@ console.log("System Blocks palette loaded");
 // SVG-based node editor with pan/zoom, grid, and draggable blocks with ports
 class SystemBlocksEditor {
   constructor() {
-    debugLog("SystemBlocksEditor constructor starting...");
     this.diagram = this.createEmptyDiagram();
-    debugLog("Empty diagram created");
     this.selectedBlock = null;
     this.isDragging = false;
     this.isPanning = false;
     this.dragStart = { x: 0, y: 0 };
     this.panStart = { x: 0, y: 0 };
     this.viewBox = { x: 0, y: 0, width: 1000, height: 1000 };
+    this.viewBoxStart = { x: 0, y: 0 }; // For smooth panning
     this.scale = 1;
     
     // Grid configuration
@@ -59,23 +59,27 @@ class SystemBlocksEditor {
     this.currentLayer = 'default'; // Current active layer
     this.layoutEngine = null; // Auto-layout algorithms
     
-    debugLog("About to initialize UI...");
+    // Performance optimization
+    this.lastMouseMoveTime = 0;
+    this.mouseMoveThreshold = 16; // ~60fps throttling - balance between smooth and performance
+    
+    // Lasso selection
+    this.isLassoSelecting = false;
+    this.lassoStart = { x: 0, y: 0 };
+    this.lassoStartMouse = { x: 0, y: 0 }; // Mouse coordinates for threshold check
+    this.lassoRect = null;
+    this.lassoThreshold = 5; // Minimum pixels to drag before lasso activates
+    this.potentialLasso = false; // Track if we might start lasso selection
+    
     this.initializeUI();
-    debugLog("UI initialized, setting up event listeners...");
     this.setupEventListeners();
-    debugLog("Event listeners set up, initializing search...");
     this.initializeSearch();
-    debugLog("Initializing professional UI enhancements...");
     this.initializeProfessionalUI();
-    debugLog("Initializing advanced diagram features (Milestone 14)...");
     this.initializeAdvancedFeatures();
-    debugLog("SystemBlocksEditor constructor complete!");
   }
 
   // === MILESTONE 10: PROFESSIONAL UI ENHANCEMENTS ===
   initializeProfessionalUI() {
-    debugLog("Setting up professional UI enhancements...");
-    
     // Initialize tooltip system
     this.setupTooltips();
     
@@ -88,10 +92,7 @@ class SystemBlocksEditor {
     // Initialize keyboard shortcuts visual feedback
     this.setupKeyboardHints();
     
-    // Initialize smooth animations
-    this.enableSmoothAnimations();
-    
-    debugLog("Professional UI enhancements initialized!");
+    // Smooth animations disabled for performance
   }
 
   // === BLOCK SHAPE SYSTEM ===
@@ -484,9 +485,8 @@ class SystemBlocksEditor {
   }
 
   showShapeChangeDialog(block) {
-    // Create shape change dialog
+    // Create shape change dialog - OPTIMIZED
     const overlay = document.createElement('div');
-    overlay.className = 'dialog-overlay';
     overlay.style.cssText = `
       position: fixed;
       top: 0;
@@ -498,43 +498,49 @@ class SystemBlocksEditor {
       align-items: center;
       justify-content: center;
       z-index: 10000;
-      backdrop-filter: blur(2px);
     `;
     
     const dialog = document.createElement('div');
-    dialog.className = 'shape-change-dialog';
     dialog.style.cssText = `
-      background: var(--fusion-bg-primary);
-      border: 1px solid var(--fusion-border);
+      background: #2d2d30;
+      border: 1px solid #464646;
       border-radius: 8px;
       padding: 24px;
       min-width: 400px;
       max-width: 500px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     `;
     
     dialog.innerHTML = `
-      <h3 style="margin: 0 0 20px 0; color: var(--fusion-text-primary); font-size: 18px;">Change Block Shape</h3>
+      <h3 style="margin: 0 0 20px 0; color: #f0f0f0; font-size: 18px;">Change Block Shape</h3>
       
       <div style="margin-bottom: 16px;">
-        <p style="color: var(--fusion-text-secondary); margin: 0 0 12px 0;">Current block: <strong>${block.name}</strong></p>
-        <p style="color: var(--fusion-text-secondary); margin: 0 0 16px 0;">Current shape: <strong>${this.getShapeDisplayName(block.shape || 'rectangle')}</strong></p>
+        <p style="color: #d0d0d0; margin: 0 0 12px 0;">Current block: <strong>${block.name}</strong></p>
+        <p style="color: #d0d0d0; margin: 0 0 16px 0;">Current shape: <strong>${this.getShapeDisplayName(block.shape || 'rectangle')}</strong></p>
       </div>
       
       <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 12px; color: var(--fusion-text-primary); font-weight: 500;">New Shape:</label>
-        <div id="shape-change-selector" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
-          <!-- Shape options will be added here -->
-        </div>
+        <label style="display: block; margin-bottom: 12px; color: #f0f0f0; font-weight: 500;">New Shape:</label>
+        <select id="shape-change-selector" style="width: 100%; padding: 8px; background: #383838; color: #f0f0f0; border: 1px solid #464646; border-radius: 4px;">
+          <option value="rectangle">Rectangle - Process/Component</option>
+          <option value="circle">Circle - Connector/Node</option>
+          <option value="diamond">Diamond - Decision/Logic</option>
+          <option value="hexagon">Hexagon - Preparation/Setup</option>
+          <option value="parallelogram">Parallelogram - Data/Input/Output</option>
+          <option value="oval">Oval - Terminal/Start/End</option>
+          <option value="trapezoid">Trapezoid - Manual Operation</option>
+          <option value="cylinder">Cylinder - Database/Storage</option>
+          <option value="cloud">Cloud - Cloud Service/External</option>
+          <option value="star">Star - Checkpoint/Important</option>
+        </select>
       </div>
       
       <div style="display: flex; justify-content: flex-end; gap: 12px;">
-        <button id="cancel-shape-btn" style="padding: 8px 16px; border: 1px solid var(--fusion-border); 
-                background: var(--fusion-bg-secondary); color: var(--fusion-text-primary); border-radius: 4px; cursor: pointer;">
+        <button id="cancel-shape-btn" style="padding: 8px 16px; border: 1px solid #464646; 
+                background: #383838; color: #f0f0f0; border-radius: 4px; cursor: pointer;">
           Cancel
         </button>
         <button id="apply-shape-btn" style="padding: 8px 16px; border: none; 
-                background: var(--fusion-accent); color: white; border-radius: 4px; cursor: pointer;">
+                background: #007acc; color: white; border-radius: 4px; cursor: pointer;">
           Apply Shape
         </button>
       </div>
@@ -543,19 +549,9 @@ class SystemBlocksEditor {
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
     
-    // Populate shape selector
-    this.populateShapeChangerSelector(block.shape || 'rectangle');
-    
-    let selectedShape = block.shape || 'rectangle';
-    
-    // Handle shape selection
-    document.querySelectorAll('.shape-change-option').forEach(option => {
-      option.addEventListener('click', () => {
-        document.querySelectorAll('.shape-change-option').forEach(opt => opt.classList.remove('selected'));
-        option.classList.add('selected');
-        selectedShape = option.dataset.shape;
-      });
-    });
+    // Set current shape
+    const selector = document.getElementById('shape-change-selector');
+    selector.value = block.shape || 'rectangle';
     
     const closeDialog = () => {
       document.body.removeChild(overlay);
@@ -568,6 +564,7 @@ class SystemBlocksEditor {
     });
     
     document.getElementById('apply-shape-btn').addEventListener('click', () => {
+      const selectedShape = selector.value;
       if (selectedShape !== block.shape) {
         this.saveState(); // Save for undo
         const oldShape = block.shape || 'rectangle';
@@ -585,71 +582,7 @@ class SystemBlocksEditor {
     });
   }
 
-  populateShapeChangerSelector(currentShape) {
-    const shapeSelector = document.getElementById('shape-change-selector');
-    const shapes = [
-      { name: 'Rectangle', shape: 'rectangle', icon: '⬜', description: 'Process/Component' },
-      { name: 'Circle', shape: 'circle', icon: '⭕', description: 'Connector/Node' },
-      { name: 'Diamond', shape: 'diamond', icon: '◆', description: 'Decision/Logic' },
-      { name: 'Hexagon', shape: 'hexagon', icon: '⬡', description: 'Preparation/Setup' },
-      { name: 'Parallelogram', shape: 'parallelogram', icon: '▱', description: 'Data/Input/Output' },
-      { name: 'Oval', shape: 'oval', icon: '⬭', description: 'Terminal/Start/End' },
-      { name: 'Trapezoid', shape: 'trapezoid', icon: '⏢', description: 'Manual Operation' },
-      { name: 'Cylinder', shape: 'cylinder', icon: '🗄️', description: 'Database/Storage' },
-      { name: 'Cloud', shape: 'cloud', icon: '☁️', description: 'Cloud Service/External' },
-      { name: 'Star', shape: 'star', icon: '⭐', description: 'Checkpoint/Important' }
-    ];
-    
-    shapes.forEach(shape => {
-      const option = document.createElement('div');
-      option.className = 'shape-change-option';
-      option.dataset.shape = shape.shape;
-      
-      const isSelected = shape.shape === currentShape;
-      
-      option.style.cssText = `
-        padding: 12px;
-        border: 2px solid ${isSelected ? 'var(--fusion-accent)' : 'var(--fusion-border)'};
-        border-radius: 6px;
-        text-align: center;
-        cursor: pointer;
-        background: ${isSelected ? 'var(--fusion-accent-hover)' : 'var(--fusion-bg-secondary)'};
-        transition: all 0.2s ease;
-        min-height: 80px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        ${isSelected ? 'box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2);' : ''}
-      `;
-      
-      if (isSelected) {
-        option.classList.add('selected');
-      }
-      
-      option.innerHTML = `
-        <div style="font-size: 24px; margin-bottom: 4px;">${shape.icon}</div>
-        <div style="font-size: 12px; font-weight: 500; color: var(--fusion-text-primary); margin-bottom: 2px;">${shape.name}</div>
-        <div style="font-size: 10px; color: var(--fusion-text-secondary); text-align: center; line-height: 1.2;">${shape.description}</div>
-      `;
-      
-      option.addEventListener('mouseenter', () => {
-        if (!option.classList.contains('selected')) {
-          option.style.borderColor = 'var(--fusion-accent)';
-          option.style.background = 'var(--fusion-bg-hover)';
-        }
-      });
-      
-      option.addEventListener('mouseleave', () => {
-        if (!option.classList.contains('selected')) {
-          option.style.borderColor = 'var(--fusion-border)';
-          option.style.background = 'var(--fusion-bg-secondary)';
-        }
-      });
-      
-      shapeSelector.appendChild(option);
-    });
-  }
+
 
   getShapeDisplayName(shape) {
     const shapeNames = {
@@ -696,28 +629,23 @@ class SystemBlocksEditor {
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(45, 45, 48, 0.8);
+      background: rgba(45, 45, 48, 0.9);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 9999;
-      backdrop-filter: blur(5px);
-      opacity: 0;
-      visibility: hidden;
-      transition: all 0.3s ease;
+      display: none;
     `;
     document.body.appendChild(this.loadingOverlay);
   }
 
   showLoading(message = 'Loading...') {
     this.loadingOverlay.querySelector('span').textContent = message;
-    this.loadingOverlay.style.opacity = '1';
-    this.loadingOverlay.style.visibility = 'visible';
+    this.loadingOverlay.style.display = 'flex';
   }
 
   hideLoading() {
-    this.loadingOverlay.style.opacity = '0';
-    this.loadingOverlay.style.visibility = 'hidden';
+    this.loadingOverlay.style.display = 'none';
   }
 
   setupKeyboardHints() {
@@ -742,18 +670,9 @@ class SystemBlocksEditor {
     });
   }
 
+  // Disabled for performance
   enableSmoothAnimations() {
-    // Add smooth transitions to all buttons
-    const buttons = document.querySelectorAll('button');
-    buttons.forEach(button => {
-      button.classList.add('interactive-element');
-    });
-
-    // Add smooth scroll to container
-    const container = document.querySelector('.container');
-    if (container) {
-      container.style.scrollBehavior = 'smooth';
-    }
+    // Animations disabled to improve performance
   }
   
   createEmptyDiagram() {
@@ -1073,15 +992,19 @@ class SystemBlocksEditor {
     
     console.log('Event listeners setup complete');
     
-    // SVG pan/zoom
+    // SVG pan/zoom with optimized event handling
     this.svg.addEventListener('mousedown', (e) => this.onMouseDown(e));
     this.svg.addEventListener('mousemove', (e) => this.onMouseMove(e));
     this.svg.addEventListener('mouseup', (e) => this.onMouseUp(e));
-    this.svg.addEventListener('wheel', (e) => this.onWheel(e));
+    this.svg.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     this.svg.addEventListener('dblclick', (e) => this.onDoubleClick(e));
     
-    // Prevent context menu
-    this.svg.addEventListener('contextmenu', (e) => e.preventDefault());
+    // Handle right-click for panning
+    this.svg.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      // Right-click can be used for panning
+      this.onMouseDown(e);
+    });
     
     // Import dialog events
     document.querySelectorAll('input[name="import-type"]').forEach(radio => {
@@ -1100,17 +1023,12 @@ class SystemBlocksEditor {
   }
   
   addBlockWithShape(name, x, y, type = "Custom", shape = "rectangle") {
-    debugLog("addBlockWithShape called with: " + name + " at (" + x + ", " + y + ") shape: " + shape);
-    
     try {
-      debugLog("About to save state...");
-      this.saveState(); // Save for undo
-      debugLog("State saved");
+      // Save for undo
+      this.saveState();
       
       // Snap initial position to grid
-      debugLog("About to snap to grid...");
       const snappedPos = this.snapPointToGrid(x, y);
-      debugLog("Snapped position: " + snappedPos.x + ", " + snappedPos.y);
       
       // Adjust dimensions based on shape for better visual appearance
       const dimensions = this.getOptimalDimensionsForShape(shape);
@@ -1119,7 +1037,7 @@ class SystemBlocksEditor {
         id: this.generateId(),
         name: name,
         type: type,
-        shape: shape, // Add shape property to block
+        shape: shape,
         status: "Placeholder",
         x: snappedPos.x,
         y: snappedPos.y,
@@ -1130,28 +1048,21 @@ class SystemBlocksEditor {
         attributes: {},
         _isNewBlock: true  // Flag for animation
       };
-      debugLog("Block object created with ID: " + block.id + " and shape: " + shape);
       
       // Add default interfaces
-      debugLog("Adding default interfaces...");
       block.interfaces.push(this.createInterface("VCC", "power", "input", "left", 0));
       block.interfaces.push(this.createInterface("GND", "power", "input", "left", 1));
       block.interfaces.push(this.createInterface("OUT", "data", "output", "right", 0));
-      debugLog("Interfaces added: " + block.interfaces.length);
       
-      debugLog("Adding block to diagram...");
+      // Add to diagram
       this.diagram.blocks.push(block);
-      debugLog("Block added to diagram. Total blocks: " + this.diagram.blocks.length);
       
-      // Trigger full diagram re-render instead of individual block render
-      // This prevents duplicate rendering if renderDiagram is called elsewhere
-      debugLog("Triggering full diagram re-render...");
-      this.renderDiagram();
-      debugLog("Diagram re-rendered successfully!");
+      // Optimize: Only render the new block instead of full diagram re-render
+      this.renderBlock(block);
       
       return block;
     } catch (e) {
-      debugLog("ERROR in addBlockWithShape: " + e.message);
+      console.error("Error in addBlockWithShape:", e.message);
       throw e;
     }
   }
@@ -2480,51 +2391,109 @@ class SystemBlocksEditor {
   }
   
   onMouseDown(e) {
-    if (e.target === this.svg || e.target.closest('.block-group') === null) {
-      this.isPanning = true;
-      this.panStart = { x: e.clientX, y: e.clientY };
-      this.svg.style.cursor = 'grabbing';
+    // Handle different mouse buttons
+    if (e.button === 1 || e.button === 2) {
+      // Middle/Right mouse button - panning
+      if (e.target === this.svg || e.target.closest('.block-group') === null) {
+        e.preventDefault();
+        this.isPanning = true;
+        this.panStart = { x: e.clientX, y: e.clientY };
+        this.viewBoxStart = { x: this.viewBox.x, y: this.viewBox.y };
+        this.svg.style.cursor = 'grabbing';
+      }
+    } else if (e.button === 0) {
+      // Left mouse button - selection or potential lasso
+      if (e.target === this.svg || e.target.closest('.block-group') === null) {
+        // Clicking on empty space - prepare for potential lasso selection
+        this.prepareForLasso(e);
+      }
     }
   }
   
   onMouseMove(e) {
+    // Throttle mouse move events for better performance
+    const now = Date.now();
+    if (now - this.lastMouseMoveTime < this.mouseMoveThreshold) {
+      return;
+    }
+    this.lastMouseMoveTime = now;
+    
     if (this.isPanning) {
+      // Use smooth, optimized panning calculation
       const dx = (e.clientX - this.panStart.x) / this.scale;
       const dy = (e.clientY - this.panStart.y) / this.scale;
       
-      this.viewBox.x -= dx;
-      this.viewBox.y -= dy;
+      this.viewBox.x = this.viewBoxStart.x - dx;
+      this.viewBox.y = this.viewBoxStart.y - dy;
       
       this.updateViewBox();
-      this.panStart = { x: e.clientX, y: e.clientY };
+    } else if (this.potentialLasso) {
+      // Check if we've moved enough to start lasso selection
+      const dragDistance = Math.sqrt(
+        Math.pow(e.clientX - this.lassoStartMouse.x, 2) + 
+        Math.pow(e.clientY - this.lassoStartMouse.y, 2)
+      );
+      
+      if (dragDistance > this.lassoThreshold) {
+        this.startLassoSelection();
+        this.updateLassoSelection(e);
+      }
+    } else if (this.isLassoSelecting) {
+      // Update lasso selection rectangle
+      this.updateLassoSelection(e);
     } else if (this.isDragging && this.selectedBlock) {
+      // Use the same coordinate transformation as lasso for consistency
       const rect = this.svg.getBoundingClientRect();
-      const svgX = ((e.clientX - rect.left) / this.scale) + this.viewBox.x;
-      const svgY = ((e.clientY - rect.top) / this.scale) + this.viewBox.y;
+      const currentViewWidth = this.viewBox.width / this.scale;
+      const currentViewHeight = this.viewBox.height / this.scale;
+      
+      const svgX = this.viewBox.x + ((e.clientX - rect.left) / rect.width) * currentViewWidth;
+      const svgY = this.viewBox.y + ((e.clientY - rect.top) / rect.height) * currentViewHeight;
       
       const rawX = svgX - this.dragStart.x;
       const rawY = svgY - this.dragStart.y;
       
-      // Apply snap-to-grid
-      const snappedPos = this.snapPointToGrid(rawX, rawY);
-      this.selectedBlock.x = snappedPos.x;
-      this.selectedBlock.y = snappedPos.y;
-      
+      // Direct position update for performance - snap to grid on mouse up
+      this.selectedBlock.x = rawX;
+      this.selectedBlock.y = rawY;
       this.updateBlockPosition(this.selectedBlock);
     }
   }
   
   onMouseUp(e) {
-    this.isPanning = false;
+    // Handle different states
+    if (this.isPanning) {
+      this.isPanning = false;
+      this.svg.style.cursor = 'grab';
+      return;
+    }
+    
+    if (this.isLassoSelecting) {
+      this.completeLassoSelection();
+      return;
+    }
+    
+    if (this.potentialLasso) {
+      // Was preparing for lasso but didn't drag enough - treat as regular click
+      this.potentialLasso = false;
+    }
+    
+    // Snap to grid when drag ends
+    if (this.isDragging && this.selectedBlock) {
+      const snappedPos = this.snapPointToGrid(this.selectedBlock.x, this.selectedBlock.y);
+      this.selectedBlock.x = snappedPos.x;
+      this.selectedBlock.y = snappedPos.y;
+      this.updateBlockPosition(this.selectedBlock);
+    }
+    
     this.isDragging = false;
     
-    // Clear selection if clicking on empty space
-    if (e.target === this.svg || e.target.closest('.block-group') === null) {
-      this.selectedBlock = null;
-      this.updateContextButtons(null);
-      document.querySelectorAll('.block.selected').forEach(el => {
-        el.classList.remove('selected');
-      });
+    // Clear selection if LEFT clicking on empty space (not middle or right click)
+    if (e.button === 0 && (e.target === this.svg || e.target.closest('.block-group') === null)) {
+      // Only clear if we didn't just complete a lasso selection and weren't preparing for one
+      if (!this.isLassoSelecting && !this.potentialLasso) {
+        this.clearSelection();
+      }
     }
     
     this.svg.style.cursor = 'grab';
@@ -2532,6 +2501,9 @@ class SystemBlocksEditor {
   
   onBlockMouseDown(e, block) {
     e.stopPropagation();
+    
+    // Only handle LEFT mouse button for block selection/dragging
+    if (e.button !== 0) return;
     
     // MILESTONE 14: Enhanced multi-selection support
     if (e.ctrlKey) {
@@ -2550,9 +2522,13 @@ class SystemBlocksEditor {
     this.selectedBlock = block;
     this.isDragging = true;
     
+    // Use consistent coordinate transformation
     const rect = this.svg.getBoundingClientRect();
-    const svgX = ((e.clientX - rect.left) / this.scale) + this.viewBox.x;
-    const svgY = ((e.clientY - rect.top) / this.scale) + this.viewBox.y;
+    const currentViewWidth = this.viewBox.width / this.scale;
+    const currentViewHeight = this.viewBox.height / this.scale;
+    
+    const svgX = this.viewBox.x + ((e.clientX - rect.left) / rect.width) * currentViewWidth;
+    const svgY = this.viewBox.y + ((e.clientY - rect.top) / rect.height) * currentViewHeight;
     
     this.dragStart = {
       x: svgX - block.x,
@@ -2592,24 +2568,193 @@ class SystemBlocksEditor {
   }
   
   updateBlockPosition(block) {
+    // Direct DOM update for better performance during dragging
     const blockGroup = document.querySelector(`[data-block-id="${block.id}"]`);
     if (blockGroup) {
       blockGroup.setAttribute('transform', `translate(${block.x}, ${block.y})`);
     }
   }
+
+  // Clear all selections
+  clearSelection() {
+    this.selectedBlock = null;
+    this.selectedBlocks.clear();
+    this.updateContextButtons(null);
+    this.updateSelectionVisuals();
+    
+    // Remove visual selection indicators
+    document.querySelectorAll('.block-selected').forEach(el => {
+      el.classList.remove('block-selected');
+    });
+  }
+
+  // Check for collision between blocks
+  checkBlockCollision(movingBlock, newX, newY) {
+    const margin = 10; // Minimum distance between blocks
+    
+    for (const block of this.diagram.blocks) {
+      if (block.id === movingBlock.id) continue; // Skip self
+      
+      // Check if rectangles overlap with margin
+      const movingRight = newX + movingBlock.width + margin;
+      const movingBottom = newY + movingBlock.height + margin;
+      const movingLeft = newX - margin;
+      const movingTop = newY - margin;
+      
+      const blockRight = block.x + block.width;
+      const blockBottom = block.y + block.height;
+      const blockLeft = block.x;
+      const blockTop = block.y;
+      
+      // Check for overlap
+      if (!(movingRight < blockLeft || 
+            movingLeft > blockRight || 
+            movingBottom < blockTop || 
+            movingTop > blockBottom)) {
+        return true; // Collision detected
+      }
+    }
+    
+    return false; // No collision
+  }
+
+  // === LASSO SELECTION METHODS ===
+  prepareForLasso(e) {
+    this.potentialLasso = true;
+    
+    // Store initial mouse position for threshold check
+    const rect = this.svg.getBoundingClientRect();
+    const currentViewWidth = this.viewBox.width / this.scale;
+    const currentViewHeight = this.viewBox.height / this.scale;
+    
+    const svgX = this.viewBox.x + ((e.clientX - rect.left) / rect.width) * currentViewWidth;
+    const svgY = this.viewBox.y + ((e.clientY - rect.top) / rect.height) * currentViewHeight;
+    
+    this.lassoStart = { x: svgX, y: svgY };
+    this.lassoStartMouse = { x: e.clientX, y: e.clientY }; // Track mouse position for threshold
+  }
+
+  startLassoSelection() {
+    this.isLassoSelecting = true;
+    this.potentialLasso = false;
+    
+    // Create selection rectangle
+    this.lassoRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    this.lassoRect.setAttribute('class', 'lasso-selection');
+    this.lassoRect.setAttribute('x', this.lassoStart.x);
+    this.lassoRect.setAttribute('y', this.lassoStart.y);
+    this.lassoRect.setAttribute('width', '0');
+    this.lassoRect.setAttribute('height', '0');
+    this.lassoRect.setAttribute('fill', 'rgba(0, 122, 204, 0.1)');
+    this.lassoRect.setAttribute('stroke', '#007acc');
+    this.lassoRect.setAttribute('stroke-width', '1');
+    this.lassoRect.setAttribute('stroke-dasharray', '3,3');
+    
+    this.svg.appendChild(this.lassoRect);
+    this.svg.style.cursor = 'crosshair';
+  }
+
+  updateLassoSelection(e) {
+    if (!this.isLassoSelecting || !this.lassoRect) return;
+    
+    // Convert mouse position to SVG coordinates using proper transformation
+    const rect = this.svg.getBoundingClientRect();
+    const currentViewWidth = this.viewBox.width / this.scale;
+    const currentViewHeight = this.viewBox.height / this.scale;
+    
+    const svgX = this.viewBox.x + ((e.clientX - rect.left) / rect.width) * currentViewWidth;
+    const svgY = this.viewBox.y + ((e.clientY - rect.top) / rect.height) * currentViewHeight;
+    
+    // Calculate rectangle bounds
+    const x = Math.min(this.lassoStart.x, svgX);
+    const y = Math.min(this.lassoStart.y, svgY);
+    const width = Math.abs(svgX - this.lassoStart.x);
+    const height = Math.abs(svgY - this.lassoStart.y);
+    
+    // Update selection rectangle
+    this.lassoRect.setAttribute('x', x);
+    this.lassoRect.setAttribute('y', y);
+    this.lassoRect.setAttribute('width', width);
+    this.lassoRect.setAttribute('height', height);
+  }
+
+  completeLassoSelection() {
+    if (!this.isLassoSelecting || !this.lassoRect) return;
+    
+    // Get selection bounds
+    const x = parseFloat(this.lassoRect.getAttribute('x'));
+    const y = parseFloat(this.lassoRect.getAttribute('y'));
+    const width = parseFloat(this.lassoRect.getAttribute('width'));
+    const height = parseFloat(this.lassoRect.getAttribute('height'));
+    
+    // Find blocks within selection area
+    const selectedBlocks = this.diagram.blocks.filter(block => {
+      const blockRight = block.x + block.width;
+      const blockBottom = block.y + block.height;
+      const selectionRight = x + width;
+      const selectionBottom = y + height;
+      
+      // Check if block overlaps with selection rectangle
+      return !(block.x > selectionRight || 
+               blockRight < x || 
+               block.y > selectionBottom || 
+               blockBottom < y);
+    });
+    
+    // Update selection
+    if (selectedBlocks.length > 0) {
+      this.selectedBlocks.clear();
+      selectedBlocks.forEach(block => this.selectedBlocks.add(block));
+      this.selectedBlock = selectedBlocks[0]; // Set primary selection
+      this.updateSelectionVisuals();
+      this.updateContextButtons(this.selectedBlock);
+    }
+    
+    // Clean up
+    this.svg.removeChild(this.lassoRect);
+    this.lassoRect = null;
+    this.isLassoSelecting = false;
+    this.potentialLasso = false;
+    this.svg.style.cursor = 'grab';
+  }
   
   onWheel(e) {
     e.preventDefault();
-    const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
+    
+    // Fix zoom direction to match Fusion 360 (scroll up = zoom in)
+    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+    const oldScale = this.scale;
+    
+    // Get mouse position relative to SVG before scaling
+    const rect = this.svg.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // Convert mouse position to world coordinates before zoom
+    const currentViewWidth = this.viewBox.width / oldScale;
+    const currentViewHeight = this.viewBox.height / oldScale;
+    const worldX = this.viewBox.x + (mouseX / rect.width) * currentViewWidth;
+    const worldY = this.viewBox.y + (mouseY / rect.height) * currentViewHeight;
+    
+    // Apply zoom
     this.scale *= zoomFactor;
     
     // Constrain zoom
     this.scale = Math.max(0.1, Math.min(5, this.scale));
     
+    // Calculate new view dimensions
+    const newViewWidth = this.viewBox.width / this.scale;
+    const newViewHeight = this.viewBox.height / this.scale;
+    
+    // Adjust viewBox to keep world coordinates under mouse
+    this.viewBox.x = worldX - (mouseX / rect.width) * newViewWidth;
+    this.viewBox.y = worldY - (mouseY / rect.height) * newViewHeight;
+    
     this.updateViewBox();
   }
   
   updateViewBox() {
+    // Simplified viewBox update for better performance
     this.svg.setAttribute('viewBox', 
       `${this.viewBox.x} ${this.viewBox.y} ${this.viewBox.width / this.scale} ${this.viewBox.height / this.scale}`
     );
@@ -2621,7 +2766,7 @@ class SystemBlocksEditor {
   }
   
   showBlockCreationDialog() {
-    // Create dialog overlay
+    // Create lightweight dialog overlay
     const overlay = document.createElement('div');
     overlay.className = 'dialog-overlay';
     overlay.style.cssText = `
@@ -2630,52 +2775,60 @@ class SystemBlocksEditor {
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.6);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 10000;
-      backdrop-filter: blur(2px);
     `;
     
-    // Create dialog
+    // Create ultra-lightweight dialog
     const dialog = document.createElement('div');
     dialog.className = 'block-creation-dialog';
     dialog.style.cssText = `
-      background: var(--fusion-bg-primary);
-      border: 1px solid var(--fusion-border);
-      border-radius: 8px;
-      padding: 24px;
-      min-width: 400px;
-      max-width: 500px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      background: #2d2d30;
+      border: 1px solid #464646;
+      border-radius: 4px;
+      padding: 20px;
+      width: 320px;
     `;
     
+    // Ultra-simplified dialog content with minimal styling
     dialog.innerHTML = `
-      <h3 style="margin: 0 0 20px 0; color: var(--fusion-text-primary); font-size: 18px;">Create New Block</h3>
+      <h3 style="margin: 0 0 15px 0; color: #f0f0f0;">Create New Block</h3>
       
-      <div style="margin-bottom: 16px;">
-        <label style="display: block; margin-bottom: 8px; color: var(--fusion-text-primary); font-weight: 500;">Block Name:</label>
+      <div style="margin-bottom: 12px;">
+        <label style="color: #f0f0f0;">Name:</label><br>
         <input type="text" id="block-name-input" value="New Block" 
-               style="width: 100%; padding: 8px 12px; border: 1px solid var(--fusion-border); 
-                      border-radius: 4px; background: var(--fusion-bg-secondary); color: var(--fusion-text-primary);">
+               style="width: 100%; padding: 6px; margin-top: 4px; border: 1px solid #555; 
+                      background: #383838; color: #f0f0f0; box-sizing: border-box;">
       </div>
       
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 12px; color: var(--fusion-text-primary); font-weight: 500;">Block Shape:</label>
-        <div id="shape-selector" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
-          <!-- Shape options will be added here -->
-        </div>
+      <div style="margin-bottom: 15px;">
+        <label style="color: #f0f0f0;">Shape:</label><br>
+        <select id="shape-select" style="width: 100%; padding: 6px; margin-top: 4px; border: 1px solid #555; 
+                background: #383838; color: #f0f0f0;">
+          <option value="rectangle">Rectangle</option>
+          <option value="circle">Circle</option>
+          <option value="diamond">Diamond</option>
+          <option value="hexagon">Hexagon</option>
+          <option value="parallelogram">Parallelogram</option>
+          <option value="oval">Oval</option>
+          <option value="trapezoid">Trapezoid</option>
+          <option value="cylinder">Cylinder</option>
+          <option value="cloud">Cloud</option>
+          <option value="star">Star</option>
+        </select>
       </div>
       
-      <div style="display: flex; justify-content: flex-end; gap: 12px;">
-        <button id="cancel-block-btn" style="padding: 8px 16px; border: 1px solid var(--fusion-border); 
-                background: var(--fusion-bg-secondary); color: var(--fusion-text-primary); border-radius: 4px; cursor: pointer;">
+      <div style="text-align: right;">
+        <button id="cancel-block-btn" style="padding: 6px 12px; margin-right: 8px; border: 1px solid #555; 
+                background: #383838; color: #f0f0f0; cursor: pointer;">
           Cancel
         </button>
-        <button id="create-block-btn" style="padding: 8px 16px; border: none; 
-                background: var(--fusion-accent); color: white; border-radius: 4px; cursor: pointer;">
-          Create Block
+        <button id="create-block-btn" style="padding: 6px 12px; border: none; 
+                background: #007acc; color: white; cursor: pointer;">
+          Create
         </button>
       </div>
     `;
@@ -2683,30 +2836,14 @@ class SystemBlocksEditor {
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
     
-    // Add shape options
-    this.populateShapeSelector();
-    
-    // Set up event listeners
+    // Set up lightweight event listeners
     const nameInput = document.getElementById('block-name-input');
+    const shapeSelect = document.getElementById('shape-select');
     const cancelBtn = document.getElementById('cancel-block-btn');
     const createBtn = document.getElementById('create-block-btn');
     
     nameInput.focus();
     nameInput.select();
-    
-    let selectedShape = 'rectangle'; // Default shape
-    
-    // Handle shape selection
-    document.querySelectorAll('.shape-option').forEach(option => {
-      option.addEventListener('click', () => {
-        document.querySelectorAll('.shape-option').forEach(opt => opt.classList.remove('selected'));
-        option.classList.add('selected');
-        selectedShape = option.dataset.shape;
-      });
-    });
-    
-    // Select default shape
-    document.querySelector('.shape-option[data-shape="rectangle"]')?.classList.add('selected');
     
     const closeDialog = () => {
       document.body.removeChild(overlay);
@@ -2720,19 +2857,13 @@ class SystemBlocksEditor {
     createBtn.addEventListener('click', () => {
       const name = nameInput.value.trim();
       if (name) {
-        debugLog("About to call addBlock with name: " + name + " and shape: " + selectedShape);
-        try {
-          // Calculate position with offset to avoid overlap
-          const blockCount = this.diagram.blocks.length;
-          const offsetX = 100 + (blockCount * 30);
-          const offsetY = 100 + (blockCount * 30);
-          
-          const result = this.addBlockWithShape(name, offsetX, offsetY, "Custom", selectedShape);
-          debugLog("addBlockWithShape returned: " + (result ? "success" : "failed"));
-          closeDialog();
-        } catch (e) {
-          debugLog("ERROR in addBlockWithShape: " + e.message);
-        }
+        // Calculate position with offset to avoid overlap
+        const blockCount = this.diagram.blocks.length;
+        const offsetX = 100 + (blockCount * 30);
+        const offsetY = 100 + (blockCount * 30);
+        
+        this.addBlockWithShape(name, offsetX, offsetY, "Custom", shapeSelect.value);
+        closeDialog();
       }
     });
     
@@ -2746,74 +2877,7 @@ class SystemBlocksEditor {
     });
   }
   
-  populateShapeSelector() {
-    const shapeSelector = document.getElementById('shape-selector');
-    const shapes = [
-      { name: 'Rectangle', shape: 'rectangle', icon: '⬜', description: 'Process/Component' },
-      { name: 'Circle', shape: 'circle', icon: '⭕', description: 'Connector/Node' },
-      { name: 'Diamond', shape: 'diamond', icon: '◆', description: 'Decision/Logic' },
-      { name: 'Hexagon', shape: 'hexagon', icon: '⬡', description: 'Preparation/Setup' },
-      { name: 'Parallelogram', shape: 'parallelogram', icon: '▱', description: 'Data/Input/Output' },
-      { name: 'Oval', shape: 'oval', icon: '⬭', description: 'Terminal/Start/End' },
-      { name: 'Trapezoid', shape: 'trapezoid', icon: '⏢', description: 'Manual Operation' },
-      { name: 'Cylinder', shape: 'cylinder', icon: '🗄️', description: 'Database/Storage' },
-      { name: 'Cloud', shape: 'cloud', icon: '☁️', description: 'Cloud Service/External' },
-      { name: 'Star', shape: 'star', icon: '⭐', description: 'Checkpoint/Important' }
-    ];
-    
-    shapes.forEach(shape => {
-      const option = document.createElement('div');
-      option.className = 'shape-option';
-      option.dataset.shape = shape.shape;
-      option.style.cssText = `
-        padding: 12px;
-        border: 2px solid var(--fusion-border);
-        border-radius: 6px;
-        text-align: center;
-        cursor: pointer;
-        background: var(--fusion-bg-secondary);
-        transition: all 0.2s ease;
-        min-height: 80px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-      `;
-      
-      option.innerHTML = `
-        <div style="font-size: 24px; margin-bottom: 4px;">${shape.icon}</div>
-        <div style="font-size: 12px; font-weight: 500; color: var(--fusion-text-primary); margin-bottom: 2px;">${shape.name}</div>
-        <div style="font-size: 10px; color: var(--fusion-text-secondary); text-align: center; line-height: 1.2;">${shape.description}</div>
-      `;
-      
-      option.addEventListener('mouseenter', () => {
-        if (!option.classList.contains('selected')) {
-          option.style.borderColor = 'var(--fusion-accent)';
-          option.style.background = 'var(--fusion-bg-hover)';
-        }
-      });
-      
-      option.addEventListener('mouseleave', () => {
-        if (!option.classList.contains('selected')) {
-          option.style.borderColor = 'var(--fusion-border)';
-          option.style.background = 'var(--fusion-bg-secondary)';
-        }
-      });
-      
-      shapeSelector.appendChild(option);
-    });
-    
-    // Add CSS for selected state
-    const style = document.createElement('style');
-    style.textContent = `
-      .shape-option.selected {
-        border-color: var(--fusion-accent) !important;
-        background: var(--fusion-accent-hover) !important;
-        box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2);
-      }
-    `;
-    document.head.appendChild(style);
-  }
+  // Removed populateShapeSelector - using lightweight dropdown instead
   
   toggleSnapToGrid() {
     this.snapToGridEnabled = !this.snapToGridEnabled;
