@@ -212,7 +212,7 @@ def validate_links(block: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
         else:
             return (
                 False,
-                f"Unknown link target '{target}' in block '{block.get('name', 'Unknown')}'",
+                f"Invalid target '{target}' in block '{block.get('name', 'Unknown')}'",
             )
 
     return True, None
@@ -423,6 +423,11 @@ def generate_markdown_report(diagram: Dict[str, Any]) -> str:
     report.append(f"- **Total Connections:** {len(connections)}")
     report.append("")
 
+    # Check for empty diagram 
+    if not blocks:
+        report.append("No blocks defined")
+        report.append("")
+
     # Status breakdown
     status_counts = {}
     for block in blocks:
@@ -480,7 +485,7 @@ def generate_markdown_report(diagram: Dict[str, Any]) -> str:
 
     # Connections table
     if connections:
-        report.append("## Connections")
+        report.append("## Connection Details")
         report.append("| From | To | Protocol |")
         report.append("|------|----|---------| ")
 
@@ -549,8 +554,8 @@ def generate_pin_map_header(diagram: Dict[str, Any]) -> str:
     """Generate a C header file with pin definitions."""
     lines = []
 
-    lines.append("// Generated pin map definitions")
-    lines.append("// Auto-generated from System Blocks diagram")
+    lines.append("// Auto-generated pin definitions")
+    lines.append("// Generated from System Blocks diagram")
     lines.append("")
     lines.append("#ifndef PIN_DEFINITIONS_H")
     lines.append("#define PIN_DEFINITIONS_H")
