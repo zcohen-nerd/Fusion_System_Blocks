@@ -1,0 +1,568 @@
+/* Fusion 360 Style Ribbon Interface
+ * Authentic ribbon UI with proper grouping, scaling, and responsive behavior
+ */
+
+/* === FUSION RIBBON CONTAINER === */
+.fusion-ribbon {
+  background: linear-gradient(180deg, #393939 0%, #2d2d30 100%);
+  border-bottom: 1px solid #1a1a1a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  padding: 4px 8px 8px 8px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 11px;
+  color: #f0f0f0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  min-height: 88px;
+  position: relative;
+}
+
+/* === RIBBON GROUPS === */
+.ribbon-groups {
+  display: flex;
+  gap: 2px;
+  align-items: stretch;
+  min-height: 78px;
+}
+
+.ribbon-group {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  padding: 6px 8px 4px 8px;
+  margin: 0 1px;
+  position: relative;
+  min-width: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ribbon-group::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.ribbon-group:last-child::after {
+  display: none;
+}
+
+/* === GROUP LABELS === */
+.ribbon-group-label {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #cccccc;
+  font-weight: 400;
+  white-space: nowrap;
+  text-align: center;
+  width: 100%;
+}
+
+/* === RIBBON CONTENT AREA === */
+.ribbon-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  margin-bottom: 14px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+/* === LARGE BUTTONS (Main Commands) === */
+.ribbon-button-large {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px 4px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  cursor: pointer;
+  color: #f0f0f0;
+  font-size: 10px;
+  font-weight: 400;
+  text-align: center;
+  min-width: 48px;
+  min-height: 54px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ribbon-button-large:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ribbon-button-large:active {
+  background: rgba(0, 122, 204, 0.3);
+  border-color: #007acc;
+}
+
+.ribbon-button-large.active {
+  background: rgba(255, 140, 0, 0.2);
+  border-color: #ff8c00;
+  color: #ffffff;
+}
+
+/* === SMALL BUTTONS (Secondary Commands) === */
+.ribbon-button-small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  cursor: pointer;
+  color: #f0f0f0;
+  font-size: 10px;
+  font-weight: 400;
+  min-height: 20px;
+  white-space: nowrap;
+}
+
+.ribbon-button-small:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ribbon-button-small:active {
+  background: rgba(0, 122, 204, 0.3);
+  border-color: #007acc;
+}
+
+.ribbon-button-small.active {
+  background: rgba(255, 140, 0, 0.2);
+  border-color: #ff8c00;
+}
+
+/* === BUTTON ICONS === */
+.ribbon-icon {
+  font-size: 20px;
+  margin-bottom: 2px;
+  line-height: 1;
+}
+
+.ribbon-icon-small {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* === BUTTON TEXT === */
+.ribbon-text {
+  font-size: 10px;
+  line-height: 1.1;
+  text-align: center;
+  max-width: 48px;
+  word-wrap: break-word;
+}
+
+/* === SPLIT BUTTONS === */
+.ribbon-split-button {
+  display: flex;
+}
+
+.ribbon-split-main {
+  flex: 1;
+  border-right: none;
+  border-radius: 2px 0 0 2px;
+}
+
+.ribbon-split-dropdown {
+  width: 12px;
+  padding: 3px 2px;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0 2px 2px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+}
+
+/* === BUTTON ROWS (for small buttons) === */
+.ribbon-button-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  justify-content: center;
+}
+
+.ribbon-buttons-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+/* === MIXED LAYOUT (Large + Small buttons) === */
+.ribbon-mixed {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+/* === DROPDOWNS === */
+.ribbon-dropdown {
+  position: relative;
+}
+
+.ribbon-dropdown-content {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #2d2d30;
+  border: 1px solid #555555;
+  border-radius: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  min-width: 120px;
+  z-index: 1000;
+  display: none;
+}
+
+.ribbon-dropdown.open .ribbon-dropdown-content {
+  display: block;
+}
+
+.ribbon-dropdown-item {
+  padding: 6px 12px;
+  color: #f0f0f0;
+  cursor: pointer;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ribbon-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.ribbon-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* === DISABLED STATE === */
+.ribbon-button-large.disabled,
+.ribbon-button-small.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ribbon-button-large.disabled:hover,
+.ribbon-button-small.disabled:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* === RESPONSIVE BEHAVIOR === */
+@media (max-width: 1200px) {
+  .ribbon-group {
+    min-width: 50px;
+    padding: 4px 6px 4px 6px;
+  }
+  
+  .ribbon-button-large {
+    min-width: 40px;
+    padding: 4px 6px 3px 6px;
+  }
+  
+  .ribbon-text {
+    font-size: 9px;
+    max-width: 40px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .ribbon-group {
+    min-width: 44px;
+    padding: 3px 5px 4px 5px;
+  }
+  
+  .ribbon-button-large {
+    min-width: 36px;
+    min-height: 48px;
+    padding: 3px 4px 2px 4px;
+  }
+  
+  .ribbon-icon {
+    font-size: 18px;
+  }
+  
+  .ribbon-text {
+    font-size: 8px;
+    max-width: 36px;
+  }
+  
+  .ribbon-group-label {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 800px) {
+  .ribbon-button-large .ribbon-text {
+    display: none;
+  }
+  
+  .ribbon-button-large {
+    min-height: 32px;
+  }
+  
+  .ribbon-group {
+    min-width: 36px;
+  }
+}
+
+/* === KEYBOARD SHORTCUTS === */
+.ribbon-shortcut {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 8px;
+  color: #999999;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 3px;
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.ribbon-button-large:hover .ribbon-shortcut,
+.ribbon-button-small:hover .ribbon-shortcut {
+  opacity: 1;
+}
+
+/* === BADGES === */
+.ribbon-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #ff4444;
+  color: white;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  font-size: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* === LOADING STATE === */
+.ribbon-button-large.loading,
+.ribbon-button-small.loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.ribbon-button-large.loading::before,
+.ribbon-button-small.loading::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border: 2px solid transparent;
+  border-top: 2px solid #007acc;
+  border-radius: 50%;
+  animation: ribbon-spin 1s linear infinite;
+}
+
+@keyframes ribbon-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* === OVERFLOW INDICATOR === */
+.ribbon-overflow {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: #f0f0f0;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+  display: none;
+}
+
+.ribbon-overflow.visible {
+  display: block;
+}
+
+/* === ACCESSIBILITY === */
+.ribbon-button-large:focus,
+.ribbon-button-small:focus {
+  outline: 2px solid #007acc;
+  outline-offset: -2px;
+}
+
+/* Remove focus outline on mouse interaction */
+.ribbon-button-large:focus:not(.focus-visible),
+.ribbon-button-small:focus:not(.focus-visible) {
+  outline: none;
+}
+
+/* === SECONDARY RIBBON BAR === */
+.ribbon-secondary {
+  background: linear-gradient(180deg, #353535 0%, #2a2a2a 100%);
+  border-bottom: 1px solid #1a1a1a;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 11px;
+  min-height: 32px;
+  overflow-x: auto;
+}
+
+.search-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 8px;
+  width: 14px;
+  height: 14px;
+  color: #999;
+  pointer-events: none;
+}
+
+.search-input {
+  padding: 4px 8px 4px 28px;
+  background: #2d2d30;
+  border: 1px solid #555;
+  border-radius: 3px;
+  color: #f0f0f0;
+  font-size: 11px;
+  width: 180px;
+}
+
+.search-input:focus {
+  border-color: #007acc;
+  outline: none;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.filter-btn {
+  padding: 3px 8px;
+  font-size: 10px;
+  background: transparent;
+  border: 1px solid #555;
+  color: #d0d0d0;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.filter-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.filter-btn.active {
+  background: rgba(0, 122, 204, 0.3);
+  border-color: #007acc;
+  color: #ffffff;
+}
+
+.connection-type-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fusion-label {
+  color: #cccccc;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.connection-type-select {
+  padding: 3px 6px;
+  background: #2d2d30;
+  border: 1px solid #555;
+  border-radius: 3px;
+  color: #f0f0f0;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.connection-type-select:hover {
+  border-color: #007acc;
+}
+
+.connection-type-select:focus {
+  border-color: #007acc;
+  outline: none;
+}
+
+.breadcrumb-container {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.fusion-breadcrumb {
+  color: #cccccc;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive behavior for secondary ribbon */
+@media (max-width: 1000px) {
+  .ribbon-secondary {
+    flex-wrap: wrap;
+    min-height: auto;
+    padding: 4px 8px;
+  }
+  
+  .search-container {
+    max-width: 300px;
+  }
+  
+  .search-input {
+    width: 140px;
+  }
+}
+
+@media (max-width: 800px) {
+  .filter-buttons {
+    display: none;
+  }
+  
+  .search-input {
+    width: 120px;
+  }
+}

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modular JS Loading Test</title>
+</head>
+<body>
+    <h1>Modular JavaScript Loading Test</h1>
+    <div id="test-output"></div>
+    
+    <!-- Load modular JavaScript in correct order -->
+    <script src="./src/core/diagram-editor.js"></script>
+    <script src="./src/ui/diagram-renderer.js"></script>
+    <script src="./src/ui/toolbar-manager.js"></script>
+    <script src="./src/features/advanced-features.js"></script>
+    <script src="./src/interface/python-bridge.js"></script>
+    <script src="./src/main-coordinator.js"></script>
+    
+    <script>
+        // Test that all modules loaded correctly
+        window.addEventListener('DOMContentLoaded', () => {
+            const output = document.getElementById('test-output');
+            const results = [];
+            
+            // Check if all main classes are available
+            const expectedClasses = [
+                'DiagramEditorCore',
+                'DiagramRenderer', 
+                'ToolbarManager',
+                'AdvancedFeatures',
+                'PythonInterface',
+                'MainCoordinator'
+            ];
+            
+            expectedClasses.forEach(className => {
+                if (window[className]) {
+                    results.push(`✅ ${className} loaded successfully`);
+                } else {
+                    results.push(`❌ ${className} failed to load`);
+                }
+            });
+            
+            output.innerHTML = '<pre>' + results.join('\n') + '</pre>';
+            
+            // Try to initialize the system
+            try {
+                const coordinator = new MainCoordinator();
+                results.push('\n✅ MainCoordinator initialization successful');
+                output.innerHTML = '<pre>' + results.join('\n') + '</pre>';
+            } catch (error) {
+                results.push('\n❌ MainCoordinator initialization failed: ' + error.message);
+                output.innerHTML = '<pre>' + results.join('\n') + '</pre>';
+            }
+        });
+    </script>
+</body>
+</html>

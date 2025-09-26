@@ -59,8 +59,7 @@ Revolutionary synchronization between diagrams and CAD:
 ## 🏗️ **System Architecture**
 
 ### **Core Components**
-- **`Fusion_System_Blocks.py`** - Main add-in entry point and Fusion 360 integration
-- **`src/main.py`** - Core Python backend with 40+ functions (1040+ lines)
+- **`Fusion_System_Blocks.py`** - Complete add-in entry point with all functionality (1100+ lines)
 - **`src/diagram_data.py`** - Data management engine with 50+ functions (1800+ lines)
 - **`src/palette.js`** - Advanced JavaScript frontend (5800+ lines)
 - **`docs/schema.json`** - Comprehensive JSON schema with validation
@@ -71,7 +70,7 @@ Revolutionary synchronization between diagrams and CAD:
 - **25+ custom SVG icons** for all engineering domains
 - **Advanced animation system** with smooth transitions and hover effects
 - **Responsive design** that works across different screen sizes
-- **Professional toolbars** with context-sensitive controls
+- **Professional Fusion 360-style ribbon interface** with grouped commands and context-sensitive controls
 
 ---
 
@@ -107,7 +106,7 @@ Revolutionary synchronization between diagrams and CAD:
 - **☑️ Advanced Multi-Selection** - Ctrl+click support with visual feedback and batch operations
 - **📦 Group Management System** - Create/ungroup blocks with visual boundaries and coordinated operations
 - **📝 Complete Annotation System** - Text labels, sticky notes, dimension lines, and callouts with leader arrows
-- **🎨 Smart User Experience** - Context-aware toolbar buttons, responsive design, and professional notifications
+- **🎨 Smart User Experience** - Context-aware ribbon interface, responsive design, and professional notifications
 - **⌨️ Enhanced Keyboard Shortcuts** - Ctrl+A (Select All), Esc (Clear), Delete (Remove), plus visual feedback
 
 ### **🎯 Final Milestone (In Progress)**
@@ -146,10 +145,10 @@ Revolutionary synchronization between diagrams and CAD:
 3. The System Blocks palette will appear - start creating!
 
 ### **First Diagram**
-1. **Create Blocks**: Click toolbar buttons to add electrical, mechanical, and software blocks
+1. **Create Blocks**: Use the **Create** ribbon group to add electrical, mechanical, and software blocks
 2. **Make Connections**: Click block ports to create typed connections
-3. **Link to CAD**: Select blocks and click "Link to CAD" to connect to 3D components
-4. **Save**: Click Save to embed your diagram in the Fusion 360 file
+3. **Link to CAD**: Select blocks and click "Link to CAD" in the **Edit** ribbon group to connect to 3D components
+4. **Save**: Click Save in the **File** ribbon group to embed your diagram in the Fusion 360 file
 
 ### **Advanced Features**
 1. **3D Visualization**: Enable 3D overlay mode to see diagrams on your assembly

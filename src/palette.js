@@ -22,6 +22,7 @@ console.log("System Blocks palette loaded");
 // SVG-based node editor with pan/zoom, grid, and draggable blocks with ports
 class SystemBlocksEditor {
   constructor() {
+    this.isInitialized = false; // Track initialization state
     this.diagram = this.createEmptyDiagram();
     this.selectedBlock = null;
     this.isDragging = false;
@@ -76,6 +77,13 @@ class SystemBlocksEditor {
     this.initializeSearch();
     this.initializeProfessionalUI();
     this.initializeAdvancedFeatures();
+    
+    // Mark as initialized
+    this.isInitialized = true;
+    console.log('SystemBlocksEditor initialization complete');
+    
+    // Update button states
+    this.updateButtonStates();
   }
 
   // === MILESTONE 10: PROFESSIONAL UI ENHANCEMENTS ===
@@ -763,6 +771,25 @@ class SystemBlocksEditor {
       console.log('GLOBAL CLICK DETECTED:', e.target.id || e.target.tagName, e.target);
     });
     
+    // Add SVG canvas click handler to clear connection mode
+    if (this.svgElement) {
+      this.svgElement.addEventListener('click', (e) => {
+        // If clicking on empty SVG space (not on a block or port)
+        if (e.target === this.svgElement || e.target.id === 'diagram-svg') {
+          if (this.connectionMode) {
+            this.clearConnectionMode();
+            console.log('Connection mode cleared by clicking empty space');
+          }
+          
+          // Clear any block selection as well
+          if (this.selectedBlock) {
+            this.selectedBlock = null;
+            this.updateButtonStates();
+          }
+        }
+      });
+    }
+    
     // Toolbar buttons
     const btnNew = document.getElementById('btn-new');
     const btnSave = document.getElementById('btn-save');
@@ -990,6 +1017,147 @@ class SystemBlocksEditor {
       console.error('btn-link-ecad element not found!');
     }
     
+    // === MISSING RIBBON BUTTON HANDLERS ===
+    // Add Text and Note buttons
+    const btnAddText = document.getElementById('btn-add-text');
+    const btnAddNote = document.getElementById('btn-add-note');
+    
+    if (btnAddText) {
+      console.log('Adding click listener to Add Text button');
+      btnAddText.addEventListener('click', () => {
+        console.log('Add Text button clicked!');
+        this.addTextAnnotation();
+      });
+    } else {
+      console.error('btn-add-text element not found!');
+    }
+    
+    if (btnAddNote) {
+      console.log('Adding click listener to Add Note button');
+      btnAddNote.addEventListener('click', () => {
+        console.log('Add Note button clicked!');
+        this.addNoteAnnotation();
+      });
+    } else {
+      console.error('btn-add-note element not found!');
+    }
+    
+    // Selection buttons
+    const btnSelectAll = document.getElementById('btn-select-all');
+    const btnSelectNone = document.getElementById('btn-select-none');
+    const btnGroupCreate = document.getElementById('btn-group-create');
+    const btnGroupUngroup = document.getElementById('btn-group-ungroup');
+    
+    if (btnSelectAll) {
+      console.log('Adding click listener to Select All button');
+      btnSelectAll.addEventListener('click', () => {
+        console.log('Select All button clicked!');
+        this.selectAllBlocks();
+      });
+    } else {
+      console.error('btn-select-all element not found!');
+    }
+    
+    if (btnSelectNone) {
+      console.log('Adding click listener to Select None button');
+      btnSelectNone.addEventListener('click', () => {
+        console.log('Select None button clicked!');
+        this.clearSelection();
+      });
+    } else {
+      console.error('btn-select-none element not found!');
+    }
+    
+    if (btnGroupCreate) {
+      console.log('Adding click listener to Group Create button');
+      btnGroupCreate.addEventListener('click', () => {
+        console.log('Group Create button clicked!');
+        this.createGroupFromSelection();
+      });
+    } else {
+      console.error('btn-group-create element not found!');
+    }
+    
+    if (btnGroupUngroup) {
+      console.log('Adding click listener to Group Ungroup button');
+      btnGroupUngroup.addEventListener('click', () => {
+        console.log('Group Ungroup button clicked!');
+        this.ungroupSelection();
+      });
+    } else {
+      console.error('btn-group-ungroup element not found!');
+    }
+    
+    // Arrange buttons
+    const btnAutoLayout = document.getElementById('btn-auto-layout');
+    const btnAlignLeft = document.getElementById('btn-align-left');
+    const btnAlignCenter = document.getElementById('btn-align-center');
+    const btnDistributeH = document.getElementById('btn-distribute-h');
+    
+    if (btnAutoLayout) {
+      console.log('Adding click listener to Auto Layout button');
+      btnAutoLayout.addEventListener('click', () => {
+        console.log('Auto Layout button clicked!');
+        this.autoLayoutBlocks();
+      });
+    } else {
+      console.error('btn-auto-layout element not found!');
+    }
+    
+    if (btnAlignLeft) {
+      console.log('Adding click listener to Align Left button');
+      btnAlignLeft.addEventListener('click', () => {
+        console.log('Align Left button clicked!');
+        this.alignBlocksLeft();
+      });
+    } else {
+      console.error('btn-align-left element not found!');
+    }
+    
+    if (btnAlignCenter) {
+      console.log('Adding click listener to Align Center button');
+      btnAlignCenter.addEventListener('click', () => {
+        console.log('Align Center button clicked!');
+        this.alignBlocksCenter();
+      });
+    } else {
+      console.error('btn-align-center element not found!');
+    }
+    
+    if (btnDistributeH) {
+      console.log('Adding click listener to Distribute H button');
+      btnDistributeH.addEventListener('click', () => {
+        console.log('Distribute H button clicked!');
+        this.distributeBlocksHorizontally();
+      });
+    } else {
+      console.error('btn-distribute-h element not found!');
+    }
+    
+    // Annotation buttons
+    const btnAddDimension = document.getElementById('btn-add-dimension');
+    const btnAddCallout = document.getElementById('btn-add-callout');
+    
+    if (btnAddDimension) {
+      console.log('Adding click listener to Add Dimension button');
+      btnAddDimension.addEventListener('click', () => {
+        console.log('Add Dimension button clicked!');
+        this.addDimensionAnnotation();
+      });
+    } else {
+      console.error('btn-add-dimension element not found!');
+    }
+    
+    if (btnAddCallout) {
+      console.log('Adding click listener to Add Callout button');
+      btnAddCallout.addEventListener('click', () => {
+        console.log('Add Callout button clicked!');
+        this.addCalloutAnnotation();
+      });
+    } else {
+      console.error('btn-add-callout element not found!');
+    }
+    
     console.log('Event listeners setup complete');
     
     // SVG pan/zoom with optimized event handling
@@ -1187,6 +1355,10 @@ class SystemBlocksEditor {
     port.setAttribute('class', 'port');
     port.setAttribute('r', '4');
     port.setAttribute('data-interface-id', intf.id);
+    port.setAttribute('data-block-id', block.id);
+    port.setAttribute('data-direction', intf.direction); // Add direction for debugging
+    port.style.pointerEvents = 'all'; // Ensure port is clickable
+    port.style.zIndex = '1000'; // Ensure port is on top
     
     const side = intf.port.side;
     const portIndex = intf.port.index;
@@ -1209,11 +1381,59 @@ class SystemBlocksEditor {
     port.setAttribute('cx', x);
     port.setAttribute('cy', y);
     
-    // Add click event listener for ports
+    // Set default port appearance based on direction
+    if (intf.direction === 'output') {
+      port.setAttribute('fill', '#ff9800'); // Orange for outputs
+      port.setAttribute('stroke', '#f57c00');
+      port.setAttribute('stroke-width', '2');
+    } else {
+      port.setAttribute('fill', '#007acc'); // Blue for inputs
+      port.setAttribute('stroke', '#005999');
+      port.setAttribute('stroke-width', '1');
+    }
+    
+    // Add comprehensive event listeners for ports
     port.addEventListener('click', (e) => {
       e.stopPropagation(); // Prevent block selection
+      e.preventDefault(); // Prevent any default behavior
+      console.log(`Port clicked: ${intf.name} (${intf.direction}) on block ${block.name}`);
       debugLog('Port clicked: ' + intf.name + ' on block ' + block.name);
       this.onPortClick(block, intf, e);
+    });
+    
+    // Add mousedown handler to ensure port events take precedence
+    port.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+    });
+    
+    // Add hover effects for better UX
+    port.addEventListener('mouseenter', (e) => {
+      if (!this.connectionMode) {
+        if (intf.direction === 'output') {
+          e.target.style.fill = '#ffcc02'; // Bright yellow for output hover
+          e.target.style.stroke = '#ff9800';
+        } else {
+          e.target.style.fill = '#4fc3f7'; // Light blue for input hover
+          e.target.style.stroke = '#29b6f6';
+        }
+        e.target.style.strokeWidth = '2';
+        e.target.style.cursor = 'pointer';
+      }
+    });
+    
+    port.addEventListener('mouseleave', (e) => {
+      if (!this.connectionMode || (this.connectionMode && this.connectionMode.sourceInterface.id !== intf.id)) {
+        if (intf.direction === 'output') {
+          e.target.style.fill = '#ff9800'; // Orange for outputs
+          e.target.style.stroke = '#f57c00';
+          e.target.style.strokeWidth = '2';
+        } else {
+          e.target.style.fill = '#007acc'; // Blue for inputs
+          e.target.style.stroke = '#005999';
+          e.target.style.strokeWidth = '1';
+        }
+        e.target.style.cursor = 'default';
+      }
     });
     
     return port;
@@ -1260,7 +1480,21 @@ class SystemBlocksEditor {
       }
       
       // Exit connection mode
+      this.clearConnectionMode();
+    }
+  }
+  
+  clearConnectionMode() {
+    if (this.connectionMode) {
+      // Reset all port visual states
+      document.querySelectorAll('.port').forEach(port => {
+        port.style.fill = '#007acc';
+        port.style.stroke = 'none';
+        port.style.strokeWidth = '0';
+      });
+      
       this.connectionMode = null;
+      debugLog('Connection mode cleared');
     }
   }
   
@@ -2500,6 +2734,11 @@ class SystemBlocksEditor {
   }
   
   onBlockMouseDown(e, block) {
+    // Don't handle this event if it's targeting a port
+    if (e.target.classList.contains('port') || e.target.getAttribute('class') === 'port') {
+      return;
+    }
+    
     e.stopPropagation();
     
     // Only handle LEFT mouse button for block selection/dragging
@@ -2862,8 +3101,30 @@ class SystemBlocksEditor {
         const offsetX = 100 + (blockCount * 30);
         const offsetY = 100 + (blockCount * 30);
         
-        this.addBlockWithShape(name, offsetX, offsetY, "Custom", shapeSelect.value);
-        closeDialog();
+        try {
+          const newBlock = this.addBlockWithShape(name, offsetX, offsetY, "Custom", shapeSelect.value);
+          console.log('Block created successfully:', newBlock.name);
+          
+          // Update button states safely with error handling
+          try {
+            this.updateButtonStates();
+          } catch (buttonError) {
+            console.warn('Warning: Could not update button states:', buttonError.message);
+          }
+          
+          closeDialog();
+          
+          // Clear any lingering focus issues
+          setTimeout(() => {
+            document.activeElement?.blur();
+            console.log('Block creation process completed');
+          }, 100);
+          
+        } catch (error) {
+          console.error('Error creating block:', error);
+          closeDialog(); // Always close dialog even on error
+          alert('Error creating block: ' + error.message);
+        }
       }
     });
     
@@ -3853,7 +4114,97 @@ class SystemBlocksEditor {
       window.adsk.fusion.palettes.sendInfoToParent('palette-message', message);
     } else {
       console.warn("Fusion palette messaging not available - using console log");
+      // Fallback - download as JSON file
+      this.downloadDiagramAsFile(jsonData);
     }
+  }
+  
+  downloadDiagramAsFile(jsonData) {
+    // Create filename with timestamp
+    const now = new Date();
+    const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, '');
+    const filename = `system_blocks_diagram_${timestamp}.json`;
+    
+    // Create blob and download link
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    URL.revokeObjectURL(url);
+    this.showNotification(`Diagram saved as ${filename}`);
+  }
+  
+  // === UNDO/REDO FUNCTIONALITY ===
+  saveState() {
+    // Save current state for undo
+    if (this.isPerformingUndoRedo) return; // Prevent infinite recursion
+    
+    const state = JSON.parse(JSON.stringify(this.diagram)); // Deep clone
+    this.undoStack.push(state);
+    
+    // Limit undo stack size
+    if (this.undoStack.length > this.maxUndoLevels) {
+      this.undoStack.shift(); // Remove oldest state
+    }
+    
+    // Clear redo stack when new action is performed
+    this.redoStack = [];
+    
+    this.updateButtonStates();
+  }
+  
+  undo() {
+    if (this.undoStack.length === 0) {
+      this.showNotification('Nothing to undo', 'warning');
+      return;
+    }
+    
+    this.isPerformingUndoRedo = true;
+    
+    // Save current state to redo stack
+    const currentState = JSON.parse(JSON.stringify(this.diagram));
+    this.redoStack.push(currentState);
+    
+    // Restore previous state
+    const previousState = this.undoStack.pop();
+    this.diagram = previousState;
+    
+    this.renderDiagram();
+    this.updateButtonStates();
+    this.showNotification('Undo performed');
+    
+    this.isPerformingUndoRedo = false;
+  }
+  
+  redo() {
+    if (this.redoStack.length === 0) {
+      this.showNotification('Nothing to redo', 'warning');
+      return;
+    }
+    
+    this.isPerformingUndoRedo = true;
+    
+    // Save current state to undo stack
+    const currentState = JSON.parse(JSON.stringify(this.diagram));
+    this.undoStack.push(currentState);
+    
+    // Restore next state
+    const nextState = this.redoStack.pop();
+    this.diagram = nextState;
+    
+    this.renderDiagram();
+    this.updateButtonStates();
+    this.showNotification('Redo performed');
+    
+    this.isPerformingUndoRedo = false;
   }
   
   loadDiagram() {
@@ -3868,9 +4219,43 @@ class SystemBlocksEditor {
       window.adsk.fusion.palettes.sendInfoToParent('palette-message', message);
     } else {
       console.warn("Fusion palette messaging not available");
-      // For testing without Fusion, load a sample diagram
-      this.loadSampleDiagram();
+      // Show file input dialog instead of loading sample
+      this.showLoadDialog();
     }
+  }
+  
+  showLoadDialog() {
+    // Create a file input element
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json';
+    fileInput.style.display = 'none';
+    
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const diagramData = JSON.parse(event.target.result);
+            this.diagram = diagramData;
+            this.renderDiagram();
+            this.showNotification(`Loaded diagram: ${file.name}`);
+            console.log("Diagram loaded from file:", file.name);
+          } catch (error) {
+            console.error("Error loading diagram:", error);
+            this.showNotification('Error loading diagram file', 'error');
+          }
+        };
+        reader.readAsText(file);
+      }
+      // Remove the temporary input
+      document.body.removeChild(fileInput);
+    });
+    
+    // Add to DOM and trigger click
+    document.body.appendChild(fileInput);
+    fileInput.click();
   }
   
   loadSampleDiagram() {
@@ -3936,7 +4321,162 @@ class SystemBlocksEditor {
       this.applySearchAndFilter();
     }
     
+    // Render annotations (text labels, notes, etc.)
+    this.renderAnnotations();
+    
     // TODO: Render connections
+  }
+
+  // Render annotations (text, notes, etc.)
+  renderAnnotations() {
+    if (!this.annotations || this.annotations.length === 0) {
+      return;
+    }
+    
+    // Create or get annotations layer
+    let annotationsLayer = document.getElementById('annotations-layer');
+    if (!annotationsLayer) {
+      annotationsLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      annotationsLayer.id = 'annotations-layer';
+      this.svgElement.appendChild(annotationsLayer);
+    }
+    
+    // Clear existing annotations
+    annotationsLayer.innerHTML = '';
+    
+    this.annotations.forEach(annotation => {
+      if (annotation.type === 'text') {
+        this.renderTextAnnotation(annotation, annotationsLayer);
+      } else if (annotation.type === 'note') {
+        this.renderNoteAnnotation(annotation, annotationsLayer);
+      }
+    });
+  }
+  
+  renderTextAnnotation(annotation, layer) {
+    const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    textElement.setAttribute('x', annotation.x);
+    textElement.setAttribute('y', annotation.y);
+    textElement.setAttribute('fill', annotation.color || '#ffffff');
+    textElement.setAttribute('font-size', annotation.fontSize || 14);
+    textElement.setAttribute('font-family', 'Segoe UI, Arial, sans-serif');
+    textElement.setAttribute('text-anchor', 'middle');
+    textElement.setAttribute('dominant-baseline', 'middle');
+    textElement.setAttribute('class', 'annotation-text');
+    textElement.setAttribute('data-annotation-id', annotation.id);
+    textElement.textContent = annotation.text;
+    
+    // Make it interactive
+    if (annotation.isEditable) {
+      textElement.style.cursor = 'pointer';
+      textElement.addEventListener('dblclick', () => {
+        this.editTextAnnotation(annotation);
+      });
+    }
+    
+    if (annotation.isDraggable) {
+      this.makeAnnotationDraggable(textElement, annotation);
+    }
+    
+    layer.appendChild(textElement);
+  }
+  
+  renderNoteAnnotation(annotation, layer) {
+    // Create note background
+    const noteGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    noteGroup.setAttribute('data-annotation-id', annotation.id);
+    
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', annotation.x - annotation.width / 2);
+    rect.setAttribute('y', annotation.y - annotation.height / 2);
+    rect.setAttribute('width', annotation.width);
+    rect.setAttribute('height', annotation.height);
+    rect.setAttribute('fill', annotation.backgroundColor || '#ffeb3b22');
+    rect.setAttribute('stroke', annotation.borderColor || '#ffeb3b');
+    rect.setAttribute('stroke-width', '1');
+    rect.setAttribute('rx', '4');
+    
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', annotation.x);
+    text.setAttribute('y', annotation.y);
+    text.setAttribute('fill', '#333333');
+    text.setAttribute('font-size', '12');
+    text.setAttribute('font-family', 'Segoe UI, Arial, sans-serif');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.textContent = annotation.text;
+    
+    noteGroup.appendChild(rect);
+    noteGroup.appendChild(text);
+    
+    // Make it interactive
+    if (annotation.isEditable) {
+      noteGroup.style.cursor = 'pointer';
+      noteGroup.addEventListener('dblclick', () => {
+        this.editTextAnnotation(annotation);
+      });
+    }
+    
+    if (annotation.isDraggable) {
+      this.makeAnnotationDraggable(noteGroup, annotation);
+    }
+    
+    layer.appendChild(noteGroup);
+  }
+  
+  editTextAnnotation(annotation) {
+    const newText = prompt('Edit text:', annotation.text);
+    if (newText !== null && newText !== annotation.text) {
+      this.saveState(); // Save for undo
+      annotation.text = newText;
+      this.renderDiagram();
+    }
+  }
+  
+  makeAnnotationDraggable(element, annotation) {
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+    
+    element.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return; // Only left click
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      initialX = annotation.x;
+      initialY = annotation.y;
+      element.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      annotation.x = initialX + dx;
+      annotation.y = initialY + dy;
+      
+      // Update element position immediately for smooth dragging
+      if (annotation.type === 'text') {
+        element.setAttribute('x', annotation.x);
+        element.setAttribute('y', annotation.y);
+      } else if (annotation.type === 'note') {
+        const rect = element.querySelector('rect');
+        const text = element.querySelector('text');
+        rect.setAttribute('x', annotation.x - annotation.width / 2);
+        rect.setAttribute('y', annotation.y - annotation.height / 2);
+        text.setAttribute('x', annotation.x);
+        text.setAttribute('y', annotation.y);
+      }
+    });
+    
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        element.style.cursor = 'pointer';
+        this.saveState(); // Save final position for undo
+      }
+    });
   }
 
   // ========== MILESTONE 14: ADVANCED DIAGRAM FEATURES ==========
@@ -4713,6 +5253,384 @@ class LayoutEngine {
     });
     
     return result;
+  }
+  
+  // === MISSING RIBBON BUTTON METHOD IMPLEMENTATIONS ===
+  
+  // Text and Note annotation methods
+  addTextAnnotation() {
+    console.log('Adding text annotation...');
+    // Save state for undo
+    this.saveState();
+    
+    // Create text annotation at center of view
+    const centerX = this.viewBox.x + this.viewBox.width / 2;
+    const centerY = this.viewBox.y + this.viewBox.height / 2;
+    
+    const annotation = {
+      id: this.generateId(),
+      type: 'text',
+      text: 'Double-click to edit',
+      x: centerX,
+      y: centerY,
+      fontSize: 14,
+      color: '#ffffff',
+      isEditable: true,
+      isDraggable: true
+    };
+    
+    // Add to annotations array if it doesn't exist
+    if (!this.annotations) {
+      this.annotations = [];
+    }
+    
+    this.annotations.push(annotation);
+    this.renderDiagram();
+    this.showNotification('Text annotation added - double-click to edit');
+    console.log('Text annotation created:', annotation);
+  }
+  
+  addNoteAnnotation() {
+    console.log('Adding note annotation...');
+    // Save state for undo
+    this.saveState();
+    
+    const centerX = this.viewBox.x + this.viewBox.width / 2;
+    const centerY = this.viewBox.y + this.viewBox.height / 2;
+    
+    const annotation = {
+      id: this.generateId(),
+      type: 'note',
+      text: 'Double-click to edit note',
+      x: centerX,
+      y: centerY,
+      width: 200,
+      height: 80,
+      backgroundColor: '#ffeb3b22',
+      borderColor: '#ffeb3b',
+      isEditable: true,
+      isDraggable: true
+    };
+    
+    // Add to annotations array if it doesn't exist
+    if (!this.annotations) {
+      this.annotations = [];
+    }
+    
+    this.annotations.push(annotation);
+    this.renderDiagram();
+    this.showNotification('Note annotation added - double-click to edit');
+    console.log('Note annotation created:', annotation);
+  }
+  
+  // Selection methods
+  selectAllBlocks() {
+    console.log('Selecting all blocks...');
+    this.selectedBlocks.clear();
+    this.diagram.blocks.forEach(block => {
+      this.selectedBlocks.add(block.id);
+    });
+    this.renderDiagram();
+    this.updateButtonStates();
+    this.showNotification(`Selected ${this.selectedBlocks.size} blocks`);
+  }
+  
+  clearSelection() {
+    console.log('Clearing selection...');
+    this.selectedBlocks.clear();
+    this.selectedBlock = null;
+    this.renderDiagram();
+    this.updateButtonStates();
+    this.showNotification('Selection cleared');
+  }
+  
+  // Group methods
+  createGroupFromSelection() {
+    console.log('Creating group from selection...');
+    if (this.selectedBlocks.size < 2) {
+      this.showNotification('Select at least 2 blocks to create a group', 'warning');
+      return;
+    }
+    
+    const groupId = this.generateId();
+    const selectedBlockIds = Array.from(this.selectedBlocks);
+    
+    this.groups.set(groupId, {
+      id: groupId,
+      name: `Group ${this.groups.size + 1}`,
+      blockIds: selectedBlockIds,
+      color: '#4CAF50'
+    });
+    
+    this.renderDiagram();
+    this.showNotification(`Created group with ${selectedBlockIds.length} blocks`);
+  }
+  
+  ungroupSelection() {
+    console.log('Ungrouping selection...');
+    let ungroupedCount = 0;
+    
+    // Find groups that contain selected blocks
+    for (const [groupId, group] of this.groups) {
+      const hasSelectedBlock = group.blockIds.some(blockId => this.selectedBlocks.has(blockId));
+      if (hasSelectedBlock) {
+        this.groups.delete(groupId);
+        ungroupedCount++;
+      }
+    }
+    
+    if (ungroupedCount > 0) {
+      this.renderDiagram();
+      this.showNotification(`Ungrouped ${ungroupedCount} group(s)`);
+    } else {
+      this.showNotification('No groups to ungroup in selection', 'warning');
+    }
+  }
+  
+  // Arrange methods
+  autoLayoutBlocks() {
+    console.log('Auto-arranging blocks...');
+    const blocks = this.diagram.blocks;
+    if (blocks.length === 0) return;
+    
+    // Simple grid layout
+    const cols = Math.ceil(Math.sqrt(blocks.length));
+    const spacing = 150;
+    const startX = 100;
+    const startY = 100;
+    
+    blocks.forEach((block, index) => {
+      const row = Math.floor(index / cols);
+      const col = index % cols;
+      block.x = startX + col * spacing;
+      block.y = startY + row * spacing;
+    });
+    
+    this.renderDiagram();
+    this.showNotification(`Auto-arranged ${blocks.length} blocks`);
+  }
+  
+  alignBlocksLeft() {
+    console.log('Aligning blocks left...');
+    if (this.selectedBlocks.size < 2) {
+      this.showNotification('Select at least 2 blocks to align', 'warning');
+      return;
+    }
+    
+    const selectedBlockObjs = this.diagram.blocks.filter(b => this.selectedBlocks.has(b.id));
+    const leftmostX = Math.min(...selectedBlockObjs.map(b => b.x));
+    
+    selectedBlockObjs.forEach(block => {
+      block.x = leftmostX;
+    });
+    
+    this.renderDiagram();
+    this.showNotification(`Aligned ${selectedBlockObjs.length} blocks to left`);
+  }
+  
+  alignBlocksCenter() {
+    console.log('Aligning blocks center...');
+    if (this.selectedBlocks.size < 2) {
+      this.showNotification('Select at least 2 blocks to align', 'warning');
+      return;
+    }
+    
+    const selectedBlockObjs = this.diagram.blocks.filter(b => this.selectedBlocks.has(b.id));
+    const avgX = selectedBlockObjs.reduce((sum, b) => sum + b.x, 0) / selectedBlockObjs.length;
+    
+    selectedBlockObjs.forEach(block => {
+      block.x = avgX;
+    });
+    
+    this.renderDiagram();
+    this.showNotification(`Aligned ${selectedBlockObjs.length} blocks to center`);
+  }
+  
+  distributeBlocksHorizontally() {
+    console.log('Distributing blocks horizontally...');
+    if (this.selectedBlocks.size < 3) {
+      this.showNotification('Select at least 3 blocks to distribute', 'warning');
+      return;
+    }
+    
+    const selectedBlockObjs = this.diagram.blocks.filter(b => this.selectedBlocks.has(b.id));
+    selectedBlockObjs.sort((a, b) => a.x - b.x);
+    
+    const leftmost = selectedBlockObjs[0].x;
+    const rightmost = selectedBlockObjs[selectedBlockObjs.length - 1].x;
+    const spacing = (rightmost - leftmost) / (selectedBlockObjs.length - 1);
+    
+    selectedBlockObjs.forEach((block, index) => {
+      block.x = leftmost + index * spacing;
+    });
+    
+    this.renderDiagram();
+    this.showNotification(`Distributed ${selectedBlockObjs.length} blocks horizontally`);
+  }
+  
+  // Annotation methods
+  addDimensionAnnotation() {
+    console.log('Adding dimension annotation...');
+    this.showNotification('Click two points to add dimension line', 'info');
+    // This would require more complex interaction - simplified for now
+    const centerX = this.viewBox.x + this.viewBox.width / 2;
+    const centerY = this.viewBox.y + this.viewBox.height / 2;
+    
+    const annotation = {
+      id: this.generateId(),
+      type: 'dimension',
+      startX: centerX - 50,
+      startY: centerY,
+      endX: centerX + 50,
+      endY: centerY,
+      text: '100mm',
+      color: '#4CAF50'
+    };
+    this.annotations.push(annotation);
+    this.renderDiagram();
+    this.showNotification('Dimension annotation added');
+  }
+  
+  addCalloutAnnotation() {
+    console.log('Adding callout annotation...');
+    const centerX = this.viewBox.x + this.viewBox.width / 2;
+    const centerY = this.viewBox.y + this.viewBox.height / 2;
+    
+    const text = prompt('Enter callout text:', 'Important Note');
+    if (text) {
+      const annotation = {
+        id: this.generateId(),
+        type: 'callout',
+        text: text,
+        x: centerX,
+        y: centerY,
+        leaderX: centerX - 50,
+        leaderY: centerY - 50,
+        backgroundColor: '#ff9800aa',
+        borderColor: '#ff9800'
+      };
+      this.annotations.push(annotation);
+      this.renderDiagram();
+      this.showNotification('Callout annotation added');
+    }
+  }
+  
+  // === BUTTON STATE MANAGEMENT ===
+  updateButtonStates() {
+    try {
+      // Ensure required properties exist
+      if (!this.diagram) {
+        console.warn('updateButtonStates: diagram not initialized');
+        return;
+      }
+      if (!this.selectedBlocks) {
+        console.warn('updateButtonStates: selectedBlocks not initialized');
+        this.selectedBlocks = new Set();
+      }
+      if (!this.undoStack) {
+        this.undoStack = [];
+      }
+      if (!this.redoStack) {
+        this.redoStack = [];
+      }
+      
+      // Enable/disable buttons based on current state
+      const hasBlocks = this.diagram.blocks.length > 0;
+      const hasSelection = this.selectedBlocks.size > 0 || this.selectedBlock !== null;
+      const hasMultipleSelection = this.selectedBlocks.size > 1;
+      const hasUndoState = this.undoStack.length > 0;
+      const hasRedoState = this.redoStack.length > 0;
+    
+    // File operations
+    this.setButtonEnabled('btn-save', hasBlocks);
+    
+    // Edit operations
+    this.setButtonEnabled('btn-undo', hasUndoState);
+    this.setButtonEnabled('btn-redo', hasRedoState);
+    
+    // Selection operations
+    this.setButtonEnabled('btn-select-none', hasSelection);
+    this.setButtonEnabled('btn-group-create', hasMultipleSelection);
+    this.setButtonEnabled('btn-group-ungroup', hasSelection);
+    
+    // Arrange operations
+    this.setButtonEnabled('btn-auto-layout', hasBlocks);
+    this.setButtonEnabled('btn-align-left', hasMultipleSelection);
+    this.setButtonEnabled('btn-align-center', hasMultipleSelection);
+    this.setButtonEnabled('btn-distribute-h', this.selectedBlocks.size >= 3);
+    
+    // Navigation operations
+    const hasChildDiagram = hasSelection && this.selectedBlock?.hasChildren;
+    const hasParent = this.hierarchyStack.length > 0;
+    this.setButtonEnabled('btn-drill-down', hasChildDiagram);
+    this.setButtonEnabled('btn-go-up', hasParent);
+    this.setButtonEnabled('btn-create-child', hasSelection);
+    
+    // CAD link operations - only enable in Fusion 360 environment
+    const inFusion = window.adsk && window.adsk.fusion;
+    this.setButtonEnabled('btn-link-cad', inFusion && hasSelection);
+    this.setButtonEnabled('btn-link-ecad', inFusion && hasSelection);
+    
+    } catch (error) {
+      console.error('Error in updateButtonStates:', error);
+    }
+  }
+  
+  setButtonEnabled(buttonId, enabled) {
+    const button = document.getElementById(buttonId);
+    if (button) {
+      button.disabled = !enabled;
+      if (enabled) {
+        button.style.opacity = '1';
+        button.style.cursor = 'pointer';
+      } else {
+        button.style.opacity = '0.5';
+        button.style.cursor = 'not-allowed';
+      }
+    }
+  }
+  
+  // Utility notification method
+  showNotification(message, type = 'info') {
+    console.log(`NOTIFICATION [${type.toUpperCase()}]:`, message);
+    
+    // Try to use the toast system if available
+    if (window.fusionKeyboard?.showToast) {
+      window.fusionKeyboard.showToast(message, type);
+    } else {
+      // Fallback - create a simple notification
+      const notification = document.createElement('div');
+      notification.className = 'fusion-notification';
+      notification.textContent = message;
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--fusion-panel-bg, #2b2b2b);
+        color: var(--fusion-text-primary, #ffffff);
+        padding: 12px 16px;
+        border-radius: 4px;
+        border: 1px solid var(--fusion-border-primary, #555);
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        animation: slideInFromRight 0.3s ease-out;
+      `;
+      
+      if (type === 'warning') {
+        notification.style.borderColor = '#ff9800';
+        notification.style.backgroundColor = '#ff980022';
+      } else if (type === 'error') {
+        notification.style.borderColor = '#f44336';
+        notification.style.backgroundColor = '#f4433622';
+      }
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = 'slideOutToRight 0.3s ease-in forwards';
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    }
   }
 }
 

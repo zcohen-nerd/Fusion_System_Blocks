@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <title>System Blocks</title>
   <link rel="stylesheet" href="fusion-theme.css?v=milestone10-final4">
+  <link rel="stylesheet" href="fusion-ribbon.css?v=ribbon">
   <link rel="stylesheet" href="fusion-icons.css?v=milestone10-final4">
   <style>
     /* === FORCED CSS OVERRIDES === */
@@ -566,11 +567,12 @@
     
     /* Enhanced Port Styling - Modern Connection Points */
     .port {
-      fill: var(--fusion-bg-tertiary);
-      stroke: var(--fusion-accent-blue);
-      stroke-width: 1.5;
+      fill: var(--fusion-accent-blue);
+      stroke: var(--fusion-bg-primary);
+      stroke-width: 2;
       cursor: crosshair;
-      r: 3;
+      r: 4;
+      opacity: 1;
       transition: all var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
       filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
     }
@@ -1193,59 +1195,108 @@
     <div class="header-logo">
       <span>System Blocks</span>
     </div>
-    <div class="toolbar">
-      <button id="btn-new" class="fusion-button" title="Create New Diagram (Ctrl+N)">
-        <div class="fusion-icon icon-add"></div>
-        New
-      </button>
-      <button id="btn-save" class="fusion-button" title="Save Diagram (Ctrl+S)">
-        <svg class="fusion-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
-        </svg>
-        Save
-      </button>
-      <button id="btn-load" class="fusion-button" title="Load Diagram (Ctrl+O)">
-        <svg class="fusion-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z"/>
-        </svg>
-        Load
-      </button>
-      <div class="toolbar-separator"></div>
-      <!-- Undo/Redo -->
-      <button id="btn-undo" class="fusion-button" disabled title="Undo (Ctrl+Z)">
-        <svg class="fusion-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
-        </svg>
-        Undo
-      </button>
-      <button id="btn-redo" class="fusion-button" disabled title="Redo (Ctrl+Y)">
-        <svg class="fusion-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/>
-        </svg>
-        Redo
-      </button>
-      <div class="toolbar-separator"></div>
-      <!-- Hierarchy Navigation -->
-      <button id="btn-go-up" class="context-btn" disabled title="Go to Parent Diagram">
-        <svg width="16" height="16" viewBox="0 0 12 12">
-          <use href="#icon-go-up"/>
-        </svg>
-        Up
-      </button>
-      <span id="breadcrumb-path" class="fusion-breadcrumb">Root</span>
-      <button id="btn-drill-down" class="context-btn" disabled title="Open Child Diagram">
-        <svg width="16" height="16" viewBox="0 0 12 12">
-          <use href="#icon-drill-down"/>
-        </svg>
-        Drill Down
-      </button>
-      <button id="btn-create-child" class="context-btn" disabled title="Create Child Diagram">
-        <svg width="16" height="16" viewBox="0 0 12 12">
-          <use href="#icon-add"/>
-        </svg>
-        Child
-      </button>
-      <div class="separator"></div>
+    <!-- Fusion 360 Style Ribbon Interface -->
+    <div class="fusion-ribbon">
+      <div class="ribbon-groups">
+        
+        <!-- FILE GROUP -->
+        <div class="ribbon-group">
+          <div class="ribbon-content">
+            <div class="ribbon-mixed">
+              <button id="btn-new" class="ribbon-button-large" title="Create New Diagram (Ctrl+N)">
+                <div class="ribbon-icon">📄</div>
+                <div class="ribbon-text">New</div>
+                <div class="ribbon-shortcut">Ctrl+N</div>
+              </button>
+              <div class="ribbon-buttons-column">
+                <button id="btn-save" class="ribbon-button-small" title="Save Diagram (Ctrl+S)">
+                  <div class="ribbon-icon-small">💾</div>
+                  <span>Save</span>
+                </button>
+                <button id="btn-load" class="ribbon-button-small" title="Load Diagram (Ctrl+O)">
+                  <div class="ribbon-icon-small">📁</div>
+                  <span>Load</span>
+                </button>
+                <button id="btn-export-report" class="ribbon-button-small" title="Export Report">
+                  <div class="ribbon-icon-small">📤</div>
+                  <span>Export</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="ribbon-group-label">File</div>
+        </div>
+
+        <!-- EDIT GROUP -->
+        <div class="ribbon-group">
+          <div class="ribbon-content">
+            <div class="ribbon-mixed">
+              <button id="btn-undo" class="ribbon-button-large" disabled title="Undo (Ctrl+Z)">
+                <div class="ribbon-icon">↺</div>
+                <div class="ribbon-text">Undo</div>
+                <div class="ribbon-shortcut">Ctrl+Z</div>
+              </button>
+              <div class="ribbon-buttons-column">
+                <button id="btn-redo" class="ribbon-button-small" disabled title="Redo (Ctrl+Y)">
+                  <div class="ribbon-icon-small">↻</div>
+                  <span>Redo</span>
+                </button>
+                <button id="btn-import" class="ribbon-button-small" title="Import">
+                  <div class="ribbon-icon-small">📥</div>
+                  <span>Import</span>
+                </button>
+                <button class="ribbon-button-small" title="Copy">
+                  <div class="ribbon-icon-small">📋</div>
+                  <span>Copy</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="ribbon-group-label">Edit</div>
+        </div>
+
+        <!-- CREATE GROUP -->
+        <div class="ribbon-group">
+          <div class="ribbon-content">
+            <div class="ribbon-mixed">
+              <button id="btn-add-block" class="ribbon-button-large" title="Add Block">
+                <div class="ribbon-icon">⬜</div>
+                <div class="ribbon-text">Block</div>
+              </button>
+              <div class="ribbon-buttons-column">
+                <button id="btn-add-text" class="ribbon-button-small" title="Add Text">
+                  <div class="ribbon-icon-small">📝</div>
+                  <span>Text</span>
+                </button>
+                <button id="btn-add-note" class="ribbon-button-small" title="Add Note">
+                  <div class="ribbon-icon-small">📌</div>
+                  <span>Note</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="ribbon-group-label">Create</div>
+        </div>
+        <!-- NAVIGATE GROUP -->
+        <div class="ribbon-group">
+          <div class="ribbon-content">
+            <div class="ribbon-button-row">
+              <button id="btn-go-up" class="ribbon-button-small" disabled title="Go to Parent Diagram">
+                <div class="ribbon-icon-small">⬆</div>
+                <span>Up</span>
+              </button>
+              <button id="btn-drill-down" class="ribbon-button-small" disabled title="Open Child Diagram">
+                <div class="ribbon-icon-small">⬇</div>
+                <span>Drill Down</span>
+              </button>
+              <button id="btn-create-child" class="ribbon-button-small" disabled title="Create Child Diagram">
+                <div class="ribbon-icon-small">➕</div>
+                <span>Child</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-label">Navigate</div>
+        </div>
       <!-- Search and Filter -->
       <div class="search-container">
         <div class="search-input-wrapper">
@@ -1295,93 +1346,180 @@
       <button id="btn-connection-templates" class="context-btn" title="Connection Templates">📋 Templates</button>
       <button id="btn-bulk-connections" class="context-btn" title="Bulk Connection Operations">⚡ Bulk</button>
       <div class="separator"></div>
-      <!-- ========== MILESTONE 11: ADVANCED BLOCK TYPES - PHASE 1 ========== -->
-      <button id="btn-add-block" class="context-btn" title="Add Basic Block">
+      <!-- Block Creation -->
+      <button id="btn-add-block" class="context-btn" title="Add Block">
         <svg width="16" height="16" viewBox="0 0 12 12">
           <use href="#icon-add"/>
         </svg>
         Add Block
       </button>
-      <div class="block-type-dropdown">
-        <button id="btn-block-types" class="context-btn" title="Add Specialized Block">
-          <svg width="16" height="16" viewBox="0 0 12 12">
-            <use href="#icon-block-component"/>
-          </svg>
-          Block Type
-          <svg width="12" height="12" viewBox="0 0 12 12" class="dropdown-arrow">
-            <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
 
-      <!-- MILESTONE 14: Advanced Diagram Features Toolbar -->
-      <div class="toolbar-group" id="layout-tools">
-        <span class="group-label">Layout</span>
-        <button id="btn-auto-layout" class="fusion-button" title="Auto-arrange blocks with smart layout">
-          <i class="fusion-icon">🔄</i> Auto Layout
-        </button>
-        <button id="btn-align-left" class="fusion-button" title="Align selected blocks to left edge" disabled>
-          <i class="fusion-icon">📐</i> ⬅
-        </button>
-        <button id="btn-align-center" class="fusion-button" title="Align selected blocks to center" disabled>
-          <i class="fusion-icon">📐</i> ↕
-        </button>
-        <button id="btn-align-right" class="fusion-button" title="Align selected blocks to right edge" disabled>
-          <i class="fusion-icon">📐</i> ➡
-        </button>
-        <button id="btn-distribute-h" class="fusion-button" title="Distribute selected blocks horizontally" disabled>
-          <i class="fusion-icon">↔</i> H
-        </button>
-        <button id="btn-distribute-v" class="fusion-button" title="Distribute selected blocks vertically" disabled>
-          <i class="fusion-icon">↕</i> V
-        </button>
-      </div>
-      
-      <div class="separator"></div>
-      
-      <div class="toolbar-group" id="selection-tools">
-        <span class="group-label">Selection</span>
-        <button id="btn-select-all" class="fusion-button" title="Select all blocks (Ctrl+A)">
-          <i class="fusion-icon">☑</i> All
-        </button>
-        <button id="btn-select-none" class="fusion-button" title="Clear selection (Esc)">
-          <i class="fusion-icon">☐</i> None
-        </button>
-        <button id="btn-group-create" class="fusion-button" title="Create group from selected blocks" disabled>
-          <i class="fusion-icon">📦</i> Group
-        </button>
-        <button id="btn-group-ungroup" class="fusion-button" title="Ungroup selected groups" disabled>
-          <i class="fusion-icon">📤</i> Ungroup
-        </button>
-      </div>
-      
-      <div class="separator"></div>
-      
-      <div class="toolbar-group" id="annotation-tools">
-        <span class="group-label">Annotations</span>
-        <button id="btn-add-text" class="fusion-button" title="Add text label">
-          <i class="fusion-icon">📝</i> Text
-        </button>
-        <button id="btn-add-note" class="fusion-button" title="Add sticky note">
-          <i class="fusion-icon">📌</i> Note
-        </button>
-        <button id="btn-add-dimension" class="fusion-button" title="Add dimension line">
-          <i class="fusion-icon">📏</i> Dimension
-        </button>
-        <button id="btn-add-callout" class="fusion-button" title="Add callout with leader">
-          <i class="fusion-icon">💬</i> Callout
-        </button>
-      </div>
-      
-      <div class="separator"></div>
+        <!-- SELECT GROUP -->
+        <div class="ribbon-group">
+          <div class="ribbon-content">
+            <div class="ribbon-mixed">
+              <button id="btn-select-all" class="ribbon-button-large" title="Select all blocks (Ctrl+A)">
+                <div class="ribbon-icon">�</div>
+                <div class="ribbon-text">Select</div>
+                <div class="ribbon-shortcut">Ctrl+A</div>
+              </button>
+              <div class="ribbon-buttons-column">
+                <button id="btn-select-none" class="ribbon-button-small" title="Clear selection (Esc)">
+                  <div class="ribbon-icon-small">☐</div>
+                  <span>Clear</span>
+                </button>
+                <button id="btn-group-create" class="ribbon-button-small" disabled title="Create group from selected blocks">
+                  <div class="ribbon-icon-small">📦</div>
+                  <span>Group</span>
+                </button>
+                <button id="btn-group-ungroup" class="ribbon-button-small" disabled title="Ungroup selected groups">
+                  <div class="ribbon-icon-small">📤</div>
+                  <span>Ungroup</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="ribbon-group-label">Select</div>
+        </div>
 
-      <button id="btn-snap-grid" class="toggle-btn active">Snap to Grid</button>
-      <button id="btn-check-rules">Check Rules</button>
-      <button id="btn-export-report">Export Report</button>
-      <button id="btn-import">Import</button>
-      <div class="separator"></div>
-      <button id="btn-link-cad" class="context-btn" disabled>Link to CAD</button>
-      <button id="btn-link-ecad" class="context-btn" disabled>Link to ECAD</button>
+        <!-- ARRANGE GROUP -->
+        <div class="ribbon-group">
+          <div class="ribbon-content">
+            <div class="ribbon-mixed">
+              <button id="btn-auto-layout" class="ribbon-button-large" title="Auto-arrange blocks with smart layout">
+                <div class="ribbon-icon">🔄</div>
+                <div class="ribbon-text">Auto Layout</div>
+              </button>
+              <div class="ribbon-buttons-column">
+                <button id="btn-align-left" class="ribbon-button-small" disabled title="Align selected blocks to left edge">
+                  <div class="ribbon-icon-small">⬅</div>
+                  <span>Left</span>
+                </button>
+                <button id="btn-align-center" class="ribbon-button-small" disabled title="Align selected blocks to center">
+                  <div class="ribbon-icon-small">↕</div>
+                  <span>Center</span>
+                </button>
+                <button id="btn-distribute-h" class="ribbon-button-small" disabled title="Distribute selected blocks horizontally">
+                  <div class="ribbon-icon-small">↔</div>
+                  <span>Distribute</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="ribbon-group-label">Arrange</div>
+        </div>
+
+        <!-- ANNOTATE GROUP -->
+        <div class="ribbon-group">
+          <div class="ribbon-content">
+            <div class="ribbon-button-row">
+              <button id="btn-add-dimension" class="ribbon-button-small" title="Add dimension line">
+                <div class="ribbon-icon-small">📏</div>
+                <span>Dimension</span>
+              </button>
+              <button id="btn-add-callout" class="ribbon-button-small" title="Add callout with leader">
+                <div class="ribbon-icon-small">💬</div>
+                <span>Callout</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-label">Annotate</div>
+        </div>
+
+        <!-- VIEW GROUP -->
+        <div class="ribbon-group">
+          <div class="ribbon-content">
+            <div class="ribbon-mixed">
+              <button class="ribbon-button-large" title="Fit to View">
+                <div class="ribbon-icon">🔍</div>
+                <div class="ribbon-text">Fit</div>
+              </button>
+              <div class="ribbon-buttons-column">
+                <button id="btn-snap-grid" class="ribbon-button-small active" title="Snap to Grid">
+                  <div class="ribbon-icon-small">⌗</div>
+                  <span>Grid</span>
+                </button>
+                <button class="ribbon-button-small" title="Zoom In">
+                  <div class="ribbon-icon-small">🔍</div>
+                  <span>Zoom In</span>
+                </button>
+                <button class="ribbon-button-small" title="Zoom Out">
+                  <div class="ribbon-icon-small">🔍</div>
+                  <span>Zoom Out</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="ribbon-group-label">View</div>
+        </div>
+
+        <!-- VALIDATE GROUP -->
+        <div class="ribbon-group">
+          <div class="ribbon-content">
+            <button id="btn-check-rules" class="ribbon-button-large" title="Check Rules">
+              <div class="ribbon-icon">✓</div>
+              <div class="ribbon-text">Validate</div>
+            </button>
+          </div>
+          <div class="ribbon-group-label">Validate</div>
+        </div>
+
+        <!-- CAD GROUP -->
+        <div class="ribbon-group">
+          <div class="ribbon-content">
+            <div class="ribbon-button-row">
+              <button id="btn-link-cad" class="ribbon-button-small" disabled title="Link to CAD">
+                <div class="ribbon-icon-small">🔗</div>
+                <span>CAD</span>
+              </button>
+              <button id="btn-link-ecad" class="ribbon-button-small" disabled title="Link to ECAD">
+                <div class="ribbon-icon-small">⚡</div>
+                <span>ECAD</span>
+              </button>
+            </div>
+          </div>
+          <div class="ribbon-group-label">Links</div>
+        </div>
+
+      </div>
+      
+      <!-- Secondary Toolbar for Search and Connection Tools -->
+      <div class="ribbon-secondary">
+        <div class="search-container">
+          <div class="search-input-wrapper">
+            <svg class="fusion-icon search-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            <input type="text" id="search-input" class="fusion-input search-input" placeholder="Search blocks..." title="Search by name, type, or status (Ctrl+F)">
+          </div>
+          <div class="filter-buttons">
+            <button id="filter-all" class="fusion-button filter-btn active" title="Show all blocks">All</button>
+            <button id="filter-placeholder" class="fusion-button filter-btn" title="Show only Placeholder blocks">Placeholder</button>
+            <button id="filter-implemented" class="fusion-button filter-btn" title="Show only Implemented blocks">Implemented</button>
+          </div>
+        </div>
+        
+        <div class="connection-type-container">
+          <label for="connection-type-select" class="fusion-label">Connection:</label>
+          <select id="connection-type-select" class="connection-type-select" title="Choose connection type for new connections">
+            <option value="auto" selected>Auto</option>
+            <option value="electrical">Electrical</option>
+            <option value="power">Power</option>
+            <option value="data">Data</option>
+            <option value="mechanical">Mechanical</option>
+          </select>
+          <select id="arrow-direction-select" class="connection-type-select fusion-select" title="Choose arrow direction">
+            <option value="forward" selected>Forward</option>
+            <option value="bidirectional">Bidirectional</option>
+            <option value="backward">Backward</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        
+        <div class="breadcrumb-container">
+          <span id="breadcrumb-path" class="fusion-breadcrumb">Root</span>
+        </div>
+      </div>
     </div>
   </header>
   
@@ -1899,8 +2037,10 @@
   
   <!-- Import Dialog -->
   <div id="import-dialog" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                                  background: white; border: 2px solid #ccc; padding: 20px; z-index: 10000; min-width: 500px;">
-    <h3>Import Diagram</h3>
+                                  background: var(--fusion-panel-bg, #2b2b2b); border: 2px solid var(--fusion-panel-border, #555); 
+                                  padding: 20px; z-index: 10000; min-width: 500px; color: var(--fusion-text-primary, #ffffff); 
+                                  border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+    <h3 style="color: var(--fusion-text-primary, #ffffff); margin-top: 0;">Import Diagram</h3>
     
     <div style="margin-bottom: 15px;">
       <label>
@@ -1918,23 +2058,36 @@
     
     <!-- Mermaid Import -->
     <div id="mermaid-import" style="margin-bottom: 15px;">
-      <label for="mermaid-text">Mermaid Flowchart Text:</label><br>
-      <textarea id="mermaid-text" rows="8" cols="60" placeholder="flowchart TD&#10;    A[Start] --> B{Decision}&#10;    B -->|Yes| C[Process]&#10;    B -->|No| D[End]&#10;    C --> D"></textarea>
+      <label for="mermaid-text" style="color: var(--fusion-text-primary, #ffffff); font-weight: 500;">Mermaid Flowchart Text:</label><br>
+      <textarea id="mermaid-text" rows="8" cols="60" placeholder="flowchart TD&#10;    A[Start] --> B{Decision}&#10;    B -->|Yes| C[Process]&#10;    B -->|No| D[End]&#10;    C --> D" 
+                style="background: var(--fusion-input-bg, #1e1e1e); color: var(--fusion-text-primary, #ffffff); 
+                       border: 1px solid var(--fusion-input-border, #555); border-radius: 4px; padding: 8px; 
+                       font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; width: 100%; box-sizing: border-box;"></textarea>
     </div>
     
     <!-- CSV Import -->
     <div id="csv-import" style="display: none; margin-bottom: 15px;">
-      <label for="csv-blocks">Blocks CSV (name,type,x,y,status):</label><br>
-      <textarea id="csv-blocks" rows="4" cols="60" placeholder="name,type,x,y,status&#10;Power Supply,PowerSupply,100,100,Verified&#10;Microcontroller,Microcontroller,300,100,Planned"></textarea>
+      <label for="csv-blocks" style="color: var(--fusion-text-primary, #ffffff); font-weight: 500;">Blocks CSV (name,type,x,y,status):</label><br>
+      <textarea id="csv-blocks" rows="4" cols="60" placeholder="name,type,x,y,status&#10;Power Supply,PowerSupply,100,100,Verified&#10;Microcontroller,Microcontroller,300,100,Planned"
+                style="background: var(--fusion-input-bg, #1e1e1e); color: var(--fusion-text-primary, #ffffff); 
+                       border: 1px solid var(--fusion-input-border, #555); border-radius: 4px; padding: 8px; 
+                       font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; width: 100%; box-sizing: border-box;"></textarea>
       
       <br><br>
-      <label for="csv-connections">Connections CSV (from,to,kind,protocol):</label><br>
-      <textarea id="csv-connections" rows="4" cols="60" placeholder="from,to,kind,protocol&#10;Power Supply,Microcontroller,electrical,3.3V"></textarea>
+      <label for="csv-connections" style="color: var(--fusion-text-primary, #ffffff); font-weight: 500;">Connections CSV (from,to,kind,protocol):</label><br>
+      <textarea id="csv-connections" rows="4" cols="60" placeholder="from,to,kind,protocol&#10;Power Supply,Microcontroller,electrical,3.3V"
+                style="background: var(--fusion-input-bg, #1e1e1e); color: var(--fusion-text-primary, #ffffff); 
+                       border: 1px solid var(--fusion-input-border, #555); border-radius: 4px; padding: 8px; 
+                       font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; width: 100%; box-sizing: border-box;"></textarea>
     </div>
     
     <div style="text-align: right;">
-      <button id="btn-import-cancel" style="margin-right: 10px;">Cancel</button>
-      <button id="btn-import-ok">Import</button>
+      <button id="btn-import-cancel" style="margin-right: 10px; background: var(--fusion-button-bg, #404040); 
+                                             color: var(--fusion-text-primary, #ffffff); border: 1px solid var(--fusion-border-primary, #555); 
+                                             padding: 8px 16px; border-radius: 4px; cursor: pointer;">Cancel</button>
+      <button id="btn-import-ok" style="background: var(--fusion-accent-blue, #0078d4); color: #ffffff; 
+                                        border: 1px solid var(--fusion-accent-blue, #0078d4); padding: 8px 16px; 
+                                        border-radius: 4px; cursor: pointer; font-weight: 500;">Import</button>
     </div>
   </div>
   
@@ -2214,6 +2367,16 @@
     @keyframes toastSlideOut {
       0% { opacity: 1; transform: translateY(0); }
       100% { opacity: 0; transform: translateY(20px); }
+    }
+    
+    @keyframes slideInFromRight {
+      0% { transform: translateX(100%); opacity: 0; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes slideOutToRight {
+      0% { transform: translateX(0); opacity: 1; }
+      100% { transform: translateX(100%); opacity: 0; }
     }
     
     kbd {
@@ -2779,7 +2942,7 @@
         console.log('selectBlockType called with:', blockType);
         
         // Check if editor is ready
-        if (!window.editor) {
+        if (!window.editor || !window.editor.isInitialized) {
           console.error('Editor not ready yet');
           this.showToast('Editor not ready - please wait a moment and try again', 'warning');
           return;
@@ -3365,246 +3528,15 @@
     });
   </script>
   
-  <script src="./palette.js?v=final2"></script>
+  <!-- Modular JavaScript Architecture -->
+  <script src="./core/diagram-editor.js"></script>
+  <script src="./ui/diagram-renderer.js"></script>
+  <script src="./ui/toolbar-manager.js"></script>
+  <script src="./features/advanced-features.js"></script>
+  <script src="./interface/python-bridge.js"></script>
+  <script src="./main-coordinator.js"></script>
+  <script src="./palette.js"></script>
 
-  <!-- Dropdown menu moved to body level to escape stacking context issues -->
-  <div id="block-type-menu" class="block-type-menu">
-    <div class="block-category">
-      <h4>⚡ Electrical/Electronic</h4>
-      <div class="block-type-item" data-type="microcontroller-arduino">
-        <div class="block-icon" style="background: #007ACC;"></div>
-        <div class="block-info">
-          <span class="block-name">Arduino Uno R3</span>
-          <span class="block-desc">ATMega328P microcontroller</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="microcontroller-esp32">
-        <div class="block-icon" style="background: #FF6B35;"></div>
-        <div class="block-info">
-          <span class="block-name">ESP32 DevKit</span>
-          <span class="block-desc">WiFi+Bluetooth microcontroller</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="power-supply-linear">
-        <div class="block-icon" style="background: #E74C3C;"></div>
-        <div class="block-info">
-          <span class="block-name">Linear PSU</span>
-          <span class="block-desc">Adjustable voltage regulator</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="power-supply-switching">
-        <div class="block-icon" style="background: #8E44AD;"></div>
-        <div class="block-info">
-          <span class="block-name">Switching PSU</span>
-          <span class="block-desc">High-efficiency regulator</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="sensor-temperature">
-        <div class="block-icon" style="background: #F39C12;"></div>
-        <div class="block-info">
-          <span class="block-name">Temperature Sensor</span>
-          <span class="block-desc">Digital I2C temperature</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="sensor-accelerometer">
-        <div class="block-icon" style="background: #16A085;"></div>
-        <div class="block-info">
-          <span class="block-name">Accelerometer</span>
-          <span class="block-desc">3-axis MEMS sensor</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="comm-wifi">
-        <div class="block-icon" style="background: #3498DB;"></div>
-        <div class="block-info">
-          <span class="block-name">WiFi Module</span>
-          <span class="block-desc">802.11n wireless</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="comm-bluetooth">
-        <div class="block-icon" style="background: #9B59B6;"></div>
-        <div class="block-info">
-          <span class="block-name">Bluetooth Module</span>
-          <span class="block-desc">BLE 5.0 communication</span>
-        </div>
-      </div>
-    </div>
-    <div class="block-category">
-      <h4>⚙️ Mechanical Systems</h4>
-      <div class="block-type-item" data-type="motor-servo">
-        <div class="block-icon" style="background: #16A085;"></div>
-        <div class="block-info">
-          <span class="block-name">Servo Motor</span>
-          <span class="block-desc">20 kg⋅cm precision motor</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="motor-stepper">
-        <div class="block-icon" style="background: #16A085;"></div>
-        <div class="block-info">
-          <span class="block-name">Stepper Motor</span>
-          <span class="block-desc">200 steps/revolution</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="actuator-linear">
-        <div class="block-icon" style="background: #16A085;"></div>
-        <div class="block-info">
-          <span class="block-name">Linear Actuator</span>
-          <span class="block-desc">100mm stroke, 200N force</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="sensor-encoder">
-        <div class="block-icon" style="background: #E67E22;"></div>
-        <div class="block-info">
-          <span class="block-name">Rotary Encoder</span>
-          <span class="block-desc">1024 PPR precision</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="sensor-load-cell">
-        <div class="block-icon" style="background: #E67E22;"></div>
-        <div class="block-info">
-          <span class="block-name">Load Cell</span>
-          <span class="block-desc">100kg force sensor</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="sensor-proximity">
-        <div class="block-icon" style="background: #E67E22;"></div>
-        <div class="block-info">
-          <span class="block-name">Proximity Sensor</span>
-          <span class="block-desc">8mm inductive detection</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="structure-bearing">
-        <div class="block-icon" style="background: #7F8C8D;"></div>
-        <div class="block-info">
-          <span class="block-name">Ball Bearing</span>
-          <span class="block-desc">10×30×9mm precision</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="structure-coupling">
-        <div class="block-icon" style="background: #7F8C8D;"></div>
-        <div class="block-info">
-          <span class="block-name">Flexible Coupling</span>
-          <span class="block-desc">5 N⋅m, ±1° misalignment</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="structure-gearbox">
-        <div class="block-icon" style="background: #7F8C8D;"></div>
-        <div class="block-info">
-          <span class="block-name">Planetary Gearbox</span>
-          <span class="block-desc">10:1 reduction, 95% eff.</span>
-        </div>
-      </div>
-    </div>
-    <div class="block-category">
-      <h4>💻 Software & Firmware</h4>
-      <div class="block-type-item" data-type="firmware-pid-controller">
-        <div class="block-icon" style="background: #8E44AD;"></div>
-        <div class="block-info">
-          <span class="block-name">PID Controller</span>
-          <span class="block-desc">Real-time control algorithm</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="firmware-state-machine">
-        <div class="block-icon" style="background: #8E44AD;"></div>
-        <div class="block-info">
-          <span class="block-name">State Machine</span>
-          <span class="block-desc">Hierarchical FSM control</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="firmware-kalman-filter">
-        <div class="block-icon" style="background: #8E44AD;"></div>
-        <div class="block-info">
-          <span class="block-name">Kalman Filter</span>
-          <span class="block-desc">Advanced sensor fusion</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="protocol-modbus">
-        <div class="block-icon" style="background: #3498DB;"></div>
-        <div class="block-info">
-          <span class="block-name">Modbus Protocol</span>
-          <span class="block-desc">Industrial communication</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="protocol-can">
-        <div class="block-icon" style="background: #3498DB;"></div>
-        <div class="block-info">
-          <span class="block-name">CAN Bus Protocol</span>
-          <span class="block-desc">Automotive networking</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="protocol-mqtt">
-        <div class="block-icon" style="background: #3498DB;"></div>
-        <div class="block-info">
-          <span class="block-name">MQTT Protocol</span>
-          <span class="block-desc">IoT publish-subscribe</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="algorithm-fft">
-        <div class="block-icon" style="background: #E67E22;"></div>
-        <div class="block-info">
-          <span class="block-name">FFT Processor</span>
-          <span class="block-desc">Frequency analysis</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="algorithm-machine-learning">
-        <div class="block-icon" style="background: #E67E22;"></div>
-        <div class="block-info">
-          <span class="block-name">ML Inference</span>
-          <span class="block-desc">Embedded AI/ML</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="system-rtos">
-        <div class="block-icon" style="background: #27AE60;"></div>
-        <div class="block-info">
-          <span class="block-name">Real-Time OS</span>
-          <span class="block-desc">Deterministic scheduling</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="system-bootloader">
-        <div class="block-icon" style="background: #27AE60;"></div>
-        <div class="block-info">
-          <span class="block-name">Secure Bootloader</span>
-          <span class="block-desc">Secure boot + updates</span>
-        </div>
-      </div>
-    </div>
-    <div class="block-category">
-      <h4>🎯 System Templates</h4>
-      <div class="block-type-item" data-type="template-motor-controller">
-        <div class="block-icon" style="background: #E74C3C;"></div>
-        <div class="block-info">
-          <span class="block-name">Motor Control System</span>
-          <span class="block-desc">Complete motor control + feedback</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="template-sensor-array">
-        <div class="block-icon" style="background: #F39C12;"></div>
-        <div class="block-info">
-          <span class="block-name">Multi-Sensor Array</span>
-          <span class="block-desc">Temperature + accelerometer + WiFi</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="template-linear-actuator-system">
-        <div class="block-icon" style="background: #16A085;"></div>
-        <div class="block-info">
-          <span class="block-name">Linear Motion System</span>
-          <span class="block-desc">Stepper + gearbox + encoder</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="template-control-loop">
-        <div class="block-icon" style="background: #8E44AD;"></div>
-        <div class="block-info">
-          <span class="block-name">Control Loop System</span>
-          <span class="block-desc">PID + FSM + Kalman filter</span>
-        </div>
-      </div>
-      <div class="block-type-item" data-type="template-smart-actuator">
-        <div class="block-icon" style="background: #E67E22;"></div>
-        <div class="block-info">
-          <span class="block-name">Smart Actuator System</span>
-          <span class="block-desc">Integrated multi-domain system</span>
-        </div>
-      </div>
-    </div>
-  </div>
+
 </body>
 </html>

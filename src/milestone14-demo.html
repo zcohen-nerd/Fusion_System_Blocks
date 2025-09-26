@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <title>Milestone 14: Advanced Diagram Features Demo</title>
   <link rel="stylesheet" href="fusion-theme.css?v=milestone14">
+  <link rel="stylesheet" href="fusion-ribbon.css?v=milestone14">
   <link rel="stylesheet" href="fusion-icons.css?v=milestone14">
   <style>
     /* Import all the advanced features styling */
@@ -366,26 +367,136 @@
       </div>
       
       <div class="demo-canvas feature-panel">
-        <div class="demo-toolbar">
-          <!-- Layout Tools -->
-          <button class="demo-button">🔄 Auto Layout</button>
-          <button class="demo-button">⬅ Align Left</button>
-          <button class="demo-button">↕ Center</button>
-          <button class="demo-button">➡ Align Right</button>
-          <button class="demo-button">↔ Distribute H</button>
-          <button class="demo-button">↕ Distribute V</button>
-          
-          <!-- Selection Tools -->
-          <button class="demo-button">☑ Select All</button>
-          <button class="demo-button">☐ Clear</button>
-          <button class="demo-button">📦 Group</button>
-          <button class="demo-button">📤 Ungroup</button>
-          
-          <!-- Annotation Tools -->
-          <button class="demo-button">📝 Text</button>
-          <button class="demo-button">📌 Note</button>
-          <button class="demo-button">📏 Dimension</button>
-          <button class="demo-button">💬 Callout</button>
+        <!-- Fusion 360 Style Ribbon -->
+        <div class="fusion-ribbon">
+          <div class="ribbon-groups">
+            
+            <!-- CREATE GROUP -->
+            <div class="ribbon-group">
+              <div class="ribbon-content">
+                <button class="ribbon-button-large active" onclick="showDemoNotification('Block Creation activated!')">
+                  <div class="ribbon-icon">⬜</div>
+                  <div class="ribbon-text">Block</div>
+                  <div class="ribbon-shortcut">Ctrl+B</div>
+                </button>
+              </div>
+              <div class="ribbon-group-label">Create</div>
+            </div>
+
+            <!-- SELECT GROUP -->
+            <div class="ribbon-group">
+              <div class="ribbon-content">
+                <div class="ribbon-mixed">
+                  <button class="ribbon-button-large" onclick="toggleSelectMode(this)">
+                    <div class="ribbon-icon">👆</div>
+                    <div class="ribbon-text">Select</div>
+                  </button>
+                  <div class="ribbon-buttons-column">
+                    <button class="ribbon-button-small" onclick="showDemoNotification('Select All activated!')">
+                      <div class="ribbon-icon-small">☑</div>
+                      <span>All</span>
+                    </button>
+                    <button class="ribbon-button-small" onclick="showDemoNotification('Clear Selection activated!')">
+                      <div class="ribbon-icon-small">☐</div>
+                      <span>Clear</span>
+                    </button>
+                    <button class="ribbon-button-small" onclick="showDemoNotification('Group activated!')">
+                      <div class="ribbon-icon-small">📦</div>
+                      <span>Group</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="ribbon-group-label">Select</div>
+            </div>
+
+            <!-- ARRANGE GROUP -->
+            <div class="ribbon-group">
+              <div class="ribbon-content">
+                <div class="ribbon-mixed">
+                  <button class="ribbon-button-large" onclick="showDemoNotification('Auto Layout activated!')">
+                    <div class="ribbon-icon">🔄</div>
+                    <div class="ribbon-text">Auto Layout</div>
+                  </button>
+                  <div class="ribbon-buttons-column">
+                    <button class="ribbon-button-small" onclick="showDemoNotification('Align Left activated!')">
+                      <div class="ribbon-icon-small">⬅</div>
+                      <span>Left</span>
+                    </button>
+                    <button class="ribbon-button-small" onclick="showDemoNotification('Center activated!')">
+                      <div class="ribbon-icon-small">↕</div>
+                      <span>Center</span>
+                    </button>
+                    <button class="ribbon-button-small" onclick="showDemoNotification('Distribute activated!')">
+                      <div class="ribbon-icon-small">↔</div>
+                      <span>Distribute</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="ribbon-group-label">Arrange</div>
+            </div>
+
+            <!-- ANNOTATE GROUP -->
+            <div class="ribbon-group">
+              <div class="ribbon-content">
+                <div class="ribbon-button-row">
+                  <button class="ribbon-button-small" onclick="showDemoNotification('Text Tool activated!')">
+                    <div class="ribbon-icon-small">📝</div>
+                    <span>Text</span>
+                  </button>
+                  <button class="ribbon-button-small" onclick="showDemoNotification('Note Tool activated!')">
+                    <div class="ribbon-icon-small">📌</div>
+                    <span>Note</span>
+                  </button>
+                  <button class="ribbon-button-small" onclick="showDemoNotification('Dimension Tool activated!')">
+                    <div class="ribbon-icon-small">�</div>
+                    <span>Dimension</span>
+                  </button>
+                </div>
+              </div>
+              <div class="ribbon-group-label">Annotate</div>
+            </div>
+
+            <!-- VIEW GROUP -->
+            <div class="ribbon-group">
+              <div class="ribbon-content">
+                <div class="ribbon-mixed">
+                  <button class="ribbon-button-large" onclick="fitToViewDemo(this)">
+                    <div class="ribbon-icon">�</div>
+                    <div class="ribbon-text">Fit</div>
+                  </button>
+                  <div class="ribbon-buttons-column">
+                    <button class="ribbon-button-small" onclick="showDemoNotification('Zoom In activated!')">
+                      <div class="ribbon-icon-small">🔍</div>
+                      <span>Zoom In</span>
+                    </button>
+                    <button class="ribbon-button-small" onclick="showDemoNotification('Zoom Out activated!')">
+                      <div class="ribbon-icon-small">🔍</div>
+                      <span>Zoom Out</span>
+                    </button>
+                    <button class="ribbon-button-small" onclick="toggleGridDemo(this)">
+                      <div class="ribbon-icon-small">⌗</div>
+                      <span>Grid</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="ribbon-group-label">View</div>
+            </div>
+
+            <!-- VALIDATE GROUP -->
+            <div class="ribbon-group">
+              <div class="ribbon-content">
+                <button class="ribbon-button-large" onclick="validateDemo(this)">
+                  <div class="ribbon-icon">✓</div>
+                  <div class="ribbon-text">Validate</div>
+                </button>
+              </div>
+              <div class="ribbon-group-label">Validate</div>
+            </div>
+
+          </div>
         </div>
         
         <div class="demo-canvas-content">
@@ -407,18 +518,37 @@
   </div>
   
   <script>
-    // Add some interactive demo functionality
-    document.querySelectorAll('.demo-button').forEach(button => {
-      button.addEventListener('click', () => {
-        button.style.transform = 'scale(0.95)';
-        setTimeout(() => {
-          button.style.transform = '';
-        }, 100);
-        
-        // Show notification
-        showDemoNotification(`${button.textContent} activated!`);
-      });
-    });
+    // Ribbon interface demo functions
+    function toggleSelectMode(button) {
+      button.classList.toggle('active');
+      const isActive = button.classList.contains('active');
+      showDemoNotification(isActive ? 'Select Mode ON' : 'Select Mode OFF');
+    }
+
+    function fitToViewDemo(button) {
+      showDemoNotification('Fit to View');
+      // Simulate loading state
+      button.classList.add('loading');
+      setTimeout(() => {
+        button.classList.remove('loading');
+        showDemoNotification('✓ View fitted to content');
+      }, 1500);
+    }
+
+    function toggleGridDemo(button) {
+      button.classList.toggle('active');
+      const isActive = button.classList.contains('active');
+      showDemoNotification('Grid ' + (isActive ? 'ON' : 'OFF'));
+    }
+
+    function validateDemo(button) {
+      showDemoNotification('Validating diagram...');
+      button.classList.add('loading');
+      setTimeout(() => {
+        button.classList.remove('loading');
+        showDemoNotification('✓ Diagram validation complete - No issues found');
+      }, 2000);
+    }
     
     function showDemoNotification(message) {
       const notification = document.createElement('div');
@@ -451,6 +581,23 @@
         }
       }, 2000);
     }
+
+    // Responsive ribbon behavior
+    function updateRibbonResponsive() {
+      const width = window.innerWidth;
+      const ribbon = document.querySelector('.fusion-ribbon');
+      
+      // Add responsive classes for different screen sizes
+      if (width < 800) {
+        ribbon.classList.add('compact');
+      } else {
+        ribbon.classList.remove('compact');
+      }
+    }
+
+    // Initialize responsive behavior
+    window.addEventListener('resize', updateRibbonResponsive);
+    updateRibbonResponsive();
     
     // Add CSS animations
     const style = document.createElement('style');
