@@ -1,0 +1,11 @@
+# Public Repository - Documentation and Releases Only
+*.pyc
+__pycache__/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.tmp
+*.log
+
+# Keep only documentation and release artifacts
