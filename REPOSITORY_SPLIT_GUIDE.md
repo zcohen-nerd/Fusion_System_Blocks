@@ -1,5 +1,7 @@
 # Repository Split Usage Guide
 
+> **Note (October 2025):** The active project now keeps all source code public. This guide and associated scripts remain for historical context or future scenarios where a split might be required.
+
 ## Quick Start
 
 ### Option 1: PowerShell Script (Recommended)

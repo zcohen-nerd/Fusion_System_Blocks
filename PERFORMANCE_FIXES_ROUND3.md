@@ -30,16 +30,26 @@ To test performance improvements:
 
 ```javascript
 // In browser console - test coordinate accuracy
-console.log('Testing lasso coordinates...');
+const loggerGetter = window.getSystemBlocksLogger;
+const logger = typeof loggerGetter === 'function'
+  ? loggerGetter()
+  : (window.SystemBlocksLogger || {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {}
+    });
+
+logger.debug('Testing lasso coordinates...');
 
 // Check mouse move throttling
 setInterval(() => {
-  console.log('Throttling active:', Date.now());
+  logger.debug('Throttling active:', Date.now());
 }, 100);
 
 // Monitor DOM updates
 const observer = new MutationObserver((mutations) => {
-  console.log('DOM mutations:', mutations.length);
+  logger.debug('DOM mutations:', mutations.length);
 });
 observer.observe(document.querySelector('svg'), {
   attributes: true,

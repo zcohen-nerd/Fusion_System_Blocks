@@ -17,6 +17,43 @@ ATTR_GROUP = 'systemBlocks'
 _handlers = []  # keep event handlers alive
 
 
+def send_palette_notification(message, level="info"):
+    """Send a non-blocking notification to the HTML palette."""
+
+    try:
+        palette = UI.palettes.itemById("SystemBlocksPalette")
+    except Exception:
+        palette = None
+
+    if palette:
+        script = (
+            "if(window.pythonInterface && "
+            "typeof window.pythonInterface.showNotification === 'function'){"
+            f"window.pythonInterface.showNotification({json.dumps(message)}, "
+            f"{json.dumps(level)});"
+            "}"
+        )
+        palette.sendInfoToHTML("notification", script)
+    else:
+        UI.messageBox(message)
+
+
+def notify_error(message):
+    send_palette_notification(message, level="error")
+
+
+def notify_warning(message):
+    send_palette_notification(message, level="warning")
+
+
+def notify_success(message):
+    send_palette_notification(message, level="success")
+
+
+def notify_info(message):
+    send_palette_notification(message, level="info")
+
+
 def get_root_component():
     """Get the root component of the active design."""
     try:
@@ -35,19 +72,19 @@ def save_diagram_json(json_data):
         diagram = json.loads(json_data)
         is_valid, error = diagram_data.validate_diagram(diagram)
         if not is_valid:
-            UI.messageBox(f'Diagram validation failed: {error}')
+            notify_error(f"Diagram validation failed: {error}")
             return False
 
         # Check link validation specifically
         links_valid, link_errors = diagram_data.validate_diagram_links(diagram)
         if not links_valid:
             error_msg = 'Link validation errors:\n' + '\n'.join(link_errors)
-            UI.messageBox(error_msg)
+            notify_error(error_msg)
             return False
 
         root_comp = get_root_component()
         if not root_comp:
-            UI.messageBox('No active design found')
+            notify_error("No active design found")
             return False
 
         attrs = root_comp.attributes
@@ -63,7 +100,7 @@ def save_diagram_json(json_data):
         return True
 
     except Exception as e:
-        UI.messageBox(f'Failed to save diagram: {str(e)}')
+        notify_error(f"Failed to save diagram: {str(e)}")
         return False
 
 
@@ -83,7 +120,23 @@ def load_diagram_json():
         return None
 
     except Exception as e:
-        UI.messageBox(f'Failed to load diagram: {str(e)}')
+        notify_error(f"Failed to load diagram: {str(e)}")
+        return None
+
+
+def load_diagram_data():
+    """Return the current diagram as a Python dictionary."""
+    diagram_json = load_diagram_json()
+    if not diagram_json:
+        return None
+
+    if isinstance(diagram_json, dict):
+        return diagram_json
+
+    try:
+        return json.loads(diagram_json)
+    except (json.JSONDecodeError, TypeError) as exc:
+        notify_error(f"Invalid diagram data: {exc}")
         return None
 
 
@@ -114,18 +167,24 @@ def select_occurrence_for_linking():
         if selection:
             occurrence = adsk.fusion.Occurrence.cast(selection)
             if occurrence:
+                doc_file = None
+                if APP.activeDocument:
+                    doc_file = APP.activeDocument.dataFile
+
                 return {
                     'type': 'CAD',
-                    'occurrenceToken': occurrence.entityToken,
+                    'occToken': occurrence.entityToken,
                     'name': occurrence.name,
-                    'documentId': (APP.activeDocument.dataFile.id
-                                   if APP.activeDocument.dataFile else None)
+                    'docId': doc_file.id if doc_file else None
                 }
 
         return None
 
     except Exception as e:
-        UI.messageBox(f'Failed to select occurrence: {str(e)}')
+        send_palette_notification(
+            f"Failed to select occurrence: {str(e)}",
+            level="error",
+        )
         return None
 
 
@@ -144,7 +203,7 @@ class SystemBlocksPaletteShowCommandHandler(adsk.core.CommandCreatedEventHandler
             _handlers.append(onExecute)
 
         except Exception as e:
-            UI.messageBox(f'Error in command created handler: {str(e)}')
+            notify_error(f"Error in command created handler: {str(e)}")
 
 
 class CommandExecuteHandler(adsk.core.CommandEventHandler):
@@ -157,9 +216,9 @@ class CommandExecuteHandler(adsk.core.CommandEventHandler):
             palette = UI.palettes.itemById('SystemBlocksPalette')
             if palette:
                 palette.isVisible = True
-                UI.messageBox('Palette should now be visible')
+                notify_success('Palette should now be visible')
             else:
-                UI.messageBox('Error: Palette not found - creating it now')
+                notify_warning('Error: Palette not found - creating it now')
                 # Try to create the palette if it doesn't exist
                 addin_path = os.path.dirname(__file__)
                 html_file = os.path.join(addin_path, 'src', 'palette.html')
@@ -187,7 +246,7 @@ class CommandExecuteHandler(adsk.core.CommandEventHandler):
                 _handlers.append(onHTMLEvent)
 
         except Exception as e:
-            UI.messageBox(f'Error showing palette: {str(e)}')
+            notify_error(f"Error showing palette: {str(e)}")
 
 
 class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
@@ -207,15 +266,19 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             elif htmlArgs.action == 'load_diagram':
                 diagram_json = load_diagram_json()
                 if diagram_json:
-                    htmlArgs.returnData = diagram_json
+                    try:
+                        diagram_dict = (
+                            diagram_json
+                            if isinstance(diagram_json, dict)
+                            else json.loads(diagram_json)
+                        )
+                    except json.JSONDecodeError as exc:
+                        notify_error(f"Invalid diagram data: {str(exc)}")
+                        diagram_dict = diagram_data.create_empty_diagram()
                 else:
-                    # Return empty diagram
-                    empty_diagram = diagram_data.create_empty_diagram()
-                    htmlArgs.returnData = json.dumps(empty_diagram)
+                    diagram_dict = diagram_data.create_empty_diagram()
 
-            elif htmlArgs.action == 'link_cad':
-                link_data = select_occurrence_for_linking()
-                htmlArgs.returnData = json.dumps(link_data) if link_data else '{}'
+                htmlArgs.returnData = json.dumps({'diagram': diagram_dict})
 
             elif htmlArgs.action == 'export_reports':
                 diagram_json = data.get('diagram', '{}')
@@ -229,7 +292,10 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
                 os.makedirs(exports_path, exist_ok=True)
 
                 # Export the reports
-                files_created = diagram_data.export_report_files(diagram, exports_path)
+                files_created = diagram_data.export_report_files(
+                    diagram,
+                    exports_path,
+                )
 
                 htmlArgs.returnData = json.dumps({
                     'success': True,
@@ -255,90 +321,18 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
                 sync_results = sync_all_components_in_fusion(diagram)
                 htmlArgs.returnData = json.dumps(sync_results)
 
-            elif htmlArgs.action == 'enable_3d_overlay':
-                diagram_json = data.get('diagram', '{}')
-                view_box = data.get('viewBox', {})
-                diagram = json.loads(diagram_json)
-                enable_3d_overlay_mode(diagram, view_box)
-                htmlArgs.returnData = json.dumps({'success': True})
-
-            elif htmlArgs.action == 'disable_3d_overlay':
-                disable_3d_overlay_mode()
-                htmlArgs.returnData = json.dumps({'success': True})
-
-            elif htmlArgs.action == 'highlight_components':
-                block_id = data.get('blockId', '')
-                highlight_color = data.get('color', '#FF6B35')
-                highlight_block_components(block_id, highlight_color)
-                htmlArgs.returnData = json.dumps({'success': True})
-
-            elif htmlArgs.action == 'generate_assembly_sequence':
-                diagram_json = data.get('diagram', '{}')
-                diagram = json.loads(diagram_json)
-                generate_assembly_sequence_from_diagram(diagram)
-                htmlArgs.returnData = json.dumps({'success': True})
-
-            elif htmlArgs.action == 'generate_living_bom':
-                diagram_json = data.get('diagram', '{}')
-                diagram = json.loads(diagram_json)
-                generate_living_bom_from_diagram(diagram)
-                htmlArgs.returnData = json.dumps({'success': True})
-
-            elif htmlArgs.action == 'generate_service_manual':
-                block_id = data.get('blockId', '')
-                diagram_json = data.get('diagram', '{}')
-                diagram = json.loads(diagram_json)
-                generate_service_manual_for_block(block_id, diagram)
-                htmlArgs.returnData = json.dumps({'success': True})
-
-            elif htmlArgs.action == 'analyze_change_impact':
-                block_id = data.get('blockId', '')
-                diagram_json = data.get('diagram', '{}')
-                diagram = json.loads(diagram_json)
-                analyze_change_impact_for_block(block_id, diagram)
-                htmlArgs.returnData = json.dumps({'success': True})
-
             elif htmlArgs.action == 'start_cad_selection':
                 block_id = data.get('blockId', '')
                 block_name = data.get('blockName', 'Unknown Block')
                 start_cad_selection(block_id, block_name)
                 htmlArgs.returnData = json.dumps({'success': True})
-
-            elif htmlArgs.action == 'import_data':
-                import_type = data.get('type', '')
-                import_content = data.get('content', '')
-
-                try:
-                    if import_type == 'mermaid':
-                        new_diagram = diagram_data.parse_mermaid_to_diagram(import_content)
-                    elif import_type == 'csv':
-                        new_diagram = diagram_data.import_from_csv(import_content)
-                    else:
-                        raise ValueError(f"Unsupported import type: {import_type}")
-
-                    # Validate the imported diagram
-                    is_valid, validation_errors = (
-                        diagram_data.validate_imported_diagram(new_diagram))
-
-                    if is_valid:
-                        htmlArgs.returnData = json.dumps({
-                            'success': True,
-                            'diagram': new_diagram,
-                            'message': (f'Successfully imported '
-                                        f'{len(new_diagram.get("blocks", []))} blocks')
-                        })
-                    else:
-                        htmlArgs.returnData = json.dumps({
-                            'success': False,
-                            'errors': validation_errors,
-                            'message': 'Import validation failed'
-                        })
-
-                except Exception as e:
-                    htmlArgs.returnData = json.dumps({
+            else:
+                htmlArgs.returnData = json.dumps(
+                    {
                         'success': False,
-                        'message': f'Import failed: {str(e)}'
-                    })
+                        'error': f"Unknown action: {htmlArgs.action}",
+                    }
+                )
 
         except Exception as e:
             if 'htmlArgs' in locals():
@@ -346,7 +340,7 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
                     'success': False,
                     'error': str(e)
                 })
-            UI.messageBox(f'Error in palette event handler: {str(e)}')
+            notify_error(f"Error in palette event handler: {str(e)}")
 
 
 # ============================================================================
@@ -386,7 +380,11 @@ def sync_all_components_in_fusion(diagram):
         }
 
         for block in diagram.get("blocks", []):
-            cad_links = [link for link in block.get("links", []) if link.get("target") == "cad"]
+            cad_links = [
+                link
+                for link in block.get("links", [])
+                if link.get("target") == "cad"
+            ]
 
             if cad_links:
                 results["blocks_with_cad"] += 1
@@ -407,14 +405,20 @@ def sync_all_components_in_fusion(diagram):
                                 mass=component_info.get("mass", 0.0),
                                 volume=component_info.get("volume", 0.0),
                                 boundingBox=component_info.get("boundingBox"),
-                                customProperties=component_info.get("customProperties", {}),
+                                customProperties=component_info.get(
+                                    "customProperties",
+                                    {},
+                                ),
                             )
 
                             # Generate thumbnail if needed
                             if "thumbnail" not in link:
                                 link["thumbnail"] = (
                                     diagram_data.generate_component_thumbnail_placeholder(
-                                        component_name=component_info.get("name", "Component")
+                                        component_name=component_info.get(
+                                            "name",
+                                            "Component",
+                                        )
                                     )
                                 )
 
@@ -422,13 +426,16 @@ def sync_all_components_in_fusion(diagram):
                         else:
                             # Component not found - mark as missing
                             link = diagram_data.mark_component_as_missing(
-                                link, "Component not found in active Fusion 360 design"
+                                link,
+                                "Component not found in active Fusion 360 design",
                             )
                             results["sync_failed"] += 1
 
                     except Exception as e:
                         results["sync_failed"] += 1
-                        results["errors"].append(f"Failed to sync component: {str(e)}")
+                        results["errors"].append(
+                            f"Failed to sync component: {str(e)}"
+                        )
 
         return results
 
@@ -586,7 +593,7 @@ def start_cad_selection(block_id, block_name):
         selection_cmd.execute()
 
     except Exception as e:
-        UI.messageBox(f"CAD selection failed: {str(e)}")
+        notify_error(f"CAD selection failed: {str(e)}")
 
 
 class CADSelectionHandler(adsk.core.CommandCreatedEventHandler):
@@ -613,20 +620,32 @@ class CADSelectionHandler(adsk.core.CommandCreatedEventHandler):
             selection_input.setSelectionLimits(1, 1)
 
             # Set up event handlers
-            execute_handler = CADSelectionExecuteHandler(self.block_id)
+            execute_handler = CADSelectionExecuteHandler(
+                self.block_id,
+                self.block_name,
+            )
             cmd.execute.add(execute_handler)
             _handlers.append(execute_handler)
 
         except Exception as e:
-            UI.messageBox(f"CAD selection setup failed: {str(e)}")
+            notify_error(f"CAD selection setup failed: {str(e)}")
 
 
 class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
     """Handle execution of CAD selection command."""
 
-    def __init__(self, block_id):
+    def __init__(self, block_id, block_name):
         super().__init__()
         self.block_id = block_id
+        self.block_name = block_name
+
+    def _send_cad_link_payload(self, palette, payload):
+        script = (
+            "if(window.receiveCADLinkFromPython){"
+            f"window.receiveCADLinkFromPython({json.dumps(payload)});"
+            "}"
+        )
+        palette.sendInfoToHTML("cad-link", script)
 
     def notify(self, args):
         try:
@@ -638,28 +657,61 @@ class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
                 selected_occurrence = selection_input.selection(0).entity
                 if selected_occurrence:
                     # Get occurrence data
+                    doc_id = ''
+                    doc_path = ''
+                    if APP.activeDocument and APP.activeDocument.dataFile:
+                        doc_id = APP.activeDocument.dataFile.id or ''
+                        doc_path = APP.activeDocument.dataFile.path or ''
+
                     link_data = {
                         'success': True,
-                        'occurrenceToken': selected_occurrence.entityToken,
+                        'occToken': selected_occurrence.entityToken,
                         'componentName': selected_occurrence.component.name,
-                        'documentId': APP.activeDocument.name if APP.activeDocument else '',
-                        'blockId': self.block_id
+                        'docId': doc_id,
+                        'docPath': doc_path,
+                        'blockId': self.block_id,
+                        'blockName': self.block_name,
                     }
 
                     # Send data back to JavaScript
                     palette = UI.palettes.itemById('SystemBlocksPalette')
                     if palette:
-                        script = f"if(editor) {{ editor.onCADLinkComplete({json.dumps(link_data)}); }}"
-                        palette.sendInfoToHTML("cad-link", script)
-
-                    UI.messageBox(f"Successfully linked to: {selected_occurrence.component.name}")
+                        self._send_cad_link_payload(palette, link_data)
                 else:
-                    UI.messageBox("No component selected")
+                    palette = UI.palettes.itemById('SystemBlocksPalette')
+                    if palette:
+                        self._send_cad_link_payload(
+                            palette,
+                            {
+                                'success': False,
+                                'blockId': self.block_id,
+                                'error': 'No component selected',
+                            },
+                        )
             else:
-                UI.messageBox("No selection made")
+                palette = UI.palettes.itemById('SystemBlocksPalette')
+                if palette:
+                    self._send_cad_link_payload(
+                        palette,
+                        {
+                            'success': False,
+                            'blockId': self.block_id,
+                            'error': 'No selection made',
+                        },
+                    )
 
         except Exception as e:
-            UI.messageBox(f"CAD selection execution failed: {str(e)}")
+            palette = UI.palettes.itemById('SystemBlocksPalette')
+            if palette:
+                self._send_cad_link_payload(
+                    palette,
+                    {
+                        'success': False,
+                        'blockId': self.block_id,
+                        'error': f'CAD selection failed: {str(e)}',
+                    },
+                )
+            notify_error(f"CAD selection execution failed: {str(e)}")
 
 
 def start_enhanced_cad_selection(block_id, block_name):
@@ -676,7 +728,7 @@ def start_enhanced_cad_selection(block_id, block_name):
         start_cad_selection(block_id, block_name)
 
     except Exception as e:
-        UI.messageBox(f"Enhanced CAD selection error: {str(e)}")
+        notify_error(f"Enhanced CAD selection error: {str(e)}")
 
 
 # ============================================================================
@@ -695,14 +747,12 @@ def enable_3d_overlay_mode(diagram, view_box):
     try:
         design = adsk.fusion.Design.cast(APP.activeProduct)
         if not design:
-            UI.messageBox("No active Fusion 360 design found")
+            notify_error("No active Fusion 360 design found")
             return
 
         # For now, show a message that overlay mode is enabled
         # In the future, this would create actual 3D overlays in the viewport
-        UI.messageBox(
-            "3D Overlay Mode Enabled!\nBlock diagram overlays are now active in the 3D viewport."
-        )
+        notify_info("3D overlay mode enabled for the current diagram.")
 
         # Initialize 3D visualization for all blocks
         if "blocks" in diagram:
@@ -710,7 +760,7 @@ def enable_3d_overlay_mode(diagram, view_box):
                 diagram_data.initialize_3d_visualization(block)
 
     except Exception as e:
-        UI.messageBox(f"3D overlay enable error: {str(e)}")
+        notify_error(f"3D overlay enable error: {str(e)}")
 
 
 def disable_3d_overlay_mode():
@@ -719,10 +769,10 @@ def disable_3d_overlay_mode():
     """
     try:
         # Clear any 3D overlays
-        UI.messageBox("3D Overlay Mode Disabled")
+        notify_info("3D Overlay Mode Disabled")
 
     except Exception as e:
-        UI.messageBox(f"3D overlay disable error: {str(e)}")
+        notify_error(f"3D overlay disable error: {str(e)}")
 
 
 def highlight_block_components(block_id, highlight_color):
@@ -739,13 +789,13 @@ def highlight_block_components(block_id, highlight_color):
             return
 
         # Load current diagram to find the block
-        diagram_json = load_diagram_json()
-        if not diagram_json or "blocks" not in diagram_json:
+        diagram_data_obj = load_diagram_data()
+        if not diagram_data_obj:
             return
 
         # Find the block
         target_block = None
-        for block in diagram_json["blocks"]:
+        for block in diagram_data_obj.get("blocks", []):
             if block.get("id") == block_id:
                 target_block = block
                 break
@@ -754,35 +804,45 @@ def highlight_block_components(block_id, highlight_color):
             return
 
         # Find CAD links in the block
-        cad_links = [link for link in target_block.get("links", []) if link.get("target") == "cad"]
+        cad_links = [
+            link
+            for link in target_block.get("links", [])
+            if link.get("target") == "cad"
+        ]
 
         highlighted_count = 0
         for link in cad_links:
             occ_token = link.get("occToken", "")
             if occ_token:
                 # Find occurrence by token
-                occurrence = find_occurrence_by_token(design.rootComponent, occ_token)
+                occurrence = find_occurrence_by_token(
+                    design.rootComponent,
+                    occ_token,
+                )
                 if occurrence:
                     # In a full implementation, this would change the appearance
                     # For now, we'll select the component to show it's highlighted
-                    if highlighted_count == 0:  # Select first component to show highlighting
+                    if highlighted_count == 0:
+                        # Select first component to show highlighting
                         selection = APP.activeViewport.activeSelections
                         selection.clear()
                         selection.add(occurrence)
                     highlighted_count += 1
 
         if highlighted_count > 0:
-            UI.messageBox(
-                f"Highlighted {highlighted_count} components for block: "
+            notify_success(
+                "Highlighted "
+                f"{highlighted_count} components for block: "
                 f"{target_block.get('name', 'Unknown')}"
             )
         else:
-            UI.messageBox(
-                f"No CAD components found for block: {target_block.get('name', 'Unknown')}"
+            block_name = target_block.get("name", "Unknown")
+            notify_warning(
+                f"No CAD components found for block: {block_name}"
             )
 
     except Exception as e:
-        UI.messageBox(f"Component highlighting error: {str(e)}")
+        notify_error(f"Component highlighting error: {str(e)}")
 
 
 def create_connection_route_3d(connection_id, from_block_id, to_block_id, route_style):
@@ -801,7 +861,9 @@ def create_connection_route_3d(connection_id, from_block_id, to_block_id, route_
             return
 
         # For now, show a message about route creation
-        UI.messageBox(f"Creating 3D route from {from_block_id} to {to_block_id}")
+        notify_info(
+            f"Creating 3D route from {from_block_id} to {to_block_id}"
+        )
 
         # In a full implementation, this would:
         # 1. Find the 3D positions of components linked to both blocks
@@ -810,7 +872,7 @@ def create_connection_route_3d(connection_id, from_block_id, to_block_id, route_
         # 4. Apply styling (color, thickness, animation)
 
     except Exception as e:
-        UI.messageBox(f"Connection route error: {str(e)}")
+        notify_error(f"Connection route error: {str(e)}")
 
 
 def create_system_group_visualization(block_ids, group_color):
@@ -826,7 +888,10 @@ def create_system_group_visualization(block_ids, group_color):
         if not design:
             return
 
-        UI.messageBox(f"Creating system group for {len(block_ids)} blocks with color {group_color}")
+        notify_info(
+            "Creating system group for "
+            f"{len(block_ids)} blocks with color {group_color}"
+        )
 
         # In a full implementation, this would:
         # 1. Find all components linked to the blocks
@@ -835,7 +900,7 @@ def create_system_group_visualization(block_ids, group_color):
         # 4. Apply group color and styling
 
     except Exception as e:
-        UI.messageBox(f"System grouping error: {str(e)}")
+        notify_error(f"System grouping error: {str(e)}")
 
 
 def generate_live_thumbnail(block_id, view_angle, size):
@@ -853,13 +918,13 @@ def generate_live_thumbnail(block_id, view_angle, size):
             return
 
         # Load current diagram to find the block
-        diagram_json = load_diagram_json()
-        if not diagram_json or "blocks" not in diagram_json:
+        diagram_data_obj = load_diagram_data()
+        if not diagram_data_obj:
             return
 
         # Find the block
         target_block = None
-        for block in diagram_json["blocks"]:
+        for block in diagram_data_obj.get("blocks", []):
             if block.get("id") == block_id:
                 target_block = block
                 break
@@ -876,31 +941,36 @@ def generate_live_thumbnail(block_id, view_angle, size):
 
         thumbnail_data = (
             "data:image/png;base64,"
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/"
-            "PchI7wAAAABJRU5ErkJggg=="
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+            "AAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
         )
 
         # Update block with live thumbnail
-        updated_block = diagram_data.update_live_thumbnail(target_block, thumbnail_data)
+        updated_block = diagram_data.update_live_thumbnail(
+            target_block,
+            thumbnail_data,
+        )
 
         # Save updated diagram
-        for i, block in enumerate(diagram_json["blocks"]):
+        for i, block in enumerate(diagram_data_obj.get("blocks", [])):
             if block.get("id") == block_id:
-                diagram_json["blocks"][i] = updated_block
+                diagram_data_obj["blocks"][i] = updated_block
                 break
 
-        save_diagram_json(diagram_json)
+        save_diagram_json(json.dumps(diagram_data_obj))
 
         # Notify JavaScript that thumbnail was updated
         palette = UI.palettes.itemById("SystemBlocksPalette")
         if palette:
             script = (
-                f"if(editor) {{ editor.onThumbnailUpdated('{block_id}', '{thumbnail_data}'); }}"
+                "if(editor) { "
+                f"editor.onThumbnailUpdated('{block_id}', '{thumbnail_data}');"
+                " }"
             )
             palette.sendInfoToHTML("thumbnail-updated", script)
 
     except Exception as e:
-        UI.messageBox(f"Live thumbnail error: {str(e)}")
+        notify_error(f"Live thumbnail error: {str(e)}")
 
 
 def generate_assembly_sequence_from_diagram(diagram):
@@ -917,9 +987,11 @@ def generate_assembly_sequence_from_diagram(diagram):
         # Send response to JavaScript
         palette = UI.palettes.itemById("SystemBlocksPalette")
         if palette:
+            sequence_payload = json.dumps(assembly_sequence)
             script = (
-                f"if(editor && editor.displayAssemblySequence) {{ "
-                f"editor.displayAssemblySequence({json.dumps(assembly_sequence)}); }}"
+                "if(editor && editor.displayAssemblySequence) { "
+                f"editor.displayAssemblySequence({sequence_payload});"
+                " }"
             )
             palette.sendInfoToHTML("assembly-sequence", script)
 
@@ -927,7 +999,21 @@ def generate_assembly_sequence_from_diagram(diagram):
         # Send error response
         palette = UI.palettes.itemById("SystemBlocksPalette")
         if palette:
-            script = f"console.error('Assembly sequence error: {str(e)}');"
+            error_message = f"Assembly sequence error: {str(e)}"
+            safe_message = json.dumps(error_message)
+            script = (
+                "(function(){"
+                "var getter = window.getSystemBlocksLogger;"
+                "var logger = typeof getter === 'function' ? getter() : "
+                "(window.SystemBlocksLogger || null);"
+                f"var message = {safe_message};"
+                "if (logger && typeof logger.error === 'function') {"
+                "logger.error(message);"
+                "return;"
+                "}"
+                "if (window.alert) { window.alert(message); }"
+                "})();"
+            )
             palette.sendInfoToHTML("assembly-error", script)
 
 
@@ -945,9 +1031,11 @@ def generate_living_bom_from_diagram(diagram):
         # Send response to JavaScript
         palette = UI.palettes.itemById("SystemBlocksPalette")
         if palette:
+            bom_payload = json.dumps(living_bom)
             script = (
-                f"if(editor && editor.displayLivingBOM) {{ "
-                f"editor.displayLivingBOM({json.dumps(living_bom)}); }}"
+                "if(editor && editor.displayLivingBOM) { "
+                f"editor.displayLivingBOM({bom_payload});"
+                " }"
             )
             palette.sendInfoToHTML("living-bom", script)
 
@@ -955,7 +1043,21 @@ def generate_living_bom_from_diagram(diagram):
         # Send error response
         palette = UI.palettes.itemById("SystemBlocksPalette")
         if palette:
-            script = f"console.error('Living BOM error: {str(e)}');"
+            error_message = f"Living BOM error: {str(e)}"
+            safe_message = json.dumps(error_message)
+            script = (
+                "(function(){"
+                "var getter = window.getSystemBlocksLogger;"
+                "var logger = typeof getter === 'function' ? getter() : "
+                "(window.SystemBlocksLogger || null);"
+                f"var message = {safe_message};"
+                "if (logger && typeof logger.error === 'function') {"
+                "logger.error(message);"
+                "return;"
+                "}"
+                "if (window.alert) { window.alert(message); }"
+                "})();"
+            )
             palette.sendInfoToHTML("bom-error", script)
 
 
@@ -981,33 +1083,37 @@ def generate_service_manual_for_block(block_id, diagram):
             return
 
         # Initialize living documentation
-        target_block = diagram_data.initialize_living_documentation(target_block)
+        target_block = diagram_data.initialize_living_documentation(
+            target_block
+        )
 
         # Generate service manual content
+        service_manual_doc = target_block["livingDocumentation"][
+            "serviceManual"
+        ]
         service_manual = {
             "blockName": target_block.get("name", "Unknown"),
             "blockId": block_id,
-            "maintenanceInterval": target_block["livingDocumentation"]["serviceManual"][
-                "maintenanceInterval"
-            ],
-            "replacementParts": target_block["livingDocumentation"]["serviceManual"][
-                "replacementParts"
-            ],
-            "troubleshootingSteps": target_block["livingDocumentation"]["serviceManual"][
-                "troubleshootingSteps"
-            ],
-            "safetyNotes": target_block["livingDocumentation"]["serviceManual"]["safetyNotes"],
+            "maintenanceInterval": service_manual_doc["maintenanceInterval"],
+            "replacementParts": service_manual_doc["replacementParts"],
+            "troubleshootingSteps": service_manual_doc["troubleshootingSteps"],
+            "safetyNotes": service_manual_doc["safetyNotes"],
             "generatedAt": datetime.now().isoformat(),
         }
 
         # Send to JavaScript
         palette = UI.palettes.itemById("SystemBlocksPalette")
         if palette:
-            script = f"if(editor) {{ editor.displayServiceManual({json.dumps(service_manual)}); }}"
+            payload = json.dumps(service_manual)
+            script = (
+                "if(editor) { "
+                f"editor.displayServiceManual({payload});"
+                " }"
+            )
             palette.sendInfoToHTML("service-manual", script)
 
     except Exception as e:
-        UI.messageBox(f"Service manual error: {str(e)}")
+        notify_error(f"Service manual error: {str(e)}")
 
 
 def analyze_change_impact_for_block(block_id, diagram):
@@ -1027,20 +1133,24 @@ def analyze_change_impact_for_block(block_id, diagram):
         # Send to JavaScript
         palette = UI.palettes.itemById("SystemBlocksPalette")
         if palette:
+            impact_payload = json.dumps(impact_analysis)
             script = (
-                f"if(editor && editor.displayChangeImpact) {{ "
-                f"editor.displayChangeImpact({json.dumps(impact_analysis)}); }}"
+                "if(editor && editor.displayChangeImpact) { "
+                f"editor.displayChangeImpact({impact_payload});"
+                " }"
             )
             palette.sendInfoToHTML("change-impact", script)
 
     except Exception as e:
-        UI.messageBox(f"Change impact analysis error: {str(e)}")
+        notify_error(f"Change impact analysis error: {str(e)}")
 
 
 def run(context):
     try:
         # Create command definition for showing palette
-        cmdDef = UI.commandDefinitions.itemById('SystemBlocksPaletteShowCommand')
+        cmdDef = UI.commandDefinitions.itemById(
+            'SystemBlocksPaletteShowCommand'
+        )
         if not cmdDef:
             cmdDef = UI.commandDefinitions.addButtonDefinition(
                 'SystemBlocksPaletteShowCommand',
@@ -1088,27 +1198,36 @@ def run(context):
         designWorkspace = workspaces.itemById('FusionSolidEnvironment')
         if designWorkspace:
             # Add to Add-ins panel
-            addInsPanel = designWorkspace.toolbarPanels.itemById('SolidScriptsAddinsPanel')
+            addInsPanel = designWorkspace.toolbarPanels.itemById(
+                'SolidScriptsAddinsPanel'
+            )
             if not addInsPanel:
                 addInsPanel = designWorkspace.toolbarPanels.add(
                     'SolidScriptsAddinsPanel', 'Add-Ins')
 
             # Add our command to the panel
             controls = addInsPanel.controls
-            systemBlocksControl = controls.itemById('SystemBlocksPaletteShowCommand')
+            systemBlocksControl = controls.itemById(
+                'SystemBlocksPaletteShowCommand'
+            )
             if not systemBlocksControl:
                 systemBlocksControl = controls.addCommand(cmdDef)
 
-        UI.messageBox('System Blocks add-in loaded successfully!')
+        notify_success('System Blocks add-in loaded successfully!')
 
     except Exception as e:
-        UI.messageBox(f'Failed to run System Blocks add-in: {str(e)}\n{traceback.format_exc()}')
+        notify_error(
+            'Failed to run System Blocks add-in: '
+            f"{str(e)}\n{traceback.format_exc()}"
+        )
 
 
 def stop(context):
     try:
         # Clean up UI elements
-        cmdDef = UI.commandDefinitions.itemById('SystemBlocksPaletteShowCommand')
+        cmdDef = UI.commandDefinitions.itemById(
+            'SystemBlocksPaletteShowCommand'
+        )
         if cmdDef:
             cmdDef.deleteMe()
 
@@ -1116,7 +1235,9 @@ def stop(context):
         workspaces = UI.workspaces
         designWorkspace = workspaces.itemById('FusionSolidEnvironment')
         if designWorkspace:
-            addInsPanel = designWorkspace.toolbarPanels.itemById('SolidScriptsAddinsPanel')
+            addInsPanel = designWorkspace.toolbarPanels.itemById(
+                'SolidScriptsAddinsPanel'
+            )
             if addInsPanel:
                 systemBlocksControl = addInsPanel.controls.itemById(
                     'SystemBlocksPaletteShowCommand')
@@ -1132,4 +1253,4 @@ def stop(context):
         _handlers.clear()
 
     except Exception as e:
-        UI.messageBox(f'Failed to stop System Blocks add-in: {str(e)}')
+        notify_error(f'Failed to stop System Blocks add-in: {str(e)}')

@@ -597,6 +597,15 @@
 
     // Initialize responsive behavior
     window.addEventListener('resize', updateRibbonResponsive);
+    const milestoneLogger = window.getSystemBlocksLogger
+      ? window.getSystemBlocksLogger()
+      : {
+          debug: () => {},
+          info: () => {},
+          warn: () => {},
+          error: () => {}
+        };
+
     updateRibbonResponsive();
     
     // Add CSS animations
@@ -613,8 +622,8 @@
     `;
     document.head.appendChild(style);
     
-    console.log("🎯 Milestone 14 Demo loaded successfully!");
-    console.log("✅ 15/15 Milestones Complete - Revolutionary system achieved!");
+    milestoneLogger.info("🎯 Milestone 14 Demo loaded successfully!");
+    milestoneLogger.info("✅ 15/15 Milestones Complete - Revolutionary system achieved!");
   </script>
 </body>
 </html>

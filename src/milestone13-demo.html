@@ -434,9 +434,18 @@
             `;
         }
 
+        const demoLogger = window.getSystemBlocksLogger
+            ? window.getSystemBlocksLogger()
+            : {
+                debug: () => {},
+                info: () => {},
+                warn: () => {},
+                error: () => {}
+            };
+
         // Auto-demonstration sequence
         setTimeout(() => {
-            console.log('Starting auto-demonstration...');
+            demoLogger.info('Starting auto-demonstration...');
             demonstrate3DOverlay();
             
             setTimeout(() => {

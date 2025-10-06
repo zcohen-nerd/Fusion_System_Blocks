@@ -1,5 +1,7 @@
 # Repository Split Summary
 
+> **Status Update (October 2025):** Fusion System Blocks now ships as a fully public repository. The split workflow documented below is retained for reference only.
+
 ## 📦 Files Created
 
 ### 🔧 Core Split Scripts

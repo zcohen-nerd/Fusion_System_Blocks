@@ -114,7 +114,16 @@ try {
     const result = await operation();
     return { success: true, data: result };
 } catch (error) {
-    console.error('Operation failed:', error);
+    const loggerGetter = window.getSystemBlocksLogger;
+    const logger = typeof loggerGetter === 'function'
+        ? loggerGetter()
+        : (window.SystemBlocksLogger || {
+            debug: () => {},
+            info: () => {},
+            warn: () => {},
+            error: () => {}
+        });
+    logger.error('Operation failed:', error);
     return { success: false, error: error.message };
 }
 ```

@@ -8,20 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Repository split into public and private components
-- Automated CI/CD pipeline for releases
-- Modular frontend architecture with 6 specialized JavaScript modules
-- Comprehensive testing documentation and checklists
-- Advanced Fusion 360 integration features
+- Updated repository structure to keep full source, tests, and documentation public.
+- Licensing guidance for personal, academic, and non-commercial research use, plus paid commercial licensing.
+- Milestone summary and usage instructions in the primary README.
 
 ### Changed
-- Frontend refactored from monolithic to modular architecture
-- Testing procedures updated for ribbon interface
-- Documentation structure improved
+- README and public overview rewritten to provide factual project status.
+- Documentation references refreshed to remove deprecated testing plan links.
+- Deployment guide aligned with current licensing model.
 
 ### Security
-- Source code moved to private repository
-- Public repository focuses on documentation and releases
+- Clarified licensing terms for commercial deployments and protected usage boundaries.
 
 ## [1.0.0] - 2025-09-26
 

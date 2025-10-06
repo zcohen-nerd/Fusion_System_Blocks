@@ -83,12 +83,21 @@
   </div>
 
   <script>
+    const testLogger = window.getSystemBlocksLogger
+      ? window.getSystemBlocksLogger()
+      : {
+          debug: () => {},
+          info: () => {},
+          warn: () => {},
+          error: () => {}
+        };
+
     let selectedBlock = null;
     const contextMenu = document.getElementById('context-menu');
     const output = document.getElementById('output');
     
     function log(message) {
-      console.log(message);
+      testLogger.debug(message);
       output.innerHTML += message + '<br>';
     }
     

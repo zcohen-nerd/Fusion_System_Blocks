@@ -12,6 +12,15 @@
  * Module: Core Editor
  */
 
+const logger = window.getSystemBlocksLogger
+  ? window.getSystemBlocksLogger()
+  : {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {}
+    };
+
 class DiagramEditorCore {
   constructor() {
     this.diagram = this.createEmptyDiagram();
@@ -188,7 +197,7 @@ class DiagramEditorCore {
       
       return true;
     } catch (error) {
-      console.error('Failed to import diagram:', error);
+      logger.error('Failed to import diagram:', error);
       return false;
     }
   }

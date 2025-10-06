@@ -13,6 +13,15 @@
  * Module: Toolbar Controls
  */
 
+const logger = window.getSystemBlocksLogger
+  ? window.getSystemBlocksLogger()
+  : {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {}
+    };
+
 class ToolbarManager {
   constructor(editorCore, renderer) {
     this.editor = editorCore;
@@ -189,7 +198,7 @@ class ToolbarManager {
       // Send to Python backend
       window.sendToPython('save_diagram', { diagram: diagramJson });
     } catch (error) {
-      console.error('Save failed:', error);
+      logger.error('Save failed:', error);
       alert('Failed to save diagram: ' + error.message);
     }
   }
@@ -199,7 +208,7 @@ class ToolbarManager {
       // Request from Python backend
       window.sendToPython('load_diagram', {});
     } catch (error) {
-      console.error('Load failed:', error);
+      logger.error('Load failed:', error);
       alert('Failed to load diagram: ' + error.message);
     }
   }
@@ -210,19 +219,19 @@ class ToolbarManager {
       // Send export request to Python
       window.sendToPython('export_reports', { diagram: diagramJson });
     } catch (error) {
-      console.error('Export failed:', error);
+      logger.error('Export failed:', error);
       alert('Failed to export reports: ' + error.message);
     }
   }
 
   handleUndo() {
     // This would be implemented by the undo/redo system
-    console.log('Undo action');
+    logger.debug('Undo action');
   }
 
   handleRedo() {
     // This would be implemented by the undo/redo system
-    console.log('Redo action');
+    logger.debug('Redo action');
   }
 
   handleLinkCAD() {
@@ -239,7 +248,7 @@ class ToolbarManager {
 
   handleLinkECAD() {
     if (this.editor.selectedBlock) {
-      console.log('Link to ECAD for block:', this.editor.selectedBlock);
+      logger.debug('Link to ECAD for block:', this.editor.selectedBlock);
       // Implementation would show ECAD link dialog
     }
   }
@@ -265,22 +274,22 @@ class ToolbarManager {
   }
 
   handleAddText() {
-    console.log('Add text annotation');
+    logger.debug('Add text annotation');
     // Would open text creation dialog
   }
 
   handleAddNote() {
-    console.log('Add sticky note');
+    logger.debug('Add sticky note');
     // Would create sticky note at cursor
   }
 
   handleAddDimension() {
-    console.log('Add dimension line');
+    logger.debug('Add dimension line');
     // Would start dimension creation mode
   }
 
   handleAddCallout() {
-    console.log('Add callout');
+    logger.debug('Add callout');
     // Would start callout creation mode
   }
 
@@ -316,32 +325,32 @@ class ToolbarManager {
   }
 
   handleAutoLayout() {
-    console.log('Auto layout');
+    logger.debug('Auto layout');
     // Would trigger layout algorithm
   }
 
   handleAlignLeft() {
-    console.log('Align left');
+    logger.debug('Align left');
     // Would align selected blocks to left
   }
 
   handleAlignCenter() {
-    console.log('Align center');
+    logger.debug('Align center');
     // Would align selected blocks to center
   }
 
   handleAlignRight() {
-    console.log('Align right');
+    logger.debug('Align right');
     // Would align selected blocks to right
   }
 
   handleCreateGroup() {
-    console.log('Create group');
+    logger.debug('Create group');
     // Would group selected blocks
   }
 
   handleUngroup() {
-    console.log('Ungroup');
+    logger.debug('Ungroup');
     // Would ungroup selected group
   }
 

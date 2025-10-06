@@ -30,17 +30,17 @@
 - Windows 10/11 or macOS
 - Python 3.8+ (included with Fusion 360)
 
-## Features Available in Beta
-- ✅ System block diagram creation
-- ✅ Hierarchical structure management  
-- ✅ Basic validation rules
-- ⚠️ Advanced CAD integration (Testing phase)
-- ⚠️ Import/Export features (Testing phase)
+## Feature Availability
+- ✅ Diagram authoring, hierarchy navigation, import/export, rule checking
+- ✅ Enhanced CAD linking and status dashboards (milestone 12)
+- ⚙️ Advanced ribbon UI, annotations, and layout tooling (milestone 14)
+- 🚧 3D visualization and living documentation workflows (milestone 13, in progress)
 
 ## Support
 - 📋 Issues: https://github.com/zcohen-nerd/Fusion_System_Blocks/issues
 - 💬 Discussions: https://github.com/zcohen-nerd/Fusion_System_Blocks/discussions
-- 📧 Contact: Via GitHub issues preferred
+- 📧 Commercial licensing inquiries: open an issue referencing “commercial license”
 
 ## License
-Private Beta - Licensed for evaluation use only
+- Fusion System Blocks Community License (see `LICENSE`) permits personal, academic, and non-commercial research use.
+- Commercial deployments require a paid license; contact the maintainer to discuss terms and pricing.

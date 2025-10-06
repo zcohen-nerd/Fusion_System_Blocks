@@ -2341,7 +2341,7 @@
     // Visual debug function
     function debugLog(message) {
       // Debug logging disabled for clean interface
-      // console.log(message);
+
     }
   </script>
   
@@ -2838,6 +2838,15 @@
   <!-- ========== MILESTONE 11: BLOCK TYPE SELECTOR FUNCTIONALITY - ALL PHASES COMPLETE ========== -->
   <script>
     // Professional Block Type Manager for Milestone 11
+    const paletteLogger = window.getSystemBlocksLogger
+      ? window.getSystemBlocksLogger()
+      : {
+          debug: () => {},
+          info: () => {},
+          warn: () => {},
+          error: () => {}
+        };
+
     class AdvancedBlockTypeManager {
       constructor() {
         this.currentBlockType = null;
@@ -2939,11 +2948,11 @@
       }
       
       selectBlockType(blockType) {
-        console.log('selectBlockType called with:', blockType);
+        paletteLogger.debug('selectBlockType called with:', blockType);
         
         // Check if editor is ready
         if (!window.editor || !window.editor.isInitialized) {
-          console.error('Editor not ready yet');
+          paletteLogger.warn('Editor not ready yet');
           this.showToast('Editor not ready - please wait a moment and try again', 'warning');
           return;
         }
@@ -3131,7 +3140,7 @@
         // Add specialized block directly to avoid interface conflicts
         if (window.editor) {
           try {
-            console.log('Creating specialized block:', typeInfo.name);
+            paletteLogger.debug('Creating specialized block:', typeInfo.name);
             
             // Save state for undo
             window.editor.saveState();
@@ -3142,23 +3151,23 @@
             block.y = snappedPos.y;
             
             // Add the complete block directly to the diagram
-            console.log('Adding block to diagram. Current block count:', window.editor.diagram.blocks.length);
+            paletteLogger.debug('Adding block to diagram. Current block count:', window.editor.diagram.blocks.length);
             window.editor.diagram.blocks.push(block);
-            console.log('Block added. New block count:', window.editor.diagram.blocks.length);
-            console.log('Block structure:', block);
+            paletteLogger.debug('Block added. New block count:', window.editor.diagram.blocks.length);
+            paletteLogger.debug('Block structure:', block);
             
             // Render the diagram to show the new block with proper event listeners
-            console.log('Rendering diagram...');
+            paletteLogger.debug('Rendering diagram...');
             window.editor.renderDiagram();
-            console.log('Diagram rendered successfully');
-            
-            console.log('Specialized block created and rendered successfully');
+            paletteLogger.debug('Diagram rendered successfully');
+
+            paletteLogger.debug('Specialized block created and rendered successfully');
           } catch (error) {
-            console.error('Error creating specialized block:', error);
+            paletteLogger.error('Error creating specialized block:', error);
             this.showToast('Error creating block: ' + error.message, 'error');
           }
         } else {
-          console.error('window.editor is not available');
+          paletteLogger.error('window.editor is not available');
           this.showToast('Editor not ready - please try again', 'error');
         }
         this.showToast(`Created ${typeInfo.name}`, 'info');
@@ -3529,6 +3538,7 @@
   </script>
   
   <!-- Modular JavaScript Architecture -->
+  <script src="./utils/logger.js"></script>
   <script src="./core/diagram-editor.js"></script>
   <script src="./ui/diagram-renderer.js"></script>
   <script src="./ui/toolbar-manager.js"></script>

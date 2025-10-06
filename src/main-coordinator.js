@@ -12,6 +12,15 @@
  * Module: Main Coordinator
  */
 
+const logger = window.getSystemBlocksLogger
+  ? window.getSystemBlocksLogger()
+  : {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {}
+    };
+
 // Module loading order and dependencies
 const MODULES = [
   { name: 'DiagramEditorCore', path: 'core/diagram-editor.js' },
@@ -27,7 +36,7 @@ class SystemBlocksMain {
     this.isInitialized = false;
     this.moduleLoadPromises = [];
     
-    console.log('=== System Blocks Editor Starting ===');
+  logger.info('=== System Blocks Editor Starting ===');
     this.initialize();
   }
 
@@ -38,7 +47,7 @@ class SystemBlocksMain {
         await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
       }
 
-      console.log('DOM ready, initializing modules...');
+  logger.debug('DOM ready, initializing modules...');
       
       // Initialize core modules in order
       await this.initializeModules();
@@ -53,32 +62,32 @@ class SystemBlocksMain {
       this.finalizeInitialization();
       
       this.isInitialized = true;
-      console.log('=== System Blocks Editor Ready ===');
+      logger.info('=== System Blocks Editor Ready ===');
       
     } catch (error) {
-      console.error('Failed to initialize System Blocks Editor:', error);
+      logger.error('Failed to initialize System Blocks Editor:', error);
       this.showErrorMessage('Failed to initialize editor: ' + error.message);
     }
   }
 
   async initializeModules() {
     // Initialize core editor first
-    console.log('Initializing core editor...');
+    logger.debug('Initializing core editor...');
     this.modules.set('core', new DiagramEditorCore());
     
     // Initialize renderer
-    console.log('Initializing renderer...');
+    logger.debug('Initializing renderer...');
     this.modules.set('renderer', new DiagramRenderer(this.modules.get('core')));
     
     // Initialize toolbar manager
-    console.log('Initializing toolbar...');
+    logger.debug('Initializing toolbar...');
     this.modules.set('toolbar', new ToolbarManager(
       this.modules.get('core'),
       this.modules.get('renderer')
     ));
     
     // Initialize advanced features
-    console.log('Initializing advanced features...');
+    logger.debug('Initializing advanced features...');
     this.modules.set('features', new AdvancedFeatures(
       this.modules.get('core'),
       this.modules.get('renderer')
@@ -87,7 +96,7 @@ class SystemBlocksMain {
     // Python interface is already initialized globally
     this.modules.set('python', window.pythonInterface);
     
-    console.log('All modules initialized successfully');
+  logger.info('All modules initialized successfully');
   }
 
   setupModuleCommunication() {
@@ -118,7 +127,7 @@ class SystemBlocksMain {
   setupCanvasEventHandlers(core, renderer, features) {
     const svg = document.getElementById('diagram-svg');
     if (!svg) {
-      console.error('SVG canvas not found!');
+  logger.error('SVG canvas not found!');
       return;
     }
 
@@ -323,7 +332,7 @@ class SystemBlocksMain {
       getVersion: () => '2.0.0-modular'
     };
     
-    console.log('Global API available as window.SystemBlocks');
+  logger.info('Global API available as window.SystemBlocks');
   }
 
   finalizeInitialization() {
@@ -335,6 +344,18 @@ class SystemBlocksMain {
     // Initial toolbar state update
     this.modules.get('toolbar').updateButtonStates();
     
+    // Fire readiness event for external consumers
+    const readyDetail = {
+      modules: {
+        core: this.modules.get('core'),
+        renderer: this.modules.get('renderer'),
+        toolbar: this.modules.get('toolbar'),
+        features: this.modules.get('features'),
+        python: this.modules.get('python')
+      }
+    };
+    window.dispatchEvent(new CustomEvent('system-blocks:ready', { detail: readyDetail }));
+
     // Show ready indicator
     this.showReadyIndicator();
   }
@@ -414,7 +435,7 @@ class SystemBlocksMain {
   }
 
   reinitialize() {
-    console.log('Reinitializing System Blocks Editor...');
+  logger.info('Reinitializing System Blocks Editor...');
     this.isInitialized = false;
     this.modules.clear();
     this.initialize();

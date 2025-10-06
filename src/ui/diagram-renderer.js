@@ -13,6 +13,15 @@
  * Module: UI Renderer
  */
 
+const logger = window.getSystemBlocksLogger
+  ? window.getSystemBlocksLogger()
+  : {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {}
+    };
+
 class DiagramRenderer {
   constructor(editorCore) {
     this.editor = editorCore;
@@ -27,7 +36,7 @@ class DiagramRenderer {
   initializeRenderer() {
     this.svg = document.getElementById('diagram-svg');
     if (!this.svg) {
-      console.error('SVG element not found!');
+      logger.error('SVG element not found!');
       return;
     }
     

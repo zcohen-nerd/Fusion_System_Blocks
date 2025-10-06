@@ -12,15 +12,22 @@
  * Module: Python Interface
  */
 
+const logger = window.getSystemBlocksLogger
+  ? window.getSystemBlocksLogger()
+  : {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {}
+    };
+
 class PythonInterface {
   constructor() {
     this.isConnected = false;
     this.messageQueue = [];
     this.pendingRequests = new Map();
     this.requestId = 0;
-    this.retryAttempts = 3;
-    this.retryDelay = 1000;
-    
+
     this.initializeInterface();
   }
 
@@ -33,8 +40,8 @@ class PythonInterface {
     // Global functions that can be called from Python
     window.sendToPython = (action, data) => this.sendMessage(action, data);
     window.loadDiagramFromPython = (jsonData) => this.handleLoadDiagram(jsonData);
-    window.receiveCADLinkFromPython = (blockId, occToken, docId, docPath) => 
-      this.handleCADLink(blockId, occToken, docId, docPath);
+    window.receiveCADLinkFromPython = (payload) => 
+      this.handleCADLinkPayload(payload);
     window.receiveImportFromPython = (responseData) => this.handleImportResponse(responseData);
     window.onPythonError = (error) => this.handlePythonError(error);
   }
@@ -42,15 +49,15 @@ class PythonInterface {
   testConnection() {
     try {
       // Test if we can communicate with Python
-      if (typeof adsk !== 'undefined' && adsk.core) {
+      if (typeof adsk !== 'undefined' && typeof adsk.fusionSendData === 'function') {
         this.isConnected = true;
-        console.log('Python interface connected');
+        logger.info('Python interface connected');
       } else {
-        console.warn('Running in standalone mode - Python interface not available');
+        logger.warn('Running in standalone mode - Python interface not available');
         this.isConnected = false;
       }
     } catch (error) {
-      console.warn('Python interface test failed:', error);
+      logger.warn('Python interface test failed:', error);
       this.isConnected = false;
     }
   }
@@ -63,48 +70,67 @@ class PythonInterface {
       timestamp: Date.now()
     };
 
+    if (!this.isConnected) {
+      if (expectResponse) {
+        return Promise.reject(new Error('Python interface not connected'));
+      }
+
+      this.messageQueue.push({ message, expectResponse: false });
+      logger.debug('Message queued (no Python connection):', message);
+      return Promise.resolve();
+    }
+
     if (expectResponse) {
       return new Promise((resolve, reject) => {
-        this.pendingRequests.set(message.id, { resolve, reject, attempts: 0 });
-        this._sendMessageToPython(message);
+        this.pendingRequests.set(message.id, { resolve, reject });
+        this._sendMessageToPython(message, true);
       });
-    } else {
-      this._sendMessageToPython(message);
     }
+
+    this._sendMessageToPython(message, false);
+    return Promise.resolve();
   }
 
-  _sendMessageToPython(message) {
+  _sendMessageToPython(message, expectResponse) {
     try {
-      if (this.isConnected) {
-        // Send via Fusion 360 HTML bridge
-        adsk.core.Application.get().userInterface.palettes.itemById('SystemBlocksPalette')
-          .sendInfoToHTML(message.action, JSON.stringify(message.data));
+      if (!this.isConnected || typeof adsk === 'undefined' || typeof adsk.fusionSendData !== 'function') {
+        throw new Error('Fusion sendData bridge unavailable');
+      }
+
+      const payload = JSON.stringify(message.data ?? {});
+      const sendPromise = adsk.fusionSendData(message.action, payload);
+
+      if (expectResponse) {
+        sendPromise
+          .then((rawResponse) => {
+            const pending = this.pendingRequests.get(message.id);
+            if (!pending) {
+              return;
+            }
+
+            try {
+              const parsed = rawResponse ? JSON.parse(rawResponse) : {};
+              pending.resolve(parsed);
+            } catch (parseError) {
+              pending.resolve(rawResponse);
+            } finally {
+              this.pendingRequests.delete(message.id);
+            }
+          })
+          .catch((error) => {
+            const pending = this.pendingRequests.get(message.id);
+            if (pending) {
+              pending.reject(error);
+              this.pendingRequests.delete(message.id);
+            }
+          });
       } else {
-        // Queue message for when connection is available
-        this.messageQueue.push(message);
-        console.log('Message queued (no Python connection):', message);
+        sendPromise.catch((error) => {
+          logger.error('Failed to send message to Python:', error);
+        });
       }
     } catch (error) {
-      console.error('Failed to send message to Python:', error);
-      this.handleSendError(message, error);
-    }
-  }
-
-  handleSendError(message, error) {
-    const pending = this.pendingRequests.get(message.id);
-    if (pending) {
-      pending.attempts++;
-      
-      if (pending.attempts < this.retryAttempts) {
-        console.log(`Retrying message ${message.id} (attempt ${pending.attempts + 1})`);
-        setTimeout(() => {
-          this._sendMessageToPython(message);
-        }, this.retryDelay * pending.attempts);
-      } else {
-        console.error(`Message ${message.id} failed after ${this.retryAttempts} attempts`);
-        pending.reject(error);
-        this.pendingRequests.delete(message.id);
-      }
+      logger.error('Failed to send message to Python:', error);
     }
   }
 
@@ -112,7 +138,7 @@ class PythonInterface {
 
   handleLoadDiagram(jsonData) {
     try {
-      console.log('Received diagram from Python:', jsonData);
+    logger.debug('Received diagram from Python:', jsonData);
       
       if (window.diagramEditor) {
         const success = window.diagramEditor.importDiagram(jsonData);
@@ -123,14 +149,45 @@ class PythonInterface {
         }
       }
     } catch (error) {
-      console.error('Failed to handle load diagram:', error);
+    logger.error('Failed to handle load diagram:', error);
       this.showNotification('Error loading diagram: ' + error.message, 'error');
     }
   }
 
-  handleCADLink(blockId, occToken, docId, docPath) {
+  handleCADLinkPayload(payload) {
     try {
-      console.log('Received CAD link from Python:', { blockId, occToken, docId, docPath });
+      const data = typeof payload === 'string' ? JSON.parse(payload) : payload || {};
+
+      if (data.success === false) {
+        const message = data.error || 'CAD linking cancelled';
+    logger.warn('CAD link cancelled:', message);
+        this.showNotification(`CAD link cancelled: ${message}`, 'warning');
+        return;
+      }
+
+      const {
+        blockId,
+        occToken,
+        docId = '',
+        docPath = '',
+        componentName = '',
+        metadata = {}
+      } = data;
+
+      if (!blockId || !occToken) {
+        throw new Error('CAD link payload missing blockId or occToken');
+      }
+
+      this.handleCADLink(blockId, occToken, docId, docPath, componentName, metadata);
+    } catch (error) {
+    logger.error('Failed to process CAD link payload:', error, payload);
+      this.showNotification('Error processing CAD link: ' + error.message, 'error');
+    }
+  }
+
+  handleCADLink(blockId, occToken, docId, docPath, componentName = '', metadata = {}) {
+    try {
+    logger.debug('Received CAD link from Python:', { blockId, occToken, docId, docPath });
       
       if (window.diagramEditor) {
         const block = window.diagramEditor.diagram.blocks.find(b => b.id === blockId);
@@ -141,32 +198,43 @@ class PythonInterface {
           const cadLink = {
             id: 'cad_' + Date.now(),
             target: 'cad',
-            occurrenceToken: occToken,
-            documentId: docId,
-            documentPath: docPath,
+            occToken,
+            docId,
+            docPath,
             status: 'linked',
-            linkedAt: new Date().toISOString()
+            linkedAt: new Date().toISOString(),
+            metadata
           };
           
+          // Remove any existing CAD link to avoid duplicates
+          block.links = block.links.filter(link => link.target !== 'cad');
           block.links.push(cadLink);
+
+          if (componentName) {
+            block.attributes = block.attributes || {};
+            block.attributes.linkedComponent = componentName;
+          }
           
           // Update visuals
           if (window.diagramRenderer) {
             window.diagramRenderer.renderBlock(block);
+          }
+          if (window.toolbarManager) {
+            window.toolbarManager.updateButtonStates();
           }
           
           this.showNotification(`CAD component linked to ${block.name}`, 'success');
         }
       }
     } catch (error) {
-      console.error('Failed to handle CAD link:', error);
+    logger.error('Failed to handle CAD link:', error);
       this.showNotification('Error linking CAD component: ' + error.message, 'error');
     }
   }
 
   handleImportResponse(responseData) {
     try {
-      console.log('Received import response from Python:', responseData);
+    logger.debug('Received import response from Python:', responseData);
       
       if (responseData.success) {
         this.showNotification('Import completed successfully', 'success');
@@ -178,13 +246,13 @@ class PythonInterface {
         this.showNotification('Import failed: ' + responseData.error, 'error');
       }
     } catch (error) {
-      console.error('Failed to handle import response:', error);
+    logger.error('Failed to handle import response:', error);
       this.showNotification('Error processing import: ' + error.message, 'error');
     }
   }
 
   handlePythonError(error) {
-    console.error('Python error received:', error);
+    logger.error('Python error received:', error);
     this.showNotification('Python backend error: ' + error, 'error');
   }
 
@@ -279,7 +347,7 @@ class PythonInterface {
   // === UI HELPERS ===
 
   showNotification(message, type = 'info') {
-    console.log(`[${type.toUpperCase()}] ${message}`);
+    logger.debug(`[${type.toUpperCase()}] ${message}`);
     
     // Create notification element
     const notification = document.createElement('div');
@@ -322,7 +390,7 @@ class PythonInterface {
 
   displayRuleResults(results) {
     // This would display rule check results in the UI
-    console.log('Rule check results:', results);
+    logger.debug('Rule check results:', results);
     
     const hasErrors = results.some(result => result.severity === 'error');
     const hasWarnings = results.some(result => result.severity === 'warning');
@@ -352,7 +420,7 @@ class PythonInterface {
     }
     
     if (errors.length > 0) {
-      console.error('Sync errors:', errors);
+  logger.error('Sync errors:', errors);
     }
   }
 
@@ -362,12 +430,12 @@ class PythonInterface {
     this.testConnection();
     
     if (this.isConnected && this.messageQueue.length > 0) {
-      console.log(`Sending ${this.messageQueue.length} queued messages`);
+  logger.debug(`Sending ${this.messageQueue.length} queued messages`);
       const queuedMessages = [...this.messageQueue];
       this.messageQueue = [];
       
-      queuedMessages.forEach(message => {
-        this._sendMessageToPython(message);
+      queuedMessages.forEach(({ message, expectResponse }) => {
+        this._sendMessageToPython(message, expectResponse);
       });
     }
   }
