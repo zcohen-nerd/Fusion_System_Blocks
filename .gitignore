@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 .venv/
 env/
+.pytest_cache/
 .DS_Store
 .vscode/
 node_modules/

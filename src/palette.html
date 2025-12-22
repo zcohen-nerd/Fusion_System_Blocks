@@ -1189,6 +1189,21 @@
     .connection-mechanical { stroke: var(--fusion-connection-mechanical); fill: var(--fusion-connection-mechanical); }
     .connection-generic { stroke: var(--fusion-text-secondary); fill: var(--fusion-text-secondary); }
   </style>
+    <!-- Tabs + Status Bar styles -->
+    <style>
+      .sb-tabbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--fusion-border-primary); background: var(--fusion-gradient-primary); position: relative; z-index: 1000; }
+      .sb-tab { border: 1px solid var(--fusion-button-border); background: var(--fusion-gradient-button); color: var(--fusion-text-primary); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+      .sb-tab[aria-selected="true"] { background: var(--fusion-accent-blue); color: var(--fusion-text-inverse); border-color: var(--fusion-accent-blue); }
+      .sb-panel { position: absolute; top: 60px; left: 0; right: 0; bottom: 34px; overflow: auto; padding: 12px; background: rgba(0,0,0,0.4); backdrop-filter: blur(3px); display: none; }
+      .sb-panel.show { display: block; }
+      .sb-status { position: fixed; bottom: 0; left: 0; right: 0; height: 34px; display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-top: 1px solid var(--fusion-border-primary); background: var(--fusion-gradient-secondary); z-index: 1000; }
+      .sb-status .pill { border: 1px solid var(--fusion-border-primary); border-radius: 12px; padding: 4px 8px; font-size: 12px; }
+      .sb-section { margin-bottom: 16px; }
+      .sb-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      .sb-list { list-style: none; padding: 0; margin: 0; }
+      .sb-list li { padding: 6px 8px; border: 1px solid var(--fusion-border-primary); border-radius: 6px; margin-bottom: 6px; background: var(--fusion-bg-tertiary); }
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    </style>
 </head>
 <body>
   <header>
@@ -3536,6 +3551,274 @@
       window.blockTypeManager = new AdvancedBlockTypeManager();
     });
   </script>
+
+  <style>
+    /* === PALETTE TABS, PANELS, AND STATUS BAR === */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .sb-tabbar {
+      display: flex;
+      gap: var(--fusion-spacing-sm);
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
+      background: var(--fusion-gradient-primary);
+      border-bottom: 1px solid var(--fusion-border-primary);
+      position: sticky;
+      top: 0;
+      z-index: 10000;
+      backdrop-filter: blur(6px);
+    }
+
+    .sb-tabbar .sb-tab {
+      appearance: none;
+      border: 1px solid var(--fusion-button-border);
+      background: var(--fusion-gradient-button);
+      color: var(--fusion-text-primary);
+      border-radius: var(--fusion-radius-medium);
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-md);
+      cursor: pointer;
+      font-size: var(--fusion-font-size-normal);
+      font-family: var(--fusion-font-family);
+      font-weight: var(--fusion-font-weight-medium);
+      box-shadow: var(--fusion-shadow-button);
+      transition: all var(--fusion-transition) var(--fusion-ease-in-out);
+    }
+
+    .sb-tabbar .sb-tab:hover {
+      background: var(--fusion-gradient-button-hover);
+      border-color: var(--fusion-border-hover);
+      transform: translateY(-1px);
+    }
+
+    .sb-tabbar .sb-tab[aria-selected="true"] {
+      background: var(--fusion-accent-blue);
+      color: var(--fusion-text-inverse);
+      border-color: var(--fusion-accent-blue);
+      box-shadow: var(--fusion-shadow-button), 0 0 0 1px rgba(255,255,255,0.12);
+    }
+
+    .sb-tabbar .sb-tab:focus-visible {
+      outline: 2px solid var(--fusion-accent-blue);
+      outline-offset: 2px;
+    }
+
+    .sb-panel {
+      position: absolute;
+      left: var(--fusion-spacing-sm);
+      right: var(--fusion-spacing-sm);
+      top: 64px;
+      bottom: 56px;
+      display: none;
+      opacity: 0;
+      transform: translateY(6px);
+      background: var(--fusion-bg-secondary);
+      border: 1px solid var(--fusion-border-primary);
+      border-radius: var(--fusion-radius-medium);
+      box-shadow: var(--fusion-shadow-panel);
+      padding: var(--fusion-spacing-md);
+      overflow: auto;
+      will-change: opacity, transform;
+      transition: opacity var(--fusion-transition) var(--fusion-ease-in-out),
+                  transform var(--fusion-transition) var(--fusion-ease-in-out);
+    }
+
+    /* Diagram panel is the canvas area; keep it minimal */
+    #panel-diagram {
+      position: static;
+      display: block;
+      padding: 0;
+      border: none;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .sb-panel.show { display: block; opacity: 1; transform: translateY(0); }
+
+    .sb-section {
+      margin-bottom: var(--fusion-spacing-lg);
+      background: var(--fusion-gradient-subtle);
+      border: 1px solid var(--fusion-border-light);
+      border-radius: var(--fusion-radius-medium);
+      padding: var(--fusion-spacing-md);
+    }
+
+    .sb-section h3, .sb-section h4 {
+      margin-top: 0;
+      margin-bottom: var(--fusion-spacing-sm);
+      color: var(--fusion-text-primary);
+    }
+
+    .sb-controls {
+      display: flex;
+      align-items: center;
+      gap: var(--fusion-spacing-sm);
+      margin-bottom: var(--fusion-spacing-sm);
+    }
+
+    .sb-controls .sb-tab {
+      border: 1px solid var(--fusion-button-border);
+      background: var(--fusion-gradient-button);
+      color: var(--fusion-text-primary);
+      border-radius: var(--fusion-radius-medium);
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-md);
+      cursor: pointer;
+      font-size: var(--fusion-font-size-normal);
+      font-weight: var(--fusion-font-weight-medium);
+      transition: all var(--fusion-transition) var(--fusion-ease-in-out);
+    }
+
+    .sb-controls .sb-tab:hover {
+      background: var(--fusion-gradient-button-hover);
+      border-color: var(--fusion-border-hover);
+    }
+
+    .sb-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--fusion-spacing-xs);
+    }
+
+    .sb-list li {
+      background: var(--fusion-bg-tertiary);
+      border: 1px solid var(--fusion-border-light);
+      border-radius: var(--fusion-radius-small);
+      padding: var(--fusion-spacing-sm);
+      color: var(--fusion-text-secondary);
+    }
+
+    .sb-status {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      gap: var(--fusion-spacing-sm);
+      padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
+      background: var(--fusion-gradient-primary);
+      border-top: 1px solid var(--fusion-border-primary);
+      box-shadow: var(--fusion-shadow-light);
+      z-index: 10000;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--fusion-spacing-xs);
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--fusion-bg-tertiary);
+      color: var(--fusion-text-secondary);
+      border: 1px solid var(--fusion-border-light);
+      font-size: var(--fusion-font-size-small);
+      line-height: 1.4;
+    }
+
+    /* High-contrast pill variants */
+    .pill-success { background: #1b5e20; color: #eaf5ea; border-color: #2e7d32; }
+    .pill-warning { background: #7f4d00; color: #fff3e0; border-color: #ff9800; }
+    .pill-error   { background: #5c0000; color: #ffebee; border-color: #f44336; }
+    .pill-info    { background: #0d47a1; color: #e3f2fd; border-color: #2196f3; }
+  </style>
+
+  <!-- Task-first Tabs Bar -->
+  <nav class="sb-tabbar" role="tablist" aria-label="System Blocks Tabs">
+    <button id="tab-home" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-home">Home</button>
+    <button id="tab-diagram" class="sb-tab" role="tab" aria-selected="true" aria-controls="panel-diagram">Diagram</button>
+    <button id="tab-linking" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-linking">Linking</button>
+    <button id="tab-validation" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-validation">Validation</button>
+    <button id="tab-reports" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-reports">Reports</button>
+    <span class="sr-only" id="tab-status" aria-live="polite"></span>
+  </nav>
+
+  <!-- Overlay Panels -->
+  <section id="panel-home" class="sb-panel" role="tabpanel" aria-labelledby="tab-home" aria-hidden="true">
+    <div class="sb-section">
+      <h3>Welcome</h3>
+      <div class="sb-controls">
+        <button id="action-new" class="sb-tab">New Diagram</button>
+        <button id="action-load" class="sb-tab">Load Diagram</button>
+      </div>
+    </div>
+    <div class="sb-section">
+      <h4>Quick Tips</h4>
+      <ul class="sb-list">
+        <li>Use Linking to attach blocks to CAD components.</li>
+        <li>Run Validation to find orphans and incompatible interfaces.</li>
+        <li>Export reports for sharing (JSON/CSV/HTML).</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="panel-diagram" class="sb-panel" role="tabpanel" aria-labelledby="tab-diagram" aria-hidden="false"></section>
+
+  <section id="panel-linking" class="sb-panel" role="tabpanel" aria-labelledby="tab-linking" aria-hidden="true">
+    <div class="sb-section">
+      <h3>Link Selected Block to CAD</h3>
+      <div class="sb-controls">
+        <button id="action-link-selected" class="sb-tab">Start CAD Selection</button>
+        <span id="linking-status" class="pill">Idle</span>
+      </div>
+      <p class="sr-only" id="linking-aria" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section id="panel-validation" class="sb-panel" role="tabpanel" aria-labelledby="tab-validation" aria-hidden="true">
+    <div class="sb-section">
+      <h3>Run Rule Checks</h3>
+      <div class="sb-controls">
+        <label><input type="checkbox" id="filter-errors" checked> Errors</label>
+        <label><input type="checkbox" id="filter-warnings" checked> Warnings</label>
+        <select id="filter-category">
+          <option value="">All Categories</option>
+          <option value="power">Power</option>
+          <option value="data">Data</option>
+          <option value="hierarchy">Hierarchy</option>
+        </select>
+        <button id="action-run-checks" class="sb-tab">Run Checks</button>
+      </div>
+    </div>
+    <div class="sb-section">
+      <h4>Results</h4>
+      <ul id="validation-results" class="sb-list" aria-live="polite"></ul>
+    </div>
+  </section>
+
+  <section id="panel-reports" class="sb-panel" role="tabpanel" aria-labelledby="tab-reports" aria-hidden="true">
+    <div class="sb-section">
+      <h3>Export Reports</h3>
+      <div class="sb-controls">
+        <button id="action-export" class="sb-tab">Export All</button>
+        <span id="export-status" class="pill">Not exported</span>
+      </div>
+    </div>
+    <div class="sb-section">
+      <h4>Export Output</h4>
+      <div id="export-path" class="pill">Path: (awaiting export)</div>
+      <ul id="export-files" class="sb-list"></ul>
+    </div>
+  </section>
+
+  <!-- Persistent Status Bar -->
+  <footer class="sb-status" role="status" aria-live="polite">
+    <button id="action-save" class="sb-tab">Save</button>
+    <label><input type="checkbox" id="toggle-autosave"> Autosave</label>
+    <span id="status-health" class="pill">Health: Unknown</span>
+    <span id="status-last-saved" class="pill">Last saved: never</span>
+    <span id="status-conn" class="pill">Bridge: checking…</span>
+  </footer>
   
   <!-- Modular JavaScript Architecture -->
   <script src="./utils/logger.js"></script>
@@ -3544,6 +3827,7 @@
   <script src="./ui/toolbar-manager.js"></script>
   <script src="./features/advanced-features.js"></script>
   <script src="./interface/python-bridge.js"></script>
+  <script src="./ui/palette-tabs.js"></script>
   <script src="./main-coordinator.js"></script>
   <script src="./palette.js"></script>
 

@@ -156,6 +156,7 @@ Contributors focused on documentation can help expand user guides, add screensho
 - `CRITICAL_ISSUES.md` – Closed issues discovered during milestone 10 testing.
 - `REPOSITORY_SPLIT_GUIDE.md` & `SPLIT_SUMMARY.md` – Historical documentation of the public/private repo workflow.
 - `docs/MILESTONES.md` – Snapshot of milestone progress and outstanding work.
+- `docs/ux/` – UX research artifacts: JTBD, journey map, and flow for palette redesign.
 
 ---
 

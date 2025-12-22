@@ -1,0 +1,182 @@
+"""
+System Blocks Diagram Package
+
+Modular diagram data operations with full backward compatibility.
+This package replaces the monolithic diagram_data.py with organized modules:
+
+- core: Basic CRUD operations for blocks, interfaces, connections
+- validation: Schema and link validation, status computation
+- rules: Design rule checking (logic levels, power budget, etc.)
+- export: Report generation and import/export (Markdown, CSV, Mermaid)
+- hierarchy: Hierarchical diagram support
+- cad: CAD linking, 3D visualization, living documentation
+
+For backward compatibility, all functions are re-exported at the package level.
+"""
+
+# Core operations
+from .core import (
+    generate_id,
+    create_empty_diagram,
+    create_block,
+    create_interface,
+    create_connection,
+    add_block_to_diagram,
+    add_connection_to_diagram,
+    find_block_by_id,
+    remove_block_from_diagram,
+    serialize_diagram,
+    deserialize_diagram,
+)
+
+# Validation functions
+from .validation import (
+    load_schema,
+    validate_diagram,
+    validate_links,
+    validate_diagram_links,
+    compute_block_status,
+    update_block_statuses,
+    get_status_color,
+)
+
+# Rule checking functions
+from .rules import (
+    check_logic_level_compatibility_bulk,
+    check_power_budget_bulk,
+    check_implementation_completeness_bulk,
+    run_all_rule_checks,
+    get_rule_failures,
+    check_logic_level_compatibility,
+    check_power_budget,
+    check_implementation_completeness,
+)
+
+# Export and import functions
+from .export import (
+    generate_markdown_report,
+    generate_pin_map_csv,
+    generate_pin_map_header,
+    export_report_files,
+    parse_mermaid_flowchart,
+    parse_mermaid_to_diagram,
+    import_from_csv,
+    validate_imported_diagram,
+)
+
+# Hierarchy functions
+from .hierarchy import (
+    create_child_diagram,
+    has_child_diagram,
+    get_child_diagram,
+    compute_hierarchical_status,
+    get_all_blocks_recursive,
+    find_block_path,
+    validate_hierarchy_interfaces,
+)
+
+# CAD linking and living documentation functions
+from .cad import (
+    CADLinkingError,
+    create_enhanced_cad_link,
+    update_component_properties,
+    mark_component_as_missing,
+    mark_component_as_error,
+    validate_enhanced_cad_link,
+    calculate_component_completion_percentage,
+    get_component_health_status,
+    generate_component_thumbnail_placeholder,
+    generate_component_thumbnail_data,
+    sync_all_components_in_diagram,
+    create_component_dashboard_data,
+    initialize_3d_visualization,
+    update_3d_overlay_position,
+    set_component_highlight_color,
+    enable_system_grouping,
+    create_3d_connection_route,
+    update_live_thumbnail,
+    initialize_living_documentation,
+    generate_assembly_sequence,
+    estimate_assembly_time,
+    determine_complexity,
+    generate_assembly_instructions,
+    generate_living_bom,
+    track_change_impact,
+    update_manufacturing_progress,
+)
+
+__all__ = [
+    # Core
+    "generate_id",
+    "create_empty_diagram",
+    "create_block",
+    "create_interface",
+    "create_connection",
+    "add_block_to_diagram",
+    "add_connection_to_diagram",
+    "find_block_by_id",
+    "remove_block_from_diagram",
+    "serialize_diagram",
+    "deserialize_diagram",
+    # Validation
+    "load_schema",
+    "validate_diagram",
+    "validate_links",
+    "validate_diagram_links",
+    "validate_imported_diagram",
+    "compute_block_status",
+    "update_block_statuses",
+    "get_status_color",
+    # Rules
+    "check_logic_level_compatibility_bulk",
+    "check_power_budget_bulk",
+    "check_implementation_completeness_bulk",
+    "run_all_rule_checks",
+    "get_rule_failures",
+    "check_logic_level_compatibility",
+    "check_power_budget",
+    "check_implementation_completeness",
+    "validate_hierarchy_interfaces",
+    # Export
+    "generate_markdown_report",
+    "generate_pin_map_csv",
+    "generate_pin_map_header",
+    "export_report_files",
+    "parse_mermaid_flowchart",
+    "parse_mermaid_to_diagram",
+    "import_from_csv",
+    # Hierarchy
+    "create_child_diagram",
+    "has_child_diagram",
+    "get_child_diagram",
+    "compute_hierarchical_status",
+    "get_all_blocks_recursive",
+    "find_block_path",
+    # CAD
+    "CADLinkingError",
+    "create_enhanced_cad_link",
+    "update_component_properties",
+    "mark_component_as_missing",
+    "mark_component_as_error",
+    "validate_enhanced_cad_link",
+    "calculate_component_completion_percentage",
+    "get_component_health_status",
+    "generate_component_thumbnail_placeholder",
+    "generate_component_thumbnail_data",
+    "sync_all_components_in_diagram",
+    "create_component_dashboard_data",
+    "initialize_3d_visualization",
+    "update_3d_overlay_position",
+    "set_component_highlight_color",
+    "enable_system_grouping",
+    "create_3d_connection_route",
+    "update_live_thumbnail",
+    "initialize_living_documentation",
+    "generate_assembly_sequence",
+    "estimate_assembly_time",
+    "determine_complexity",
+    "generate_assembly_instructions",
+    "generate_living_bom",
+    "track_change_impact",
+    "update_manufacturing_progress",
+]

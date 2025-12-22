@@ -4,6 +4,7 @@ import traceback
 import json
 import sys
 import os
+from typing import Optional, Dict, Any, List, Union
 
 # Add src directory to path so we can import our modules
 src_path = os.path.join(os.path.dirname(__file__), 'src')
@@ -17,8 +18,13 @@ ATTR_GROUP = 'systemBlocks'
 _handlers = []  # keep event handlers alive
 
 
-def send_palette_notification(message, level="info"):
-    """Send a non-blocking notification to the HTML palette."""
+def send_palette_notification(message: str, level: str = "info") -> None:
+    """Send a non-blocking notification to the HTML palette.
+
+    Args:
+        message: The message to display.
+        level: The severity level ('info', 'success', 'warning', 'error').
+    """
 
     try:
         palette = UI.palettes.itemById("SystemBlocksPalette")
@@ -38,23 +44,23 @@ def send_palette_notification(message, level="info"):
         UI.messageBox(message)
 
 
-def notify_error(message):
+def notify_error(message: str) -> None:
     send_palette_notification(message, level="error")
 
 
-def notify_warning(message):
+def notify_warning(message: str) -> None:
     send_palette_notification(message, level="warning")
 
 
-def notify_success(message):
+def notify_success(message: str) -> None:
     send_palette_notification(message, level="success")
 
 
-def notify_info(message):
+def notify_info(message: str) -> None:
     send_palette_notification(message, level="info")
 
 
-def get_root_component():
+def get_root_component() -> Optional[adsk.fusion.Component]:
     """Get the root component of the active design."""
     try:
         design = adsk.fusion.Design.cast(APP.activeProduct)
@@ -65,8 +71,15 @@ def get_root_component():
     return None
 
 
-def save_diagram_json(json_data):
-    """Save diagram JSON to Fusion attributes."""
+def save_diagram_json(json_data: str) -> bool:
+    """Save diagram JSON to Fusion attributes.
+
+    Args:
+        json_data: The JSON string representation of the diagram.
+
+    Returns:
+        True if successful, False otherwise.
+    """
     try:
         # Validate the diagram before saving
         diagram = json.loads(json_data)
@@ -214,36 +227,13 @@ class CommandExecuteHandler(adsk.core.CommandEventHandler):
         try:
             # Get the palette
             palette = UI.palettes.itemById('SystemBlocksPalette')
+            if not palette:
+                notify_warning('Palette not found - creating it now')
+                palette = _create_palette()
+
             if palette:
                 palette.isVisible = True
                 notify_success('Palette should now be visible')
-            else:
-                notify_warning('Error: Palette not found - creating it now')
-                # Try to create the palette if it doesn't exist
-                addin_path = os.path.dirname(__file__)
-                html_file = os.path.join(addin_path, 'src', 'palette.html')
-
-                # Convert Windows path to file URL format
-                html_file = html_file.replace('\\', '/')
-                if not html_file.startswith('file:///'):
-                    html_file = 'file:///' + html_file
-
-                palette = UI.palettes.add(
-                    'SystemBlocksPalette',
-                    'System Blocks Diagram',
-                    html_file,
-                    True,  # isVisible
-                    True,  # showCloseButton
-                    True,  # isResizable
-                    300,   # width
-                    600,   # height
-                    True   # useNewWebBrowser
-                )
-
-                # Add HTML event handler
-                onHTMLEvent = PaletteHTMLEventHandler()
-                palette.incomingFromHTML.add(onHTMLEvent)
-                _handlers.append(onHTMLEvent)
 
         except Exception as e:
             notify_error(f"Error showing palette: {str(e)}")
@@ -257,90 +247,105 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         try:
             htmlArgs = adsk.core.HTMLEventArgs.cast(args)
             data = json.loads(htmlArgs.data) if htmlArgs.data else {}
+            action = htmlArgs.action
 
-            if htmlArgs.action == 'save_diagram':
-                json_data = data.get('diagram', '{}')
-                success = save_diagram_json(json_data)
-                htmlArgs.returnData = json.dumps({'success': success})
-
-            elif htmlArgs.action == 'load_diagram':
-                diagram_json = load_diagram_json()
-                if diagram_json:
-                    try:
-                        diagram_dict = (
-                            diagram_json
-                            if isinstance(diagram_json, dict)
-                            else json.loads(diagram_json)
-                        )
-                    except json.JSONDecodeError as exc:
-                        notify_error(f"Invalid diagram data: {str(exc)}")
-                        diagram_dict = diagram_data.create_empty_diagram()
-                else:
-                    diagram_dict = diagram_data.create_empty_diagram()
-
-                htmlArgs.returnData = json.dumps({'diagram': diagram_dict})
-
-            elif htmlArgs.action == 'export_reports':
-                diagram_json = data.get('diagram', '{}')
-                diagram = json.loads(diagram_json)
-
-                # Get the add-in directory for exports
-                addin_path = os.path.dirname(__file__)
-                exports_path = os.path.join(addin_path, 'exports')
-
-                # Ensure exports directory exists
-                os.makedirs(exports_path, exist_ok=True)
-
-                # Export the reports
-                files_created = diagram_data.export_report_files(
-                    diagram,
-                    exports_path,
-                )
-
-                htmlArgs.returnData = json.dumps({
-                    'success': True,
-                    'files': files_created,
-                    'path': exports_path
-                })
-
-            elif htmlArgs.action == 'check_rules':
-                diagram_json = data.get('diagram', '{}')
-                diagram = json.loads(diagram_json)
-
-                # Run all rule checks
-                rule_results = diagram_data.run_all_rule_checks(diagram)
-
-                htmlArgs.returnData = json.dumps({
-                    'success': True,
-                    'results': rule_results
-                })
-
-            elif htmlArgs.action == 'sync_components':
-                diagram_json = data.get('diagram', '{}')
-                diagram = json.loads(diagram_json)
-                sync_results = sync_all_components_in_fusion(diagram)
-                htmlArgs.returnData = json.dumps(sync_results)
-
-            elif htmlArgs.action == 'start_cad_selection':
-                block_id = data.get('blockId', '')
-                block_name = data.get('blockName', 'Unknown Block')
-                start_cad_selection(block_id, block_name)
-                htmlArgs.returnData = json.dumps({'success': True})
+            handler_name = f"_handle_{action}"
+            if hasattr(self, handler_name):
+                handler = getattr(self, handler_name)
+                response = handler(data)
+                htmlArgs.returnData = json.dumps(response)
             else:
-                htmlArgs.returnData = json.dumps(
-                    {
-                        'success': False,
-                        'error': f"Unknown action: {htmlArgs.action}",
-                    }
-                )
-
-        except Exception as e:
-            if 'htmlArgs' in locals():
                 htmlArgs.returnData = json.dumps({
                     'success': False,
-                    'error': str(e)
+                    'error': f"Unknown action: {action}"
                 })
-            notify_error(f"Error in palette event handler: {str(e)}")
+
+        except Exception as e:
+            notify_error(f"Error in HTML event handler: {str(e)}")
+            if args:
+                args.returnData = json.dumps({'success': False, 'error': str(e)})
+
+    def _handle_save_diagram(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        json_data = data.get('diagram', '{}')
+        success = save_diagram_json(json_data)
+        return {'success': success}
+
+    def _handle_load_diagram(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        diagram_json = load_diagram_json()
+        if diagram_json:
+            try:
+                diagram_dict = (
+                    diagram_json
+                    if isinstance(diagram_json, dict)
+                    else json.loads(diagram_json)
+                )
+            except json.JSONDecodeError as exc:
+                notify_error(f"Invalid diagram data: {str(exc)}")
+                diagram_dict = diagram_data.create_empty_diagram()
+        else:
+            diagram_dict = diagram_data.create_empty_diagram()
+        return {'diagram': diagram_dict}
+
+    def _handle_export_reports(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        diagram_json = data.get('diagram', '{}')
+        diagram = json.loads(diagram_json)
+        addin_path = os.path.dirname(__file__)
+        exports_path = os.path.join(addin_path, 'exports')
+        os.makedirs(exports_path, exist_ok=True)
+        files_created = diagram_data.export_report_files(diagram, exports_path)
+        return {'success': True, 'files': files_created, 'path': exports_path}
+
+    def _handle_check_rules(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        diagram_json = data.get('diagram', '{}')
+        diagram = json.loads(diagram_json)
+        rule_results = diagram_data.run_all_rule_checks(diagram)
+        return {'success': True, 'results': rule_results}
+
+    def _handle_sync_components(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        diagram_json = data.get('diagram', '{}')
+        diagram = json.loads(diagram_json)
+        sync_results = sync_all_components_in_fusion(diagram)
+        return sync_results
+
+    def _handle_start_cad_selection(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        block_id = data.get('blockId', '')
+        block_name = data.get('blockName', 'Unknown Block')
+        start_cad_selection(block_id, block_name)
+        return {'success': True}
+
+
+def _create_palette() -> Optional[adsk.core.Palette]:
+    """Create the System Blocks palette."""
+    try:
+        addin_path = os.path.dirname(__file__)
+        html_file = os.path.join(addin_path, 'src', 'palette.html')
+
+        # Convert Windows path to file URL format
+        html_file = html_file.replace('\\', '/')
+        if not html_file.startswith('file:///'):
+            html_file = 'file:///' + html_file
+
+        palette = UI.palettes.add(
+            'SystemBlocksPalette',
+            'System Blocks Diagram',
+            html_file,
+            True,  # isVisible
+            True,  # showCloseButton
+            True,  # isResizable
+            300,   # width
+            600,   # height
+            True   # useNewWebBrowser
+        )
+
+        # Add HTML event handler
+        onHTMLEvent = PaletteHTMLEventHandler()
+        palette.incomingFromHTML.add(onHTMLEvent)
+        _handlers.append(onHTMLEvent)
+
+        return palette
+    except Exception as e:
+        notify_error(f"Failed to create palette: {str(e)}")
+        return None
 
 
 # ============================================================================
