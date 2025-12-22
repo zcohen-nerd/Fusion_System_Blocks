@@ -1,5 +1,4 @@
-"""
-Hierarchical diagram functions.
+"""Hierarchical diagram functions.
 
 Provides support for hierarchical block diagrams where blocks can contain
 child diagrams, enabling multi-level system modeling.
@@ -9,29 +8,27 @@ from typing import Dict, List, Any, Optional
 
 
 def create_child_diagram(parent_block: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Create a child diagram for a parent block.
-    
+    """Create a child diagram for a parent block.
+
     Args:
         parent_block: The parent block to attach child diagram to
-    
+
     Returns:
         The created child diagram
     """
     from .core import create_empty_diagram
-    
+
     child_diagram = create_empty_diagram()
     parent_block["childDiagram"] = child_diagram
     return child_diagram
 
 
 def has_child_diagram(block: Dict[str, Any]) -> bool:
-    """
-    Check if a block has a child diagram.
-    
+    """Check if a block has a child diagram.
+
     Args:
         block: The block to check
-    
+
     Returns:
         True if block has a child diagram
     """
@@ -39,12 +36,11 @@ def has_child_diagram(block: Dict[str, Any]) -> bool:
 
 
 def get_child_diagram(block: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """
-    Get the child diagram of a block.
-    
+    """Get the child diagram of a block.
+
     Args:
         block: The block to get child diagram from
-    
+
     Returns:
         The child diagram or None
     """
@@ -52,20 +48,20 @@ def get_child_diagram(block: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 
 def compute_hierarchical_status(block: Dict[str, Any]) -> str:
-    """
-    Compute status considering child diagram status.
-    
-    The parent block's status is limited by the worst status in its child diagram.
-    This ensures that a parent block can't be "Verified" if it has "Placeholder" children.
-    
+    """Compute status considering child diagram status.
+
+    The parent block's status is limited by the worst status in its
+    child diagram. This ensures that a parent block can't be "Verified"
+    if it has "Placeholder" children.
+
     Args:
         block: The block to compute status for
-    
+
     Returns:
         Status string considering hierarchy
     """
     from .validation import compute_block_status
-    
+
     # Start with block's own computed status
     base_status = compute_block_status(block)
 
@@ -89,8 +85,12 @@ def compute_hierarchical_status(block: Dict[str, Any]) -> str:
         "Verified": 4,
     }
 
-    child_statuses = [compute_hierarchical_status(child) for child in child_blocks]
-    worst_child_status = min(child_statuses, key=lambda s: status_priority.get(s, 0))
+    child_statuses = [
+        compute_hierarchical_status(child) for child in child_blocks
+    ]
+    worst_child_status = min(
+        child_statuses, key=lambda s: status_priority.get(s, 0)
+    )
 
     # Parent status is limited by worst child status
     parent_priority = status_priority.get(base_status, 0)
@@ -109,10 +109,10 @@ def compute_hierarchical_status(block: Dict[str, Any]) -> str:
 def get_all_blocks_recursive(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Get all blocks including those in child diagrams.
-    
+
     Args:
         diagram: The diagram to traverse
-    
+
     Returns:
         List of all blocks in diagram and all nested child diagrams
     """
@@ -135,14 +135,14 @@ def find_block_path(
 ) -> Optional[List[str]]:
     """
     Find the hierarchical path to a specific block.
-    
+
     Returns the path as a list of block IDs from the root diagram to the target block.
-    
+
     Args:
         diagram: The diagram to search
         target_block_id: The block ID to find
         path: Current path (used for recursion)
-    
+
     Returns:
         List of block IDs forming path to target, or None if not found
     """
@@ -157,7 +157,8 @@ def find_block_path(
         # Check child diagrams
         if has_child_diagram(block):
             child_diagram = get_child_diagram(block)
-            child_path = find_block_path(child_diagram, target_block_id, path + [block["id"]])
+            child_path = find_block_path(
+                child_diagram, target_block_id, path + [block["id"]])
             if child_path:
                 return child_path
 
@@ -167,10 +168,10 @@ def find_block_path(
 def validate_hierarchy_interfaces(parent_block: Dict[str, Any]) -> tuple:
     """
     Validate that parent block interfaces match child diagram interfaces.
-    
+
     Args:
         parent_block: The parent block with child diagram
-    
+
     Returns:
         Tuple of (is_valid, list_of_errors)
     """
@@ -178,7 +179,8 @@ def validate_hierarchy_interfaces(parent_block: Dict[str, Any]) -> tuple:
         return True, []  # No child diagram to validate
 
     errors = []
-    parent_interfaces = {intf["name"]: intf for intf in parent_block.get("interfaces", [])}
+    parent_interfaces = {
+        intf["name"]: intf for intf in parent_block.get("interfaces", [])}
     child_diagram = get_child_diagram(parent_block)
 
     # Collect all interfaces from child blocks
@@ -215,6 +217,7 @@ def validate_hierarchy_interfaces(parent_block: Dict[str, Any]) -> tuple:
                     break
 
         if not compatible_child:
-            errors.append(f"Parent interface '{parent_intf_name}' has no corresponding interface")
+            errors.append(
+                f"Parent interface '{parent_intf_name}' has no corresponding interface")
 
     return len(errors) == 0, errors

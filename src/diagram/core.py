@@ -99,11 +99,11 @@ def find_block_by_id(diagram: Dict[str, Any], block_id: str) -> Optional[Dict[st
 def remove_block_from_diagram(diagram: Dict[str, Any], block_id: str) -> bool:
     """
     Remove a block and its connections from the diagram.
-    
+
     Args:
         diagram: The diagram to modify
         block_id: ID of the block to remove
-    
+
     Returns:
         True if block was removed, False if not found
     """
@@ -125,14 +125,14 @@ def remove_block_from_diagram(diagram: Dict[str, Any], block_id: str) -> bool:
 def serialize_diagram(diagram: Dict[str, Any], validate: bool = False) -> str:
     """
     Serialize diagram to JSON string.
-    
+
     Args:
         diagram: The diagram to serialize
         validate: Whether to validate before serializing
-    
+
     Returns:
         JSON string representation
-    
+
     Raises:
         ValueError: If validation is enabled and fails
     """
@@ -149,14 +149,14 @@ def serialize_diagram(diagram: Dict[str, Any], validate: bool = False) -> str:
 def deserialize_diagram(json_str: str, validate: bool = False) -> Dict[str, Any]:
     """
     Deserialize diagram from JSON string.
-    
+
     Args:
         json_str: JSON string to parse
         validate: Whether to validate after deserializing
-    
+
     Returns:
         Diagram dictionary
-    
+
     Raises:
         ValueError: If JSON is invalid or validation fails
     """

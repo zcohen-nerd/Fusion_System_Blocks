@@ -43,7 +43,8 @@ class TestRuleChecks:
                     "id": "block2",
                     "name": "Sensor",
                     "interfaces": [
-                        {"id": "in1", "name": "Data", "kind": "data", "params": {"voltage": "3.3V"}}
+                        {"id": "in1", "name": "Data", "kind": "data",
+                            "params": {"voltage": "3.3V"}}
                     ],
                 },
             ],
@@ -80,7 +81,8 @@ class TestRuleChecks:
                     "id": "block2",
                     "name": "Sensor",
                     "interfaces": [
-                        {"id": "in1", "name": "Data", "kind": "data", "params": {"voltage": "5V"}}
+                        {"id": "in1", "name": "Data", "kind": "data",
+                            "params": {"voltage": "5V"}}
                     ],
                 },
             ],
@@ -157,7 +159,8 @@ class TestRuleChecks:
         """Test power budget with no power specifications"""
         diagram = {
             "blocks": [
-                {"id": "block1", "name": "Unknown Block", "type": "Custom", "attributes": {}}
+                {"id": "block1", "name": "Unknown Block",
+                    "type": "Custom", "attributes": {}}
             ],
             "connections": [],
         }

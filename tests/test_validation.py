@@ -36,7 +36,8 @@ def test_cad_link_validation():
 
     # Valid CAD link
     block["links"] = [
-        {"target": "cad", "occToken": "test_token", "docId": "test_doc", "docPath": "/path/to/doc"}
+        {"target": "cad", "occToken": "test_token",
+            "docId": "test_doc", "docPath": "/path/to/doc"}
     ]
 
     is_valid, error = diagram_data.validate_links(block)
@@ -68,7 +69,8 @@ def test_ecad_link_validation():
     block = diagram_data.create_block("Test Block")
 
     # Valid ECAD link
-    block["links"] = [{"target": "ecad", "device": "STM32F4", "footprint": "LQFP-100"}]
+    block["links"] = [
+        {"target": "ecad", "device": "STM32F4", "footprint": "LQFP-100"}]
 
     is_valid, error = diagram_data.validate_links(block)
     assert is_valid
@@ -125,7 +127,8 @@ def test_diagram_links_validation():
 
     # Create blocks with various link types
     block1 = diagram_data.create_block("CAD Block")
-    block1["links"] = [{"target": "cad", "occToken": "token1", "docId": "doc1"}]
+    block1["links"] = [
+        {"target": "cad", "occToken": "token1", "docId": "doc1"}]
 
     block2 = diagram_data.create_block("ECAD Block")
     block2["links"] = [{"target": "ecad", "device": "MCU123"}]

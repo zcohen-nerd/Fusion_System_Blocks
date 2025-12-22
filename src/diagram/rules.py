@@ -11,11 +11,11 @@ from typing import Dict, List, Any
 def find_block_by_id(diagram: Dict[str, Any], block_id: str) -> Dict[str, Any]:
     """
     Find a block by its ID.
-    
+
     Args:
         diagram: The diagram to search
         block_id: The block ID to find
-    
+
     Returns:
         The block dictionary or None if not found
     """
@@ -27,10 +27,10 @@ def find_block_by_id(diagram: Dict[str, Any], block_id: str) -> Dict[str, Any]:
 def check_logic_level_compatibility_bulk(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Check for logic level compatibility issues between connected blocks.
-    
+
     Args:
         diagram: The diagram to check
-    
+
     Returns:
         List of violation dictionaries
     """
@@ -50,7 +50,8 @@ def check_logic_level_compatibility_bulk(diagram: Dict[str, Any]) -> List[Dict[s
         # Check compatibility
         if from_level and to_level and from_level != to_level:
             # Allow some compatible combinations
-            compatible_pairs = [("3.3V", "5V_tolerant"), ("5V_tolerant", "3.3V")]
+            compatible_pairs = [("3.3V", "5V_tolerant"),
+                                ("5V_tolerant", "3.3V")]
 
             if (from_level, to_level) not in compatible_pairs:
                 violations.append(
@@ -72,10 +73,10 @@ def check_logic_level_compatibility_bulk(diagram: Dict[str, Any]) -> List[Dict[s
 def check_power_budget_bulk(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Check if power consumption exceeds power supply capability.
-    
+
     Args:
         diagram: The diagram to check
-    
+
     Returns:
         List of violation dictionaries
     """
@@ -130,10 +131,10 @@ def check_power_budget_bulk(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
 def check_implementation_completeness_bulk(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Check if all blocks have sufficient implementation details.
-    
+
     Args:
         diagram: The diagram to check
-    
+
     Returns:
         List of violation dictionaries
     """
@@ -158,10 +159,10 @@ def check_implementation_completeness_bulk(diagram: Dict[str, Any]) -> List[Dict
 def run_all_rule_checks(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Run all rule checks and return combined results.
-    
+
     Args:
         diagram: The diagram to check
-    
+
     Returns:
         List of all check results
     """
@@ -182,10 +183,10 @@ def run_all_rule_checks(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
 def get_rule_failures(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Get only the failed rule checks.
-    
+
     Args:
         diagram: The diagram to check
-    
+
     Returns:
         List of failed check results
     """
@@ -198,11 +199,11 @@ def check_logic_level_compatibility(
 ) -> Dict[str, Any]:
     """
     Check logic level compatibility for a single connection.
-    
+
     Args:
         connection: The connection to check
         diagram: The containing diagram
-    
+
     Returns:
         Dictionary with check results
     """
@@ -301,10 +302,10 @@ def check_logic_level_compatibility(
 def check_power_budget(diagram: Dict[str, Any]) -> Dict[str, Any]:
     """
     Check power budget for entire diagram.
-    
+
     Args:
         diagram: The diagram to check
-    
+
     Returns:
         Dictionary with check results
     """
@@ -316,7 +317,8 @@ def check_power_budget(diagram: Dict[str, Any]) -> Dict[str, Any]:
         attributes = block.get("attributes", {})
 
         # Check for various power supply attribute names
-        supply_current = attributes.get("output_current") or attributes.get("power_supply_mw")
+        supply_current = attributes.get(
+            "output_current") or attributes.get("power_supply_mw")
         if supply_current:
             has_power_specs = True
             try:
@@ -330,7 +332,8 @@ def check_power_budget(diagram: Dict[str, Any]) -> Dict[str, Any]:
                 pass
 
         # Check for various power consumption attribute names
-        consumption = attributes.get("current") or attributes.get("power_consumption_mw")
+        consumption = attributes.get(
+            "current") or attributes.get("power_consumption_mw")
         if consumption:
             has_power_specs = True
             try:
@@ -366,10 +369,10 @@ def check_power_budget(diagram: Dict[str, Any]) -> Dict[str, Any]:
 def check_implementation_completeness(diagram: Dict[str, Any]) -> Dict[str, Any]:
     """
     Check implementation completeness for diagram.
-    
+
     Args:
         diagram: The diagram to check
-    
+
     Returns:
         Dictionary with check results
     """

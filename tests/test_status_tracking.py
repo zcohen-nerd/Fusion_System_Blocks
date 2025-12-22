@@ -134,7 +134,8 @@ class TestStatusTracking:
         assert compute_block_status(block) == "Planned"
 
         # Add a CAD link - should become In-Work
-        block["links"] = [{"target": "cad", "occToken": "token123", "docId": "doc456"}]
+        block["links"] = [
+            {"target": "cad", "occToken": "token123", "docId": "doc456"}]
         assert compute_block_status(block) == "In-Work"
 
         # Add interfaces - should become Implemented

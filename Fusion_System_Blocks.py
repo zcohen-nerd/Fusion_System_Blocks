@@ -4,7 +4,7 @@ import traceback
 import json
 import sys
 import os
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any
 
 # Add src directory to path so we can import our modules
 src_path = os.path.join(os.path.dirname(__file__), 'src')
@@ -1076,7 +1076,7 @@ def generate_service_manual_for_block(block_id, diagram):
     """
     try:
         from datetime import datetime
-        
+
         # Find the block
         target_block = None
         for block in diagram.get("blocks", []):

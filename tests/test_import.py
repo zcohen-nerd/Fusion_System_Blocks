@@ -50,11 +50,13 @@ class TestImportFunctions:
         assert len(connections) == 2
 
         # Find power connection
-        power_conn = next(c for c in connections if c["attributes"].get("protocol") == "power")
+        power_conn = next(
+            c for c in connections if c["attributes"].get("protocol") == "power")
         assert power_conn is not None
 
         # Find data connection
-        data_conn = next(c for c in connections if c["attributes"].get("protocol") == "data")
+        data_conn = next(
+            c for c in connections if c["attributes"].get("protocol") == "data")
         assert data_conn is not None
 
     def test_parse_mermaid_with_node_shapes(self):
@@ -168,7 +170,8 @@ Microcontroller,Microcontroller,300,100,Planned,3.3V,200mA,ARM Cortex-M4"""
         # Create a valid diagram
         diagram = diagram_data.create_empty_diagram()
 
-        block = diagram_data.create_block("Test Block", 100, 100, "Generic", "Placeholder")
+        block = diagram_data.create_block(
+            "Test Block", 100, 100, "Generic", "Placeholder")
         interface = diagram_data.create_interface(
             "Test Interface", "data", "bidirectional", "right", 0
         )
@@ -192,8 +195,10 @@ Microcontroller,Microcontroller,300,100,Planned,3.3V,200mA,ARM Cortex-M4"""
         diagram = diagram_data.create_empty_diagram()
 
         # Add two blocks with same name
-        block1 = diagram_data.create_block("Duplicate", 100, 100, "Generic", "Placeholder")
-        block2 = diagram_data.create_block("Duplicate", 200, 100, "Generic", "Placeholder")
+        block1 = diagram_data.create_block(
+            "Duplicate", 100, 100, "Generic", "Placeholder")
+        block2 = diagram_data.create_block(
+            "Duplicate", 200, 100, "Generic", "Placeholder")
 
         diagram_data.add_block_to_diagram(diagram, block1)
         diagram_data.add_block_to_diagram(diagram, block2)
@@ -207,7 +212,8 @@ Microcontroller,Microcontroller,300,100,Planned,3.3V,200mA,ARM Cortex-M4"""
         diagram = diagram_data.create_empty_diagram()
 
         # Add a block
-        block = diagram_data.create_block("Test Block", 100, 100, "Generic", "Placeholder")
+        block = diagram_data.create_block(
+            "Test Block", 100, 100, "Generic", "Placeholder")
         interface = diagram_data.create_interface(
             "Test Interface", "data", "bidirectional", "right", 0
         )
@@ -262,12 +268,14 @@ Microcontroller,Microcontroller,300,100,Planned,3.3V,200mA,ARM Cortex-M4"""
         diagram = diagram_data.parse_mermaid_flowchart(mermaid_text)
 
         # Check we got all the nodes
-        expected_nodes = {"START", "INIT", "POWER", "ERROR", "SENSOR", "PROCESS", "ACTUATE"}
+        expected_nodes = {"START", "INIT", "POWER",
+                          "ERROR", "SENSOR", "PROCESS", "ACTUATE"}
         actual_nodes = {block["id"] for block in diagram["blocks"]}
         assert expected_nodes.issubset(actual_nodes)
 
         # Check we have the right number of connections
-        assert len(diagram["connections"]) >= 8  # Should have multiple connections
+        # Should have multiple connections
+        assert len(diagram["connections"]) >= 8
 
         # Check some specific node types
         blocks = {block["id"]: block for block in diagram["blocks"]}

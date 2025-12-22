@@ -8,22 +8,22 @@ import diagrams from CSV and Mermaid, and export to various formats.
 import io
 import csv
 import re
-from typing import Dict, List, Any
+from typing import Dict, Any
 from pathlib import Path
 
 
 def generate_markdown_report(diagram: Dict[str, Any]) -> str:
     """
     Generate a comprehensive Markdown report for the diagram.
-    
+
     Args:
         diagram: The diagram to generate report for
-    
+
     Returns:
         Markdown-formatted report string
     """
     from .rules import run_all_rule_checks, find_block_by_id
-    
+
     report = []
 
     # Header
@@ -158,10 +158,12 @@ def generate_markdown_report(diagram: Dict[str, Any]) -> str:
             # Format attributes
             attributes = conn.get("attributes", {})
             attr_str = (
-                ", ".join([f"{k}: {v}" for k, v in attributes.items()]) if attributes else "-"
+                ", ".join([f"{k}: {v}" for k, v in attributes.items()]
+                          ) if attributes else "-"
             )
 
-            report.append(f"| {from_name} | {to_name} | {protocol} | {attr_str} |")
+            report.append(
+                f"| {from_name} | {to_name} | {protocol} | {attr_str} |")
 
         report.append("")
 
@@ -171,15 +173,15 @@ def generate_markdown_report(diagram: Dict[str, Any]) -> str:
 def generate_pin_map_csv(diagram: Dict[str, Any]) -> str:
     """
     Generate a CSV pin map for the diagram.
-    
+
     Args:
         diagram: The diagram to generate pin map for
-    
+
     Returns:
         CSV-formatted string
     """
     from .core import find_block_by_id
-    
+
     output = io.StringIO()
     writer = csv.writer(output)
 
@@ -223,7 +225,8 @@ def generate_pin_map_csv(diagram: Dict[str, Any]) -> str:
         notes_str = "; ".join(notes)
 
         writer.writerow(
-            [signal_name, source_name, source_pin, dest_name, dest_pin, protocol, notes_str]
+            [signal_name, source_name, source_pin,
+                dest_name, dest_pin, protocol, notes_str]
         )
 
     return output.getvalue()
@@ -232,10 +235,10 @@ def generate_pin_map_csv(diagram: Dict[str, Any]) -> str:
 def generate_pin_map_header(diagram: Dict[str, Any]) -> str:
     """
     Generate a C header file with pin definitions.
-    
+
     Args:
         diagram: The diagram to generate header for
-    
+
     Returns:
         C header file content
     """
@@ -284,11 +287,11 @@ def generate_pin_map_header(diagram: Dict[str, Any]) -> str:
 def export_report_files(diagram: Dict[str, Any], output_dir: str = None) -> Dict[str, str]:
     """
     Export all report files to the specified directory.
-    
+
     Args:
         diagram: The diagram to export
         output_dir: Directory to export to (default: "exports")
-    
+
     Returns:
         Dictionary mapping file type to file path
     """
@@ -333,15 +336,15 @@ def export_report_files(diagram: Dict[str, Any], output_dir: str = None) -> Dict
 def parse_mermaid_flowchart(mermaid_text: str) -> Dict[str, Any]:
     """
     Parse a Mermaid flowchart into a diagram.
-    
+
     Args:
         mermaid_text: Mermaid flowchart syntax
-    
+
     Returns:
         Diagram dictionary
     """
     from .core import create_empty_diagram, create_block, create_connection, add_block_to_diagram, add_connection_to_diagram
-    
+
     if not mermaid_text.strip():
         return create_empty_diagram()
 
@@ -375,7 +378,8 @@ def parse_mermaid_flowchart(mermaid_text: str) -> Dict[str, Any]:
             # Extract node info from inline definitions if present
             def extract_node_info(node_id, line_part):
                 """Extract node type and label from inline definition"""
-                node_match = re.search(rf"{node_id}([\[\(\{{])([^\]\)\}}]+)([\]\)\}}])", line_part)
+                node_match = re.search(
+                    rf"{node_id}([\[\(\{{])([^\]\)\}}]+)([\]\)\}}])", line_part)
                 if node_match:
                     open_char, label, close_char = node_match.groups()
                     if open_char == "[":
@@ -392,16 +396,20 @@ def parse_mermaid_flowchart(mermaid_text: str) -> Dict[str, Any]:
             # Create blocks if they don't exist (use node names as IDs for Mermaid compatibility)
             if from_id not in blocks_created:
                 node_type, node_label = extract_node_info(from_id, line)
-                block = create_block(node_label, x_position, y_position, node_type, "Placeholder")
-                block["id"] = from_id  # Override UUID with node name for Mermaid compatibility
+                block = create_block(node_label, x_position,
+                                     y_position, node_type, "Placeholder")
+                # Override UUID with node name for Mermaid compatibility
+                block["id"] = from_id
                 blocks_created[from_id] = block
                 add_block_to_diagram(diagram, block)
                 x_position += 150
 
             if to_id not in blocks_created:
                 node_type, node_label = extract_node_info(to_id, line)
-                block = create_block(node_label, x_position, y_position, node_type, "Placeholder")
-                block["id"] = to_id  # Override UUID with node name for Mermaid compatibility
+                block = create_block(node_label, x_position,
+                                     y_position, node_type, "Placeholder")
+                # Override UUID with node name for Mermaid compatibility
+                block["id"] = to_id
                 blocks_created[to_id] = block
                 add_block_to_diagram(diagram, block)
                 x_position += 150
@@ -437,8 +445,10 @@ def parse_mermaid_flowchart(mermaid_text: str) -> Dict[str, Any]:
                 elif "(" in line:
                     block_type = "Process"  # Parentheses for process blocks
 
-                block = create_block(label, x_position, y_position, block_type, "Placeholder")
-                block["id"] = node_id  # Override UUID with node name for Mermaid compatibility
+                block = create_block(
+                    label, x_position, y_position, block_type, "Placeholder")
+                # Override UUID with node name for Mermaid compatibility
+                block["id"] = node_id
                 blocks_created[node_id] = block
                 add_block_to_diagram(diagram, block)
                 x_position += 150
@@ -457,16 +467,16 @@ def parse_mermaid_to_diagram(mermaid_text: str) -> Dict[str, Any]:
 def import_from_csv(blocks_csv: str, connections_csv: str = None) -> Dict[str, Any]:
     """
     Import diagram from CSV data.
-    
+
     Args:
         blocks_csv: CSV string with block data
         connections_csv: Optional CSV string with connection data
-    
+
     Returns:
         Diagram dictionary
     """
     from .core import create_empty_diagram, create_block, create_connection, add_block_to_diagram, add_connection_to_diagram
-    
+
     if not blocks_csv.strip():
         return create_empty_diagram()
 
@@ -529,10 +539,10 @@ def import_from_csv(blocks_csv: str, connections_csv: str = None) -> Dict[str, A
 def validate_imported_diagram(diagram: Dict[str, Any]) -> tuple:
     """
     Validate an imported diagram for common issues.
-    
+
     Args:
         diagram: The imported diagram to validate
-    
+
     Returns:
         Tuple of (is_valid, message)
     """
@@ -545,20 +555,24 @@ def validate_imported_diagram(diagram: Dict[str, Any]) -> tuple:
 
     # Check for duplicate block names
     block_names = [block.get("name", "") for block in diagram["blocks"]]
-    duplicates = set([name for name in block_names if block_names.count(name) > 1 and name])
+    duplicates = set(
+        [name for name in block_names if block_names.count(name) > 1 and name])
 
     if duplicates:
         for dup in duplicates:
-            errors.append(f"Block names must be unique: '{dup}' appears multiple times")
+            errors.append(
+                f"Block names must be unique: '{dup}' appears multiple times")
 
     # Check for invalid connections
     block_ids = {block["id"] for block in diagram["blocks"]}
 
     for conn in diagram.get("connections", []):
         if conn["from"]["blockId"] not in block_ids:
-            errors.append(f"Connection references unknown block: {conn['from']['blockId']}")
+            errors.append(
+                f"Connection references unknown block: {conn['from']['blockId']}")
         if conn["to"]["blockId"] not in block_ids:
-            errors.append(f"Connection references unknown block: {conn['to']['blockId']}")
+            errors.append(
+                f"Connection references unknown block: {conn['to']['blockId']}")
 
     if errors:
         # Make error messages lowercase for test compatibility

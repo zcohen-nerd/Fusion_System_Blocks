@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple, Any, Optional
 def load_schema() -> Dict[str, Any]:
     """
     Load the JSON schema for diagram validation.
-    
+
     Returns:
         Dictionary containing the JSON schema
     """
@@ -41,10 +41,10 @@ def load_schema() -> Dict[str, Any]:
 def validate_diagram(diagram: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
     """
     Validate a diagram against the JSON schema.
-    
+
     Args:
         diagram: The diagram to validate
-    
+
     Returns:
         Tuple of (is_valid, error_message)
     """
@@ -61,10 +61,10 @@ def validate_diagram(diagram: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
 def validate_links(block: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
     """
     Validate the links in a block.
-    
+
     Args:
         block: The block to validate
-    
+
     Returns:
         Tuple of (is_valid, error_message)
     """
@@ -110,10 +110,10 @@ def validate_links(block: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
 def validate_diagram_links(diagram: Dict[str, Any]) -> Tuple[bool, List[str]]:
     """
     Validate all links in a diagram.
-    
+
     Args:
         diagram: The diagram to validate
-    
+
     Returns:
         Tuple of (all_valid, list_of_errors)
     """
@@ -130,17 +130,17 @@ def validate_diagram_links(diagram: Dict[str, Any]) -> Tuple[bool, List[str]]:
 def compute_block_status(block: Dict[str, Any]) -> str:
     """
     Compute the status of a block based on its content and links.
-    
+
     Status progression:
     - Placeholder: No attributes, interfaces, or links
     - Planned: Has attributes or interfaces but no links
     - In-Work: Has links OR (attributes AND interfaces)
     - Implemented: Has (CAD OR ECAD link) AND attributes AND interfaces
     - Verified: Has both CAD AND ECAD links
-    
+
     Args:
         block: The block to compute status for
-    
+
     Returns:
         Status string
     """
@@ -175,10 +175,10 @@ def compute_block_status(block: Dict[str, Any]) -> str:
 def update_block_statuses(diagram: Dict[str, Any]) -> Dict[str, Any]:
     """
     Update the status of all blocks in a diagram.
-    
+
     Args:
         diagram: The diagram to update
-    
+
     Returns:
         The updated diagram (modified in-place)
     """
@@ -195,10 +195,10 @@ def update_block_statuses(diagram: Dict[str, Any]) -> Dict[str, Any]:
 def get_status_color(status: str) -> str:
     """
     Get the color associated with a block status.
-    
+
     Args:
         status: The status string
-    
+
     Returns:
         Hex color code
     """

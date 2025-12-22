@@ -35,7 +35,8 @@ def test_create_block():
 
 def test_create_interface():
     """Test creating an interface."""
-    interface = diagram_data.create_interface("VCC", "power", "input", "left", 0)
+    interface = diagram_data.create_interface(
+        "VCC", "power", "input", "left", 0)
     assert "id" in interface
     assert interface["name"] == "VCC"
     assert interface["kind"] == "power"
