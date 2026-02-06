@@ -6,3 +6,6 @@ env/
 .DS_Store
 .vscode/
 node_modules/
+*.egg-info/
+dist/
+build/

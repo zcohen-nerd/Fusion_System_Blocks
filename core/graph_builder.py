@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from core.models import (
+from .models import (
     Block,
     BlockStatus,
     Connection,

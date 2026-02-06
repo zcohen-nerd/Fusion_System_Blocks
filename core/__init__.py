@@ -20,7 +20,7 @@ Note:
     libraries. All Fusion-specific code belongs in the fusion_addin layer.
 """
 
-from core.models import (
+from .models import (
     Block,
     Port,
     Connection,
@@ -29,20 +29,20 @@ from core.models import (
     PortKind,
     BlockStatus,
 )
-from core.validation import (
+from .validation import (
     validate_graph,
     ValidationError,
     ValidationErrorCode,
 )
-from core.action_plan import (
+from .action_plan import (
     build_action_plan,
     ActionPlan,
     ActionType,
 )
-from core.graph_builder import (
+from .graph_builder import (
     GraphBuilder,
 )
-from core.serialization import (
+from .serialization import (
     serialize_graph,
     deserialize_graph,
 )

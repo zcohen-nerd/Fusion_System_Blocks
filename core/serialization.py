@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict
 
-from core.models import (
+from .models import (
     Block,
     BlockStatus,
     Connection,
