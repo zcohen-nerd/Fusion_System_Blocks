@@ -149,14 +149,32 @@
 
 /* === BUTTON ICONS === */
 .ribbon-icon {
-  font-size: 20px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 2px;
-  line-height: 1;
+}
+
+.ribbon-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
 }
 
 .ribbon-icon-small {
-  font-size: 14px;
-  line-height: 1;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ribbon-icon-small svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
 }
 
 /* === BUTTON TEXT === */
@@ -265,10 +283,12 @@
 }
 
 /* === RESPONSIVE BEHAVIOR === */
-@media (max-width: 1200px) {
+/* Fusion 360 palette widths: 340-600px */
+
+@media (max-width: 600px) {
   .ribbon-group {
     min-width: 50px;
-    padding: 4px 6px 4px 6px;
+    padding: 4px 6px;
   }
   
   .ribbon-button-large {
@@ -277,12 +297,12 @@
   }
   
   .ribbon-text {
-    font-size: 9px;
+    font-size: 10px;
     max-width: 40px;
   }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 500px) {
   .ribbon-group {
     min-width: 44px;
     padding: 3px 5px 4px 5px;
@@ -294,21 +314,22 @@
     padding: 3px 4px 2px 4px;
   }
   
-  .ribbon-icon {
-    font-size: 18px;
+  .ribbon-icon svg {
+    width: 18px;
+    height: 18px;
   }
   
   .ribbon-text {
-    font-size: 8px;
+    font-size: 10px;
     max-width: 36px;
   }
   
   .ribbon-group-label {
-    font-size: 9px;
+    font-size: 10px;
   }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 400px) {
   .ribbon-button-large .ribbon-text {
     display: none;
   }
@@ -541,7 +562,9 @@
 }
 
 /* Responsive behavior for secondary ribbon */
-@media (max-width: 1000px) {
+/* Fusion 360 palette widths: 340-600px */
+
+@media (max-width: 500px) {
   .ribbon-secondary {
     flex-wrap: wrap;
     min-height: auto;
@@ -549,7 +572,7 @@
   }
   
   .search-container {
-    max-width: 300px;
+    max-width: 280px;
   }
   
   .search-input {
@@ -557,12 +580,12 @@
   }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 400px) {
   .filter-buttons {
     display: none;
   }
   
   .search-input {
-    width: 120px;
+    width: 100px;
   }
 }

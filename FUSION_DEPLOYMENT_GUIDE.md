@@ -33,8 +33,26 @@
 ## Feature Availability
 - ✅ Diagram authoring, hierarchy navigation, import/export, rule checking
 - ✅ Enhanced CAD linking and status dashboards (milestone 12)
-- ⚙️ Advanced ribbon UI, annotations, and layout tooling (milestone 14)
+- ✅ Advanced ribbon UI, annotations, and layout tooling (milestone 14)
+- ✅ Two-layer architecture with production logging (milestone 16)
+- ✅ Built-in "Run Diagnostics" command for self-testing
 - 🚧 3D visualization and living documentation workflows (milestone 13, in progress)
+
+## Troubleshooting
+
+### Run Diagnostics
+If the add-in isn't working correctly:
+1. In Fusion 360, go to **Utilities** → **Add-Ins** panel
+2. Click **Run Diagnostics**
+3. A message box shows pass/fail status with test counts
+4. Check the log file at `~/FusionSystemBlocks/logs/` for details
+
+### Log Files
+Session logs are stored at:
+- **Windows:** `%USERPROFILE%\FusionSystemBlocks\logs\`
+- **macOS:** `~/FusionSystemBlocks/logs/`
+
+Each session creates a new log file: `systemblocks_<timestamp>_<session>.log`
 
 ## Support
 - 📋 Issues: https://github.com/zcohen-nerd/Fusion_System_Blocks/issues

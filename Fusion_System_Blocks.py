@@ -4,12 +4,53 @@ import traceback
 import json
 import sys
 import os
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 # Add src directory to path so we can import our modules
 src_path = os.path.join(os.path.dirname(__file__), 'src')
 sys.path.insert(0, src_path)
 import diagram_data  # noqa: E402
+
+# Add repo root to path for core library
+repo_root = os.path.dirname(__file__)
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+
+# Import the new core library for validation and action planning
+try:
+    from core.models import Graph
+    from core.validation import validate_graph, ValidationError, get_error_summary
+    from core.action_plan import build_action_plan, ActionPlan
+    from core.serialization import dict_to_graph, graph_to_dict
+    CORE_AVAILABLE = True
+except ImportError:
+    CORE_AVAILABLE = False
+
+# Import logging utilities
+try:
+    from fusion_addin.logging_util import (
+        setup_logging,
+        get_logger,
+        log_exceptions,
+        log_environment_info,
+        get_log_file_path,
+        cleanup_old_logs,
+    )
+    _logger = get_logger("main")
+    LOGGING_AVAILABLE = True
+except ImportError:
+    LOGGING_AVAILABLE = False
+    _logger = None
+
+# Import diagnostics module
+try:
+    from fusion_addin.diagnostics import (
+        run_diagnostics_and_show_result,
+        cleanup_any_remaining_temp_objects,
+    )
+    DIAGNOSTICS_AVAILABLE = True
+except ImportError:
+    DIAGNOSTICS_AVAILABLE = False
 
 APP = adsk.core.Application.get()
 UI = APP.userInterface
@@ -60,6 +101,42 @@ def notify_info(message: str) -> None:
     send_palette_notification(message, level="info")
 
 
+def _show_validation_errors_dialog(errors: List) -> None:
+    """Display validation errors in a message box.
+
+    Shows a formatted list of validation errors from the core library
+    in a Fusion 360 message box for user visibility.
+
+    Args:
+        errors: List of ValidationError instances from core.validation.
+    """
+    if not errors:
+        return
+
+    # Format errors for display
+    lines = [f"Found {len(errors)} validation error(s):\n"]
+    for i, error in enumerate(errors[:10], 1):  # Limit to first 10 errors
+        code = error.code.value if hasattr(error.code, 'value') else str(error.code)
+        lines.append(f"{i}. [{code}] {error.message}")
+
+    if len(errors) > 10:
+        lines.append(f"\n... and {len(errors) - 10} more errors")
+
+    error_text = "\n".join(lines)
+
+    # Show in Fusion message box
+    try:
+        UI.messageBox(
+            error_text,
+            "Graph Validation Errors",
+            adsk.core.MessageBoxButtonTypes.OKButtonType,
+            adsk.core.MessageBoxIconTypes.WarningIconType
+        )
+    except Exception:
+        # Fallback to simple notification
+        notify_error(error_text)
+
+
 def get_root_component() -> Optional[adsk.fusion.Component]:
     """Get the root component of the active design."""
     try:
@@ -74,6 +151,10 @@ def get_root_component() -> Optional[adsk.fusion.Component]:
 def save_diagram_json(json_data: str) -> bool:
     """Save diagram JSON to Fusion attributes.
 
+    Uses the core library for validation when available, with fallback
+    to legacy validation. Shows validation errors in a user-visible
+    message box.
+
     Args:
         json_data: The JSON string representation of the diagram.
 
@@ -81,19 +162,32 @@ def save_diagram_json(json_data: str) -> bool:
         True if successful, False otherwise.
     """
     try:
-        # Validate the diagram before saving
+        # Parse the JSON data
         diagram = json.loads(json_data)
-        is_valid, error = diagram_data.validate_diagram(diagram)
-        if not is_valid:
-            notify_error(f"Diagram validation failed: {error}")
-            return False
 
-        # Check link validation specifically
-        links_valid, link_errors = diagram_data.validate_diagram_links(diagram)
-        if not links_valid:
-            error_msg = 'Link validation errors:\n' + '\n'.join(link_errors)
-            notify_error(error_msg)
-            return False
+        # Use core library validation if available
+        if CORE_AVAILABLE:
+            graph = dict_to_graph(diagram)
+            validation_errors = validate_graph(graph)
+
+            if validation_errors:
+                error_summary = get_error_summary(validation_errors)
+                _show_validation_errors_dialog(validation_errors)
+                notify_error(f"Graph validation failed:\n{error_summary}")
+                return False
+        else:
+            # Fallback to legacy validation
+            is_valid, error = diagram_data.validate_diagram(diagram)
+            if not is_valid:
+                notify_error(f"Diagram validation failed: {error}")
+                return False
+
+            # Check link validation specifically
+            links_valid, link_errors = diagram_data.validate_diagram_links(diagram)
+            if not links_valid:
+                error_msg = 'Link validation errors:\n' + '\n'.join(link_errors)
+                notify_error(error_msg)
+                return False
 
         root_comp = get_root_component()
         if not root_comp:
@@ -201,12 +295,66 @@ def select_occurrence_for_linking():
         return None
 
 
+class DiagnosticsCommandHandler(adsk.core.CommandCreatedEventHandler):
+    """Handler for the Run Diagnostics command.
+
+    When the command is executed, runs all diagnostic tests and
+    displays a summary in a message box.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def notify(self, args):
+        try:
+            if LOGGING_AVAILABLE:
+                _logger.debug("DiagnosticsCommandHandler.notify() called")
+
+            command = args.command
+            onExecute = DiagnosticsExecuteHandler()
+            command.execute.add(onExecute)
+            _handlers.append(onExecute)
+
+        except Exception as e:
+            if LOGGING_AVAILABLE:
+                _logger.exception(f"Error in DiagnosticsCommandHandler: {e}")
+            notify_error(f"Error in diagnostics command: {str(e)}")
+
+
+class DiagnosticsExecuteHandler(adsk.core.CommandEventHandler):
+    """Execute handler that runs the diagnostics suite."""
+
+    def __init__(self):
+        super().__init__()
+
+    def notify(self, args):
+        try:
+            if LOGGING_AVAILABLE:
+                _logger.info("Running diagnostics suite...")
+
+            if DIAGNOSTICS_AVAILABLE:
+                run_diagnostics_and_show_result()
+            else:
+                notify_warning(
+                    "Diagnostics module not available. "
+                    "Check that fusion_addin/diagnostics.py exists."
+                )
+
+        except Exception as e:
+            if LOGGING_AVAILABLE:
+                _logger.exception(f"Error running diagnostics: {e}")
+            notify_error(f"Diagnostics failed: {str(e)}")
+
+
 class SystemBlocksPaletteShowCommandHandler(adsk.core.CommandCreatedEventHandler):
     def __init__(self):
         super().__init__()
 
     def notify(self, args):
         try:
+            if LOGGING_AVAILABLE:
+                _logger.debug("SystemBlocksPaletteShowCommandHandler.notify() called")
+
             # Get the command created event args
             command = args.command
 
@@ -215,7 +363,14 @@ class SystemBlocksPaletteShowCommandHandler(adsk.core.CommandCreatedEventHandler
             command.execute.add(onExecute)
             _handlers.append(onExecute)
 
+            if LOGGING_AVAILABLE:
+                _logger.debug("CommandExecuteHandler added successfully")
+
         except Exception as e:
+            if LOGGING_AVAILABLE:
+                _logger.exception(
+                    f"Error in SystemBlocksPaletteShowCommandHandler: {e}"
+                )
             notify_error(f"Error in command created handler: {str(e)}")
 
 
@@ -249,18 +404,30 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             data = json.loads(htmlArgs.data) if htmlArgs.data else {}
             action = htmlArgs.action
 
+            if LOGGING_AVAILABLE:
+                _logger.debug(f"HTML event received: action='{action}'")
+
             handler_name = f"_handle_{action}"
             if hasattr(self, handler_name):
                 handler = getattr(self, handler_name)
                 response = handler(data)
                 htmlArgs.returnData = json.dumps(response)
+                if LOGGING_AVAILABLE:
+                    _logger.debug(
+                        f"HTML event handled: action='{action}', "
+                        f"success={response.get('success', 'N/A')}"
+                    )
             else:
+                if LOGGING_AVAILABLE:
+                    _logger.warning(f"Unknown HTML action: '{action}'")
                 htmlArgs.returnData = json.dumps({
                     'success': False,
                     'error': f"Unknown action: {action}"
                 })
 
         except Exception as e:
+            if LOGGING_AVAILABLE:
+                _logger.exception(f"Error in PaletteHTMLEventHandler: {e}")
             notify_error(f"Error in HTML event handler: {str(e)}")
             if args:
                 args.returnData = json.dumps({'success': False, 'error': str(e)})
@@ -1152,6 +1319,15 @@ def analyze_change_impact_for_block(block_id, diagram):
 
 def run(context):
     try:
+        # Initialize logging
+        if LOGGING_AVAILABLE:
+            setup_logging()
+            _logger.info("=" * 60)
+            _logger.info("STARTUP BEGIN - System Blocks Add-in")
+            _logger.info("=" * 60)
+            log_environment_info(_logger)
+            cleanup_old_logs()
+
         # Create command definition for showing palette
         cmdDef = UI.commandDefinitions.itemById(
             'SystemBlocksPaletteShowCommand'
@@ -1169,6 +1345,9 @@ def run(context):
         cmdDef.commandCreated.add(onCommandCreated)
         _handlers.append(onCommandCreated)
 
+        if LOGGING_AVAILABLE:
+            _logger.info("Command definition registered: SystemBlocksPaletteShowCommand")
+
         # Create the palette
         palette = UI.palettes.itemById('SystemBlocksPalette')
         if not palette:
@@ -1180,6 +1359,9 @@ def run(context):
             html_file = html_file.replace('\\', '/')
             if not html_file.startswith('file:///'):
                 html_file = 'file:///' + html_file
+
+            if LOGGING_AVAILABLE:
+                _logger.debug(f"Creating palette with HTML: {html_file}")
 
             palette = UI.palettes.add(
                 'SystemBlocksPalette',
@@ -1197,6 +1379,9 @@ def run(context):
             onHTMLEvent = PaletteHTMLEventHandler()
             palette.incomingFromHTML.add(onHTMLEvent)
             _handlers.append(onHTMLEvent)
+
+            if LOGGING_AVAILABLE:
+                _logger.info("Palette created: SystemBlocksPalette")
 
         # Add to appropriate workspace
         workspaces = UI.workspaces
@@ -1218,9 +1403,44 @@ def run(context):
             if not systemBlocksControl:
                 systemBlocksControl = controls.addCommand(cmdDef)
 
+            if LOGGING_AVAILABLE:
+                _logger.info("Added command to workspace panel")
+
+        # Create diagnostics command
+        diagCmdDef = UI.commandDefinitions.itemById('SystemBlocksDiagnosticsCommand')
+        if not diagCmdDef:
+            diagCmdDef = UI.commandDefinitions.addButtonDefinition(
+                'SystemBlocksDiagnosticsCommand',
+                'Run Diagnostics',
+                'Run self-tests to verify add-in health'
+            )
+
+        onDiagCreated = DiagnosticsCommandHandler()
+        diagCmdDef.commandCreated.add(onDiagCreated)
+        _handlers.append(onDiagCreated)
+
+        if LOGGING_AVAILABLE:
+            _logger.info("Command definition registered: SystemBlocksDiagnosticsCommand")
+
+        # Add diagnostics command to panel
+        if designWorkspace:
+            addInsPanel = designWorkspace.toolbarPanels.itemById('SolidScriptsAddinsPanel')
+            if addInsPanel:
+                diagControl = addInsPanel.controls.itemById('SystemBlocksDiagnosticsCommand')
+                if not diagControl:
+                    diagControl = addInsPanel.controls.addCommand(diagCmdDef)
+
+        if LOGGING_AVAILABLE:
+            _logger.info("=" * 60)
+            _logger.info("STARTUP COMPLETE - System Blocks Add-in ready")
+            _logger.info(f"Log file: {get_log_file_path()}")
+            _logger.info("=" * 60)
+
         notify_success('System Blocks add-in loaded successfully!')
 
     except Exception as e:
+        if LOGGING_AVAILABLE:
+            _logger.exception(f"STARTUP FAILED: {e}")
         notify_error(
             'Failed to run System Blocks add-in: '
             f"{str(e)}\n{traceback.format_exc()}"
@@ -1229,12 +1449,29 @@ def run(context):
 
 def stop(context):
     try:
+        if LOGGING_AVAILABLE:
+            _logger.info("SHUTDOWN BEGIN - System Blocks Add-in")
+
+        # Clean up any leftover diagnostic temp objects
+        if DIAGNOSTICS_AVAILABLE:
+            try:
+                cleanup_any_remaining_temp_objects()
+            except Exception:
+                pass
+
         # Clean up UI elements
         cmdDef = UI.commandDefinitions.itemById(
             'SystemBlocksPaletteShowCommand'
         )
         if cmdDef:
             cmdDef.deleteMe()
+
+        # Clean up diagnostics command
+        diagCmdDef = UI.commandDefinitions.itemById(
+            'SystemBlocksDiagnosticsCommand'
+        )
+        if diagCmdDef:
+            diagCmdDef.deleteMe()
 
         # Remove from workspace
         workspaces = UI.workspaces
@@ -1249,6 +1486,11 @@ def stop(context):
                 if systemBlocksControl:
                     systemBlocksControl.deleteMe()
 
+                diagControl = addInsPanel.controls.itemById(
+                    'SystemBlocksDiagnosticsCommand')
+                if diagControl:
+                    diagControl.deleteMe()
+
         # Remove palette
         palette = UI.palettes.itemById('SystemBlocksPalette')
         if palette:
@@ -1257,5 +1499,10 @@ def stop(context):
         # Clear handlers
         _handlers.clear()
 
+        if LOGGING_AVAILABLE:
+            _logger.info("SHUTDOWN COMPLETE - System Blocks Add-in")
+
     except Exception as e:
+        if LOGGING_AVAILABLE:
+            _logger.exception(f"Error during shutdown: {e}")
         notify_error(f'Failed to stop System Blocks add-in: {str(e)}')

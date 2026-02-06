@@ -1,322 +1,273 @@
 /* Fusion 360 Theme CSS
- * This file contains the authentic Fusion 360 color scheme and styling patterns
- * to make the System Blocks palette feel native to Fusion 360
+ * Authentic Fusion 360 color scheme and styling patterns.
+ * Consolidated and deduplicated for maintainability.
  */
 
 /* === FUSION 360 COLOR PALETTE === */
 :root {
   /* Primary Colors */
-  --fusion-bg-primary: #2d2d30;           /* Main dark background */
-  --fusion-bg-secondary: #383838;         /* Secondary panels */
-  --fusion-bg-tertiary: #404040;          /* Lighter panels */
-  --fusion-bg-hover: #464646;             /* Hover states */
-  --fusion-bg-active: #007acc;            /* Active/selected states */
-  
-  /* Text Colors - FORCED HIGH CONTRAST */
-  --fusion-text-primary: #f0f0f0 !important;         /* Primary text - maximum contrast */
-  --fusion-text-secondary: #d0d0d0 !important;       /* Secondary text - high contrast */  
-  --fusion-text-disabled: #909090 !important;        /* Disabled text - improved contrast */
-  --fusion-text-inverse: #ffffff !important;         /* Text on dark backgrounds */
-  
+  --fusion-bg-primary: #2d2d30;
+  --fusion-bg-secondary: #383838;
+  --fusion-bg-tertiary: #404040;
+  --fusion-bg-hover: #464646;
+  --fusion-bg-active: #007acc;
+  --fusion-bg-disabled: #353535;
+
+  /* Text Colors */
+  --fusion-text-primary: #f0f0f0;
+  --fusion-text-secondary: #d0d0d0;
+  --fusion-text-disabled: #909090;
+  --fusion-text-inverse: #ffffff;
+
   /* Border Colors */
-  --fusion-border-primary: #464646;       /* Primary borders */
-  --fusion-border-secondary: #555555;     /* Secondary borders */
-  --fusion-border-focus: #007acc;         /* Focus borders */
-  --fusion-border-hover: #5a5a5a;         /* Hover borders */
-  
+  --fusion-border-primary: #464646;
+  --fusion-border-secondary: #555555;
+  --fusion-border-light: #4a4a4a;
+  --fusion-border-focus: #007acc;
+  --fusion-border-hover: #5a5a5a;
+
   /* Accent Colors */
-  --fusion-accent-blue: #007acc;          /* Primary blue accent */
-  --fusion-accent-orange: #ff8c00;        /* Orange accent (warnings/selections) */
-  --fusion-accent-green: #4caf50;         /* Success green */
-  --fusion-accent-red: #f44336;           /* Error red */
-  --fusion-accent-yellow: #ffc107;        /* Warning yellow */
-  
+  --fusion-accent-blue: #007acc;
+  --fusion-accent-blue-dark: #005a9e;
+  --fusion-accent-blue-light: #1e88e5;
+  --fusion-accent-orange: #ff8c00;
+  --fusion-accent-green: #4caf50;
+  --fusion-accent-red: #f44336;
+  --fusion-accent-yellow: #ffc107;
+
   /* Component-specific Colors */
   --fusion-button-bg: #404040;
   --fusion-button-hover: #464646;
   --fusion-button-active: #007acc;
   --fusion-button-border: #555555;
-  
+
   --fusion-input-bg: #2d2d30;
   --fusion-input-border: #555555;
   --fusion-input-focus: #007acc;
-  
+
   --fusion-panel-bg: #383838;
   --fusion-panel-border: #464646;
-  
+
   /* Typography */
-  --fusion-font-family: 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', sans-serif;
-  --fusion-font-size-small: 11px;
+  --fusion-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --fusion-font-size-small: 10px;
   --fusion-font-size-normal: 12px;
   --fusion-font-size-large: 14px;
-  
+  --fusion-font-weight-light: 300;
+  --fusion-font-weight-normal: 400;
+  --fusion-font-weight-medium: 500;
+  --fusion-font-weight-bold: 600;
+
   /* Spacing */
   --fusion-spacing-xs: 4px;
   --fusion-spacing-sm: 8px;
   --fusion-spacing-md: 12px;
   --fusion-spacing-lg: 16px;
   --fusion-spacing-xl: 20px;
-  
-  /* Shadows */
+
+  /* Shadows - Flat, no glass effects */
   --fusion-shadow-light: 0 1px 3px rgba(0, 0, 0, 0.2);
   --fusion-shadow-medium: 0 2px 6px rgba(0, 0, 0, 0.3);
   --fusion-shadow-heavy: 0 4px 12px rgba(0, 0, 0, 0.4);
-  
+  --fusion-shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  --fusion-shadow-button: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --fusion-shadow-panel: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --fusion-shadow-floating: 0 4px 16px rgba(0, 0, 0, 0.45);
+
   /* Border Radius */
   --fusion-radius-small: 2px;
   --fusion-radius-medium: 4px;
   --fusion-radius-large: 6px;
-  
-  /* Status Colors - Enhanced for Phase 2 */
+
+  /* Border Styles */
+  --fusion-border-thin: 1px;
+  --fusion-border-medium: 2px;
+  --fusion-border-thick: 3px;
+  --fusion-border-style: solid;
+
+  /* Status Colors */
   --fusion-status-placeholder: #969696;
   --fusion-status-placeholder-bg: rgba(150, 150, 150, 0.1);
-  
   --fusion-status-planned: #87ceeb;
   --fusion-status-planned-bg: rgba(135, 206, 235, 0.1);
-  
   --fusion-status-in-work: #ffc107;
   --fusion-status-in-work-bg: rgba(255, 193, 7, 0.1);
-  
   --fusion-status-implemented: #4caf50;
   --fusion-status-implemented-bg: rgba(76, 175, 80, 0.1);
-  
-  --fusion-status-verified: #00ff00;
-  --fusion-status-verified-bg: rgba(0, 255, 0, 0.1);
-  
-  /* Status Indicators for Error/Warning/Success */
+  /* Verified - muted green to match Fusion palette */
+  --fusion-status-verified: #66bb6a;
+  --fusion-status-verified-bg: rgba(102, 187, 106, 0.12);
   --fusion-status-error: #f44336;
   --fusion-status-error-bg: rgba(244, 67, 54, 0.1);
-  
   --fusion-status-warning: #ff9800;
   --fusion-status-warning-bg: rgba(255, 152, 0, 0.1);
-  
   --fusion-status-success: #4caf50;
   --fusion-status-success-bg: rgba(76, 175, 80, 0.1);
-  
-  /* Enhanced Color Variants */
-  --fusion-accent-blue-dark: #005a9e;
-  --fusion-accent-blue-light: #1e88e5;
-  
-  /* Focus and Glow Effects */
-  --fusion-focus-ring: rgba(0, 123, 204, 0.3);
-  --fusion-glow-orange: rgba(255, 102, 0, 0.5);
-  
-  /* Transition Timings - FORCED FAST */
-  --fusion-transition-fast: 0.1s !important;
-  --fusion-transition: 0.2s !important;
-  --fusion-transition-slow: 0.25s !important;
-  
+
+  /* Focus ring */
+  --fusion-focus-ring: rgba(0, 122, 204, 0.4);
+  --fusion-glow-orange: rgba(255, 140, 0, 0.4);
+
+  /* Transitions - fast, functional */
+  --fusion-transition-fast: 0.1s;
+  --fusion-transition: 0.15s;
+  --fusion-transition-slow: 0.2s;
+  --fusion-ease-in-out: ease-in-out;
+  --fusion-ease-out: ease-out;
+  --fusion-ease-in: ease-in;
+
   /* Connection Type Colors */
   --fusion-connection-power: #dc3545;
   --fusion-connection-data: #007bff;
   --fusion-connection-electrical: #28a745;
   --fusion-connection-mechanical: #6c757d;
-  
-  /* === MILESTONE 10: ENHANCED UI VARIABLES === */
-  
-  /* Professional Gradients */
-  --fusion-gradient-primary: linear-gradient(135deg, #2d2d30 0%, #383838 100%);
-  --fusion-gradient-secondary: linear-gradient(135deg, #383838 0%, #404040 100%);
-  --fusion-gradient-button: linear-gradient(135deg, #404040 0%, #464646 100%);
-  --fusion-gradient-button-hover: linear-gradient(135deg, #464646 0%, #505050 100%);
-  --fusion-gradient-active: linear-gradient(135deg, #007acc 0%, #005a9e 100%);
-  
-  /* Enhanced Shadows */
-  --fusion-shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-  --fusion-shadow-button: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  --fusion-shadow-panel: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --fusion-shadow-floating: 0 4px 16px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3);
-  --fusion-shadow-glow: 0 0 0 3px rgba(0, 122, 204, 0.3);
-  
-  /* Professional Icon Colors */
-  --fusion-icon-primary: #cccccc;
-  --fusion-icon-secondary: #969696;
-  --fusion-icon-accent: #007acc;
-  --fusion-icon-success: #4caf50;
-  --fusion-icon-warning: #ffc107;
-  --fusion-icon-error: #f44336;
-  
-  /* Block Type Colors - Engineering Discipline Based */
+
+  /* Block Type Colors */
   --fusion-block-electrical: #4fc3f7;
   --fusion-block-mechanical: #81c784;
   --fusion-block-software: #ffb74d;
   --fusion-block-thermal: #f06292;
   --fusion-block-structural: #9575cd;
   --fusion-block-control: #64b5f6;
-  
-  /* Professional Border Styles */
-  --fusion-border-thin: 1px;
-  --fusion-border-medium: 2px;
-  --fusion-border-thick: 3px;
-  --fusion-border-style: solid;
-  
-  /* Enhanced Typography Scale */
-  --fusion-font-weight-light: 300;
-  --fusion-font-weight-normal: 400;
-  --fusion-font-weight-medium: 500;
-  --fusion-font-weight-bold: 600;
-  
-  /* Animation Curves - Professional Easing */
-  --fusion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-  --fusion-ease-out: cubic-bezier(0, 0, 0.2, 1);
-  --fusion-ease-in: cubic-bezier(0.4, 0, 1, 1);
-  --fusion-ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Icon Colors */
+  --fusion-icon-primary: #cccccc;
+  --fusion-icon-secondary: #969696;
+  --fusion-icon-accent: #007acc;
+  --fusion-icon-success: #4caf50;
+  --fusion-icon-warning: #ffc107;
+  --fusion-icon-error: #f44336;
+
+  /* Gradients - subtle, not glass */
+  --fusion-gradient-primary: #2d2d30;
+  --fusion-gradient-secondary: #383838;
+  --fusion-gradient-button: #404040;
+  --fusion-gradient-button-hover: #4a4a4a;
+  --fusion-gradient-active: #007acc;
+  --fusion-gradient-subtle: rgba(255, 255, 255, 0.02);
+
+  /* === Z-INDEX SCALE === */
+  --z-canvas: 1;
+  --z-blocks: 10;
+  --z-connections: 5;
+  --z-legend: 100;
+  --z-toolbar: 200;
+  --z-secondary-toolbar: 150;
+  --z-dropdown: 300;
+  --z-tooltip: 400;
+  --z-notification: 500;
+  --z-modal: 600;
+  --z-overlay: 550;
 }
 
-/* === MILESTONE 10: PROFESSIONAL BLOCK STYLING === */
+/* === BLOCK STYLING === */
 
-/* Enhanced Block Base Style - PERFORMANCE OPTIMIZED */
+/* Block Base */
 .block {
-  fill: #383838;
-  stroke: #464646;
-  stroke-width: 1;
+  fill: var(--fusion-bg-tertiary);
+  stroke: var(--fusion-border-primary);
+  stroke-width: 1.5;
   cursor: move;
-  rx: 6;
-  ry: 6;
+  rx: 4;
+  ry: 4;
+  transition: fill var(--fusion-transition-fast) var(--fusion-ease-out),
+              stroke var(--fusion-transition-fast) var(--fusion-ease-out);
 }
 
-/* Professional Block Hover Effect - SIMPLIFIED */
+/* Block Hover */
 .block:hover {
-  fill: #464646;
-  stroke: #007acc;
+  fill: var(--fusion-bg-hover);
+  stroke: var(--fusion-accent-blue);
   stroke-width: 2;
 }
 
-/* Enhanced Selected State - consolidated below with animation */
+/* Block Selected */
+.block.selected {
+  stroke: var(--fusion-accent-orange);
+  stroke-width: 2.5;
+  fill: var(--fusion-bg-hover);
+}
 
-/* Block Type Styling - Engineering Disciplines */
+/* Block Type Styling */
 .block[data-type*="electrical"] {
   stroke: var(--fusion-block-electrical);
-  fill: linear-gradient(135deg, #2d2d30 0%, rgba(79, 195, 247, 0.1) 100%);
 }
 
 .block[data-type*="mechanical"] {
   stroke: var(--fusion-block-mechanical);
-  fill: linear-gradient(135deg, #2d2d30 0%, rgba(129, 199, 132, 0.1) 100%);
 }
 
 .block[data-type*="software"] {
   stroke: var(--fusion-block-software);
-  fill: linear-gradient(135deg, #2d2d30 0%, rgba(255, 183, 77, 0.1) 100%);
 }
 
 .block[data-type*="thermal"] {
   stroke: var(--fusion-block-thermal);
-  fill: linear-gradient(135deg, #2d2d30 0%, rgba(240, 98, 146, 0.1) 100%);
 }
 
 .block[data-type*="control"] {
   stroke: var(--fusion-block-control);
-  fill: linear-gradient(135deg, #2d2d30 0%, rgba(100, 181, 246, 0.1) 100%);
 }
 
-/* Professional Status Indicators - PERFORMANCE OPTIMIZED */
+/* Status Indicators */
 .block[data-status="placeholder"] {
-  stroke: #969696;
-  stroke-dasharray: 5,3;
-  fill: rgba(150, 150, 150, 0.1);
+  stroke: var(--fusion-status-placeholder);
+  stroke-dasharray: 5, 3;
+  fill: var(--fusion-status-placeholder-bg);
 }
 
 .block[data-status="planned"] {
-  stroke: #87ceeb;
-  fill: rgba(135, 206, 235, 0.1);
+  stroke: var(--fusion-status-planned);
+  fill: var(--fusion-status-planned-bg);
 }
 
 .block[data-status="in-work"] {
-  stroke: #ffc107;
-  fill: rgba(255, 193, 7, 0.1);
+  stroke: var(--fusion-status-in-work);
+  fill: var(--fusion-status-in-work-bg);
 }
 
 .block[data-status="implemented"] {
-  stroke: #4caf50;
-  fill: rgba(76, 175, 80, 0.1);
+  stroke: var(--fusion-status-implemented);
+  fill: var(--fusion-status-implemented-bg);
 }
 
 .block[data-status="verified"] {
-  stroke: #00ff00;
-  fill: rgba(0, 255, 0, 0.1);
+  stroke: var(--fusion-status-verified);
+  fill: var(--fusion-status-verified-bg);
 }
 
-/* Enhanced Typography for Blocks - PERFORMANCE OPTIMIZED */
+/* Block Text */
 .block-text {
-  fill: #f0f0f0;
-  font-family: 'Segoe UI', sans-serif;
+  fill: var(--fusion-text-primary);
+  font-family: var(--fusion-font-family);
   font-weight: 500;
-  font-size: 12px;
+  font-size: var(--fusion-font-size-normal);
   text-anchor: middle;
   dominant-baseline: central;
-}
-
-.status-text {
-  fill: #d0d0d0;
-  font-family: 'Segoe UI', sans-serif;
-  font-weight: 500;
-  text-anchor: middle;
-  dominant-baseline: central;
-}
-
-/* === MILESTONE 10 PHASE 2: ADVANCED BLOCK FEATURES - PERFORMANCE OPTIMIZED === */
-
-/* Dynamic Block Sizing Based on Content */
-.block.compact {
-  rx: 2;
-  ry: 2;
-}
-
-.block.standard {
-  rx: 4;
-  ry: 4;
-}
-
-.block.expanded {
-  rx: 6;
-  ry: 6;
-}
-
-/* Block Thumbnails and Preview System */
-.block-thumbnail {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 32px;
-  height: 24px;
-  background: var(--fusion-bg-primary);
-  border: 1px solid var(--fusion-border-secondary);
-  border-radius: var(--fusion-radius-small);
-  overflow: hidden;
-  box-shadow: var(--fusion-shadow-light);
-  transition: all var(--fusion-transition) var(--fusion-ease-in-out);
-}
-
-.block-thumbnail:hover {
-  transform: scale(1.2);
-  box-shadow: var(--fusion-shadow-floating);
-  z-index: 100;
-}
-
-.block-thumbnail img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.block-thumbnail::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.1) 100%);
   pointer-events: none;
 }
 
-/* Professional Connection Path Styling - PERFORMANCE OPTIMIZED */
+.status-text {
+  fill: var(--fusion-text-secondary);
+  font-family: var(--fusion-font-family);
+  font-weight: 500;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+/* Block Size Variants */
+.block.compact { rx: 2; ry: 2; }
+.block.standard { rx: 4; ry: 4; }
+.block.expanded { rx: 6; ry: 6; }
+
+/* === CONNECTION STYLING === */
+
 .connection-path {
   stroke-width: 2px;
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
+  transition: stroke-width var(--fusion-transition-fast) var(--fusion-ease-out);
 }
 
 .connection-path:hover {
@@ -325,33 +276,25 @@
 
 .connection-path.power {
   stroke: var(--fusion-connection-power);
-  stroke-dasharray: none;
 }
 
 .connection-path.data {
   stroke: var(--fusion-connection-data);
-  stroke-dasharray: 8,4;
+  stroke-dasharray: 8, 4;
 }
 
 .connection-path.electrical {
   stroke: var(--fusion-connection-electrical);
-  stroke-dasharray: 4,2;
+  stroke-dasharray: 4, 2;
 }
 
 .connection-path.mechanical {
   stroke: var(--fusion-connection-mechanical);
-  stroke-dasharray: 12,6;
+  stroke-dasharray: 12, 6;
 }
 
 .connection-path.selected {
   stroke-width: 4px;
-  filter: drop-shadow(0 0 12px currentColor);
-  animation: connectionPulse 2s ease-in-out infinite alternate;
-}
-
-@keyframes connectionPulse {
-  0% { opacity: 0.8; }
-  100% { opacity: 1; }
 }
 
 /* Professional Block Icons */
@@ -391,17 +334,17 @@
   left: 100%;
 }
 
-/* === MILESTONE 10 PHASE 3: PROFESSIONAL POLISH & INTERACTIONS === */
+/* === CONTEXT MENU === */
 
-/* Enhanced Context Menu System - PERFORMANCE OPTIMIZED */
 .fusion-context-menu {
   position: absolute;
-  background: #2d2d30;
-  border: 1px solid #555555;
-  border-radius: 4px;
+  background: var(--fusion-bg-primary);
+  border: 1px solid var(--fusion-border-secondary);
+  border-radius: var(--fusion-radius-medium);
   min-width: 180px;
-  z-index: 10000;
+  z-index: var(--z-context-menu);
   display: none;
+  box-shadow: var(--fusion-shadow-medium);
 }
 
 .fusion-context-menu.show {
@@ -412,67 +355,44 @@
   padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
   color: var(--fusion-text-primary);
   cursor: pointer;
-  transition: all var(--fusion-transition-fast) var(--fusion-ease-in-out);
   display: flex;
   align-items: center;
   gap: var(--fusion-spacing-sm);
   font-size: var(--fusion-font-size-normal);
-  position: relative;
-  overflow: hidden;
-}
-
-.fusion-context-menu-item::before {
-  content: '';
-  position: absolute;
-  left: -100%;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(0, 122, 204, 0.1), transparent);
-  transition: left var(--fusion-transition) var(--fusion-ease-out);
+  transition: background var(--fusion-transition-fast) var(--fusion-ease-out);
 }
 
 .fusion-context-menu-item:hover {
   background: var(--fusion-bg-hover);
-  color: var(--fusion-text-inverse);
-  transform: translateX(4px);
-}
-
-.fusion-context-menu-item:hover::before {
-  left: 100%;
 }
 
 .fusion-context-menu-item.disabled {
   color: var(--fusion-text-disabled);
   cursor: not-allowed;
-}
-
-.fusion-context-menu-item.disabled:hover {
-  background: none;
-  transform: none;
+  pointer-events: none;
 }
 
 .fusion-context-menu-separator {
   height: 1px;
   background: var(--fusion-border-primary);
   margin: var(--fusion-spacing-xs) 0;
-  opacity: 0.5;
 }
 
-/* Enhanced Tooltips System - PERFORMANCE OPTIMIZED */
+/* === TOOLTIPS === */
+
 .fusion-tooltip {
   position: absolute;
-  background: #2d2d30;
-  color: #f0f0f0;
-  padding: 8px 12px;
-  border-radius: 4px;
-  border: 1px solid #555555;
-  font-size: 11px;
-  font-weight: 500;
-  z-index: 10001;
+  background: var(--fusion-bg-primary);
+  color: var(--fusion-text-primary);
+  padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
+  border-radius: var(--fusion-radius-small);
+  border: 1px solid var(--fusion-border-secondary);
+  font-size: var(--fusion-font-size-small);
+  z-index: var(--z-tooltip);
   display: none;
   max-width: 250px;
   line-height: 1.4;
+  box-shadow: var(--fusion-shadow-medium);
 }
 
 .fusion-tooltip.show {
@@ -497,10 +417,10 @@
   transform: translateX(-50%);
   border: 5px solid transparent;
   border-bottom-color: var(--fusion-bg-primary);
-  margin-top: 1px;
 }
 
-/* Professional Loading States */
+/* === LOADING STATES === */
+
 .fusion-loader {
   display: inline-flex;
   align-items: center;
@@ -513,7 +433,7 @@
   width: 16px;
   height: 16px;
   border: 2px solid var(--fusion-border-primary);
-  border-top: 2px solid var(--fusion-accent-blue);
+  border-top-color: var(--fusion-accent-blue);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -529,12 +449,11 @@
   background: var(--fusion-bg-secondary);
   border-radius: var(--fusion-radius-small);
   overflow: hidden;
-  position: relative;
 }
 
 .fusion-progress-fill {
   height: 100%;
-  background: var(--fusion-gradient-active);
+  background: var(--fusion-accent-blue);
   border-radius: var(--fusion-radius-small);
   transition: width var(--fusion-transition) var(--fusion-ease-out);
   position: relative;
@@ -558,6 +477,8 @@
 }
 
 /* Enhanced Keyboard Shortcut Visual Feedback */
+/* === SHORTCUT HINTS === */
+
 .fusion-shortcut-hint {
   position: absolute;
   top: -30px;
@@ -567,22 +488,21 @@
   padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
   border-radius: var(--fusion-radius-small);
   font-size: var(--fusion-font-size-small);
-  font-family: 'Courier New', monospace;
+  font-family: var(--fusion-font-mono);
   border: 1px solid var(--fusion-border-secondary);
   box-shadow: var(--fusion-shadow-light);
   opacity: 0;
-  transform: translateY(5px);
-  transition: all var(--fusion-transition) var(--fusion-ease-out);
   pointer-events: none;
+  transition: opacity var(--fusion-transition-fast) var(--fusion-ease-out);
 }
 
 .fusion-button:hover .fusion-shortcut-hint,
 .context-btn:hover .fusion-shortcut-hint {
   opacity: 1;
-  transform: translateY(0);
 }
 
-/* Professional Focus States */
+/* === FOCUS STATES === */
+
 .fusion-button:focus-visible,
 .context-btn:focus-visible,
 .fusion-input:focus-visible {
@@ -590,9 +510,8 @@
   outline-offset: 2px;
 }
 
-/* Interactive Elements - PERFORMANCE OPTIMIZED - Removed expensive effects */
+/* === STATUS INDICATORS === */
 
-/* Professional Status Indicators */
 .status-indicator {
   display: inline-flex;
   align-items: center;
@@ -601,7 +520,6 @@
   border-radius: var(--fusion-radius-medium);
   font-size: var(--fusion-font-size-small);
   font-weight: var(--fusion-font-weight-medium);
-  transition: all var(--fusion-transition) var(--fusion-ease-in-out);
 }
 
 .status-indicator.success {
@@ -628,89 +546,51 @@
   height: 6px;
   border-radius: 50%;
   background: currentColor;
-  animation: statusPulse 2s ease-in-out infinite;
 }
 
-@keyframes statusPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* === MILESTONE 10: BLOCK ANIMATIONS DISABLED FOR PERFORMANCE === */
-
-/* Block selection styling applied to child elements to preserve text readability */
+/* === BLOCK SELECTION === */
 
 .block-selected rect,
 .block-selected ellipse,
 .block-selected polygon,
 .block-selected path {
-  stroke: var(--fusion-accent-orange) !important;
-  stroke-width: 3 !important;
-  /* Disable expensive filters for better performance */
-  /* filter: drop-shadow(0 2px 8px rgba(255,140,0,0.4)) 
-          drop-shadow(0 0 0 2px rgba(255,140,0,0.3)); */
+  stroke: var(--fusion-accent-orange);
+  stroke-width: 3px;
 }
 
 .block-selected text {
-  /* Preserve text readability - NO stroke effects on text */
-  fill: var(--fusion-text-primary) !important;
-  font-weight: 500 !important;
-  /* Explicitly remove any stroke effects */
-  stroke: none !important;
-  stroke-width: 0 !important;
+  fill: var(--fusion-text-primary);
+  font-weight: 500;
 }
 
-/* Lasso selection rectangle styling */
+/* Lasso selection rectangle */
 .lasso-selection {
   fill: rgba(0, 122, 204, 0.1);
   stroke: var(--fusion-accent-blue);
   stroke-width: 1;
-  stroke-dasharray: 3,3;
+  stroke-dasharray: 3, 3;
   pointer-events: none;
-  /* Remove animation for better performance */
 }
 
-/* Selected blocks should maintain their transform even on hover - FORCED */
-.block.selected:hover {
-  transform: translateY(-3px) scale(1.03) !important;
-}
-
-/* Animations disabled for performance */
-
-/* Enhanced focus ring - PERFORMANCE OPTIMIZED */
+/* Focus ring for blocks */
 .block:focus,
 .block-group:focus-within .block {
-  outline: 3px solid #007acc;
+  outline: 3px solid var(--fusion-accent-blue);
   outline-offset: 3px;
 }
 
-.page-transition.loaded {
-  opacity: 1;
-  transform: translateY(0);
-}
+/* === NOTIFICATIONS === */
 
-/* Enhanced SVG animations */
-.block-text {
-  transition: all var(--fusion-transition-fast) var(--fusion-ease-out);
-}
-
-.block:hover .block-text {
-  transform: scale(1.02);
-  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
-}
-
-/* Professional notification system */
 .fusion-notification {
   position: fixed;
   top: 20px;
   right: 20px;
-  background: var(--fusion-gradient-primary);
+  background: var(--fusion-bg-primary);
   border: 1px solid var(--fusion-border-secondary);
   border-radius: var(--fusion-radius-medium);
   padding: var(--fusion-spacing-md);
-  box-shadow: var(--fusion-shadow-floating);
-  backdrop-filter: blur(15px);
-  z-index: 10002;
+  box-shadow: var(--fusion-shadow-medium);
+  z-index: var(--z-notification);
   transform: translateX(100%);
   transition: transform var(--fusion-transition) var(--fusion-ease-out);
   max-width: 300px;
@@ -732,7 +612,8 @@
   border-left: 4px solid var(--fusion-status-error);
 }
 
-/* Professional form styling */
+/* === FORMS === */
+
 .fusion-form-group {
   margin-bottom: var(--fusion-spacing-md);
 }
@@ -752,29 +633,24 @@
   font-size: var(--fusion-font-size-normal);
   padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
   border-radius: var(--fusion-radius-small);
-  transition: all var(--fusion-transition) var(--fusion-ease-in-out);
+  transition: border-color var(--fusion-transition-fast) var(--fusion-ease-out);
   outline: none;
-  box-shadow: var(--fusion-shadow-inset);
   cursor: pointer;
 }
 
 .fusion-select:focus {
   border-color: var(--fusion-input-focus);
-  box-shadow: var(--fusion-shadow-inset), var(--fusion-shadow-glow);
 }
 
 .fusion-select:hover {
   background: var(--fusion-bg-hover);
 }
 
-/* MILESTONE 10 COMPLETE - Professional UI Integration! */
+/* === BUTTONS === */
 
-/* === FUSION 360 COMPONENT STYLES === */
-
-/* === MILESTONE 10: ENHANCED PROFESSIONAL BUTTONS === */
 .fusion-button {
-  background: var(--fusion-gradient-button);
-  border: var(--fusion-border-thin) var(--fusion-border-style) var(--fusion-button-border);
+  background: var(--fusion-bg-secondary);
+  border: 1px solid var(--fusion-button-border);
   color: var(--fusion-text-primary);
   font-family: var(--fusion-font-family);
   font-size: var(--fusion-font-size-normal);
@@ -782,46 +658,25 @@
   padding: var(--fusion-spacing-xs) var(--fusion-spacing-md);
   border-radius: var(--fusion-radius-medium);
   cursor: pointer;
-  transition: all var(--fusion-transition) var(--fusion-ease-in-out);
+  transition: background var(--fusion-transition-fast) var(--fusion-ease-out),
+              border-color var(--fusion-transition-fast) var(--fusion-ease-out);
   outline: none;
-  box-shadow: var(--fusion-shadow-button);
-  position: relative;
-  overflow: hidden;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-}
-
-.fusion-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  transition: left var(--fusion-transition-slow) var(--fusion-ease-out);
 }
 
 .fusion-button:hover {
-  background: var(--fusion-gradient-button-hover);
+  background: var(--fusion-bg-hover);
   border-color: var(--fusion-border-hover);
-  box-shadow: var(--fusion-shadow-button), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  transform: translateY(-1px);
-}
-
-.fusion-button:hover::before {
-  left: 100%;
 }
 
 .fusion-button:active {
-  background: var(--fusion-gradient-active);
+  background: var(--fusion-accent-blue);
   border-color: var(--fusion-accent-blue);
   color: var(--fusion-text-inverse);
-  box-shadow: var(--fusion-shadow-inset), var(--fusion-shadow-glow);
-  transform: translateY(0);
 }
 
-.fusion-button:focus {
-  box-shadow: var(--fusion-shadow-button), var(--fusion-shadow-glow);
+.fusion-button:focus-visible {
+  outline: 2px solid var(--fusion-accent-blue);
+  outline-offset: 2px;
 }
 
 .fusion-button:disabled {
@@ -829,75 +684,51 @@
   color: var(--fusion-text-disabled);
   cursor: not-allowed;
   border-color: var(--fusion-border-primary);
-  box-shadow: none;
-  transform: none;
 }
 
-.fusion-button:disabled::before {
-  display: none;
-}
+/* === PANELS === */
 
-/* === MILESTONE 10: ENHANCED PANEL STYLING === */
-
-/* Professional Panels */
 .fusion-panel {
-  background: var(--fusion-gradient-primary);
-  border: var(--fusion-border-thin) var(--fusion-border-style) var(--fusion-panel-border);
+  background: var(--fusion-bg-primary);
+  border: 1px solid var(--fusion-panel-border);
   border-radius: var(--fusion-radius-medium);
   box-shadow: var(--fusion-shadow-panel);
-  backdrop-filter: blur(10px);
-  position: relative;
-  overflow: hidden;
 }
 
-.fusion-panel::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  pointer-events: none;
-}
-
-/* Enhanced Header Styling */
+/* Header */
 .fusion-header {
-  background: var(--fusion-gradient-secondary);
-  border-bottom: var(--fusion-border-thin) var(--fusion-border-style) var(--fusion-border-primary);
+  background: var(--fusion-bg-secondary);
+  border-bottom: 1px solid var(--fusion-border-primary);
   padding: var(--fusion-spacing-md) var(--fusion-spacing-lg);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: var(--fusion-shadow-light);
-  backdrop-filter: blur(10px);
 }
 
-/* Professional Input Styling */
+/* === INPUTS === */
+
 .fusion-input {
   background: var(--fusion-input-bg);
-  border: var(--fusion-border-thin) var(--fusion-border-style) var(--fusion-input-border);
+  border: 1px solid var(--fusion-input-border);
   color: var(--fusion-text-primary);
   font-family: var(--fusion-font-family);
   font-size: var(--fusion-font-size-normal);
   padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
   border-radius: var(--fusion-radius-small);
-  transition: all var(--fusion-transition) var(--fusion-ease-in-out);
+  transition: border-color var(--fusion-transition-fast) var(--fusion-ease-out);
   outline: none;
-  box-shadow: var(--fusion-shadow-inset);
 }
 
 .fusion-input:focus {
   border-color: var(--fusion-input-focus);
-  box-shadow: var(--fusion-shadow-inset), var(--fusion-shadow-glow);
 }
 
 .fusion-input::placeholder {
   color: var(--fusion-text-secondary);
-  font-style: italic;
 }
 
-/* Professional Dropdown Styling */
+/* === DROPDOWNS === */
+
 .fusion-dropdown {
   position: relative;
   display: inline-block;
@@ -908,21 +739,18 @@
   top: 100%;
   left: 0;
   min-width: 200px;
-  background: var(--fusion-gradient-primary);
-  border: var(--fusion-border-thin) var(--fusion-border-style) var(--fusion-border-secondary);
+  background: var(--fusion-bg-primary);
+  border: 1px solid var(--fusion-border-secondary);
   border-radius: var(--fusion-radius-medium);
-  box-shadow: var(--fusion-shadow-floating);
-  backdrop-filter: blur(15px);
-  z-index: 10000;
+  box-shadow: var(--fusion-shadow-medium);
+  z-index: var(--z-dropdown);
   opacity: 0;
-  transform: translateY(-10px);
   visibility: hidden;
-  transition: all var(--fusion-transition) var(--fusion-ease-out);
+  transition: opacity var(--fusion-transition-fast) var(--fusion-ease-out);
 }
 
 .fusion-dropdown-menu.show {
   opacity: 1;
-  transform: translateY(0);
   visibility: visible;
 }
 
@@ -930,7 +758,7 @@
   padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
   color: var(--fusion-text-primary);
   cursor: pointer;
-  transition: all var(--fusion-transition-fast) var(--fusion-ease-in-out);
+  transition: background var(--fusion-transition-fast) var(--fusion-ease-out);
   display: flex;
   align-items: center;
   gap: var(--fusion-spacing-sm);
@@ -938,7 +766,6 @@
 
 .fusion-dropdown-item:hover {
   background: var(--fusion-bg-hover);
-  color: var(--fusion-text-inverse);
 }
 
 .fusion-dropdown-item:first-child {
@@ -951,29 +778,30 @@
   border-bottom-right-radius: var(--fusion-radius-medium);
 }
 
-/* Professional Toolbar Styling */
+/* === TOOLBAR === */
+
 .fusion-toolbar {
   display: flex;
   gap: var(--fusion-spacing-sm);
   align-items: center;
-  padding: var(--fusion-spacing-xs);
-  background: var(--fusion-gradient-secondary);
-  border-radius: var(--fusion-radius-medium);
-  box-shadow: var(--fusion-shadow-light);
+  padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
+  background: var(--fusion-bg-secondary);
+  border-bottom: 1px solid var(--fusion-border-primary);
 }
 
-.fusion-toolbar-separator {
+.fusion-toolbar-separator,
+.separator {
   width: 1px;
   height: 20px;
   background: var(--fusion-border-primary);
   margin: 0 var(--fusion-spacing-xs);
 }
 
-/* === MILESTONE 10: LEGACY BUTTON COMPATIBILITY === */
-/* Make context-btn buttons look like fusion-button for consistency */
+/* === CONTEXT BUTTONS (alias for fusion-button) === */
+
 .context-btn {
-  background: var(--fusion-gradient-button);
-  border: var(--fusion-border-thin) var(--fusion-border-style) var(--fusion-button-border);
+  background: var(--fusion-bg-secondary);
+  border: 1px solid var(--fusion-button-border);
   color: var(--fusion-text-primary);
   font-family: var(--fusion-font-family);
   font-size: var(--fusion-font-size-normal);
@@ -981,49 +809,28 @@
   padding: var(--fusion-spacing-xs) var(--fusion-spacing-md);
   border-radius: var(--fusion-radius-medium);
   cursor: pointer;
-  transition: all var(--fusion-transition) var(--fusion-ease-in-out);
+  transition: background var(--fusion-transition-fast) var(--fusion-ease-out),
+              border-color var(--fusion-transition-fast) var(--fusion-ease-out);
   outline: none;
-  box-shadow: var(--fusion-shadow-button);
-  position: relative;
-  overflow: hidden;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
   display: inline-flex;
   align-items: center;
   gap: var(--fusion-spacing-xs);
 }
 
-.context-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  transition: left var(--fusion-transition-slow) var(--fusion-ease-out);
-}
-
 .context-btn:hover {
-  background: var(--fusion-gradient-button-hover);
+  background: var(--fusion-bg-hover);
   border-color: var(--fusion-border-hover);
-  box-shadow: var(--fusion-shadow-button), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  transform: translateY(-1px);
-}
-
-.context-btn:hover::before {
-  left: 100%;
 }
 
 .context-btn:active {
-  background: var(--fusion-gradient-active);
+  background: var(--fusion-accent-blue);
   border-color: var(--fusion-accent-blue);
   color: var(--fusion-text-inverse);
-  box-shadow: var(--fusion-shadow-inset), var(--fusion-shadow-glow);
-  transform: translateY(0);
 }
 
-.context-btn:focus {
-  box-shadow: var(--fusion-shadow-button), var(--fusion-shadow-glow);
+.context-btn:focus-visible {
+  outline: 2px solid var(--fusion-accent-blue);
+  outline-offset: 2px;
 }
 
 .context-btn:disabled {
@@ -1031,33 +838,20 @@
   color: var(--fusion-text-disabled);
   cursor: not-allowed;
   border-color: var(--fusion-border-primary);
-  box-shadow: none;
-  transform: none;
 }
 
-.context-btn:disabled::before {
-  display: none;
-}
-
-/* Legacy separator compatibility */
-.separator {
-  width: 1px;
-  height: 20px;
-  background: var(--fusion-border-primary);
-  margin: 0 var(--fusion-spacing-xs);
-  opacity: 0.5;
-}
-
-/* Legacy search input compatibility */
+/* Search input sizing */
 .search-input {
   min-width: 200px;
 }
 
+/* Filter button sizing */
 .filter-btn {
   font-size: var(--fusion-font-size-small);
   padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
 }
 
+/* Primary button variant */
 .fusion-button.primary {
   background: var(--fusion-accent-blue);
   color: var(--fusion-text-inverse);
@@ -1069,50 +863,8 @@
   border-color: #005a9e;
 }
 
-/* Input Controls */
-.fusion-input,
-.fusion-select {
-  background: var(--fusion-input-bg);
-  border: 1px solid var(--fusion-input-border);
-  color: var(--fusion-text-primary);
-  font-family: var(--fusion-font-family);
-  font-size: var(--fusion-font-size-normal);
-  padding: var(--fusion-spacing-xs) var(--fusion-spacing-sm);
-  border-radius: var(--fusion-radius-small);
-  outline: none;
-  transition: border-color 0.15s ease;
-}
+/* === STATUS COLORS === */
 
-.fusion-input:focus,
-.fusion-select:focus {
-  border-color: var(--fusion-input-focus);
-  box-shadow: 0 0 0 1px var(--fusion-input-focus);
-}
-
-.fusion-input:hover,
-.fusion-select:hover {
-  border-color: var(--fusion-border-hover);
-}
-
-/* Panels */
-.fusion-panel {
-  background: var(--fusion-panel-bg);
-  border: 1px solid var(--fusion-panel-border);
-  border-radius: var(--fusion-radius-medium);
-  padding: var(--fusion-spacing-md);
-  color: var(--fusion-text-primary);
-}
-
-.fusion-toolbar {
-  background: var(--fusion-bg-secondary);
-  border-bottom: 1px solid var(--fusion-border-primary);
-  padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
-  display: flex;
-  align-items: center;
-  gap: var(--fusion-spacing-sm);
-}
-
-/* Status Colors */
 .fusion-status-placeholder {
   color: var(--fusion-text-secondary);
   border-color: var(--fusion-border-secondary);
@@ -1237,35 +989,45 @@
   background: var(--fusion-border-hover);
 }
 
-/* Context Menu */
-.fusion-context-menu {
-  background: var(--fusion-panel-bg);
-  border: 1px solid var(--fusion-panel-border);
-  border-radius: var(--fusion-radius-small);
-  box-shadow: var(--fusion-shadow-medium);
-  padding: var(--fusion-spacing-xs) 0;
-  min-width: 150px;
+/* === EMPTY CANVAS STATE === */
+
+.empty-canvas-state {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--fusion-text-secondary);
+  padding: var(--fusion-spacing-xl);
+  max-width: 320px;
 }
 
-.fusion-context-menu-item {
-  padding: var(--fusion-spacing-xs) var(--fusion-spacing-md);
+.empty-canvas-state.hidden {
+  display: none;
+}
+
+.empty-canvas-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--fusion-spacing-md);
+  opacity: 0.5;
+}
+
+.empty-canvas-state h3 {
+  font-size: var(--fusion-font-size-large);
+  font-weight: var(--fusion-font-weight-semibold);
   color: var(--fusion-text-primary);
-  cursor: pointer;
-  font-family: var(--fusion-font-family);
+  margin: 0 0 var(--fusion-spacing-sm) 0;
+}
+
+.empty-canvas-state p {
   font-size: var(--fusion-font-size-normal);
-  border: none;
-  background: none;
-  width: 100%;
-  text-align: left;
-  transition: background-color 0.15s ease;
+  margin: 0 0 var(--fusion-spacing-lg) 0;
+  line-height: 1.5;
 }
 
-.fusion-context-menu-item:hover {
-  background: var(--fusion-bg-hover);
-}
-
-.fusion-context-menu-separator {
-  height: 1px;
-  background: var(--fusion-border-primary);
-  margin: var(--fusion-spacing-xs) 0;
+.empty-canvas-state .fusion-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fusion-spacing-xs);
 }

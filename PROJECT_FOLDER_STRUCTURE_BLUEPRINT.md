@@ -3,8 +3,8 @@
 
 **Generated:** December 22, 2025  
 **Project Type:** Python/JavaScript Hybrid (Fusion 360 Add-in)  
-**Architecture:** Monolithic Backend + Modular Frontend  
-**Last Structure Update:** December 21, 2025
+**Architecture:** Two-Layer Backend (Core + Adapter) + Modular Frontend  
+**Last Structure Update:** February 5, 2026
 
 ---
 
@@ -18,13 +18,16 @@ This is a **Python-based Fusion 360 add-in** with a **JavaScript/HTML5 frontend*
 
 ### Organizational Principles
 1. **Separation by Technology Layer**: Python (backend) vs. JavaScript (frontend) kept distinct
-2. **Feature-Based Frontend Modules**: UI code organized by responsibility (core, ui, features, interface, utils)
-3. **Flat Backend with Delegation**: Root-level Python entry point delegates to `src/diagram_data.py` for business logic
-4. **Documentation Co-location**: Architecture decisions, UX research, and design notes live in `docs/`
-5. **Test Mirroring**: Test files mirror the structure of `src/` with `test_*.py` naming
+2. **Two-Layer Python Architecture**: Pure Python core library (`core/`) + Fusion adapter layer (`fusion_addin/`)
+3. **Feature-Based Frontend Modules**: UI code organized by responsibility (core, ui, features, interface, utils)
+4. **Testable Core Logic**: Core library has NO Fusion dependencies, enabling pytest outside Fusion 360
+5. **Documentation Co-location**: Architecture decisions, UX research, and design notes live in `docs/`
+6. **Test Mirroring**: Test files mirror the structure of `src/` and `core/` with `test_*.py` naming
 
 ### Architectural Approach
-- **Backend**: Monolithic Python script (`Fusion_System_Blocks.py`) acts as the Fusion 360 entry point, importing shared logic from `src/diagram_data.py`
+- **Core Library (`core/`)**: Pure Python business logic with dataclasses, validation, and action planning. NO `adsk` imports—fully testable with pytest.
+- **Fusion Adapter (`fusion_addin/`)**: Thin wrappers that translate between core library and Fusion 360 API. Includes logging, diagnostics, selection, and document operations.
+- **Entry Point**: `Fusion_System_Blocks.py` acts as the Fusion 360 entry point, orchestrating core library and adapter modules.
 - **Frontend**: Modular JavaScript with clear boundaries (editor core, rendering, UI management, Python bridge, advanced features)
 - **Persistence**: Diagram data stored as JSON in Fusion 360 document attributes; no external database
 - **Bridge Pattern**: Python ↔ JavaScript communication via `adsk.fusionSendData()` and global window functions
@@ -48,6 +51,13 @@ Fusion_System_Blocks/
 │   └── README.md                  # Asset organization guide
 ├── CHANGELOG.md                   # Version history and release notes
 ├── copilot-instructions.md        # High-level Copilot guidance for the project
+├── core/                          # Pure Python core library (NO Fusion dependencies)
+│   ├── __init__.py                # Package exports for all core modules
+│   ├── models.py                  # Dataclasses: Block, Port, Connection, Graph, enums
+│   ├── validation.py              # Graph validation with structured error codes
+│   ├── action_plan.py             # Action plan builder for deferred Fusion operations
+│   ├── graph_builder.py           # Fluent API for constructing graphs
+│   └── serialization.py           # JSON serialization with legacy format support
 ├── docs/                          # Project documentation
 │   ├── architecture/              # Architecture decision records (ADRs) and review reports
 │   ├── ux/                        # UX research (JTBD, journey maps, flows)
@@ -59,6 +69,13 @@ Fusion_System_Blocks/
 │   └── TESTING_CHECKLIST.md       # Manual testing checklist
 ├── exports/                       # Build artifacts (distribution ZIPs)
 │   └── Fusion_System_Blocks_v1.0_Beta.zip
+├── fusion_addin/                  # Fusion 360 adapter layer (bridges core and Fusion API)
+│   ├── __init__.py                # Package exports with lazy imports
+│   ├── adapter.py                 # FusionAdapter class for core ↔ Fusion translation
+│   ├── selection.py               # SelectionHandler for Fusion selection workflows
+│   ├── document.py                # DocumentManager for Fusion document operations
+│   ├── logging_util.py            # Production logging with session IDs, decorators
+│   └── diagnostics.py             # DiagnosticsRunner with self-test suite
 ├── FUSION_DEPLOYMENT_GUIDE.md     # Deployment instructions for Fusion 360
 ├── fusion_system_blocks/          # Packaged add-in folder (for distribution)
 │   ├── __init__.py                # Package initializer
@@ -101,7 +118,9 @@ Fusion_System_Blocks/
 │   ├── palette.html               # Main HTML palette UI (entry point for frontend)
 │   └── palette.js                 # Palette initialization and legacy orchestration
 ├── tasks.md                       # Project task list and TODOs
-├── tests/                         # Automated tests (pytest)
+├── tests/                         # Automated tests (pytest) - 128 tests total
+│   ├── test_core_action_plan.py   # Tests for core/action_plan.py (24 tests)
+│   ├── test_core_validation.py    # Tests for core/validation.py (24 tests)
 │   ├── test_diagram_data.py       # Tests for diagram_data.py core logic
 │   ├── test_export_reports.py    # Tests for export functionality
 │   ├── test_hierarchy.py          # Tests for hierarchical diagrams

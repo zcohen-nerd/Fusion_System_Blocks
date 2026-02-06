@@ -4,7 +4,7 @@ Fusion System Blocks is a Fusion 360 add-in that embeds system block diagrams di
 
 [![License: Community](https://img.shields.io/badge/License-Community-blueviolet.svg)](LICENSE)
 [![Fusion 360](https://img.shields.io/badge/Platform-Fusion%20360-orange.svg)](https://www.autodesk.com/products/fusion-360)
-[![Status](https://img.shields.io/badge/Milestones-14%20of%2015%20Complete-blue.svg)]()
+[![Status](https://img.shields.io/badge/Milestones-15%20of%2016%20Complete-blue.svg)]()
 
 ---
 
@@ -42,6 +42,7 @@ The repository contains the full code base, tests, documentation, and deployment
 | 13 | 3D visualization & living documentation | In progress |
 | 14 | Advanced diagram features | Complete |
 | 15 | AI-powered assistant | Planned |
+| 16 | Architecture refactoring & tooling | Complete |
 
 A detailed breakdown of remaining work lives in `tasks.md`.
 
@@ -76,10 +77,12 @@ A detailed breakdown of remaining work lives in `tasks.md`.
 ## Repository Structure
 
 - `Fusion_System_Blocks.py` – Fusion 360 entry point and command definitions.
+- `core/` – Pure Python library (models, validation, action planning) with NO Fusion dependencies.
+- `fusion_addin/` – Fusion 360 adapter layer (logging, diagnostics, selection, document operations).
 - `fusion_system_blocks/` – Packaged add-in files for deployment builds.
 - `src/` – JavaScript frontend modules, CSS, HTML palette, and demos.
-- `tests/` – Pytest suite covering diagram data, imports/exports, and validation logic.
-- `docs/` – Design notes and JSON schema for stored diagram data.
+- `tests/` – Pytest suite (128 tests) covering core library and diagram data logic.
+- `docs/` – Design notes, architecture decisions, and JSON schema.
 - `scripts/` – Automation for packaging, deployment, and repository management.
 
 ---

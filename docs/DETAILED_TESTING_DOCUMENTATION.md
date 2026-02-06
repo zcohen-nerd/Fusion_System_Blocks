@@ -2,8 +2,8 @@
 ## Fusion System Blocks - Complete Feature Documentation & Validation Reference
 
 **Created:** September 25, 2025  
-**Updated:** October 6, 2025 (README and licensing updates)  
-**System Status:** 14/15 Milestones Complete (Milestone 13 in progress)  
+**Updated:** February 5, 2026 (Milestone 16: Architecture refactoring & diagnostics)  
+**System Status:** 15/16 Milestones Complete (Milestone 13 in progress)  
 **Document Purpose:** Comprehensive reference documentation for all system features and testing procedures
 
 > **⚡ For Practical Testing:** Use `TESTING_CHECKLIST.md` (30-minute workflow)  
@@ -13,7 +13,7 @@
 
 ## 📋 DOCUMENTATION OVERVIEW
 
-This detailed documentation provides comprehensive validation procedures for the entire Fusion System Blocks system across **15 completed milestones (100%)**. It serves as both a testing reference and complete feature documentation, covering every aspect from basic diagram creation to advanced 3D visualization, living documentation, and professional diagramming features.
+This detailed documentation provides comprehensive validation procedures for the entire Fusion System Blocks system across **16 milestones (15 complete, 1 in progress)**. It serves as both a testing reference and complete feature documentation, covering every aspect from basic diagram creation to advanced 3D visualization, living documentation, and professional diagramming features.
 
 ### 🎯 Testing Objectives
 1. **Functional Validation**: Verify all features work as designed
@@ -22,6 +22,7 @@ This detailed documentation provides comprehensive validation procedures for the
 4. **User Experience Testing**: Confirm professional, intuitive workflows
 5. **Data Integrity Testing**: Ensure JSON schema compliance and data persistence
 6. **API Integration Testing**: Validate Fusion 360 API communication
+7. **Diagnostics Testing**: Verify built-in self-test suite (Milestone 16)
 
 ---
 
@@ -32,8 +33,9 @@ This detailed documentation provides comprehensive validation procedures for the
 ### Phase 3: Advanced Features Testing (Milestones 8-11)
 ### Phase 4: Revolutionary Features Testing (Milestones 12-13)
 ### Phase 5: Professional Diagramming Testing (Milestone 14) 🆕
-### Phase 6: Integration & Performance Testing
-### Phase 7: User Acceptance Testing
+### Phase 6: Architecture & Tooling Testing (Milestone 16) 🆕
+### Phase 7: Integration & Performance Testing
+### Phase 8: User Acceptance Testing
 
 ---
 

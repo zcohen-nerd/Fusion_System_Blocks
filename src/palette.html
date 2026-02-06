@@ -1189,14 +1189,12 @@
     .connection-mechanical { stroke: var(--fusion-connection-mechanical); fill: var(--fusion-connection-mechanical); }
     .connection-generic { stroke: var(--fusion-text-secondary); fill: var(--fusion-text-secondary); }
   </style>
-    <!-- Tabs + Status Bar styles -->
+    <!-- Tabs + Status Bar styles - HIDDEN: use ribbon navigation instead -->
     <style>
-      .sb-tabbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--fusion-border-primary); background: var(--fusion-gradient-primary); position: relative; z-index: 1000; }
-      .sb-tab { border: 1px solid var(--fusion-button-border); background: var(--fusion-gradient-button); color: var(--fusion-text-primary); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
-      .sb-tab[aria-selected="true"] { background: var(--fusion-accent-blue); color: var(--fusion-text-inverse); border-color: var(--fusion-accent-blue); }
-      .sb-panel { position: absolute; top: 60px; left: 0; right: 0; bottom: 34px; overflow: auto; padding: 12px; background: rgba(0,0,0,0.4); backdrop-filter: blur(3px); display: none; }
-      .sb-panel.show { display: block; }
-      .sb-status { position: fixed; bottom: 0; left: 0; right: 0; height: 34px; display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-top: 1px solid var(--fusion-border-primary); background: var(--fusion-gradient-secondary); z-index: 1000; }
+      /* Hidden: Tabs conflict with ribbon navigation pattern - ribbon is Fusion 360 native */
+      .sb-tabbar { display: none; }
+      .sb-panel { display: none; }
+      .sb-status { position: fixed; bottom: 0; left: 0; right: 0; height: 34px; display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-top: 1px solid var(--fusion-border-primary); background: var(--fusion-bg-secondary); z-index: var(--z-fixed, 500); }
       .sb-status .pill { border: 1px solid var(--fusion-border-primary); border-radius: 12px; padding: 4px 8px; font-size: 12px; }
       .sb-section { margin-bottom: 16px; }
       .sb-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -1215,285 +1213,228 @@
       <div class="ribbon-groups">
         
         <!-- FILE GROUP -->
-        <div class="ribbon-group">
+        <div class="ribbon-group" role="group" aria-label="File operations">
           <div class="ribbon-content">
             <div class="ribbon-mixed">
-              <button id="btn-new" class="ribbon-button-large" title="Create New Diagram (Ctrl+N)">
-                <div class="ribbon-icon">📄</div>
+              <button id="btn-new" class="ribbon-button-large" title="Create New Diagram (Ctrl+N)" aria-label="Create New Diagram">
+                <div class="ribbon-icon" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-new"/></svg></div>
                 <div class="ribbon-text">New</div>
-                <div class="ribbon-shortcut">Ctrl+N</div>
+                <div class="ribbon-shortcut" aria-hidden="true">Ctrl+N</div>
               </button>
               <div class="ribbon-buttons-column">
-                <button id="btn-save" class="ribbon-button-small" title="Save Diagram (Ctrl+S)">
-                  <div class="ribbon-icon-small">💾</div>
+                <button id="btn-save" class="ribbon-button-small" title="Save Diagram (Ctrl+S)" aria-label="Save Diagram">
+                  <div class="ribbon-icon-small" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-save"/></svg></div>
                   <span>Save</span>
                 </button>
-                <button id="btn-load" class="ribbon-button-small" title="Load Diagram (Ctrl+O)">
-                  <div class="ribbon-icon-small">📁</div>
+                <button id="btn-load" class="ribbon-button-small" title="Load Diagram (Ctrl+O)" aria-label="Load Diagram">
+                  <div class="ribbon-icon-small" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-load"/></svg></div>
                   <span>Load</span>
                 </button>
-                <button id="btn-export-report" class="ribbon-button-small" title="Export Report">
-                  <div class="ribbon-icon-small">📤</div>
+                <button id="btn-export-report" class="ribbon-button-small" title="Export Report" aria-label="Export Report">
+                  <div class="ribbon-icon-small" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-export"/></svg></div>
                   <span>Export</span>
                 </button>
               </div>
             </div>
           </div>
-          <div class="ribbon-group-label">File</div>
+          <div class="ribbon-group-label" aria-hidden="true">File</div>
         </div>
 
         <!-- EDIT GROUP -->
-        <div class="ribbon-group">
+        <div class="ribbon-group" role="group" aria-label="Edit operations">
           <div class="ribbon-content">
             <div class="ribbon-mixed">
-              <button id="btn-undo" class="ribbon-button-large" disabled title="Undo (Ctrl+Z)">
-                <div class="ribbon-icon">↺</div>
+              <button id="btn-undo" class="ribbon-button-large" disabled title="Undo (Ctrl+Z)" aria-label="Undo">
+                <div class="ribbon-icon" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-undo"/></svg></div>
                 <div class="ribbon-text">Undo</div>
-                <div class="ribbon-shortcut">Ctrl+Z</div>
+                <div class="ribbon-shortcut" aria-hidden="true">Ctrl+Z</div>
               </button>
               <div class="ribbon-buttons-column">
                 <button id="btn-redo" class="ribbon-button-small" disabled title="Redo (Ctrl+Y)">
-                  <div class="ribbon-icon-small">↻</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-redo"/></svg></div>
                   <span>Redo</span>
                 </button>
                 <button id="btn-import" class="ribbon-button-small" title="Import">
-                  <div class="ribbon-icon-small">📥</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-load"/></svg></div>
                   <span>Import</span>
                 </button>
                 <button class="ribbon-button-small" title="Copy">
-                  <div class="ribbon-icon-small">📋</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-copy"/></svg></div>
                   <span>Copy</span>
                 </button>
               </div>
             </div>
           </div>
-          <div class="ribbon-group-label">Edit</div>
+          <div class="ribbon-group-label" aria-hidden="true">Edit</div>
         </div>
 
         <!-- CREATE GROUP -->
-        <div class="ribbon-group">
+        <div class="ribbon-group" role="group" aria-label="Create elements">
           <div class="ribbon-content">
             <div class="ribbon-mixed">
-              <button id="btn-add-block" class="ribbon-button-large" title="Add Block">
-                <div class="ribbon-icon">⬜</div>
+              <button id="btn-add-block-ribbon" class="ribbon-button-large" title="Add Block" aria-label="Add Block">
+                <div class="ribbon-icon" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-block"/></svg></div>
                 <div class="ribbon-text">Block</div>
               </button>
               <div class="ribbon-buttons-column">
                 <button id="btn-add-text" class="ribbon-button-small" title="Add Text">
-                  <div class="ribbon-icon-small">📝</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-text"/></svg></div>
                   <span>Text</span>
                 </button>
                 <button id="btn-add-note" class="ribbon-button-small" title="Add Note">
-                  <div class="ribbon-icon-small">📌</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-note"/></svg></div>
                   <span>Note</span>
                 </button>
               </div>
             </div>
           </div>
-          <div class="ribbon-group-label">Create</div>
+          <div class="ribbon-group-label" aria-hidden="true">Create</div>
         </div>
         <!-- NAVIGATE GROUP -->
-        <div class="ribbon-group">
+        <div class="ribbon-group" role="group" aria-label="Navigation">
           <div class="ribbon-content">
             <div class="ribbon-button-row">
               <button id="btn-go-up" class="ribbon-button-small" disabled title="Go to Parent Diagram">
-                <div class="ribbon-icon-small">⬆</div>
+                <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-go-up"/></svg></div>
                 <span>Up</span>
               </button>
               <button id="btn-drill-down" class="ribbon-button-small" disabled title="Open Child Diagram">
-                <div class="ribbon-icon-small">⬇</div>
+                <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-drill-down"/></svg></div>
                 <span>Drill Down</span>
               </button>
               <button id="btn-create-child" class="ribbon-button-small" disabled title="Create Child Diagram">
-                <div class="ribbon-icon-small">➕</div>
+                <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-child"/></svg></div>
                 <span>Child</span>
               </button>
             </div>
           </div>
-          <div class="ribbon-group-label">Navigate</div>
+          <div class="ribbon-group-label" aria-hidden="true">Navigate</div>
         </div>
-      <!-- Search and Filter -->
-      <div class="search-container">
-        <div class="search-input-wrapper">
-          <svg class="fusion-icon search-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-          </svg>
-          <input type="text" id="search-input" class="fusion-input search-input" placeholder="Search blocks..." title="Search by name, type, or status (Ctrl+F)">
-        </div>
-        <div class="filter-buttons">
-          <button id="filter-all" class="fusion-button filter-btn active" title="Show all blocks">
-            <svg class="fusion-icon" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-            </svg>
-            All
-          </button>
-          <button id="filter-placeholder" class="fusion-button filter-btn" title="Show only Placeholder blocks">
-            <div class="fusion-icon icon-status-placeholder"></div>
-            Placeholder
-          </button>
-          <button id="filter-implemented" class="fusion-button filter-btn" title="Show only Implemented blocks">
-            <div class="fusion-icon icon-status-implemented"></div>
-            Implemented
-          </button>
-        </div>
-        <span id="search-results" class="search-results-info"></span>
-      </div>
-      <div class="toolbar-separator"></div>
-      <!-- Connection Type Selector -->
-      <div class="connection-type-container">
-        <label for="connection-type-select" class="fusion-label">Connection:</label>
-        <select id="connection-type-select" class="connection-type-select" title="Choose connection type for new connections">
-          <option value="auto" selected>Auto</option>
-          <option value="electrical">Electrical</option>
-          <option value="power">Power</option>
-          <option value="data">Data</option>
-          <option value="mechanical">Mechanical</option>
-        </select>
-        <select id="arrow-direction-select" class="connection-type-select fusion-select" title="Choose arrow direction">
-          <option value="forward" selected>Forward</option>
-          <option value="bidirectional">Bidirectional</option>
-          <option value="backward">Backward</option>
-          <option value="none">None</option>
-        </select>
-      </div>
-      <div class="separator"></div>
-      <!-- Connection Templates -->
-      <button id="btn-connection-templates" class="context-btn" title="Connection Templates">📋 Templates</button>
-      <button id="btn-bulk-connections" class="context-btn" title="Bulk Connection Operations">⚡ Bulk</button>
-      <div class="separator"></div>
-      <!-- Block Creation -->
-      <button id="btn-add-block" class="context-btn" title="Add Block">
-        <svg width="16" height="16" viewBox="0 0 12 12">
-          <use href="#icon-add"/>
-        </svg>
-        Add Block
-      </button>
-
-        <!-- SELECT GROUP -->
-        <div class="ribbon-group">
+      <!-- SELECT GROUP -->
+        <div class="ribbon-group" role="group" aria-label="Selection">
           <div class="ribbon-content">
             <div class="ribbon-mixed">
               <button id="btn-select-all" class="ribbon-button-large" title="Select all blocks (Ctrl+A)">
-                <div class="ribbon-icon">�</div>
+                <div class="ribbon-icon"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-select-all"/></svg></div>
                 <div class="ribbon-text">Select</div>
                 <div class="ribbon-shortcut">Ctrl+A</div>
               </button>
               <div class="ribbon-buttons-column">
                 <button id="btn-select-none" class="ribbon-button-small" title="Clear selection (Esc)">
-                  <div class="ribbon-icon-small">☐</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-clear"/></svg></div>
                   <span>Clear</span>
                 </button>
                 <button id="btn-group-create" class="ribbon-button-small" disabled title="Create group from selected blocks">
-                  <div class="ribbon-icon-small">📦</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-group"/></svg></div>
                   <span>Group</span>
                 </button>
                 <button id="btn-group-ungroup" class="ribbon-button-small" disabled title="Ungroup selected groups">
-                  <div class="ribbon-icon-small">📤</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-ungroup"/></svg></div>
                   <span>Ungroup</span>
                 </button>
               </div>
             </div>
           </div>
-          <div class="ribbon-group-label">Select</div>
+          <div class="ribbon-group-label" aria-hidden="true">Select</div>
         </div>
 
         <!-- ARRANGE GROUP -->
-        <div class="ribbon-group">
+        <div class="ribbon-group" role="group" aria-label="Arrange">
           <div class="ribbon-content">
             <div class="ribbon-mixed">
               <button id="btn-auto-layout" class="ribbon-button-large" title="Auto-arrange blocks with smart layout">
-                <div class="ribbon-icon">🔄</div>
+                <div class="ribbon-icon"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-auto-layout"/></svg></div>
                 <div class="ribbon-text">Auto Layout</div>
               </button>
               <div class="ribbon-buttons-column">
                 <button id="btn-align-left" class="ribbon-button-small" disabled title="Align selected blocks to left edge">
-                  <div class="ribbon-icon-small">⬅</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-align-left"/></svg></div>
                   <span>Left</span>
                 </button>
                 <button id="btn-align-center" class="ribbon-button-small" disabled title="Align selected blocks to center">
-                  <div class="ribbon-icon-small">↕</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-align-center"/></svg></div>
                   <span>Center</span>
                 </button>
                 <button id="btn-distribute-h" class="ribbon-button-small" disabled title="Distribute selected blocks horizontally">
-                  <div class="ribbon-icon-small">↔</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-distribute"/></svg></div>
                   <span>Distribute</span>
                 </button>
               </div>
             </div>
           </div>
-          <div class="ribbon-group-label">Arrange</div>
+          <div class="ribbon-group-label" aria-hidden="true">Arrange</div>
         </div>
 
         <!-- ANNOTATE GROUP -->
-        <div class="ribbon-group">
+        <div class="ribbon-group" role="group" aria-label="Annotate">
           <div class="ribbon-content">
             <div class="ribbon-button-row">
               <button id="btn-add-dimension" class="ribbon-button-small" title="Add dimension line">
-                <div class="ribbon-icon-small">📏</div>
+                <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-ruler"/></svg></div>
                 <span>Dimension</span>
               </button>
               <button id="btn-add-callout" class="ribbon-button-small" title="Add callout with leader">
-                <div class="ribbon-icon-small">💬</div>
+                <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-comment"/></svg></div>
                 <span>Callout</span>
               </button>
             </div>
           </div>
-          <div class="ribbon-group-label">Annotate</div>
+          <div class="ribbon-group-label" aria-hidden="true">Annotate</div>
         </div>
 
         <!-- VIEW GROUP -->
-        <div class="ribbon-group">
+        <div class="ribbon-group" role="group" aria-label="View">
           <div class="ribbon-content">
             <div class="ribbon-mixed">
               <button class="ribbon-button-large" title="Fit to View">
-                <div class="ribbon-icon">🔍</div>
+                <div class="ribbon-icon"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-zoom"/></svg></div>
                 <div class="ribbon-text">Fit</div>
               </button>
               <div class="ribbon-buttons-column">
                 <button id="btn-snap-grid" class="ribbon-button-small active" title="Snap to Grid">
-                  <div class="ribbon-icon-small">⌗</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-hash"/></svg></div>
                   <span>Grid</span>
                 </button>
                 <button class="ribbon-button-small" title="Zoom In">
-                  <div class="ribbon-icon-small">🔍</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-zoom"/></svg></div>
                   <span>Zoom In</span>
                 </button>
                 <button class="ribbon-button-small" title="Zoom Out">
-                  <div class="ribbon-icon-small">🔍</div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-zoom"/></svg></div>
                   <span>Zoom Out</span>
                 </button>
               </div>
             </div>
           </div>
-          <div class="ribbon-group-label">View</div>
+          <div class="ribbon-group-label" aria-hidden="true">View</div>
         </div>
 
         <!-- VALIDATE GROUP -->
-        <div class="ribbon-group">
+        <div class="ribbon-group" role="group" aria-label="Validate">
           <div class="ribbon-content">
             <button id="btn-check-rules" class="ribbon-button-large" title="Check Rules">
-              <div class="ribbon-icon">✓</div>
+              <div class="ribbon-icon"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-check"/></svg></div>
               <div class="ribbon-text">Validate</div>
             </button>
           </div>
-          <div class="ribbon-group-label">Validate</div>
+          <div class="ribbon-group-label" aria-hidden="true">Validate</div>
         </div>
 
         <!-- CAD GROUP -->
-        <div class="ribbon-group">
+        <div class="ribbon-group" role="group" aria-label="CAD Links">
           <div class="ribbon-content">
             <div class="ribbon-button-row">
               <button id="btn-link-cad" class="ribbon-button-small" disabled title="Link to CAD">
-                <div class="ribbon-icon-small">🔗</div>
+                <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-link"/></svg></div>
                 <span>CAD</span>
               </button>
               <button id="btn-link-ecad" class="ribbon-button-small" disabled title="Link to ECAD">
-                <div class="ribbon-icon-small">⚡</div>
+                <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-ecad"/></svg></div>
                 <span>ECAD</span>
               </button>
             </div>
           </div>
-          <div class="ribbon-group-label">Links</div>
+          <div class="ribbon-group-label" aria-hidden="true">Links</div>
         </div>
 
       </div>
@@ -1539,6 +1480,19 @@
   </header>
   
   <div id="canvas-container">
+    <!-- Empty canvas state indicator -->
+    <div id="empty-canvas-state" class="empty-canvas-state">
+      <svg class="empty-canvas-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="8" y="8" width="32" height="32" rx="4"/>
+        <path d="M18 24h12M24 18v12"/>
+      </svg>
+      <h3>No blocks yet</h3>
+      <p>Click <strong>Block</strong> in the ribbon or use keyboard shortcut to add your first block</p>
+      <button id="btn-add-first-block" class="fusion-button primary" aria-label="Add your first block">
+        <svg viewBox="0 0 12 12" fill="currentColor" width="14" height="14"><use href="#icon-add"/></svg>
+        Add Block
+      </button>
+    </div>
     <svg id="svg-canvas" viewBox="0 0 1000 1000">
       <defs>
         <!-- Connection Arrow Marker -->
@@ -1930,6 +1884,178 @@
           <rect x="3" y="7" width="6" height="1" rx="0.2" fill="currentColor" opacity="0.5"/>
           <path d="M6 3v1M5 3.5v1M4 3.5v1" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/>
           <circle cx="5" cy="5" r="0.5" fill="currentColor"/>
+        </g>
+        
+        <!-- ========== TOOLBAR ICONS ========== -->
+        
+        <!-- File Operations -->
+        <g id="icon-new">
+          <rect x="3" y="2" width="6" height="8" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M5 4h2M5 6h2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-save">
+          <path d="M3 2h5l2 2v6a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="5" y="6" width="2" height="3" rx="0.3" fill="currentColor"/>
+          <rect x="4" y="2" width="4" height="2" fill="currentColor" opacity="0.3"/>
+        </g>
+        
+        <g id="icon-load">
+          <path d="M2 4h3l1-1h4v6a1 1 0 01-1 1H3a1 1 0 01-1-1V4z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 4V3a1 1 0 011-1h5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-export">
+          <rect x="3" y="4" width="6" height="5" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 2v5M4 4l2-2 2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <!-- Edit Operations -->
+        <g id="icon-undo">
+          <path d="M4 5h4a2 2 0 110 4H6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M4 3l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <g id="icon-redo">
+          <path d="M8 5H4a2 2 0 100 4h2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M8 3l2 2-2 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <g id="icon-copy">
+          <rect x="4" y="4" width="5" height="5" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="3" y="3" width="5" height="5" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+        </g>
+        
+        <g id="icon-paste">
+          <rect x="4" y="4" width="5" height="5" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M5 2h2v2H5z" fill="currentColor"/>
+        </g>
+        
+        <!-- Create Operations -->
+        <g id="icon-block">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M5 5h2M5 7h2" stroke="currentColor" stroke-width="1"/>
+        </g>
+        
+        <g id="icon-text">
+          <path d="M3 3h6M6 3v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M4 9h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-note">
+          <path d="M3 2h4l2 2v6a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M7 2v2h2" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M4 5h4M4 7h2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-child">
+          <rect x="1" y="2" width="4" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="7" y="2" width="4" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="4" y="7" width="4" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 5v1h6V5M6 6v1" stroke="currentColor" stroke-width="1"/>
+        </g>
+        
+        <!-- Selection -->
+        <g id="icon-select-all">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2,1"/>
+          <path d="M4 6l1.5 1.5L8 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <g id="icon-clear">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        </g>
+        
+        <g id="icon-group">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="3" y="3" width="2.5" height="2.5" rx="0.3" fill="currentColor" opacity="0.5"/>
+          <rect x="6.5" y="3" width="2.5" height="2.5" rx="0.3" fill="currentColor" opacity="0.5"/>
+          <rect x="3" y="6.5" width="2.5" height="2.5" rx="0.3" fill="currentColor" opacity="0.5"/>
+          <rect x="6.5" y="6.5" width="2.5" height="2.5" rx="0.3" fill="currentColor" opacity="0.5"/>
+        </g>
+        
+        <g id="icon-ungroup">
+          <rect x="2" y="2" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="7" y="2" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="2" y="7" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="7" y="7" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        </g>
+        
+        <!-- Layout -->
+        <g id="icon-auto-layout">
+          <rect x="2" y="2" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="7" y="2" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="2" y="7" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <rect x="7" y="7" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M5 3.5h2M5 8.5h2M3.5 5v2M8.5 5v2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-align-left">
+          <path d="M2 2v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <rect x="4" y="3" width="5" height="2" rx="0.5" fill="currentColor" opacity="0.7"/>
+          <rect x="4" y="7" width="3" height="2" rx="0.5" fill="currentColor" opacity="0.7"/>
+        </g>
+        
+        <g id="icon-align-center">
+          <path d="M6 2v8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <rect x="3" y="3" width="6" height="2" rx="0.5" fill="currentColor" opacity="0.7"/>
+          <rect x="4" y="7" width="4" height="2" rx="0.5" fill="currentColor" opacity="0.7"/>
+        </g>
+        
+        <g id="icon-distribute">
+          <rect x="2" y="4" width="2" height="4" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <rect x="5" y="4" width="2" height="4" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <rect x="8" y="4" width="2" height="4" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <path d="M2 3h8M2 9h8" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </g>
+        
+        <!-- View -->
+        <g id="icon-ruler">
+          <path d="M2 2h8v3H2z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 2v1.5M6 2v2M8 2v1.5" stroke="currentColor" stroke-width="1"/>
+          <path d="M2 7h8v3H2z" fill="none" stroke="currentColor" stroke-width="1"/>
+          <path d="M4 7v1M6 7v1.5M8 7v1" stroke="currentColor" stroke-width="0.8"/>
+        </g>
+        
+        <g id="icon-comment">
+          <path d="M2 3h8v5H5l-2 2v-2H2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M4 5h4M4 6.5h2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-zoom">
+          <circle cx="5.5" cy="5.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 8l2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-hash">
+          <path d="M4 2v8M8 2v8M2 4h8M2 8h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-check">
+          <circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 6l1.5 1.5L8 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        
+        <g id="icon-ecad">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 4h4M4 6h4M4 8h2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="8" cy="8" r="1" fill="currentColor"/>
+        </g>
+        
+        <g id="icon-link">
+          <path d="M5 7l2-2M4 6c-1.5 0-2.5 1.5-1 3s3 .5 3-1M8 6c1.5 0 2.5-1.5 1-3s-3-.5-3 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        
+        <g id="icon-templates">
+          <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="3" y="3" width="2" height="2" rx="0.2" fill="currentColor" opacity="0.5"/>
+          <rect x="7" y="3" width="2" height="2" rx="0.2" fill="currentColor" opacity="0.5"/>
+          <rect x="3" y="7" width="2" height="2" rx="0.2" fill="currentColor" opacity="0.5"/>
+          <rect x="7" y="7" width="2" height="2" rx="0.2" fill="currentColor" opacity="0.5"/>
+        </g>
+        
+        <g id="icon-bulk">
+          <path d="M2 4h3v3H2zM7 4h3v3H7zM2 8h3v2H2zM7 8h3v2H7z" fill="currentColor" opacity="0.5"/>
+          <path d="M4 2L6 4 8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </g>
       </defs>
       <g id="connections-layer"></g>

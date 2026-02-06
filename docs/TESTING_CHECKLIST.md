@@ -1,5 +1,5 @@
 # 🧪 TESTING CHECKLIST - FUSION SYSTEM BLOCKS
-## Production Validation – 14/15 Milestones Complete (Milestone 13 in progress)
+## Production Validation – 15/16 Milestones Complete (Milestone 13 in progress)
 
 > **⚡ Quick Testing:** Use this checklist (30-minute workflow)  
 > **📚 Detailed Reference:** See `DETAILED_TESTING_DOCUMENTATION.md` for comprehensive feature documentation
@@ -8,6 +8,18 @@
 **Tester Name:** _______________  
 **Fusion 360 Version:** _______________  
 **System:** _______________
+
+---
+
+## 🆕 NEW FEATURE: DIAGNOSTICS SYSTEM (Milestone 16)
+
+### Built-in Self-Test System
+- [ ] **"Run Diagnostics" command** - Available in Add-Ins panel
+- [ ] **Environment checks pass** - adsk modules loaded, active document exists
+- [ ] **Core logic checks pass** - Valid/invalid graph validation works correctly
+- [ ] **Fusion write access checks pass** - Temp component/geometry created and cleaned up
+- [ ] **Summary message box** - Shows pass/fail with test counts and log location
+- [ ] **Log file created** - Check `~/FusionSystemBlocks/logs/` for session log
 
 ---
 

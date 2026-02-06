@@ -146,7 +146,8 @@
 }
 
 /* === RESPONSIVE ICON SIZING === */
-@media (max-width: 768px) {
+/* Fusion 360 palette widths: 340-600px */
+@media (max-width: 400px) {
   .fusion-icon { width: 14px; height: 14px; }
   .fusion-icon.large { width: 18px; height: 18px; }
   .fusion-icon.xl { width: 22px; height: 22px; }

@@ -1,34 +1,50 @@
 # Architecture Review Report
-**Date:** December 21, 2025
+**Date:** February 5, 2026  
 **Reviewer:** SE: Architect Agent
 
 ## Executive Summary
-The Fusion System Blocks add-in demonstrates a solid, pragmatic architecture well-suited for the Fusion 360 environment. The separation of concerns between the monolithic Python backend and the modular JavaScript frontend is a strong design choice that balances platform constraints with development velocity.
+The Fusion System Blocks add-in demonstrates a solid, well-evolved architecture. The recent Milestone 16 refactoring introduced a two-layer Python architecture (`core/` + `fusion_addin/`) that significantly improves testability, maintainability, and observability while preserving the pragmatic monolithic entry point pattern.
 
 ## Key Findings
 
 ### 1. Reliability & Stability ✅
-- **Exception Handling:** The recent refactoring introduced robust global exception handling in the event bridge. This prevents the add-in from crashing the host application (Fusion 360), which is critical for user trust.
-- **Data Integrity:** The use of `diagram_data.validate_diagram` before saving is a best practice that prevents corrupted state from being persisted to the CAD file.
+- **Exception Handling:** Robust global exception handling in event handlers with production logging.
+- **Data Integrity:** Schema validation before saving prevents corrupted state.
+- **Self-Diagnostics:** Built-in "Run Diagnostics" command validates add-in health with 6 automated tests.
+- **Production Logging:** Session-based logging with full tracebacks to `~/FusionSystemBlocks/logs/`.
 
 ### 2. Security (Zero Trust) 🛡️
-- **Input Validation:** The backend treats the frontend as an untrusted source, validating all JSON inputs. This aligns with Zero Trust principles.
-- **Isolation:** The web view runs in a sandboxed environment, and the Python backend has no external network listeners, reducing the attack surface.
+- **Input Validation:** Backend treats frontend as untrusted, validating all JSON inputs.
+- **Isolation:** Web view runs in sandboxed environment; Python backend has no external listeners.
+- **No Secrets:** No credentials or API keys stored in code.
 
-### 3. Scalability & Performance ⚠️
-- **Data Persistence:** Storing the *entire* diagram as a single JSON blob in attributes (ADR-002) is simple but may scale poorly.
-    - *Risk:* As diagrams grow (100+ blocks), the JSON string parsing/serialization on every save/load will cause noticeable UI freezes.
-    - *Recommendation:* Monitor performance. If latency increases, consider chunking the data or only saving diffs.
+### 3. Testability & Maintainability ✅ (Improved)
+- **Two-Layer Architecture:** Pure Python `core/` library with NO Fusion dependencies enables pytest testing.
+- **128 Tests:** Comprehensive test suite runs in <0.2s outside of Fusion 360.
+- **Modular Structure:** Clear separation between core logic, Fusion adapter, and frontend.
+- **Type Hinting:** Python type hints throughout for static analysis and IDE support.
 
-### 4. Maintainability 🚀
-- **Modular Frontend:** The decision to split the frontend into `core`, `ui`, and `features` modules is excellent. It prevents the "God Object" anti-pattern common in single-page apps.
-- **Type Hinting:** The adoption of Python type hints (as seen in `Fusion_System_Blocks.py`) significantly improves code readability and enables static analysis.
+### 4. Scalability & Performance ⚠️
+- **Data Persistence:** Storing diagram as single JSON blob may scale poorly with 100+ blocks.
+    - *Risk:* Parsing/serialization latency on large diagrams.
+    - *Recommendation:* Monitor performance; consider chunking or diff-based saves if needed.
+- **Mitigation:** Action plan pattern defers Fusion operations until validation passes.
+
+### 5. Observability ✅ (New)
+- **Production Logging:** Session IDs, timestamps, source locations, environment info.
+- **Exception Capture:** Full tracebacks logged with `@log_exceptions` decorator.
+- **Diagnostic Reports:** JSON-structured test results for automated analysis.
 
 ## Recommendations
 
-1.  **Performance Monitoring:** Add simple timing logs to the `save_diagram_json` and `load_diagram_json` functions to track how long serialization takes as diagrams grow.
-2.  **Automated Testing:** While `pytest` is set up, the coverage seems focused on data logic. Consider adding "mock" tests for the Fusion API interactions to ensure the bridge logic is robust without needing the full CAD environment.
-3.  **Documentation:** Continue to maintain the ADRs. They are vital for onboarding new developers who might otherwise question the "monolithic" design choice.
+1. ✅ **Performance Monitoring (Addressed):** Logging now captures operation durations.
+2. ✅ **Automated Testing (Addressed):** 128 pytest tests cover core logic outside Fusion.
+3. ✅ **Documentation (Addressed):** ADRs and folder structure documentation updated.
+4. **Future:** Consider integration tests with mocked Fusion API for adapter layer validation.
+5. **Future:** Add telemetry opt-in for production usage metrics (with user consent).
 
 ## Conclusion
-The system is **Well-Architected** for its current scale and constraints. The foundational decisions (ADR-001, ADR-002, ADR-003) are sound. Focus future architectural efforts on performance optimization for large datasets.
+The system is **Well-Architected** for its current scale and constraints. The Milestone 16 refactoring addressed prior concerns about testability and observability. Focus future efforts on:
+- Performance optimization for large diagrams
+- 3D visualization completion (Milestone 13)
+- Potential AI-assisted design features (Milestone 15)
