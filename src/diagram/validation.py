@@ -6,8 +6,14 @@ Provides schema validation, link validation, and block status computation.
 
 import os
 import json
-import jsonschema
 from typing import Dict, List, Tuple, Any, Optional
+
+# jsonschema is optional - not available in Fusion 360's Python environment
+try:
+    import jsonschema
+    JSONSCHEMA_AVAILABLE = True
+except ImportError:
+    JSONSCHEMA_AVAILABLE = False
 
 
 def load_schema() -> Dict[str, Any]:
@@ -48,6 +54,17 @@ def validate_diagram(diagram: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
     Returns:
         Tuple of (is_valid, error_message)
     """
+    # If jsonschema is not available, do basic validation only
+    if not JSONSCHEMA_AVAILABLE:
+        # Basic validation: check required keys exist
+        if not isinstance(diagram, dict):
+            return False, "Diagram must be a dictionary"
+        if "blocks" not in diagram:
+            return False, "Diagram must have 'blocks' key"
+        if "connections" not in diagram:
+            return False, "Diagram must have 'connections' key"
+        return True, None
+
     try:
         schema = load_schema()
         jsonschema.validate(diagram, schema)
