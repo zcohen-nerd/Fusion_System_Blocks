@@ -3957,6 +3957,109 @@
   <script src="./main-coordinator.js"></script>
   <script src="./palette.js"></script>
 
+  <!-- Fallback button handler for Fusion 360 webview compatibility -->
+  <script>
+    (function() {
+      'use strict';
+      
+      // Simple action handlers that work independently of the modular architecture
+      const actions = {
+        'btn-new': function() {
+          if (confirm('Create new diagram? Unsaved changes will be lost.')) {
+            if (window.diagramEditor) {
+              window.diagramEditor.diagram = window.diagramEditor.createEmptyDiagram();
+              if (window.diagramRenderer) window.diagramRenderer.updateAllBlocks(window.diagramEditor.diagram);
+            }
+            console.log('New diagram created');
+          }
+        },
+        'btn-save': function() {
+          if (typeof adsk !== 'undefined' && adsk.fusionSendData) {
+            adsk.fusionSendData('save', JSON.stringify({ action: 'save_diagram' }));
+          }
+          console.log('Save clicked');
+        },
+        'btn-load': function() {
+          if (typeof adsk !== 'undefined' && adsk.fusionSendData) {
+            adsk.fusionSendData('load', JSON.stringify({ action: 'load_diagram' }));
+          }
+          console.log('Load clicked');
+        },
+        'btn-add-block-ribbon': function() {
+          if (window.diagramEditor && window.diagramRenderer) {
+            const block = window.diagramEditor.addBlock({
+              name: 'New Block',
+              type: 'Generic',
+              x: 100 + Math.random() * 200,
+              y: 100 + Math.random() * 200
+            });
+            window.diagramRenderer.renderBlock(block);
+          }
+          console.log('Add block clicked');
+        },
+        'btn-select-all': function() {
+          if (window.advancedFeatures) {
+            window.advancedFeatures.selectAllBlocks();
+          }
+          console.log('Select all clicked');
+        },
+        'btn-select-none': function() {
+          if (window.diagramEditor) {
+            window.diagramEditor.clearSelection();
+          }
+          console.log('Clear selection clicked');
+        },
+        'btn-undo': function() {
+          if (window.advancedFeatures) {
+            window.advancedFeatures.undo();
+          }
+          console.log('Undo clicked');
+        },
+        'btn-redo': function() {
+          if (window.advancedFeatures) {
+            window.advancedFeatures.redo();
+          }
+          console.log('Redo clicked');
+        },
+        'btn-auto-layout': function() {
+          if (window.advancedFeatures) {
+            window.advancedFeatures.autoLayout();
+          }
+          console.log('Auto layout clicked');
+        },
+        'btn-check-rules': function() {
+          if (typeof adsk !== 'undefined' && adsk.fusionSendData) {
+            adsk.fusionSendData('validate', JSON.stringify({ action: 'validate' }));
+          }
+          console.log('Validate clicked');
+        }
+      };
+      
+      // Use event delegation on the ribbon
+      document.addEventListener('click', function(e) {
+        const button = e.target.closest('button[id^="btn-"]');
+        if (!button) return;
+        
+        const buttonId = button.id;
+        console.log('Button clicked:', buttonId);
+        
+        // Visual feedback
+        button.style.transform = 'scale(0.95)';
+        setTimeout(function() { button.style.transform = ''; }, 100);
+        
+        // Execute action if defined
+        if (actions[buttonId]) {
+          try {
+            actions[buttonId]();
+          } catch (err) {
+            console.error('Action error:', err);
+          }
+        }
+      }, true); // Use capture phase
+      
+      console.log('Fallback button handlers initialized');
+    })();
+  </script>
 
 </body>
 </html>
