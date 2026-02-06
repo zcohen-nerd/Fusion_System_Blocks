@@ -15,7 +15,6 @@ PACKAGE_DESCRIPTION = __description__
 
 # Import main components for easy access
 try:
-    from .main import run
     __all__ = ['run', '__version__', '__author__', '__description__']
 except ImportError:
     # During development, main might not be available yet

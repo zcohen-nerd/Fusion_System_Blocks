@@ -18,9 +18,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
-from core.models import Block, Connection, Graph, Port
+from core.models import Block, Graph
 
 
 class ActionType(Enum):

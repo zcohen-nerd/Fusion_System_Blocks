@@ -14,7 +14,7 @@ Classes:
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 # Fusion 360 imports - only in this adapter layer
 try:
@@ -25,7 +25,7 @@ except ImportError:
     _FUSION_AVAILABLE = False
 
 # Core library imports
-from core.models import Block, Connection, Graph, Port
+from core.models import Graph
 from core.validation import ValidationError, validate_graph, get_error_summary
 from core.action_plan import ActionPlan, ActionType, build_action_plan
 from core.serialization import graph_to_dict, dict_to_graph

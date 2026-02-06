@@ -20,7 +20,7 @@ Usage:
 
 # Note: Actual imports would be:
 # from fusion_addin.adapter import FusionAdapter
-# from fusion_addin.selection import SelectionHandler  
+# from fusion_addin.selection import SelectionHandler
 # from fusion_addin.document import DocumentManager
 
 __all__ = [
@@ -45,6 +45,8 @@ __all__ = [
 ]
 
 # Lazy imports to avoid immediate adsk dependency
+
+
 def __getattr__(name):
     if name == "FusionAdapter":
         from fusion_addin.adapter import FusionAdapter

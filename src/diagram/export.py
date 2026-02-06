@@ -546,7 +546,6 @@ def validate_imported_diagram(diagram: Dict[str, Any]) -> tuple:
     Returns:
         Tuple of (is_valid, message)
     """
-    from typing import Tuple
     errors = []
 
     # Check if diagram is empty

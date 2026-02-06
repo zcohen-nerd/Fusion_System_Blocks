@@ -18,10 +18,8 @@ import pytest
 
 from core.graph_builder import GraphBuilder, create_simple_graph
 from core.models import (
-    Block,
     BlockStatus,
     Graph,
-    Port,
     PortDirection,
     PortKind,
 )

@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set
 
-from core.models import Block, Connection, Graph, Port, PortDirection
+from core.models import Block, Graph, Port, PortDirection
 
 
 class ValidationErrorCode(Enum):

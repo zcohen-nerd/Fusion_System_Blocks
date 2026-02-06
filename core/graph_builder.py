@@ -18,7 +18,6 @@ from core.models import (
     Port,
     PortDirection,
     PortKind,
-    generate_id,
 )
 
 

@@ -12,7 +12,6 @@ from typing import Dict, List, Any, Optional
 
 class CADLinkingError(Exception):
     """Exception raised for CAD linking operations."""
-    pass
 
 
 def create_enhanced_cad_link(

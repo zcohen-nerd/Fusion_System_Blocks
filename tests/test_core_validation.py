@@ -13,15 +13,12 @@ Test coverage:
     - Invalid port direction case
 """
 
-import pytest
 from core.models import (
     Block,
-    BlockStatus,
     Connection,
     Graph,
     Port,
     PortDirection,
-    PortKind,
 )
 from core.validation import (
     ValidationError,
@@ -40,9 +37,9 @@ class TestValidateGraphValidCases:
     def test_empty_graph_is_valid(self):
         """An empty graph with no blocks or connections should be valid."""
         graph = Graph(name="Empty Graph")
-        
+
         errors = validate_graph(graph)
-        
+
         assert len(errors) == 0
 
     def test_single_block_no_connections_is_valid(self):
@@ -50,9 +47,9 @@ class TestValidateGraphValidCases:
         graph = Graph(name="Single Block")
         block = Block(name="MCU", block_type="Microcontroller")
         graph.add_block(block)
-        
+
         errors = validate_graph(graph)
-        
+
         assert len(errors) == 0
 
     def test_two_blocks_one_connection_is_valid(self):
@@ -65,13 +62,13 @@ class TestValidateGraphValidCases:
             .add_port("RX", direction=PortDirection.INPUT)
             .build()
         )
-        
+
         # Add a valid connection
         mcu = graph.get_block_by_name("MCU")
         sensor = graph.get_block_by_name("Sensor")
         mcu_port = mcu.get_port_by_name("TX")
         sensor_port = sensor.get_port_by_name("RX")
-        
+
         connection = Connection(
             from_block_id=mcu.id,
             from_port_id=mcu_port.id,
@@ -80,9 +77,9 @@ class TestValidateGraphValidCases:
             kind="UART",
         )
         graph.add_connection(connection)
-        
+
         errors = validate_graph(graph)
-        
+
         assert len(errors) == 0
 
     def test_multiple_blocks_chain_is_valid(self):
@@ -96,25 +93,25 @@ class TestValidateGraphValidCases:
             .connect("B", "C")
             .build()
         )
-        
+
         errors = validate_graph(graph)
-        
+
         assert len(errors) == 0
 
     def test_bidirectional_ports_are_valid(self):
         """Bidirectional ports should work as both source and target."""
         graph = Graph(name="Bidirectional Test")
-        
+
         block_a = Block(name="A")
         port_a = Port(name="BiDi", direction=PortDirection.BIDIRECTIONAL)
         block_a.add_port(port_a)
         graph.add_block(block_a)
-        
+
         block_b = Block(name="B")
         port_b = Port(name="BiDi", direction=PortDirection.BIDIRECTIONAL)
         block_b.add_port(port_b)
         graph.add_block(block_b)
-        
+
         connection = Connection(
             from_block_id=block_a.id,
             from_port_id=port_a.id,
@@ -122,9 +119,9 @@ class TestValidateGraphValidCases:
             to_port_id=port_b.id,
         )
         graph.add_connection(connection)
-        
+
         errors = validate_graph(graph)
-        
+
         assert len(errors) == 0
 
 
@@ -134,17 +131,17 @@ class TestValidateGraphMissingPort:
     def test_missing_source_port(self):
         """Connection referencing non-existent source port should fail."""
         graph = Graph(name="Missing Source Port")
-        
+
         block_a = Block(name="A")
         port_a = Port(name="OUT", direction=PortDirection.OUTPUT)
         block_a.add_port(port_a)
         graph.add_block(block_a)
-        
+
         block_b = Block(name="B")
         port_b = Port(name="IN", direction=PortDirection.INPUT)
         block_b.add_port(port_b)
         graph.add_block(block_b)
-        
+
         # Create connection with non-existent source port ID
         connection = Connection(
             from_block_id=block_a.id,
@@ -153,9 +150,9 @@ class TestValidateGraphMissingPort:
             to_port_id=port_b.id,
         )
         graph.add_connection(connection)
-        
+
         errors = validate_graph(graph)
-        
+
         assert has_errors(errors)
         port_errors = filter_by_code(errors, ValidationErrorCode.MISSING_SOURCE_PORT)
         assert len(port_errors) == 1
@@ -164,17 +161,17 @@ class TestValidateGraphMissingPort:
     def test_missing_target_port(self):
         """Connection referencing non-existent target port should fail."""
         graph = Graph(name="Missing Target Port")
-        
+
         block_a = Block(name="A")
         port_a = Port(name="OUT", direction=PortDirection.OUTPUT)
         block_a.add_port(port_a)
         graph.add_block(block_a)
-        
+
         block_b = Block(name="B")
         port_b = Port(name="IN", direction=PortDirection.INPUT)
         block_b.add_port(port_b)
         graph.add_block(block_b)
-        
+
         # Create connection with non-existent target port ID
         connection = Connection(
             from_block_id=block_a.id,
@@ -183,9 +180,9 @@ class TestValidateGraphMissingPort:
             to_port_id="non-existent-target-port",  # Invalid!
         )
         graph.add_connection(connection)
-        
+
         errors = validate_graph(graph)
-        
+
         assert has_errors(errors)
         port_errors = filter_by_code(errors, ValidationErrorCode.MISSING_TARGET_PORT)
         assert len(port_errors) == 1
@@ -193,13 +190,13 @@ class TestValidateGraphMissingPort:
     def test_both_ports_missing(self):
         """Connection with both ports missing should report both errors."""
         graph = Graph(name="Both Ports Missing")
-        
+
         block_a = Block(name="A")
         graph.add_block(block_a)
-        
+
         block_b = Block(name="B")
         graph.add_block(block_b)
-        
+
         # Create connection with non-existent ports
         connection = Connection(
             from_block_id=block_a.id,
@@ -208,9 +205,9 @@ class TestValidateGraphMissingPort:
             to_port_id="missing-to",
         )
         graph.add_connection(connection)
-        
+
         errors = validate_graph(graph)
-        
+
         assert has_errors(errors)
         source_errors = filter_by_code(errors, ValidationErrorCode.MISSING_SOURCE_PORT)
         target_errors = filter_by_code(errors, ValidationErrorCode.MISSING_TARGET_PORT)
@@ -231,9 +228,9 @@ class TestValidateGraphCycleDetection:
             .connect("B", "A")
             .build()
         )
-        
+
         errors = validate_graph(graph)
-        
+
         cycle_errors = filter_by_code(errors, ValidationErrorCode.CYCLE_DETECTED)
         assert len(cycle_errors) >= 1
 
@@ -249,9 +246,9 @@ class TestValidateGraphCycleDetection:
             .connect("C", "A")
             .build()
         )
-        
+
         errors = validate_graph(graph)
-        
+
         cycle_errors = filter_by_code(errors, ValidationErrorCode.CYCLE_DETECTED)
         assert len(cycle_errors) >= 1
         assert "A" in cycle_errors[0].message or "B" in cycle_errors[0].message
@@ -270,9 +267,9 @@ class TestValidateGraphCycleDetection:
             .connect("C", "D")
             .build()
         )
-        
+
         errors = validate_graph(graph)
-        
+
         cycle_errors = filter_by_code(errors, ValidationErrorCode.CYCLE_DETECTED)
         assert len(cycle_errors) == 0
 
@@ -283,15 +280,15 @@ class TestValidateGraphDuplicateBlockId:
     def test_duplicate_block_id_detected(self):
         """Two blocks with the same ID should be detected."""
         graph = Graph(name="Duplicate IDs")
-        
+
         block_a = Block(id="same-id", name="First Block")
         block_b = Block(id="same-id", name="Second Block")  # Duplicate!
-        
+
         graph.add_block(block_a)
         graph.add_block(block_b)
-        
+
         errors = validate_graph(graph)
-        
+
         assert has_errors(errors)
         dup_errors = filter_by_code(errors, ValidationErrorCode.DUPLICATE_BLOCK_ID)
         assert len(dup_errors) == 1
@@ -302,17 +299,17 @@ class TestValidateGraphDuplicateBlockId:
     def test_unique_block_ids_valid(self):
         """Blocks with unique IDs should be valid."""
         graph = Graph(name="Unique IDs")
-        
+
         block_a = Block(id="id-1", name="First")
         block_b = Block(id="id-2", name="Second")
         block_c = Block(id="id-3", name="Third")
-        
+
         graph.add_block(block_a)
         graph.add_block(block_b)
         graph.add_block(block_c)
-        
+
         errors = validate_graph(graph)
-        
+
         dup_errors = filter_by_code(errors, ValidationErrorCode.DUPLICATE_BLOCK_ID)
         assert len(dup_errors) == 0
 
@@ -323,36 +320,36 @@ class TestValidateGraphMissingBlock:
     def test_missing_source_block(self):
         """Connection referencing non-existent source block should fail."""
         graph = Graph(name="Missing Source Block")
-        
+
         block_b = Block(name="B")
         graph.add_block(block_b)
-        
+
         connection = Connection(
             from_block_id="non-existent-block",  # Invalid!
             to_block_id=block_b.id,
         )
         graph.add_connection(connection)
-        
+
         errors = validate_graph(graph)
-        
+
         block_errors = filter_by_code(errors, ValidationErrorCode.MISSING_SOURCE_BLOCK)
         assert len(block_errors) == 1
 
     def test_missing_target_block(self):
         """Connection referencing non-existent target block should fail."""
         graph = Graph(name="Missing Target Block")
-        
+
         block_a = Block(name="A")
         graph.add_block(block_a)
-        
+
         connection = Connection(
             from_block_id=block_a.id,
             to_block_id="non-existent-target",  # Invalid!
         )
         graph.add_connection(connection)
-        
+
         errors = validate_graph(graph)
-        
+
         block_errors = filter_by_code(errors, ValidationErrorCode.MISSING_TARGET_BLOCK)
         assert len(block_errors) == 1
 
@@ -363,18 +360,18 @@ class TestValidateGraphSelfConnection:
     def test_self_connection_detected(self):
         """A block connected to itself should be detected."""
         graph = Graph(name="Self Connection")
-        
+
         block = Block(name="SelfLoop")
         graph.add_block(block)
-        
+
         connection = Connection(
             from_block_id=block.id,
             to_block_id=block.id,  # Same block!
         )
         graph.add_connection(connection)
-        
+
         errors = validate_graph(graph)
-        
+
         self_errors = filter_by_code(errors, ValidationErrorCode.SELF_CONNECTION)
         assert len(self_errors) == 1
 
@@ -385,17 +382,17 @@ class TestValidateGraphPortDirection:
     def test_input_port_as_source_invalid(self):
         """An INPUT port should not be valid as a connection source."""
         graph = Graph(name="Invalid Source Direction")
-        
+
         block_a = Block(name="A")
         port_a = Port(name="IN", direction=PortDirection.INPUT)  # Can't be source!
         block_a.add_port(port_a)
         graph.add_block(block_a)
-        
+
         block_b = Block(name="B")
         port_b = Port(name="IN", direction=PortDirection.INPUT)
         block_b.add_port(port_b)
         graph.add_block(block_b)
-        
+
         connection = Connection(
             from_block_id=block_a.id,
             from_port_id=port_a.id,
@@ -403,9 +400,9 @@ class TestValidateGraphPortDirection:
             to_port_id=port_b.id,
         )
         graph.add_connection(connection)
-        
+
         errors = validate_graph(graph)
-        
+
         dir_errors = filter_by_code(
             errors, ValidationErrorCode.INVALID_CONNECTION_DIRECTION
         )
@@ -414,17 +411,17 @@ class TestValidateGraphPortDirection:
     def test_output_port_as_target_invalid(self):
         """An OUTPUT port should not be valid as a connection target."""
         graph = Graph(name="Invalid Target Direction")
-        
+
         block_a = Block(name="A")
         port_a = Port(name="OUT", direction=PortDirection.OUTPUT)
         block_a.add_port(port_a)
         graph.add_block(block_a)
-        
+
         block_b = Block(name="B")
         port_b = Port(name="OUT", direction=PortDirection.OUTPUT)  # Can't be target!
         block_b.add_port(port_b)
         graph.add_block(block_b)
-        
+
         connection = Connection(
             from_block_id=block_a.id,
             from_port_id=port_a.id,
@@ -432,9 +429,9 @@ class TestValidateGraphPortDirection:
             to_port_id=port_b.id,
         )
         graph.add_connection(connection)
-        
+
         errors = validate_graph(graph)
-        
+
         dir_errors = filter_by_code(
             errors, ValidationErrorCode.INVALID_CONNECTION_DIRECTION
         )
@@ -474,9 +471,9 @@ class TestValidationUtilities:
                 message="Dup 2",
             ),
         ]
-        
+
         filtered = filter_by_code(errors, ValidationErrorCode.DUPLICATE_BLOCK_ID)
-        
+
         assert len(filtered) == 2
         assert all(e.code == ValidationErrorCode.DUPLICATE_BLOCK_ID for e in filtered)
 
@@ -497,9 +494,9 @@ class TestValidationUtilities:
                 message="Cycle in graph",
             ),
         ]
-        
+
         summary = get_error_summary(errors)
-        
+
         assert "2 validation error" in summary
         assert "Duplicate block found" in summary
         assert "Cycle in graph" in summary
@@ -513,9 +510,9 @@ class TestValidationUtilities:
             port_id="port-456",
             details={"expected": "OUT", "got": "IN"},
         )
-        
+
         result = error.to_dict()
-        
+
         assert result["code"] == "MISSING_PORT"
         assert result["message"] == "Port not found"
         assert result["block_id"] == "block-123"

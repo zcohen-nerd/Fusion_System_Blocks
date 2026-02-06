@@ -18,10 +18,8 @@ if repo_root not in sys.path:
 
 # Import the new core library for validation and action planning
 try:
-    from core.models import Graph
-    from core.validation import validate_graph, ValidationError, get_error_summary
-    from core.action_plan import build_action_plan, ActionPlan
-    from core.serialization import dict_to_graph, graph_to_dict
+    from core.validation import validate_graph, get_error_summary
+    from core.serialization import dict_to_graph
     CORE_AVAILABLE = True
 except ImportError:
     CORE_AVAILABLE = False
@@ -31,7 +29,6 @@ try:
     from fusion_addin.logging_util import (
         setup_logging,
         get_logger,
-        log_exceptions,
         log_environment_info,
         get_log_file_path,
         cleanup_old_logs,
