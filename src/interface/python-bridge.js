@@ -62,8 +62,19 @@ class PythonInterface {
     try {
       // Test if we can communicate with Python
       if (typeof adsk !== 'undefined' && typeof adsk.fusionSendData === 'function') {
+        const wasDisconnected = !this.isConnected;
         this.isConnected = true;
         logger.info('Python interface connected');
+
+        // Flush any queued messages from before connection was available
+        if (wasDisconnected && this.messageQueue.length > 0) {
+          logger.info(`Flushing ${this.messageQueue.length} queued message(s)`);
+          const queued = [...this.messageQueue];
+          this.messageQueue = [];
+          queued.forEach(({ message, expectResponse }) => {
+            this._sendMessageToPython(message, expectResponse);
+          });
+        }
       } else {
         logger.warn('Running in standalone mode - Python interface not available');
         this.isConnected = false;
@@ -81,6 +92,12 @@ class PythonInterface {
       data: data,
       timestamp: Date.now()
     };
+
+    // Retry connection check — adsk.fusionSendData may not be available
+    // at page load time but becomes available after Fusion injects it.
+    if (!this.isConnected) {
+      this.testConnection();
+    }
 
     if (!this.isConnected) {
       if (expectResponse) {
@@ -105,7 +122,7 @@ class PythonInterface {
 
   _sendMessageToPython(message, expectResponse) {
     try {
-      if (!this.isConnected || typeof adsk === 'undefined' || typeof adsk.fusionSendData !== 'function') {
+      if (typeof adsk === 'undefined' || typeof adsk.fusionSendData !== 'function') {
         throw new Error('Fusion sendData bridge unavailable');
       }
 

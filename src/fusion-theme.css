@@ -168,20 +168,20 @@
   stroke: var(--fusion-border-primary);
   stroke-width: 1.5;
   cursor: move;
-  rx: 4;
-  ry: 4;
+  /* NOTE: Do NOT use CSS transform on SVG blocks — JS manages position via transform attribute */
   transition: fill var(--fusion-transition-fast) var(--fusion-ease-out),
-              stroke var(--fusion-transition-fast) var(--fusion-ease-out);
+              stroke var(--fusion-transition-fast) var(--fusion-ease-out),
+              filter var(--fusion-transition-fast) var(--fusion-ease-out);
 }
 
-/* Block Hover */
+/* Block Hover - no CSS transform to avoid overriding SVG transform attribute */
 .block:hover {
   fill: var(--fusion-bg-hover);
   stroke: var(--fusion-accent-blue);
   stroke-width: 2;
 }
 
-/* Block Selected */
+/* Block Selected - no CSS transform to avoid overriding SVG transform attribute */
 .block.selected {
   stroke: var(--fusion-accent-orange);
   stroke-width: 2.5;

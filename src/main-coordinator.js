@@ -127,7 +127,7 @@ class SystemBlocksMain {
   setupCanvasEventHandlers(core, renderer, features) {
     const svg = document.getElementById('svg-canvas');
     if (!svg) {
-  logger.error('SVG canvas not found!');
+      logger.error('SVG canvas not found!');
       return;
     }
 
@@ -135,11 +135,29 @@ class SystemBlocksMain {
     let draggedBlock = null;
     let dragOffset = { x: 0, y: 0 };
 
+    // Convert screen (client) coordinates to SVG/diagram coordinates.
+    // Uses getScreenCTM() which correctly handles viewBox + preserveAspectRatio,
+    // unlike manual math that breaks when the SVG aspect ratio differs from viewBox.
+    const screenToSVG = (clientX, clientY) => {
+      const ctm = svg.getScreenCTM();
+      if (ctm) {
+        const point = svg.createSVGPoint();
+        point.x = clientX;
+        point.y = clientY;
+        const svgPt = point.matrixTransform(ctm.inverse());
+        return { x: svgPt.x, y: svgPt.y };
+      }
+      // Fallback for environments without getScreenCTM
+      const rect = svg.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left) * (core.viewBox.width / rect.width) + core.viewBox.x,
+        y: (clientY - rect.top) * (core.viewBox.height / rect.height) + core.viewBox.y
+      };
+    };
+
     // Mouse down - start drag or selection
     svg.addEventListener('mousedown', (e) => {
-      const rect = svg.getBoundingClientRect();
-      const x = (e.clientX - rect.left) * (core.viewBox.width / rect.width) + core.viewBox.x;
-      const y = (e.clientY - rect.top) * (core.viewBox.height / rect.height) + core.viewBox.y;
+      const { x, y } = screenToSVG(e.clientX, e.clientY);
       
       lastMousePos = { x: e.clientX, y: e.clientY };
       
@@ -182,12 +200,10 @@ class SystemBlocksMain {
       if (currentTime - core.lastMouseMoveTime < core.mouseMoveThreshold) return;
       core.lastMouseMoveTime = currentTime;
       
-      const rect = svg.getBoundingClientRect();
-      const x = (e.clientX - rect.left) * (core.viewBox.width / rect.width) + core.viewBox.x;
-      const y = (e.clientY - rect.top) * (core.viewBox.height / rect.height) + core.viewBox.y;
+      const { x, y } = screenToSVG(e.clientX, e.clientY);
       
       if (draggedBlock) {
-        // Drag block
+        // Drag block - update position using SVG-accurate coordinates
         const newPos = core.snapToGrid(x - dragOffset.x, y - dragOffset.y);
         core.updateBlock(draggedBlock.id, { x: newPos.x, y: newPos.y });
         renderer.renderBlock(core.diagram.blocks.find(b => b.id === draggedBlock.id));
@@ -195,12 +211,21 @@ class SystemBlocksMain {
         // Update lasso selection
         features.updateLassoSelection(x, y);
       } else if (e.buttons === 1 && !draggedBlock) {
-        // Pan canvas
-        const deltaX = e.clientX - lastMousePos.x;
-        const deltaY = e.clientY - lastMousePos.y;
+        // Pan canvas - use screen deltas scaled by CTM
+        const ctm = svg.getScreenCTM();
+        let scaleX, scaleY;
+        if (ctm) {
+          scaleX = ctm.a;
+          scaleY = ctm.d;
+        } else {
+          const rect = svg.getBoundingClientRect();
+          scaleX = rect.width / core.viewBox.width;
+          scaleY = rect.height / core.viewBox.height;
+        }
+        const deltaX = (e.clientX - lastMousePos.x) / scaleX;
+        const deltaY = (e.clientY - lastMousePos.y) / scaleY;
         
-        core.panBy(deltaX * (core.viewBox.width / rect.width), 
-                   deltaY * (core.viewBox.height / rect.height));
+        core.panBy(deltaX, deltaY);
         
         lastMousePos = { x: e.clientX, y: e.clientY };
       }
@@ -215,10 +240,7 @@ class SystemBlocksMain {
         dragOffset = { x: 0, y: 0 };
       } else if (features.isLassoSelecting) {
         // End lasso selection
-        const rect = svg.getBoundingClientRect();
-        const x = (e.clientX - rect.left) * (core.viewBox.width / rect.width) + core.viewBox.x;
-        const y = (e.clientY - rect.top) * (core.viewBox.height / rect.height) + core.viewBox.y;
-        
+        const { x, y } = screenToSVG(e.clientX, e.clientY);
         features.finishLassoSelection(x, y);
       }
     });
@@ -227,9 +249,7 @@ class SystemBlocksMain {
     svg.addEventListener('wheel', (e) => {
       e.preventDefault();
       
-      const rect = svg.getBoundingClientRect();
-      const centerX = (e.clientX - rect.left) * (core.viewBox.width / rect.width) + core.viewBox.x;
-      const centerY = (e.clientY - rect.top) * (core.viewBox.height / rect.height) + core.viewBox.y;
+      const { x: centerX, y: centerY } = screenToSVG(e.clientX, e.clientY);
       
       const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
       core.zoomAt(zoomFactor, centerX, centerY);

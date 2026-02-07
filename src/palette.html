@@ -365,10 +365,15 @@
       rx: var(--fusion-radius-medium);
       ry: var(--fusion-radius-medium);
       filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)) drop-shadow(0 1px 2px rgba(0,0,0,0.25));
-      transition: all var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
+      /* NOTE: Do NOT use 'transition: all' or 'transform' here.
+         SVG block positions are set via the transform attribute by JavaScript.
+         CSS transform overrides SVG transform attributes, breaking positioning. */
+      transition: fill var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1),
+                  stroke var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1),
+                  filter var(--fusion-transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
     }
     
-    /* Enhanced Hover State - Elevated with Glow */
+    /* Enhanced Hover State - Elevated with Glow (no CSS transform — SVG manages position) */
     .block:hover {
       fill: var(--fusion-bg-hover);
       stroke: var(--fusion-accent-blue);
@@ -376,10 +381,9 @@
       filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2)) 
               drop-shadow(0 2px 4px rgba(0,0,0,0.3))
               drop-shadow(0 0 0 1px var(--fusion-accent-blue));
-      transform: translateY(-1px);
     }
     
-    /* Professional Selected State - Orange Accent with Glow */
+    /* Professional Selected State - Orange Accent with Glow (no CSS transform) */
     .block.selected {
       stroke: var(--fusion-accent-orange);
       stroke-width: 2.5;
@@ -387,7 +391,6 @@
       filter: drop-shadow(0 4px 12px rgba(255,102,0,0.3)) 
               drop-shadow(0 2px 6px rgba(0,0,0,0.25))
               drop-shadow(0 0 0 2px rgba(255,102,0,0.2));
-      transform: translateY(-2px);
     }
     
     /* Child Block Indicator - Professional Dashed Pattern */
@@ -1386,7 +1389,7 @@
         <div class="ribbon-group" role="group" aria-label="View">
           <div class="ribbon-content">
             <div class="ribbon-mixed">
-              <button class="ribbon-button-large" title="Fit to View">
+              <button id="btn-fit-view" class="ribbon-button-large" title="Fit to View">
                 <div class="ribbon-icon"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-zoom"/></svg></div>
                 <div class="ribbon-text">Fit</div>
               </button>
@@ -1395,11 +1398,11 @@
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-hash"/></svg></div>
                   <span>Grid</span>
                 </button>
-                <button class="ribbon-button-small" title="Zoom In">
+                <button id="btn-zoom-in" class="ribbon-button-small" title="Zoom In">
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-zoom"/></svg></div>
                   <span>Zoom In</span>
                 </button>
-                <button class="ribbon-button-small" title="Zoom Out">
+                <button id="btn-zoom-out" class="ribbon-button-small" title="Zoom Out">
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-zoom"/></svg></div>
                   <span>Zoom Out</span>
                 </button>

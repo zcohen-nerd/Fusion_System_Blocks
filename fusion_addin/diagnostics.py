@@ -380,10 +380,10 @@ class DiagnosticsRunner:
 
             connection = Connection(
                 id="conn_1",
-                source_block_id="block_a",
-                source_port_id="port_a_out",
-                target_block_id="block_b",
-                target_port_id="port_b_in",
+                from_block_id="block_a",
+                from_port_id="port_a_out",
+                to_block_id="block_b",
+                to_port_id="port_b_in",
             )
 
             graph = Graph(
@@ -447,10 +447,10 @@ class DiagnosticsRunner:
             # Connection references a block that doesn't exist
             bad_connection = Connection(
                 id="conn_bad",
-                source_block_id="block_a",
-                source_port_id="port_a_out",
-                target_block_id="nonexistent_block",  # <-- Invalid reference
-                target_port_id="port_x",
+                from_block_id="block_a",
+                from_port_id="port_a_out",
+                to_block_id="nonexistent_block",  # <-- Invalid reference
+                to_port_id="port_x",
             )
 
             graph = Graph(

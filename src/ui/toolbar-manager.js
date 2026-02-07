@@ -54,7 +54,10 @@ class ToolbarManager {
       'ungroup': 'btn-group-ungroup',
       'check-rules': 'btn-check-rules',
       'snap-grid': 'btn-snap-grid',
-      'import': 'btn-import'
+      'import': 'btn-import',
+      'fit-view': 'btn-fit-view',
+      'zoom-in': 'btn-zoom-in',
+      'zoom-out': 'btn-zoom-out'
     };
 
     this.initializeToolbar();
@@ -92,6 +95,10 @@ class ToolbarManager {
       'Validate': {
         buttons: ['check-rules'],
         order: 6
+      },
+      'View': {
+        buttons: ['fit-view', 'zoom-in', 'zoom-out', 'snap-grid'],
+        order: 7
       }
     };
 
@@ -109,7 +116,7 @@ class ToolbarManager {
 
   getDefaultButtonState(buttonId) {
     // Buttons that are always enabled
-    const alwaysEnabled = ['new', 'load', 'block', 'types', 'check-rules'];
+    const alwaysEnabled = ['new', 'load', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid'];
     if (alwaysEnabled.includes(buttonId)) return true;
 
     // Buttons enabled when diagram has content
@@ -164,6 +171,12 @@ class ToolbarManager {
 
     // Validation operations
     this.addButtonListener('check-rules', () => this.handleCheckRules());
+
+    // View operations
+    this.addButtonListener('fit-view', () => this.handleFitView());
+    this.addButtonListener('zoom-in', () => this.handleZoomIn());
+    this.addButtonListener('zoom-out', () => this.handleZoomOut());
+    this.addButtonListener('snap-grid', () => this.handleToggleSnapGrid());
   }
 
   addButtonListener(buttonId, handler) {
@@ -454,6 +467,59 @@ class ToolbarManager {
     } catch (error) {
       logger.error('Check rules failed:', error);
     }
+  }
+
+  handleFitView() {
+    const blocks = this.editor.diagram.blocks;
+    if (blocks.length === 0) {
+      // Reset to default view
+      this.editor.setViewBox(0, 0, 1000, 1000);
+      return;
+    }
+
+    // Calculate bounding box of all blocks
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    blocks.forEach(block => {
+      minX = Math.min(minX, block.x);
+      minY = Math.min(minY, block.y);
+      maxX = Math.max(maxX, block.x + (block.width || 120));
+      maxY = Math.max(maxY, block.y + (block.height || 80));
+    });
+
+    // Add padding (10% of content size, min 50px in viewBox units)
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+    const padX = Math.max(50, contentWidth * 0.1);
+    const padY = Math.max(50, contentHeight * 0.1);
+
+    this.editor.setViewBox(
+      minX - padX,
+      minY - padY,
+      contentWidth + padX * 2,
+      contentHeight + padY * 2
+    );
+  }
+
+  handleZoomIn() {
+    // Zoom towards center of current view
+    const cx = this.editor.viewBox.x + this.editor.viewBox.width / 2;
+    const cy = this.editor.viewBox.y + this.editor.viewBox.height / 2;
+    this.editor.zoomAt(0.8, cx, cy); // factor < 1 = zoom in (smaller viewBox)
+  }
+
+  handleZoomOut() {
+    const cx = this.editor.viewBox.x + this.editor.viewBox.width / 2;
+    const cy = this.editor.viewBox.y + this.editor.viewBox.height / 2;
+    this.editor.zoomAt(1.25, cx, cy); // factor > 1 = zoom out (larger viewBox)
+  }
+
+  handleToggleSnapGrid() {
+    this.editor.snapToGridEnabled = !this.editor.snapToGridEnabled;
+    const btn = document.getElementById('btn-snap-grid');
+    if (btn) {
+      btn.classList.toggle('active', this.editor.snapToGridEnabled);
+    }
+    logger.info('Snap to grid:', this.editor.snapToGridEnabled ? 'enabled' : 'disabled');
   }
 
   // State management

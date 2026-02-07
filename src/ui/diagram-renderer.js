@@ -188,6 +188,17 @@ class DiagramRenderer {
     blockGroup.setAttribute('data-block-id', block.id);
     blockGroup.setAttribute('transform', `translate(${block.x}, ${block.y})`);
 
+    // Transparent hit rect ensures pointer events fire consistently across
+    // the entire block area (prevents gaps between child SVG elements).
+    const hitRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    hitRect.setAttribute('x', 0);
+    hitRect.setAttribute('y', 0);
+    hitRect.setAttribute('width', block.width || 120);
+    hitRect.setAttribute('height', block.height || 80);
+    hitRect.setAttribute('fill', 'transparent');
+    hitRect.setAttribute('stroke', 'none');
+    blockGroup.appendChild(hitRect);
+
     // Get block styling
     const styling = this.getBlockStyling(block);
     
