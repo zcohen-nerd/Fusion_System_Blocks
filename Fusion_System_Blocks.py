@@ -432,7 +432,9 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
     def _handle_save_diagram(self, data: Dict[str, Any]) -> Dict[str, Any]:
         json_data = data.get('diagram', '{}')
         success = save_diagram_json(json_data)
-        return {'success': success}
+        if success:
+            return {'success': True}
+        return {'success': False, 'error': 'Diagram validation or save failed'}
 
     def _handle_load_diagram(self, data: Dict[str, Any]) -> Dict[str, Any]:
         diagram_json = load_diagram_json()
@@ -448,7 +450,7 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
                 diagram_dict = diagram_data.create_empty_diagram()
         else:
             diagram_dict = diagram_data.create_empty_diagram()
-        return {'diagram': diagram_dict}
+        return {'success': True, 'diagram': diagram_dict}
 
     def _handle_export_reports(self, data: Dict[str, Any]) -> Dict[str, Any]:
         diagram_json = data.get('diagram', '{}')
@@ -457,6 +459,18 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         exports_path = os.path.join(addin_path, 'exports')
         os.makedirs(exports_path, exist_ok=True)
         files_created = diagram_data.export_report_files(diagram, exports_path)
+        # Convert dict to list of file paths for consistent JS handling
+        if isinstance(files_created, dict):
+            error = files_created.pop('error', None)
+            file_list = list(files_created.values())
+            if error:
+                return {
+                    'success': False,
+                    'error': error,
+                    'files': file_list,
+                    'path': exports_path,
+                }
+            return {'success': True, 'files': file_list, 'path': exports_path}
         return {'success': True, 'files': files_created, 'path': exports_path}
 
     def _handle_check_rules(self, data: Dict[str, Any]) -> Dict[str, Any]:

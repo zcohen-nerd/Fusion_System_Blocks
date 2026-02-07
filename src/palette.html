@@ -2266,7 +2266,7 @@
           // Block Operations
           'Ctrl+A': () => this.selectAll(),
           'Ctrl+D': () => this.duplicateSelected(),
-          'Insert': () => this.triggerAction('btn-add-block', 'Add Block'),
+          'Insert': () => this.triggerAction('btn-add-block-ribbon', 'Add Block'),
           
           // View Controls
           'Ctrl+0': () => this.resetZoom(),
@@ -4009,7 +4009,7 @@
             addStandaloneBlock();
           }
           // Hide the empty-state overlay
-          var empty = document.getElementById('empty-state-overlay');
+          var empty = document.getElementById('empty-canvas-state');
           if (empty) empty.style.display = 'none';
         },
 
@@ -4036,17 +4036,6 @@
 
         'btn-import': function() {
           showToast('Import: Coming soon', 'info');
-        },
-
-        'action-save': function() {
-          // Status-bar Save button
-          if (window.sendToPython) {
-            var data = getExportData();
-            window.sendToPython('save_diagram', { diagram: data });
-            showToast('Saving diagram…', 'info');
-          } else {
-            showToast('Save: Not connected to Fusion', 'info');
-          }
         }
       };
 

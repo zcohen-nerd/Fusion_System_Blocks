@@ -991,6 +991,13 @@
 
 /* === EMPTY CANVAS STATE === */
 
+/* Block highlight state (used by renderer for hover/search results) */
+.block-group.highlighted rect:first-child {
+  stroke: var(--fusion-accent, #0696D7);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 4px rgba(6, 150, 215, 0.4));
+}
+
 .empty-canvas-state {
   position: absolute;
   top: 50%;

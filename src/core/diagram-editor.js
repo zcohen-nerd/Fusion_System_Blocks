@@ -12,7 +12,7 @@
  * Module: Core Editor
  */
 
-const logger = window.getSystemBlocksLogger
+var logger = window.getSystemBlocksLogger
   ? window.getSystemBlocksLogger()
   : {
       debug: () => {},
@@ -142,15 +142,12 @@ class DiagramEditorCore {
   }
 
   getBlockAt(x, y) {
-    // Convert screen coordinates to diagram coordinates
-    const diagramX = x * (this.viewBox.width / 1000) + this.viewBox.x;
-    const diagramY = y * (this.viewBox.height / 1000) + this.viewBox.y;
-    
+    // x, y are already in diagram/viewBox coordinates (converted by caller)
     // Find block at coordinates (reverse order for top-most)
     for (let i = this.diagram.blocks.length - 1; i >= 0; i--) {
       const block = this.diagram.blocks[i];
-      if (diagramX >= block.x && diagramX <= block.x + (block.width || 120) &&
-          diagramY >= block.y && diagramY <= block.y + (block.height || 80)) {
+      if (x >= block.x && x <= block.x + (block.width || 120) &&
+          y >= block.y && y <= block.y + (block.height || 80)) {
         return block;
       }
     }
@@ -188,6 +185,14 @@ class DiagramEditorCore {
       // Validate diagram structure
       if (!importedDiagram.blocks || !Array.isArray(importedDiagram.blocks)) {
         throw new Error('Invalid diagram format: missing blocks array');
+      }
+
+      // Ensure required fields have safe defaults
+      if (!importedDiagram.connections) {
+        importedDiagram.connections = [];
+      }
+      if (!importedDiagram.metadata) {
+        importedDiagram.metadata = { created: new Date().toISOString() };
       }
       
       this.diagram = importedDiagram;

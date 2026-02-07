@@ -12,7 +12,7 @@
  * Module: Main Coordinator
  */
 
-const logger = window.getSystemBlocksLogger
+var logger = window.getSystemBlocksLogger
   ? window.getSystemBlocksLogger()
   : {
       debug: () => {},

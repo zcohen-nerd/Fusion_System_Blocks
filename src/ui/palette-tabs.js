@@ -150,6 +150,8 @@
           });
           renderValidationResults(filtered);
           updateHealth(filtered.some(r => r.severity === 'error') ? 'Issues detected' : 'OK');
+        }).catch(() => {
+          updateHealth('Rule check failed');
         });
       }
     });
@@ -189,7 +191,9 @@
     const pathEl = q('#export-path');
     if (!filesList || !pathEl) return;
     while (filesList.firstChild) filesList.removeChild(filesList.firstChild);
-    const files = (resp && resp.files) || [];
+    // files may be a dict {format: filepath} or an array
+    const rawFiles = (resp && resp.files) || {};
+    const files = Array.isArray(rawFiles) ? rawFiles : Object.values(rawFiles);
     const path = (resp && resp.path) || '';
     pathEl.textContent = `Path: ${path || '(unknown)'}`;
     files.forEach((f) => {

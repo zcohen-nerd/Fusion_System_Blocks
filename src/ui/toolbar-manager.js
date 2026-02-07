@@ -13,7 +13,7 @@
  * Module: Toolbar Controls
  */
 
-const logger = window.getSystemBlocksLogger
+var logger = window.getSystemBlocksLogger
   ? window.getSystemBlocksLogger()
   : {
       debug: () => {},
@@ -229,54 +229,74 @@ class ToolbarManager {
 
   handleSave() {
     try {
-      const diagramJson = this.editor.exportDiagram();
-      // Send to Python backend
-      window.sendToPython('save_diagram', { diagram: diagramJson });
+      if (window.pythonInterface) {
+        window.pythonInterface.saveDiagram();
+      } else {
+        logger.error('Save failed: Python interface not available');
+      }
     } catch (error) {
       logger.error('Save failed:', error);
-      alert('Failed to save diagram: ' + error.message);
     }
   }
 
   handleLoad() {
     try {
-      // Request from Python backend
-      window.sendToPython('load_diagram', {});
+      if (window.pythonInterface) {
+        window.pythonInterface.loadDiagram();
+      } else {
+        logger.error('Load failed: Python interface not available');
+      }
     } catch (error) {
       logger.error('Load failed:', error);
-      alert('Failed to load diagram: ' + error.message);
     }
   }
 
   handleExport() {
     try {
-      const diagramJson = this.editor.exportDiagram();
-      // Send export request to Python
-      window.sendToPython('export_reports', { diagram: diagramJson });
+      if (window.pythonInterface) {
+        window.pythonInterface.exportReports();
+      } else {
+        logger.error('Export failed: Python interface not available');
+      }
     } catch (error) {
       logger.error('Export failed:', error);
-      alert('Failed to export reports: ' + error.message);
     }
   }
 
   handleUndo() {
-    // This would be implemented by the undo/redo system
-    logger.debug('Undo action');
+    if (window.advancedFeatures) {
+      const success = window.advancedFeatures.undo();
+      if (!success) {
+        logger.debug('Nothing to undo');
+      }
+    }
   }
 
   handleRedo() {
-    // This would be implemented by the undo/redo system
-    logger.debug('Redo action');
+    if (window.advancedFeatures) {
+      const success = window.advancedFeatures.redo();
+      if (!success) {
+        logger.debug('Nothing to redo');
+      }
+    }
   }
 
   handleLinkCAD() {
     if (this.editor.selectedBlock) {
       const block = this.editor.diagram.blocks.find(b => b.id === this.editor.selectedBlock);
       if (block) {
-        window.sendToPython('start_cad_selection', { 
-          blockId: block.id, 
-          blockName: block.name 
-        });
+        if (window.pythonInterface) {
+          window.pythonInterface.sendMessage('start_cad_selection', {
+            blockId: block.id,
+            blockName: block.name
+          }, true).catch(error => {
+            logger.error('CAD link failed:', error);
+          });
+        }
+      }
+    } else {
+      if (window.pythonInterface) {
+        window.pythonInterface.showNotification('Select a block first to link CAD', 'warning');
       }
     }
   }
@@ -298,6 +318,12 @@ class ToolbarManager {
     
     this.renderer.renderBlock(newBlock);
     this.editor.selectBlock(newBlock.id);
+
+    // Hide the empty-canvas overlay once a block exists
+    const emptyState = document.getElementById('empty-canvas-state');
+    if (emptyState) {
+      emptyState.classList.add('hidden');
+    }
   }
 
   handleShowBlockTypes() {
@@ -360,39 +386,71 @@ class ToolbarManager {
   }
 
   handleAutoLayout() {
-    logger.debug('Auto layout');
-    // Would trigger layout algorithm
+    // Simple grid layout for all blocks
+    const blocks = this.editor.diagram.blocks;
+    if (blocks.length === 0) return;
+    const cols = Math.max(1, Math.ceil(Math.sqrt(blocks.length)));
+    blocks.forEach((block, i) => {
+      block.x = 50 + (i % cols) * 160;
+      block.y = 50 + Math.floor(i / cols) * 120;
+    });
+    this.editor.diagram.metadata.modified = new Date().toISOString();
+    this.renderer.updateAllBlocks(this.editor.diagram);
+    if (window.advancedFeatures) window.advancedFeatures.saveState();
   }
 
   handleAlignLeft() {
-    logger.debug('Align left');
-    // Would align selected blocks to left
+    if (!window.advancedFeatures || !window.advancedFeatures.hasSelection()) return;
+    const ids = window.advancedFeatures.getSelectedBlocks();
+    const blocks = this.editor.diagram.blocks.filter(b => ids.includes(b.id));
+    if (blocks.length < 2) return;
+    const minX = Math.min(...blocks.map(b => b.x));
+    blocks.forEach(b => { b.x = minX; });
+    this.renderer.updateAllBlocks(this.editor.diagram);
+    window.advancedFeatures.saveState();
   }
 
   handleAlignCenter() {
-    logger.debug('Align center');
-    // Would align selected blocks to center
+    if (!window.advancedFeatures || !window.advancedFeatures.hasSelection()) return;
+    const ids = window.advancedFeatures.getSelectedBlocks();
+    const blocks = this.editor.diagram.blocks.filter(b => ids.includes(b.id));
+    if (blocks.length < 2) return;
+    const avgX = blocks.reduce((sum, b) => sum + b.x + (b.width || 120) / 2, 0) / blocks.length;
+    blocks.forEach(b => { b.x = avgX - (b.width || 120) / 2; });
+    this.renderer.updateAllBlocks(this.editor.diagram);
+    window.advancedFeatures.saveState();
   }
 
   handleAlignRight() {
-    logger.debug('Align right');
-    // Would align selected blocks to right
+    if (!window.advancedFeatures || !window.advancedFeatures.hasSelection()) return;
+    const ids = window.advancedFeatures.getSelectedBlocks();
+    const blocks = this.editor.diagram.blocks.filter(b => ids.includes(b.id));
+    if (blocks.length < 2) return;
+    const maxRight = Math.max(...blocks.map(b => b.x + (b.width || 120)));
+    blocks.forEach(b => { b.x = maxRight - (b.width || 120); });
+    this.renderer.updateAllBlocks(this.editor.diagram);
+    window.advancedFeatures.saveState();
   }
 
   handleCreateGroup() {
-    logger.debug('Create group');
-    // Would group selected blocks
+    if (!window.advancedFeatures || !window.advancedFeatures.hasSelection()) return;
+    const ids = window.advancedFeatures.getSelectedBlocks();
+    if (ids.length < 2) return;
+    window.advancedFeatures.createGroup(ids, 'Group');
   }
 
   handleUngroup() {
-    logger.debug('Ungroup');
-    // Would ungroup selected group
+    // Would need to identify which group is selected
+    logger.debug('Ungroup: not yet implemented for selected group');
   }
 
   handleCheckRules() {
     try {
-      const diagramJson = this.editor.exportDiagram();
-      window.sendToPython('check_rules', { diagram: diagramJson });
+      if (window.pythonInterface) {
+        window.pythonInterface.checkRules();
+      } else {
+        logger.error('Check rules failed: Python interface not available');
+      }
     } catch (error) {
       logger.error('Check rules failed:', error);
     }

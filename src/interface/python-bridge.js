@@ -12,7 +12,7 @@
  * Module: Python Interface
  */
 
-const logger = window.getSystemBlocksLogger
+var logger = window.getSystemBlocksLogger
   ? window.getSystemBlocksLogger()
   : {
       debug: () => {},
@@ -44,6 +44,18 @@ class PythonInterface {
       this.handleCADLinkPayload(payload);
     window.receiveImportFromPython = (responseData) => this.handleImportResponse(responseData);
     window.onPythonError = (error) => this.handlePythonError(error);
+
+    // Handler for Python → JS async messages via palette.sendInfoToHTML().
+    // With useNewWebBrowser=True, Fusion calls this instead of eval'ing scripts.
+    // The Python side sends executable JS snippets as the data parameter.
+    window.fusionJavaScriptHandler = (action, data) => {
+      try {
+        logger.debug('fusionJavaScriptHandler received:', action);
+        new Function(data)();
+      } catch (e) {
+        logger.error('fusionJavaScriptHandler error for action ' + action + ':', e);
+      }
+    };
   }
 
   testConnection() {
@@ -141,7 +153,9 @@ class PythonInterface {
     logger.debug('Received diagram from Python:', jsonData);
       
       if (window.diagramEditor) {
-        const success = window.diagramEditor.importDiagram(jsonData);
+        // Ensure jsonData is a string for importDiagram (which calls JSON.parse)
+        const jsonString = typeof jsonData === 'string' ? jsonData : JSON.stringify(jsonData);
+        const success = window.diagramEditor.importDiagram(jsonString);
         if (success) {
           this.showNotification('Diagram loaded successfully', 'success');
         } else {
@@ -280,8 +294,13 @@ class PythonInterface {
   loadDiagram() {
     return this.sendMessage('load_diagram', {}, true)
       .then(response => {
+        if (response.success === false) {
+          throw new Error(response.error || 'Load failed');
+        }
         if (response.diagram) {
           this.handleLoadDiagram(response.diagram);
+        } else {
+          this.showNotification('No saved diagram found', 'info');
         }
         return response;
       })
@@ -298,7 +317,11 @@ class PythonInterface {
     return this.sendMessage('export_reports', { diagram: diagramJson }, true)
       .then(response => {
         if (response.success) {
-          this.showNotification(`Reports exported: ${response.files.length} files created`, 'success');
+          // files may be a dict {format: path} or an array
+          const fileCount = Array.isArray(response.files)
+            ? response.files.length
+            : Object.keys(response.files || {}).length;
+          this.showNotification(`Reports exported: ${fileCount} files created`, 'success');
         } else {
           throw new Error(response.error || 'Export failed');
         }
