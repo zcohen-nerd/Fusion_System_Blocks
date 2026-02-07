@@ -57,7 +57,8 @@ class ToolbarManager {
       'import': 'btn-import',
       'fit-view': 'btn-fit-view',
       'zoom-in': 'btn-zoom-in',
-      'zoom-out': 'btn-zoom-out'
+      'zoom-out': 'btn-zoom-out',
+      'connect': 'btn-connect'
     };
 
     this.initializeToolbar();
@@ -81,7 +82,7 @@ class ToolbarManager {
         order: 2
       },
       'Create': {
-        buttons: ['block', 'types', 'text', 'note', 'dimension', 'callout'],
+        buttons: ['block', 'connect', 'types', 'text', 'note', 'dimension', 'callout'],
         order: 3
       },
       'Select': {
@@ -116,7 +117,7 @@ class ToolbarManager {
 
   getDefaultButtonState(buttonId) {
     // Buttons that are always enabled
-    const alwaysEnabled = ['new', 'load', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid'];
+    const alwaysEnabled = ['new', 'load', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'connect'];
     if (alwaysEnabled.includes(buttonId)) return true;
 
     // Buttons enabled when diagram has content
@@ -150,6 +151,7 @@ class ToolbarManager {
 
     // Create operations
     this.addButtonListener('block', () => this.handleCreateBlock());
+    this.addButtonListener('connect', () => this.handleConnect());
     this.addButtonListener('types', () => this.handleShowBlockTypes());
     this.addButtonListener('text', () => this.handleAddText());
     this.addButtonListener('note', () => this.handleAddNote());
@@ -206,7 +208,8 @@ class ToolbarManager {
       'KeyA': { ctrl: true, handler: () => this.handleSelectAll() },
       'Escape': { handler: () => this.handleClearSelection() },
       'Delete': { handler: () => this.handleDeleteSelected() },
-      'KeyB': { handler: () => this.handleCreateBlock() }
+      'KeyB': { handler: () => this.handleCreateBlock() },
+      'KeyC': { handler: () => this.handleConnect() }
     };
 
     Object.entries(shortcuts).forEach(([code, config]) => {
@@ -336,6 +339,19 @@ class ToolbarManager {
     const emptyState = document.getElementById('empty-canvas-state');
     if (emptyState) {
       emptyState.classList.add('hidden');
+    }
+  }
+
+  handleConnect() {
+    // Enter connection mode: if a block is selected, start from it;
+    // otherwise prompt user to select a source block first.
+    if (this.editor.selectedBlock) {
+      const block = this.editor.diagram.blocks.find(b => b.id === this.editor.selectedBlock);
+      if (block && window.SystemBlocksMain) {
+        window.SystemBlocksMain.enterConnectionMode(block, this.editor, this.renderer);
+      }
+    } else {
+      logger.info('Select a block first, then click Connect');
     }
   }
 

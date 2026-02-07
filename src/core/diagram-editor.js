@@ -85,6 +85,33 @@ class DiagramEditorCore {
     this.diagram.metadata.modified = new Date().toISOString();
   }
 
+  addConnection(fromBlockId, toBlockId, connectionType = 'auto') {
+    // Prevent self-connections
+    if (fromBlockId === toBlockId) return null;
+
+    // Prevent duplicate connections
+    const exists = this.diagram.connections.some(
+      c => c.fromBlock === fromBlockId && c.toBlock === toBlockId
+    );
+    if (exists) return null;
+
+    const connection = {
+      id: 'conn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+      fromBlock: fromBlockId,
+      toBlock: toBlockId,
+      type: connectionType
+    };
+
+    this.diagram.connections.push(connection);
+    this.diagram.metadata.modified = new Date().toISOString();
+    return connection;
+  }
+
+  removeConnection(connectionId) {
+    this.diagram.connections = this.diagram.connections.filter(c => c.id !== connectionId);
+    this.diagram.metadata.modified = new Date().toISOString();
+  }
+
   updateBlock(blockId, updates) {
     const block = this.diagram.blocks.find(b => b.id === blockId);
     if (block) {

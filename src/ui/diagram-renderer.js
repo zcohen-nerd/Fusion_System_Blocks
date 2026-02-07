@@ -252,6 +252,9 @@ class DiagramRenderer {
     // Add status indicator
     this.addStatusIndicator(blockGroup, block);
 
+    // Add connection port dots (left = input, right = output)
+    this.addConnectionPorts(blockGroup, block);
+
     // Add to blocks layer and cache
     const target = this.blocksLayer || this.svg;
     target.appendChild(blockGroup);
@@ -306,6 +309,35 @@ class DiagramRenderer {
     indicator.setAttribute('fill', colors[status] || colors['Placeholder']);
     
     blockGroup.appendChild(indicator);
+  }
+
+  addConnectionPorts(blockGroup, block) {
+    const w = block.width || 120;
+    const h = block.height || 80;
+
+    // Input port (left center)
+    const inPort = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    inPort.setAttribute('cx', 0);
+    inPort.setAttribute('cy', h / 2);
+    inPort.setAttribute('r', 5);
+    inPort.setAttribute('fill', '#fff');
+    inPort.setAttribute('stroke', '#666');
+    inPort.setAttribute('stroke-width', '1.5');
+    inPort.setAttribute('class', 'connection-port');
+    inPort.setAttribute('opacity', '0');
+    blockGroup.appendChild(inPort);
+
+    // Output port (right center)
+    const outPort = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    outPort.setAttribute('cx', w);
+    outPort.setAttribute('cy', h / 2);
+    outPort.setAttribute('r', 5);
+    outPort.setAttribute('fill', '#fff');
+    outPort.setAttribute('stroke', '#666');
+    outPort.setAttribute('stroke-width', '1.5');
+    outPort.setAttribute('class', 'connection-port');
+    outPort.setAttribute('opacity', '0');
+    blockGroup.appendChild(outPort);
   }
 
   renderConnection(connection) {

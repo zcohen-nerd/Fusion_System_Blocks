@@ -468,7 +468,7 @@ class DiagnosticsRunner:
                     details={
                         "expected_errors": True,
                         "error_count": len(errors),
-                        "error_codes": [e.code for e in errors],
+                        "error_codes": [e.code.value for e in errors],
                     },
                 )
             else:

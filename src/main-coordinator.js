@@ -157,6 +157,9 @@ class SystemBlocksMain {
 
     // Mouse down - start drag or selection
     svg.addEventListener('mousedown', (e) => {
+      // Do not start drag/select while in connection drawing mode (handled by click)
+      if (this._connectionMode && this._connectionMode.active) return;
+
       const { x, y } = screenToSVG(e.clientX, e.clientY);
       
       lastMousePos = { x: e.clientX, y: e.clientY };
@@ -254,6 +257,284 @@ class SystemBlocksMain {
       const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
       core.zoomAt(zoomFactor, centerX, centerY);
     });
+
+    // =========================================================================
+    // DOUBLE-CLICK — inline rename block
+    // =========================================================================
+    svg.addEventListener('dblclick', (e) => {
+      const { x, y } = screenToSVG(e.clientX, e.clientY);
+      const block = core.getBlockAt(x, y);
+      if (!block) return;
+
+      e.preventDefault();
+      this.startInlineEdit(block, svg, core, renderer);
+    });
+
+    // =========================================================================
+    // RIGHT-CLICK — context menu
+    // =========================================================================
+    svg.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+
+      const { x, y } = screenToSVG(e.clientX, e.clientY);
+      const block = core.getBlockAt(x, y);
+
+      this.showContextMenu(e.clientX, e.clientY, block, core, renderer, features);
+    });
+
+    // Close context menu on any left-click anywhere
+    document.addEventListener('mousedown', (e) => {
+      if (e.button === 0) this.hideContextMenu();
+    });
+
+    // =========================================================================
+    // CONNECTION DRAWING MODE
+    // =========================================================================
+    this._connectionMode = {
+      active: false,
+      sourceBlock: null,
+      tempLine: null
+    };
+
+    svg.addEventListener('mousemove', (e) => {
+      if (!this._connectionMode.active || !this._connectionMode.tempLine) return;
+
+      const { x, y } = screenToSVG(e.clientX, e.clientY);
+      const src = this._connectionMode.sourceBlock;
+      const fromX = src.x + (src.width || 120);
+      const fromY = src.y + (src.height || 80) / 2;
+
+      this._connectionMode.tempLine.setAttribute('x2', x);
+      this._connectionMode.tempLine.setAttribute('y2', y);
+    });
+
+    svg.addEventListener('click', (e) => {
+      if (!this._connectionMode.active) return;
+
+      const { x, y } = screenToSVG(e.clientX, e.clientY);
+      const targetBlock = core.getBlockAt(x, y);
+
+      if (targetBlock && targetBlock.id !== this._connectionMode.sourceBlock.id) {
+        // Create the connection
+        const connType = document.getElementById('connection-type-select');
+        const type = connType ? connType.value : 'auto';
+        const conn = core.addConnection(this._connectionMode.sourceBlock.id, targetBlock.id, type);
+        if (conn) {
+          renderer.renderConnection(conn);
+          if (window.advancedFeatures) window.advancedFeatures.saveState();
+        }
+      }
+      this.exitConnectionMode(svg);
+      e.stopPropagation();
+    });
+
+    // Escape to cancel connection mode
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this._connectionMode.active) {
+        this.exitConnectionMode(svg);
+      }
+    });
+  }
+
+  // =========================================================================
+  // INLINE EDIT (double-click rename)
+  // =========================================================================
+  startInlineEdit(block, svg, core, renderer) {
+    // Create a foreignObject to host an HTML input over the block
+    const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+    const bw = block.width || 120;
+    const bh = block.height || 80;
+    fo.setAttribute('x', block.x + 4);
+    fo.setAttribute('y', block.y + bh / 2 - 14);
+    fo.setAttribute('width', bw - 8);
+    fo.setAttribute('height', 28);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = block.name || '';
+    input.style.cssText = `
+      width: 100%; height: 100%; border: 2px solid #FF6B35;
+      border-radius: 4px; text-align: center; font-size: 12px;
+      font-weight: bold; font-family: Arial, sans-serif;
+      outline: none; padding: 2px 4px; box-sizing: border-box;
+      background: white; color: #333;
+    `;
+
+    fo.appendChild(input);
+    svg.appendChild(fo);
+
+    // Select all text for easy replacement
+    input.focus();
+    input.select();
+
+    const commit = () => {
+      const newName = input.value.trim();
+      if (newName && newName !== block.name) {
+        core.updateBlock(block.id, { name: newName });
+        renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+      }
+      if (fo.parentNode) fo.remove();
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') { if (fo.parentNode) fo.remove(); }
+      e.stopPropagation(); // prevent shortcuts from firing
+    });
+
+    input.addEventListener('blur', commit);
+  }
+
+  // =========================================================================
+  // CONTEXT MENU
+  // =========================================================================
+  showContextMenu(clientX, clientY, block, core, renderer, features) {
+    this.hideContextMenu();
+
+    const menu = document.getElementById('block-context-menu');
+    if (!menu) return;
+
+    // Show/hide block-specific items
+    menu.querySelectorAll('[data-needs-block]').forEach(el => {
+      el.style.display = block ? '' : 'none';
+    });
+    menu.querySelectorAll('[data-needs-empty]').forEach(el => {
+      el.style.display = block ? 'none' : '';
+    });
+
+    // Wire up handlers (replace previous listeners via cloneNode trick)
+    const freshMenu = menu.cloneNode(true);
+    menu.parentNode.replaceChild(freshMenu, menu);
+    freshMenu.id = 'block-context-menu';
+
+    // Block-specific actions
+    if (block) {
+      this._ctxAction(freshMenu, 'ctx-rename', () => {
+        this.hideContextMenu();
+        const svg = document.getElementById('svg-canvas');
+        this.startInlineEdit(block, svg, core, renderer);
+      });
+
+      this._ctxAction(freshMenu, 'ctx-delete', () => {
+        this.hideContextMenu();
+        core.removeBlock(block.id);
+        renderer.updateAllBlocks(core.diagram);
+        core.clearSelection();
+        if (window.advancedFeatures) window.advancedFeatures.saveState();
+      });
+
+      this._ctxAction(freshMenu, 'ctx-connect-from', () => {
+        this.hideContextMenu();
+        this.enterConnectionMode(block, core, renderer);
+      });
+
+      // Type submenu
+      freshMenu.querySelectorAll('[data-set-type]').forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const newType = item.getAttribute('data-set-type');
+          core.updateBlock(block.id, { type: newType });
+          renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+          this.hideContextMenu();
+        });
+      });
+
+      // Status submenu
+      freshMenu.querySelectorAll('[data-set-status]').forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const newStatus = item.getAttribute('data-set-status');
+          core.updateBlock(block.id, { status: newStatus });
+          renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+          this.hideContextMenu();
+        });
+      });
+    }
+
+    // Canvas/empty-space actions
+    this._ctxAction(freshMenu, 'ctx-add-block', () => {
+      this.hideContextMenu();
+      if (window.toolbarManager) window.toolbarManager.handleCreateBlock();
+    });
+
+    this._ctxAction(freshMenu, 'ctx-fit-view', () => {
+      this.hideContextMenu();
+      if (window.toolbarManager) window.toolbarManager.handleFitView();
+    });
+
+    // Position and show
+    freshMenu.style.left = clientX + 'px';
+    freshMenu.style.top = clientY + 'px';
+    freshMenu.classList.add('show');
+
+    // Clamp to viewport
+    requestAnimationFrame(() => {
+      const rect = freshMenu.getBoundingClientRect();
+      if (rect.right > window.innerWidth) {
+        freshMenu.style.left = (clientX - rect.width) + 'px';
+      }
+      if (rect.bottom > window.innerHeight) {
+        freshMenu.style.top = (clientY - rect.height) + 'px';
+      }
+    });
+  }
+
+  hideContextMenu() {
+    const menu = document.getElementById('block-context-menu');
+    if (menu) menu.classList.remove('show');
+  }
+
+  _ctxAction(menu, id, handler) {
+    const el = menu.querySelector('#' + id);
+    if (el) el.addEventListener('click', handler);
+  }
+
+  // =========================================================================
+  // CONNECTION DRAWING MODE
+  // =========================================================================
+  enterConnectionMode(sourceBlock, core, renderer) {
+    const svg = document.getElementById('svg-canvas');
+    if (!svg) return;
+
+    this._connectionMode.active = true;
+    this._connectionMode.sourceBlock = sourceBlock;
+
+    // Highlight source block
+    renderer.highlightBlock(sourceBlock.id, true);
+
+    // Create temporary line from source block center-right edge
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    const fromX = sourceBlock.x + (sourceBlock.width || 120);
+    const fromY = sourceBlock.y + (sourceBlock.height || 80) / 2;
+    line.setAttribute('x1', fromX);
+    line.setAttribute('y1', fromY);
+    line.setAttribute('x2', fromX);
+    line.setAttribute('y2', fromY);
+    line.setAttribute('stroke', '#FF6B35');
+    line.setAttribute('stroke-width', '2');
+    line.setAttribute('stroke-dasharray', '6,3');
+    line.setAttribute('pointer-events', 'none');
+    svg.appendChild(line);
+    this._connectionMode.tempLine = line;
+
+    // Change cursor
+    svg.style.cursor = 'crosshair';
+
+    logger.info('Connection mode: click a target block or press Escape');
+  }
+
+  exitConnectionMode(svg) {
+    if (!svg) svg = document.getElementById('svg-canvas');
+    if (this._connectionMode.tempLine) {
+      this._connectionMode.tempLine.remove();
+    }
+    if (this._connectionMode.sourceBlock && window.diagramRenderer) {
+      window.diagramRenderer.highlightBlock(this._connectionMode.sourceBlock.id, false);
+    }
+    this._connectionMode.active = false;
+    this._connectionMode.sourceBlock = null;
+    this._connectionMode.tempLine = null;
+    if (svg) svg.style.cursor = '';
   }
 
   setupToolbarSync(core, toolbar, features) {
@@ -311,6 +592,14 @@ class SystemBlocksMain {
       deleteBlock: (blockId) => {
         this.modules.get('core').removeBlock(blockId);
         this.modules.get('renderer').updateAllBlocks(this.modules.get('core').diagram);
+      },
+      
+      connectBlocks: (fromBlockId, toBlockId, type) => {
+        const conn = this.modules.get('core').addConnection(fromBlockId, toBlockId, type);
+        if (conn) {
+          this.modules.get('renderer').renderConnection(conn);
+        }
+        return conn;
       },
       
       selectBlock: (blockId) => {

@@ -354,6 +354,70 @@
       cursor: grabbing;
     }
     
+    /* ========== CONTEXT MENU ========== */
+
+    /* Connection port dots — visible on block hover */
+    .block:hover .connection-port { opacity: 1 !important; transition: opacity 0.15s; }
+    .connection-port:hover { fill: var(--fusion-accent-blue, #2196F3) !important; r: 7; cursor: crosshair; }
+
+    .fusion-context-menu {
+      display: none;
+      background: var(--fusion-panel-bg, #2b2b2b);
+      border: 1px solid var(--fusion-panel-border, #555);
+      border-radius: 6px;
+      padding: 4px 0;
+      min-width: 200px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      font-size: 13px;
+      color: var(--fusion-text-primary, #eee);
+      user-select: none;
+    }
+    .fusion-context-menu.show { display: block; }
+    .fusion-context-menu-item {
+      padding: 6px 12px 6px 32px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+      white-space: nowrap;
+    }
+    .fusion-context-menu-item:hover {
+      background: var(--fusion-bg-hover, #3a3a3a);
+    }
+    .fusion-context-menu-item.danger { color: #f44336; }
+    .fusion-context-menu-item .ctx-icon { position: absolute; left: 8px; font-size: 14px; }
+    .fusion-context-menu-item .ctx-shortcut {
+      margin-left: auto;
+      opacity: 0.5;
+      font-size: 11px;
+    }
+    .fusion-context-menu-item .ctx-arrow {
+      margin-left: auto;
+      opacity: 0.5;
+    }
+    .fusion-context-menu-separator {
+      height: 1px;
+      background: var(--fusion-panel-border, #444);
+      margin: 4px 8px;
+    }
+    /* Submenus */
+    .fusion-context-menu-item.has-submenu > .fusion-context-submenu {
+      display: none;
+      position: absolute;
+      left: 100%;
+      top: -4px;
+      background: var(--fusion-panel-bg, #2b2b2b);
+      border: 1px solid var(--fusion-panel-border, #555);
+      border-radius: 6px;
+      padding: 4px 0;
+      min-width: 140px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .fusion-context-menu-item.has-submenu:hover > .fusion-context-submenu {
+      display: block;
+    }
+
     /* ========== FUSION 360 ENHANCED BLOCK STYLES - PHASE 2 ========== */
     
     /* Base Block Style - Professional Rounded Rectangle */
@@ -1280,6 +1344,10 @@
                 <div class="ribbon-text">Block</div>
               </button>
               <div class="ribbon-buttons-column">
+                <button id="btn-connect" class="ribbon-button-small" title="Draw Connection (C)">
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-link"/></svg></div>
+                  <span>Connect</span>
+                </button>
                 <button id="btn-add-text" class="ribbon-button-small" title="Add Text">
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-text"/></svg></div>
                   <span>Text</span>
@@ -2180,6 +2248,50 @@
   </div>
   
   <!-- Import Dialog -->
+  <!-- ========== BLOCK CONTEXT MENU ========== -->
+  <div id="block-context-menu" class="fusion-context-menu" style="position:fixed; z-index:9999;">
+    <!-- Block-specific items -->
+    <div id="ctx-rename" class="fusion-context-menu-item" data-needs-block>
+      <span class="ctx-icon">✏️</span> Rename
+      <span class="ctx-shortcut">Dbl-click</span>
+    </div>
+    <div class="fusion-context-menu-item has-submenu" data-needs-block>
+      <span class="ctx-icon">🔷</span> Type
+      <span class="ctx-arrow">▸</span>
+      <div class="fusion-context-submenu">
+        <div class="fusion-context-menu-item" data-set-type="Generic">Generic</div>
+        <div class="fusion-context-menu-item" data-set-type="Electrical">Electrical</div>
+        <div class="fusion-context-menu-item" data-set-type="Mechanical">Mechanical</div>
+        <div class="fusion-context-menu-item" data-set-type="Software">Software</div>
+      </div>
+    </div>
+    <div class="fusion-context-menu-item has-submenu" data-needs-block>
+      <span class="ctx-icon">📊</span> Status
+      <span class="ctx-arrow">▸</span>
+      <div class="fusion-context-submenu">
+        <div class="fusion-context-menu-item" data-set-status="Placeholder">Placeholder</div>
+        <div class="fusion-context-menu-item" data-set-status="In Progress">In Progress</div>
+        <div class="fusion-context-menu-item" data-set-status="Completed">Completed</div>
+      </div>
+    </div>
+    <div class="fusion-context-menu-separator" data-needs-block></div>
+    <div id="ctx-connect-from" class="fusion-context-menu-item" data-needs-block>
+      <span class="ctx-icon">🔗</span> Connect to…
+      <span class="ctx-shortcut">C</span>
+    </div>
+    <div class="fusion-context-menu-separator" data-needs-block></div>
+    <div id="ctx-delete" class="fusion-context-menu-item danger" data-needs-block>
+      <span class="ctx-icon">🗑️</span> Delete
+      <span class="ctx-shortcut">Del</span>
+    </div>
+    <!-- Empty-space items -->
+    <div id="ctx-add-block" class="fusion-context-menu-item" data-needs-empty>
+      <span class="ctx-icon">➕</span> Add Block
+    </div>
+    <div id="ctx-fit-view" class="fusion-context-menu-item" data-needs-empty>
+      <span class="ctx-icon">🔍</span> Fit to View
+    </div>
+  </div>
   <div id="import-dialog" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
                                   background: var(--fusion-panel-bg, #2b2b2b); border: 2px solid var(--fusion-panel-border, #555); 
                                   padding: 20px; z-index: 10000; min-width: 500px; color: var(--fusion-text-primary, #ffffff); 
