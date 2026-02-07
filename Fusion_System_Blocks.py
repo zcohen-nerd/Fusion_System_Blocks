@@ -21,8 +21,12 @@ try:
     from core.validation import validate_graph, get_error_summary
     from core.serialization import dict_to_graph
     CORE_AVAILABLE = True
-except ImportError:
+except ImportError as _core_err:
     CORE_AVAILABLE = False
+    # Log so the failure is diagnosable; logger may not exist yet.
+    import traceback as _tb
+    print(f"[SystemBlocks] Core import failed: {_core_err}")
+    _tb.print_exc()
 
 # Import logging utilities
 try:
@@ -708,28 +712,25 @@ def get_component_info_from_fusion(doc_id, occ_token):
 
 def find_occurrence_by_token(component, target_token):
     """
-    Recursively find an occurrence by its token.
+    Find an occurrence by its entity token.
+
+    Uses ``allOccurrences`` which returns a flat list of every occurrence
+    in the component hierarchy, avoiding the pitfall of recursing via
+    ``occurrence.component`` (which refers to the Component *Definition*,
+    not the assembly instance context).
 
     Args:
-        component: Component to search in
-        target_token: Token to find
+        component: Root component to search in.
+        target_token: Entity token to find.
 
     Returns:
-        Occurrence if found, None otherwise
+        Occurrence if found, None otherwise.
     """
     try:
-        for occurrence in component.occurrences:
+        for occurrence in component.allOccurrences:
             if occurrence.entityToken == target_token:
                 return occurrence
-
-            # Search recursively in sub-components
-            if occurrence.component:
-                found = find_occurrence_by_token(occurrence.component, target_token)
-                if found:
-                    return found
-
         return None
-
     except Exception:
         return None
 

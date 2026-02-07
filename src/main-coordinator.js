@@ -21,14 +21,10 @@ var logger = window.getSystemBlocksLogger
       error: () => {}
     };
 
-// Module loading order and dependencies
-const MODULES = [
-  { name: 'DiagramEditorCore', path: 'core/diagram-editor.js' },
-  { name: 'DiagramRenderer', path: 'ui/diagram-renderer.js' },
-  { name: 'ToolbarManager', path: 'ui/toolbar-manager.js' },
-  { name: 'AdvancedFeatures', path: 'features/advanced-features.js' },
-  { name: 'PythonInterface', path: 'interface/python-bridge.js' }
-];
+// Module loading is handled by <script> tags in palette.html.
+// The coordinator expects the following globals to be available:
+//   DiagramEditorCore, DiagramRenderer, ToolbarManager,
+//   AdvancedFeatures, PythonInterface (python-bridge.js)
 
 class SystemBlocksMain {
   constructor() {
@@ -62,6 +58,7 @@ class SystemBlocksMain {
       this.finalizeInitialization();
       
       this.isInitialized = true;
+      window._systemBlocksInitialized = true;
       logger.info('=== System Blocks Editor Ready ===');
       
     } catch (error) {

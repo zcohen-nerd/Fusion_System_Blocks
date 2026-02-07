@@ -2249,7 +2249,7 @@
   
   <!-- Import Dialog -->
   <!-- ========== BLOCK CONTEXT MENU ========== -->
-  <div id="block-context-menu" class="fusion-context-menu" style="position:fixed; z-index:9999;">
+  <div id="block-context-menu" class="fusion-context-menu" style="position:fixed; z-index:1000000;">
     <!-- Block-specific items -->
     <div id="ctx-rename" class="fusion-context-menu-item" data-needs-block>
       <span class="ctx-icon">✏️</span> Rename
@@ -4077,13 +4077,17 @@
     (function() {
       'use strict';
 
-      // If the modular architecture initialized successfully, it already
-      // bound click handlers via ToolbarManager.  We only need a thin
-      // safety-net for the handful of buttons that the modular system
-      // does not yet cover (hierarchy, annotations, etc.) and a
-      // bridge-aware fallback for Save/Load/Export/Validate.
+      // ── Only activate fallback if the modular system did NOT load ──
+      // The modular coordinator sets window._systemBlocksInitialized = true
+      // once all modules are wired up. If that flag is already set we can
+      // skip standalone state entirely. For the brief window before init
+      // completes, individual handlers also check window.diagramEditor.
+      if (window._systemBlocksInitialized) {
+        console.log('Modular system loaded — skipping fallback handlers');
+        return;
+      }
 
-      // Shared diagram state for standalone operations
+      // Shared diagram state — only used when the modular system is absent
       window.standaloneDiagram = window.standaloneDiagram || {
         blocks: [],
         connections: [],
@@ -4110,7 +4114,8 @@
       // ── Fallback actions for buttons NOT YET handled by the modular system ──
       var fallbackActions = {
         'btn-add-first-block': function() {
-          // The welcome-screen "Add your first block" button
+          // The welcome-screen "Add your first block" button.
+          // Prefer the modular editor when available.
           if (window.diagramEditor && window.diagramRenderer) {
             var block = window.diagramEditor.addBlock({
               name: 'Block 1',
@@ -4120,7 +4125,7 @@
             });
             window.diagramRenderer.renderBlock(block);
             showToast('Block added: ' + block.name, 'success');
-          } else {
+          } else if (!window._systemBlocksInitialized) {
             addStandaloneBlock();
           }
           // Hide the empty-state overlay
