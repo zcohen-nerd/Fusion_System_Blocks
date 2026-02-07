@@ -1426,6 +1426,10 @@
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-align-center"/></svg></div>
                   <span>Center</span>
                 </button>
+                <button id="btn-align-right" class="ribbon-button-small" disabled title="Align selected blocks to right edge">
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-align-left"/></svg></div>
+                  <span>Right</span>
+                </button>
                 <button id="btn-distribute-h" class="ribbon-button-small" disabled title="Distribute selected blocks horizontally">
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-distribute"/></svg></div>
                   <span>Distribute</span>
@@ -2589,9 +2593,17 @@
       }
     }
     
-    // Initialize keyboard manager when DOM is ready
+    // Initialize keyboard manager when DOM is ready — only if the modular
+    // ToolbarManager has NOT already registered its own shortcuts, to avoid
+    // double-firing Delete, Escape, Ctrl+Z, etc.
+    // NOTE: The modular system sets window._systemBlocksInitialized = true
+    // asynchronously, so we defer the check until the next microtask.
     document.addEventListener('DOMContentLoaded', () => {
-      window.fusionKeyboard = new FusionKeyboardManager();
+      setTimeout(() => {
+        if (!window._systemBlocksInitialized) {
+          window.fusionKeyboard = new FusionKeyboardManager();
+        }
+      }, 500);
     });
     
     // Visual debug function

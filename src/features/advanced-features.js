@@ -336,12 +336,25 @@ class AdvancedFeatures {
 
   saveState() {
     if (this.isPerformingUndoRedo) return;
-    
+
+    // Deep-clone groups and layers so undo history is not corrupted
+    // when the live objects are mutated later.
+    const cloneMap = (map) => {
+      const copy = new Map();
+      map.forEach((value, key) => {
+        const obj = Object.assign({}, value);
+        // Deep-clone Set properties (blocks)
+        if (value.blocks instanceof Set) obj.blocks = new Set(value.blocks);
+        copy.set(key, obj);
+      });
+      return copy;
+    };
+
     const state = {
       diagram: JSON.parse(JSON.stringify(this.editor.diagram)),
       selectedBlocks: new Set(this.selectedBlocks),
-      groups: new Map(this.groups),
-      layers: new Map(this.layers),
+      groups: cloneMap(this.groups),
+      layers: cloneMap(this.layers),
       timestamp: Date.now()
     };
     

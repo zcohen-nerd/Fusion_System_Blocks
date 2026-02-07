@@ -487,6 +487,8 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         diagram_json = data.get('diagram', '{}')
         diagram = json.loads(diagram_json)
         sync_results = sync_all_components_in_fusion(diagram)
+        # Return the updated diagram so JS receives synced component data
+        sync_results['diagram'] = diagram
         return sync_results
 
     def _handle_start_cad_selection(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -678,8 +680,8 @@ def get_component_info_from_fusion(doc_id, occ_token):
                 info["mass"] = physical_props.mass / 1000.0  # Convert to kg
                 info["volume"] = physical_props.volume / 1000.0  # Convert to cm³
 
-                # Get bounding box
-                bbox = physical_props.boundingBox
+                # Get bounding box from the occurrence (not physical_props)
+                bbox = occurrence.boundingBox if occurrence else None
                 if bbox:
                     info["boundingBox"] = {
                         "min": [bbox.minPoint.x, bbox.minPoint.y, bbox.minPoint.z],
@@ -695,12 +697,13 @@ def get_component_info_from_fusion(doc_id, occ_token):
         except Exception:
             pass  # Material might not be assigned
 
-        # Get custom properties
+        # Get custom properties (Attributes collection is flat)
         try:
             if hasattr(component, "attributes"):
-                for attr_group in component.attributes:
-                    for attr in attr_group:
-                        info["customProperties"][f"{attr_group.name}:{attr.name}"] = attr.value
+                for attr in component.attributes:
+                    info["customProperties"][
+                        f"{attr.groupName}:{attr.name}"
+                    ] = attr.value
         except Exception:
             pass  # Custom properties might not exist
 
@@ -759,14 +762,18 @@ def get_all_component_statuses(diagram):
 def start_cad_selection(block_id, block_name):
     """Start CAD component selection for linking to a block."""
     try:
-        # Create a selection command
-        selection_cmd = UI.commandDefinitions.itemById("selectCADForBlock")
-        if not selection_cmd:
-            selection_cmd = UI.commandDefinitions.addButtonDefinition(
-                "selectCADForBlock",
-                f'Select CAD for "{block_name}"',
-                f'Select a Fusion occurrence to link to block "{block_name}"',
-            )
+        # Delete any previous command definition to prevent handler
+        # accumulation — each call needs exactly one handler with the
+        # current block_id / block_name.
+        old_cmd = UI.commandDefinitions.itemById("selectCADForBlock")
+        if old_cmd:
+            old_cmd.deleteMe()
+
+        selection_cmd = UI.commandDefinitions.addButtonDefinition(
+            "selectCADForBlock",
+            f'Select CAD for "{block_name}"',
+            f'Select a Fusion occurrence to link to block "{block_name}"',
+        )
 
         # Set up command handler
         handler = CADSelectionHandler(block_id, block_name)
@@ -842,17 +849,17 @@ class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
                 if selected_occurrence:
                     # Get occurrence data
                     doc_id = ''
-                    doc_path = ''
+                    doc_name = ''
                     if APP.activeDocument and APP.activeDocument.dataFile:
                         doc_id = APP.activeDocument.dataFile.id or ''
-                        doc_path = APP.activeDocument.dataFile.path or ''
+                        doc_name = APP.activeDocument.dataFile.name or ''
 
                     link_data = {
                         'success': True,
                         'occToken': selected_occurrence.entityToken,
                         'componentName': selected_occurrence.component.name,
                         'docId': doc_id,
-                        'docPath': doc_path,
+                        'docName': doc_name,
                         'blockId': self.block_id,
                         'blockName': self.block_name,
                     }
@@ -1008,7 +1015,7 @@ def highlight_block_components(block_id, highlight_color):
                     # For now, we'll select the component to show it's highlighted
                     if highlighted_count == 0:
                         # Select first component to show highlighting
-                        selection = APP.activeViewport.activeSelections
+                        selection = UI.activeSelections
                         selection.clear()
                         selection.add(occurrence)
                     highlighted_count += 1

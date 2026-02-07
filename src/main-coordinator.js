@@ -211,7 +211,9 @@ class SystemBlocksMain {
         // Update lasso selection
         features.updateLassoSelection(x, y);
       } else if (e.buttons === 1 && !draggedBlock) {
-        // Pan canvas - use screen deltas scaled by CTM
+        // Pan canvas — but NOT while drawing a connection
+        if (this._connectionMode && this._connectionMode.active) return;
+
         const ctm = svg.getScreenCTM();
         let scaleX, scaleY;
         if (ctm) {
@@ -259,6 +261,12 @@ class SystemBlocksMain {
     // DOUBLE-CLICK — inline rename block
     // =========================================================================
     svg.addEventListener('dblclick', (e) => {
+      // Suppress rename if we just exited connection mode (click → dblclick)
+      if (this._connectionModeExitTime &&
+          performance.now() - this._connectionModeExitTime < 500) {
+        return;
+      }
+
       const { x, y } = screenToSVG(e.clientX, e.clientY);
       const block = core.getBlockAt(x, y);
       if (!block) return;
@@ -292,6 +300,7 @@ class SystemBlocksMain {
       sourceBlock: null,
       tempLine: null
     };
+    this._connectionModeExitTime = 0;
 
     svg.addEventListener('mousemove', (e) => {
       if (!this._connectionMode.active || !this._connectionMode.tempLine) return;
@@ -417,7 +426,10 @@ class SystemBlocksMain {
         core.removeBlock(block.id);
         renderer.updateAllBlocks(core.diagram);
         core.clearSelection();
-        if (window.advancedFeatures) window.advancedFeatures.saveState();
+        if (window.advancedFeatures) {
+          window.advancedFeatures.removeFromSelection(block.id);
+          window.advancedFeatures.saveState();
+        }
       });
 
       this._ctxAction(freshMenu, 'ctx-connect-from', () => {
@@ -531,6 +543,7 @@ class SystemBlocksMain {
     this._connectionMode.active = false;
     this._connectionMode.sourceBlock = null;
     this._connectionMode.tempLine = null;
+    this._connectionModeExitTime = performance.now();
     if (svg) svg.style.cursor = '';
   }
 
@@ -564,13 +577,15 @@ class SystemBlocksMain {
   }
 
   setupAdvancedFeaturesIntegration(core, renderer, features) {
-    // Save state when blocks are modified
+    // Save state when blocks are modified, with debounce to avoid flooding
+    // during drag operations (~60 updateBlock calls/sec).
+    let saveTimer = null;
     const originalUpdateBlock = core.updateBlock.bind(core);
     core.updateBlock = function(blockId, updates) {
       const result = originalUpdateBlock(blockId, updates);
       if (result && !features.isPerformingUndoRedo) {
-        // Only save state if not in undo/redo operation
-        setTimeout(() => features.saveState(), 100); // Debounce saves
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => features.saveState(), 250);
       }
       return result;
     };
@@ -649,6 +664,15 @@ class SystemBlocksMain {
     
     // Initial toolbar state update
     this.modules.get('toolbar').updateButtonStates();
+
+    // Disable the legacy FusionKeyboardManager (palette.html fallback)
+    // now that the modular ToolbarManager is active, to prevent
+    // double-firing of Delete, Escape, Ctrl+Z, etc.
+    if (window.fusionKeyboard && window.fusionKeyboard.destroy) {
+      window.fusionKeyboard.destroy();
+    }
+    // Prevent deferred creation of the fallback manager
+    window._systemBlocksInitialized = true;
     
     // Fire readiness event for external consumers
     const readyDetail = {

@@ -50,6 +50,7 @@ class ToolbarManager {
       'auto-layout': 'btn-auto-layout',
       'align-left': 'btn-align-left',
       'align-center': 'btn-align-center',
+      'align-right': 'btn-align-right',
       'create-group': 'btn-group-create',
       'ungroup': 'btn-group-ungroup',
       'check-rules': 'btn-check-rules',
@@ -119,6 +120,14 @@ class ToolbarManager {
     // Buttons that are always enabled
     const alwaysEnabled = ['new', 'load', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'connect'];
     if (alwaysEnabled.includes(buttonId)) return true;
+
+    // Undo/redo: enabled when there are states to restore
+    if (buttonId === 'undo') {
+      return window.advancedFeatures && window.advancedFeatures.undoStack && window.advancedFeatures.undoStack.length > 1;
+    }
+    if (buttonId === 'redo') {
+      return window.advancedFeatures && window.advancedFeatures.redoStack && window.advancedFeatures.redoStack.length > 0;
+    }
 
     // Buttons enabled when diagram has content
     const needsContent = ['save', 'export', 'select-all'];
@@ -220,6 +229,12 @@ class ToolbarManager {
   }
 
   handleKeydown(e) {
+    // Don't fire shortcuts when typing in inputs
+    const tag = e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+      return;
+    }
+
     const shortcut = this.keyboardShortcuts.get(e.code);
     if (!shortcut) return;
 
@@ -407,10 +422,23 @@ class ToolbarManager {
   }
 
   handleDeleteSelected() {
-    if (this.editor.selectedBlock) {
+    // Delete all blocks in the multi-selection (advancedFeatures), or
+    // fall back to the single-selected block from the core editor.
+    const multiIds = window.advancedFeatures && window.advancedFeatures.hasSelection()
+      ? window.advancedFeatures.getSelectedBlocks()
+      : [];
+
+    if (multiIds.length > 0) {
+      multiIds.forEach(id => this.editor.removeBlock(id));
+      if (window.advancedFeatures) window.advancedFeatures.clearSelection();
+      this.renderer.updateAllBlocks(this.editor.diagram);
+      this.editor.clearSelection();
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
+    } else if (this.editor.selectedBlock) {
       this.editor.removeBlock(this.editor.selectedBlock);
       this.renderer.updateAllBlocks(this.editor.diagram);
       this.editor.clearSelection();
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
     }
   }
 
