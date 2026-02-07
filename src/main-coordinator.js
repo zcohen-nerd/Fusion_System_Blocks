@@ -125,7 +125,7 @@ class SystemBlocksMain {
   }
 
   setupCanvasEventHandlers(core, renderer, features) {
-    const svg = document.getElementById('diagram-svg');
+    const svg = document.getElementById('svg-canvas');
     if (!svg) {
   logger.error('SVG canvas not found!');
       return;

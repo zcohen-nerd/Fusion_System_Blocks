@@ -34,12 +34,28 @@ class DiagramRenderer {
   }
 
   initializeRenderer() {
-    this.svg = document.getElementById('diagram-svg');
+    this.svg = document.getElementById('svg-canvas');
     if (!this.svg) {
       logger.error('SVG element not found!');
       return;
     }
-    
+
+    // Get or create the blocks layer group
+    this.blocksLayer = this.svg.querySelector('#blocks-layer');
+    if (!this.blocksLayer) {
+      this.blocksLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      this.blocksLayer.id = 'blocks-layer';
+      this.svg.appendChild(this.blocksLayer);
+    }
+
+    // Get or create the connections layer group
+    this.connectionsLayer = this.svg.querySelector('#connections-layer');
+    if (!this.connectionsLayer) {
+      this.connectionsLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      this.connectionsLayer.id = 'connections-layer';
+      this.svg.insertBefore(this.connectionsLayer, this.blocksLayer);
+    }
+
     this.setupGrid();
     this.setupDefs();
   }
@@ -225,8 +241,9 @@ class DiagramRenderer {
     // Add status indicator
     this.addStatusIndicator(blockGroup, block);
 
-    // Add to SVG and cache
-    this.svg.appendChild(blockGroup);
+    // Add to blocks layer and cache
+    const target = this.blocksLayer || this.svg;
+    target.appendChild(blockGroup);
     this.blockElements.set(block.id, blockGroup);
 
     return blockGroup;
@@ -306,7 +323,8 @@ class DiagramRenderer {
     path.setAttribute('stroke-width', '2');
     path.setAttribute('marker-end', 'url(#arrowhead)');
     
-    this.svg.appendChild(path);
+    const target = this.connectionsLayer || this.svg;
+    target.appendChild(path);
     this.connectionElements.set(connection.id, path);
 
     return path;

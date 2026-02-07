@@ -29,7 +29,34 @@ class ToolbarManager {
     this.activeToolGroups = new Set(['File', 'Edit', 'Create', 'Select', 'Arrange']);
     this.buttonStates = new Map();
     this.keyboardShortcuts = new Map();
-    
+
+    // Map logical button names to actual HTML element IDs
+    this.buttonIdMap = {
+      'new': 'btn-new',
+      'save': 'btn-save',
+      'load': 'btn-load',
+      'export': 'btn-export-report',
+      'undo': 'btn-undo',
+      'redo': 'btn-redo',
+      'link-cad': 'btn-link-cad',
+      'link-ecad': 'btn-link-ecad',
+      'block': 'btn-add-block-ribbon',
+      'text': 'btn-add-text',
+      'note': 'btn-add-note',
+      'dimension': 'btn-add-dimension',
+      'callout': 'btn-add-callout',
+      'select-all': 'btn-select-all',
+      'clear-selection': 'btn-select-none',
+      'auto-layout': 'btn-auto-layout',
+      'align-left': 'btn-align-left',
+      'align-center': 'btn-align-center',
+      'create-group': 'btn-group-create',
+      'ungroup': 'btn-group-ungroup',
+      'check-rules': 'btn-check-rules',
+      'snap-grid': 'btn-snap-grid',
+      'import': 'btn-import'
+    };
+
     this.initializeToolbar();
     this.setupKeyboardShortcuts();
   }
@@ -61,6 +88,10 @@ class ToolbarManager {
       'Arrange': {
         buttons: ['auto-layout', 'align-left', 'align-center', 'align-right', 'create-group', 'ungroup'],
         order: 5
+      },
+      'Validate': {
+        buttons: ['check-rules'],
+        order: 6
       }
     };
 
@@ -78,7 +109,7 @@ class ToolbarManager {
 
   getDefaultButtonState(buttonId) {
     // Buttons that are always enabled
-    const alwaysEnabled = ['new', 'load', 'block', 'types'];
+    const alwaysEnabled = ['new', 'load', 'block', 'types', 'check-rules'];
     if (alwaysEnabled.includes(buttonId)) return true;
 
     // Buttons enabled when diagram has content
@@ -130,10 +161,14 @@ class ToolbarManager {
     this.addButtonListener('align-right', () => this.handleAlignRight());
     this.addButtonListener('create-group', () => this.handleCreateGroup());
     this.addButtonListener('ungroup', () => this.handleUngroup());
+
+    // Validation operations
+    this.addButtonListener('check-rules', () => this.handleCheckRules());
   }
 
   addButtonListener(buttonId, handler) {
-    const button = document.getElementById(`btn-${buttonId}`);
+    const elementId = this.buttonIdMap[buttonId] || `btn-${buttonId}`;
+    const button = document.getElementById(elementId);
     if (button) {
       button.addEventListener('click', (e) => {
         e.preventDefault();
@@ -354,10 +389,20 @@ class ToolbarManager {
     // Would ungroup selected group
   }
 
+  handleCheckRules() {
+    try {
+      const diagramJson = this.editor.exportDiagram();
+      window.sendToPython('check_rules', { diagram: diagramJson });
+    } catch (error) {
+      logger.error('Check rules failed:', error);
+    }
+  }
+
   // State management
   updateButtonStates() {
     this.buttonStates.forEach((state, buttonId) => {
-      const button = document.getElementById(`btn-${buttonId}`);
+      const elementId = this.buttonIdMap[buttonId] || `btn-${buttonId}`;
+      const button = document.getElementById(elementId);
       if (button) {
         // Update enabled state
         state.enabled = this.getDefaultButtonState(buttonId);

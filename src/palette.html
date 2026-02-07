@@ -3961,40 +3961,130 @@
   <script>
     (function() {
       'use strict';
-      
-      // Standalone diagram state - doesn't depend on modular architecture
+
+      // If the modular architecture initialized successfully, it already
+      // bound click handlers via ToolbarManager.  We only need a thin
+      // safety-net for the handful of buttons that the modular system
+      // does not yet cover (hierarchy, annotations, etc.) and a
+      // bridge-aware fallback for Save/Load/Export/Validate.
+
+      // Shared diagram state for standalone operations
       window.standaloneDiagram = window.standaloneDiagram || {
         blocks: [],
         connections: [],
         nextId: 1,
         selectedBlockId: null
       };
-      
-      // Helper: Generate unique ID
-      function generateId() {
-        return 'block-' + (window.standaloneDiagram.nextId++);
+
+      // Helper: Show toast notification
+      function showToast(message, type) {
+        type = type || 'info';
+        var toast = document.createElement('div');
+        toast.textContent = message;
+        toast.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);' +
+          'padding:12px 24px;border-radius:6px;color:white;font-size:14px;z-index:99999;' +
+          'pointer-events:none;transition:opacity 0.3s;' +
+          'background:' + (type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3');
+        document.body.appendChild(toast);
+        setTimeout(function() {
+          toast.style.opacity = '0';
+          setTimeout(function() { toast.remove(); }, 300);
+        }, 3000);
       }
-      
-      // Helper: Create SVG block element
+
+      // ── Fallback actions for buttons NOT YET handled by the modular system ──
+      var fallbackActions = {
+        'btn-add-first-block': function() {
+          // The welcome-screen "Add your first block" button
+          if (window.diagramEditor && window.diagramRenderer) {
+            var block = window.diagramEditor.addBlock({
+              name: 'Block 1',
+              type: 'Generic',
+              x: 200,
+              y: 200
+            });
+            window.diagramRenderer.renderBlock(block);
+            showToast('Block added: ' + block.name, 'success');
+          } else {
+            addStandaloneBlock();
+          }
+          // Hide the empty-state overlay
+          var empty = document.getElementById('empty-state-overlay');
+          if (empty) empty.style.display = 'none';
+        },
+
+        'btn-go-up': function() {
+          showToast('Navigate Up: No parent diagram', 'info');
+        },
+
+        'btn-drill-down': function() {
+          showToast('Drill Down: Select a block first', 'info');
+        },
+
+        'btn-create-child': function() {
+          showToast('Create Child: Select a block first', 'info');
+        },
+
+        'btn-snap-grid': function() {
+          var btn = document.getElementById('btn-snap-grid');
+          if (btn) btn.classList.toggle('active');
+          if (window.diagramEditor) {
+            window.diagramEditor.snapToGridEnabled = !window.diagramEditor.snapToGridEnabled;
+          }
+          showToast('Grid snap ' + (btn && btn.classList.contains('active') ? 'ON' : 'OFF'), 'info');
+        },
+
+        'btn-import': function() {
+          showToast('Import: Coming soon', 'info');
+        },
+
+        'action-save': function() {
+          // Status-bar Save button
+          if (window.sendToPython) {
+            var data = getExportData();
+            window.sendToPython('save_diagram', { diagram: data });
+            showToast('Saving diagram…', 'info');
+          } else {
+            showToast('Save: Not connected to Fusion', 'info');
+          }
+        }
+      };
+
+      // ── Standalone block creation (safety net if modular system fails) ──
+      function addStandaloneBlock() {
+        var id = 'block-' + (window.standaloneDiagram.nextId++);
+        var block = {
+          id: id,
+          name: 'Block ' + window.standaloneDiagram.nextId,
+          type: 'Generic',
+          x: 100 + Math.random() * 300,
+          y: 100 + Math.random() * 200,
+          width: 120,
+          height: 80
+        };
+        window.standaloneDiagram.blocks.push(block);
+        createBlockElement(block);
+        showToast('Block added: ' + block.name, 'success');
+      }
+
       function createBlockElement(block) {
-        const svg = document.getElementById('diagram-svg');
+        var svg = document.getElementById('svg-canvas');
         if (!svg) return null;
-        
-        let blocksGroup = svg.querySelector('#blocks-layer');
+
+        var blocksGroup = svg.querySelector('#blocks-layer');
         if (!blocksGroup) {
           blocksGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
           blocksGroup.id = 'blocks-layer';
           svg.appendChild(blocksGroup);
         }
-        
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+        var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         g.setAttribute('id', block.id);
         g.setAttribute('class', 'diagram-block');
         g.setAttribute('transform', 'translate(' + block.x + ',' + block.y + ')');
         g.style.cursor = 'move';
-        
-        // Block rectangle
-        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+
+        var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         rect.setAttribute('width', block.width);
         rect.setAttribute('height', block.height);
         rect.setAttribute('rx', '6');
@@ -4002,9 +4092,8 @@
         rect.setAttribute('stroke', '#0078d4');
         rect.setAttribute('stroke-width', '2');
         g.appendChild(rect);
-        
-        // Block name
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+
+        var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('x', block.width / 2);
         text.setAttribute('y', block.height / 2);
         text.setAttribute('text-anchor', 'middle');
@@ -4014,9 +4103,8 @@
         text.setAttribute('font-family', 'Artifakt Element, sans-serif');
         text.textContent = block.name;
         g.appendChild(text);
-        
-        // Type label
-        const typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+
+        var typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         typeText.setAttribute('x', block.width / 2);
         typeText.setAttribute('y', block.height / 2 + 16);
         typeText.setAttribute('text-anchor', 'middle');
@@ -4024,20 +4112,16 @@
         typeText.setAttribute('font-size', '10');
         typeText.textContent = block.type;
         g.appendChild(typeText);
-        
+
         blocksGroup.appendChild(g);
-        
-        // Make draggable
         makeDraggable(g, block);
-        
         return g;
       }
-      
-      // Helper: Make block draggable
+
       function makeDraggable(element, block) {
-        let isDragging = false;
-        let startX, startY, origX, origY;
-        
+        var isDragging = false;
+        var startX, startY, origX, origY;
+
         element.addEventListener('mousedown', function(e) {
           if (e.button !== 0) return;
           isDragging = true;
@@ -4048,16 +4132,16 @@
           element.style.opacity = '0.8';
           e.stopPropagation();
         });
-        
+
         document.addEventListener('mousemove', function(e) {
           if (!isDragging) return;
-          const dx = e.clientX - startX;
-          const dy = e.clientY - startY;
+          var dx = e.clientX - startX;
+          var dy = e.clientY - startY;
           block.x = origX + dx;
           block.y = origY + dy;
           element.setAttribute('transform', 'translate(' + block.x + ',' + block.y + ')');
         });
-        
+
         document.addEventListener('mouseup', function() {
           if (isDragging) {
             isDragging = false;
@@ -4065,216 +4149,39 @@
           }
         });
       }
-      
-      // Helper: Show toast notification
-      function showToast(message, type) {
-        type = type || 'info';
-        const toast = document.createElement('div');
-        toast.textContent = message;
-        toast.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);' +
-          'padding:12px 24px;border-radius:6px;color:white;font-size:14px;z-index:99999;' +
-          'background:' + (type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3');
-        document.body.appendChild(toast);
-        setTimeout(function() { toast.remove(); }, 3000);
-      }
-      
-      // Simple action handlers that work independently
-      const actions = {
-        'btn-new': function() {
-          if (confirm('Create new diagram? Unsaved changes will be lost.')) {
-            // Clear existing blocks from SVG
-            const blocksLayer = document.getElementById('blocks-layer');
-            if (blocksLayer) blocksLayer.innerHTML = '';
-            
-            // Reset diagram state
-            window.standaloneDiagram.blocks = [];
-            window.standaloneDiagram.connections = [];
-            window.standaloneDiagram.nextId = 1;
-            
-            showToast('New diagram created', 'success');
-          }
-        },
-        
-        'btn-save': function() {
-          const data = JSON.stringify(window.standaloneDiagram, null, 2);
-          if (typeof adsk !== 'undefined' && adsk.fusionSendData) {
-            adsk.fusionSendData('save', data);
-            showToast('Saving to Fusion...', 'info');
-          } else {
-            // Fallback: copy to clipboard or show
-            console.log('Diagram data:', data);
-            showToast('Diagram logged to console', 'info');
-          }
-        },
-        
-        'btn-load': function() {
-          if (typeof adsk !== 'undefined' && adsk.fusionSendData) {
-            adsk.fusionSendData('load', '{}');
-            showToast('Loading from Fusion...', 'info');
-          } else {
-            showToast('Load: Connect to Fusion first', 'info');
-          }
-        },
-        
-        'btn-export-report': function() {
-          const blockCount = window.standaloneDiagram.blocks.length;
-          showToast('Export: ' + blockCount + ' blocks in diagram', 'info');
-        },
-        
-        'btn-add-block-ribbon': function() {
-          const block = {
-            id: generateId(),
-            name: 'Block ' + window.standaloneDiagram.nextId,
-            type: 'Generic',
-            x: 100 + Math.random() * 300,
-            y: 100 + Math.random() * 200,
-            width: 120,
-            height: 80
-          };
-          window.standaloneDiagram.blocks.push(block);
-          createBlockElement(block);
-          showToast('Block added: ' + block.name, 'success');
-        },
-        
-        'btn-add-text': function() {
-          showToast('Add Text: Coming soon', 'info');
-        },
-        
-        'btn-add-note': function() {
-          showToast('Add Note: Coming soon', 'info');
-        },
-        
-        'btn-select-all': function() {
-          const blocks = document.querySelectorAll('.diagram-block rect');
-          blocks.forEach(function(rect) {
-            rect.setAttribute('stroke', '#ffeb3b');
-            rect.setAttribute('stroke-width', '3');
-          });
-          showToast('Selected ' + blocks.length + ' blocks', 'success');
-        },
-        
-        'btn-select-none': function() {
-          const blocks = document.querySelectorAll('.diagram-block rect');
-          blocks.forEach(function(rect) {
-            rect.setAttribute('stroke', '#0078d4');
-            rect.setAttribute('stroke-width', '2');
-          });
-          showToast('Selection cleared', 'info');
-        },
-        
-        'btn-undo': function() {
-          showToast('Undo: Coming soon', 'info');
-        },
-        
-        'btn-redo': function() {
-          showToast('Redo: Coming soon', 'info');
-        },
-        
-        'btn-auto-layout': function() {
-          // Simple grid layout
-          const blocks = window.standaloneDiagram.blocks;
-          const cols = 3;
-          blocks.forEach(function(block, i) {
-            block.x = 50 + (i % cols) * 150;
-            block.y = 50 + Math.floor(i / cols) * 120;
-            const el = document.getElementById(block.id);
-            if (el) el.setAttribute('transform', 'translate(' + block.x + ',' + block.y + ')');
-          });
-          showToast('Auto-layout applied', 'success');
-        },
-        
-        'btn-check-rules': function() {
-          const blockCount = window.standaloneDiagram.blocks.length;
-          if (blockCount === 0) {
-            showToast('Validation: No blocks to validate', 'info');
-          } else {
-            showToast('Validation: ' + blockCount + ' blocks OK', 'success');
-          }
-        },
-        
-        'btn-link-cad': function() {
-          showToast('Link CAD: Select a block first', 'info');
-        },
-        
-        'btn-link-ecad': function() {
-          showToast('Link ECAD: Select a block first', 'info');
-        },
-        
-        'btn-go-up': function() {
-          showToast('Navigate Up: No parent diagram', 'info');
-        },
-        
-        'btn-drill-down': function() {
-          showToast('Drill Down: Select a block first', 'info');
-        },
-        
-        'btn-create-child': function() {
-          showToast('Create Child: Select a block first', 'info');
-        },
-        
-        'btn-group-create': function() {
-          showToast('Create Group: Select multiple blocks first', 'info');
-        },
-        
-        'btn-group-ungroup': function() {
-          showToast('Ungroup: Select a group first', 'info');
-        },
-        
-        'btn-align-left': function() {
-          showToast('Align Left: Select multiple blocks', 'info');
-        },
-        
-        'btn-align-center': function() {
-          showToast('Align Center: Select multiple blocks', 'info');
-        },
-        
-        'btn-distribute-h': function() {
-          showToast('Distribute: Select multiple blocks', 'info');
-        },
-        
-        'btn-add-dimension': function() {
-          showToast('Add Dimension: Coming soon', 'info');
-        },
-        
-        'btn-add-callout': function() {
-          showToast('Add Callout: Coming soon', 'info');
-        },
-        
-        'btn-snap-grid': function() {
-          showToast('Grid snap toggled', 'info');
-        },
-        
-        'btn-import': function() {
-          showToast('Import: Coming soon', 'info');
+
+      function getExportData() {
+        if (window.diagramEditor && window.diagramEditor.diagram) {
+          return JSON.stringify(window.diagramEditor.diagram);
         }
-      };
-      
-      // Use event delegation on the ribbon
+        return JSON.stringify(window.standaloneDiagram);
+      }
+
+      // ── Thin delegation listener (only fires for unhandled buttons) ──
       document.addEventListener('click', function(e) {
-        const button = e.target.closest('button[id^="btn-"]');
+        var button = e.target.closest('button[id^="btn-"], button[id^="action-"]');
         if (!button) return;
-        
-        const buttonId = button.id;
-        console.log('Button clicked:', buttonId);
-        
-        // Visual feedback
-        button.style.transform = 'scale(0.95)';
-        setTimeout(function() { button.style.transform = ''; }, 100);
-        
-        // Execute action if defined
-        if (actions[buttonId]) {
+
+        var buttonId = button.id;
+
+        // If the modular ToolbarManager already handled this via
+        // stopPropagation, we won't reach here for those buttons.
+        // This handler catches only the buttons not wired by the modules.
+        if (fallbackActions[buttonId]) {
+          // Visual press feedback
+          button.style.transform = 'scale(0.95)';
+          setTimeout(function() { button.style.transform = ''; }, 100);
+
           try {
-            actions[buttonId]();
+            fallbackActions[buttonId]();
           } catch (err) {
-            console.error('Action error:', err);
+            console.error('Fallback action error:', err);
             showToast('Error: ' + err.message, 'error');
           }
-        } else {
-          showToast(button.title || buttonId, 'info');
         }
-      }, true); // Use capture phase
-      
-      console.log('Standalone button handlers initialized');
+      }); // bubble phase — runs AFTER modular handlers
+
+      console.log('Fallback button handlers initialized');
     })();
   </script>
 

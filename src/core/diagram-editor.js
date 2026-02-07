@@ -98,7 +98,7 @@ class DiagramEditorCore {
   // Canvas management
   setViewBox(x, y, width, height) {
     this.viewBox = { x, y, width, height };
-    const svg = document.getElementById('diagram-svg');
+    const svg = document.getElementById('svg-canvas');
     if (svg) {
       svg.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
     }
