@@ -61,12 +61,10 @@ Fusion_System_Blocks/
 ├── docs/                          # Project documentation
 │   ├── architecture/              # Architecture decision records (ADRs) and review reports
 │   ├── ux/                        # UX research (JTBD, journey maps, flows)
-│   ├── CRITICAL_ISSUES.md         # Known critical issues and blockers
-│   ├── DESIGN_NOTES.md            # Design rationale and decisions
 │   ├── DETAILED_TESTING_DOCUMENTATION.md # Comprehensive testing guide
+│   ├── FUSION_MANUAL_TEST_PLAN.md # Quick manual test checklist
 │   ├── MILESTONES.md              # Development milestone tracking
-│   ├── schema.json                # JSON schema for diagram data validation
-│   └── TESTING_CHECKLIST.md       # Manual testing checklist
+│   └── schema.json                # JSON schema for diagram data validation
 ├── exports/                       # Build artifacts (distribution ZIPs)
 │   └── Fusion_System_Blocks_v1.0_Beta.zip
 ├── fusion_addin/                  # Fusion 360 adapter layer (bridges core and Fusion API)
@@ -118,7 +116,7 @@ Fusion_System_Blocks/
 │   ├── palette.html               # Main HTML palette UI (entry point for frontend)
 │   └── palette.js                 # Palette initialization and legacy orchestration
 ├── tasks.md                       # Project task list and TODOs
-├── tests/                         # Automated tests (pytest) - 128 tests total
+├── tests/                         # Automated tests (pytest) - 207 tests total
 │   ├── test_core_action_plan.py   # Tests for core/action_plan.py (24 tests)
 │   ├── test_core_validation.py    # Tests for core/validation.py (24 tests)
 │   ├── test_diagram_data.py       # Tests for diagram_data.py core logic
@@ -210,12 +208,10 @@ The source directory contains both Python business logic and JavaScript frontend
   - `palette-ux-jtbd.md`: Jobs-to-be-Done analysis
   - `palette-ux-journey.md`: User journey maps
   - `palette-ux-flow.md`: Task flows and accessibility checklist
-- **`CRITICAL_ISSUES.md`**: Known critical issues and blockers
-- **`DESIGN_NOTES.md`**: Design rationale, trade-offs, and implementation notes
 - **`DETAILED_TESTING_DOCUMENTATION.md`**: Comprehensive testing guide
-- **`MILESTONES.md`**: Development milestone tracking (15 milestones: 14 complete, 1 in progress)
+- **`FUSION_MANUAL_TEST_PLAN.md`**: Quick manual test checklist for Fusion 360 validation
+- **`MILESTONES.md`**: Development milestone tracking
 - **`schema.json`**: JSON schema defining the structure of diagram data for validation
-- **`TESTING_CHECKLIST.md`**: Manual testing checklist
 
 ### `tests/`: Automated Test Suite
 - **Test Organization**: Tests mirror the structure of `src/` with `test_*.py` naming
@@ -284,7 +280,7 @@ The source directory contains both Python business logic and JavaScript frontend
 ### Documentation
 - **Project Docs**: `docs/` with subdirectories for `architecture/` and `ux/`
 - **Root-Level Docs**: High-level guides (README, CHANGELOG, LICENSE) at root
-- **Meta Docs**: Development-focused docs (CRITICAL_ISSUES, TESTING_CHECKLIST, tasks.md) at root
+- **Meta Docs**: Development-focused docs (tasks.md) at root, testing docs in `docs/`
 
 ### Build and Deployment
 - **Scripts**: PowerShell `.ps1` files at root level
@@ -364,7 +360,7 @@ The source directory contains both Python business logic and JavaScript frontend
 #### For Understanding the Project
 1. **`README.md`**: Project overview, features, installation, and usage
 2. **`docs/MILESTONES.md`**: Development roadmap and progress
-3. **`docs/DESIGN_NOTES.md`**: Design rationale and trade-offs
+3. **`docs/architecture/`**: Architecture decisions and review
 
 #### For Code Exploration
 1. **Python Backend**: `Fusion_System_Blocks.py` → `src/diagram_data.py`
@@ -383,7 +379,7 @@ The source directory contains both Python business logic and JavaScript frontend
 2. **Frontend UI**: Create new module in appropriate `src/` subdirectory (core, ui, features)
 3. **Bridge Communication**: Update `src/interface/python-bridge.js` if Python ↔ JavaScript communication required
 4. **Tests**: Add `tests/test_{feature}.py` with pytest fixtures
-5. **Documentation**: Update `docs/DESIGN_NOTES.md` and relevant ADRs
+5. **Documentation**: Update relevant ADRs in `docs/architecture/`
 
 #### Adding a New Block Type
 1. Add type definition to `src/electrical-blocks.js`, `src/mechanical-blocks.js`, or `src/software-blocks.js`

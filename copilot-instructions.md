@@ -28,7 +28,7 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
   - `diagnostics.py`: DiagnosticsRunner with self-test suite
 - **Entry Point**: `Fusion_System_Blocks.py` orchestrates both layers
 - **Legacy Data Management**: `src/diagram_data.py` for backward compatibility
-- **Testing**: 128 pytest tests in `tests/` (runs outside Fusion 360)
+- **Testing**: 207 pytest tests in `tests/` (runs outside Fusion 360)
 
 ## Development Standards
 
@@ -50,7 +50,7 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
 
 ## Testing Approach
 
-### Test Coverage (128 tests)
+### Test Coverage (207 tests)
 - **Core Library Tests**: `test_core_validation.py`, `test_core_action_plan.py` (48 tests)
 - **Legacy Logic Tests**: `test_diagram_data.py`, `test_validation.py` (80 tests)
 - **Integration Tests**: Module interaction validation
@@ -77,13 +77,13 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
 
 ## Feature Development
 
-### Milestone System (16 total, 15 complete)
+### Milestone System (17 total, 14 complete)
 - **Foundation** (Milestones 1-3): Core block manipulation, persistence, status tracking
 - **Core Features** (Milestones 4-7): Hierarchy, import/export, rules, search
 - **Advanced Features** (Milestones 8-11): Undo/redo, connections, UI, templates
-- **Revolutionary** (Milestones 12-14): CAD linking, 3D visualization, diagram tools
-- **Future** (Milestone 15): AI-powered design assistant (planned)
-- **Tooling** (Milestone 16): Two-layer architecture, logging, diagnostics (complete)
+- **Integration** (Milestones 12, 14): CAD linking, advanced diagram tools
+- **Tooling** (Milestone 16): Two-layer architecture, logging, diagnostics
+- **Not Started** (Milestones 13, 15, 17): 3D visualization, AI assistant, analytics
 
 ### Ribbon Interface
 - **File Group**: New, Open, Save, Export operations

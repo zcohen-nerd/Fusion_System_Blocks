@@ -6,7 +6,7 @@
 **System Status:** 15/16 Milestones Complete (Milestone 13 in progress)  
 **Document Purpose:** Comprehensive reference documentation for all system features and testing procedures
 
-> **⚡ For Practical Testing:** Use `TESTING_CHECKLIST.md` (30-minute workflow)  
+> **⚡ For Practical Testing:** Use `FUSION_MANUAL_TEST_PLAN.md` (30-minute workflow)  
 > **📚 For Documentation:** Use this file (complete feature reference)
 
 ---

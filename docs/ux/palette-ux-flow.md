@@ -1,5 +1,7 @@
 # User Flow: Palette Redesign for Task-First Navigation
 
+> **Status: PROPOSED** — This describes a future tabbed UI redesign that has not been implemented. The current UI uses a ribbon interface.
+
 ## Entry Point
 Palette launches to a landing screen with clear primary actions.
 

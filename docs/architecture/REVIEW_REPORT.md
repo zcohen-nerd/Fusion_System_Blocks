@@ -20,7 +20,7 @@ The Fusion System Blocks add-in demonstrates a solid, well-evolved architecture.
 
 ### 3. Testability & Maintainability ✅ (Improved)
 - **Two-Layer Architecture:** Pure Python `core/` library with NO Fusion dependencies enables pytest testing.
-- **128 Tests:** Comprehensive test suite runs in <0.2s outside of Fusion 360.
+- **207 Tests:** Comprehensive test suite runs in <0.2s outside of Fusion 360.
 - **Modular Structure:** Clear separation between core logic, Fusion adapter, and frontend.
 - **Type Hinting:** Python type hints throughout for static analysis and IDE support.
 
@@ -38,7 +38,7 @@ The Fusion System Blocks add-in demonstrates a solid, well-evolved architecture.
 ## Recommendations
 
 1. ✅ **Performance Monitoring (Addressed):** Logging now captures operation durations.
-2. ✅ **Automated Testing (Addressed):** 128 pytest tests cover core logic outside Fusion.
+2. ✅ **Automated Testing (Addressed):** 207 pytest tests cover core logic outside Fusion.
 3. ✅ **Documentation (Addressed):** ADRs and folder structure documentation updated.
 4. **Future:** Consider integration tests with mocked Fusion API for adapter layer validation.
 5. **Future:** Add telemetry opt-in for production usage metrics (with user consent).

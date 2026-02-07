@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Block Interaction Features:**
+  - Double-click inline rename with foreignObject HTML input
+  - Right-click context menu with Type/Status submenus, Connect to, Delete, Add Block
+  - Connection drawing mode (toolbar button, context menu, 'C' keyboard shortcut)
+  - Connection port dots on block hover (input/output circles)
+  - `addConnection()` / `removeConnection()` in diagram editor core
 - **Two-Layer Architecture (Milestone 16):**
   - `core/` pure Python library with NO Fusion 360 dependencies
   - `fusion_addin/` adapter layer for Fusion 360 integration
@@ -32,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Session ID grouping for each add-in run
   - `@log_exceptions` decorator for event handlers
   - Environment info logging (Fusion version, OS, Python version)
-- **48 new tests** for core library validation and action planning (total: 128 tests)
+- **48 new tests** for core library validation and action planning (total: 207 tests)
 
 ### Changed
 - Updated repository structure to include `core/` and `fusion_addin/` directories

@@ -25,10 +25,11 @@ This document summarizes the development milestones that guide Fusion System Blo
 | 10.5 | UI/UX Improvements | 🟠 | Responsive ribbon behaviors, accessibility enhancements |
 | 11 | Advanced Block Types & Templates | ✅ | Discipline-specific blocks, template library, metadata |
 | 12 | Enhanced CAD Linking | ✅ | Component health dashboard, property sync, thumbnail support |
-| 13 | 3D Visualization & Living Documentation | 🟠 | Viewport overlays, component highlighting, auto-generated sequences |
+| 13 | 3D Visualization & Living Documentation | � | Viewport overlays, component highlighting, auto-generated sequences |
 | 14 | Advanced Diagram Features | ✅ | Auto layout, alignment tools, annotations, grouping |
 | 15 | AI-Powered Design Assistant | 🔲 | Intelligent suggestions, rule insights, automation hooks |
 | 16 | Architecture Refactoring & Tooling | ✅ | Two-layer architecture, production logging, diagnostics system |
+| 17 | Analytics & Reporting | 🔲 | Component analysis, connection reports, PDF/CSV export |
 
 ## Notes on Active Milestones
 
@@ -36,8 +37,8 @@ This document summarizes the development milestones that guide Fusion System Blo
 - Responsive breakpoints for the ribbon and secondary toolbar are partially implemented.
 - Accessibility work (keyboard navigation, focus indicators, high-contrast options) is tracked in `tasks.md`.
 
-### Milestone 13 – 3D Visualization & Living Documentation (🟠)
-- Backend scaffolding for linking diagram entities to 3D occurrences is in place.
+### Milestone 13 – 3D Visualization & Living Documentation (�)
+- Not started. Backend scaffolding for linking diagram entities to 3D occurrences is in place.
 - Next steps: viewport overlay rendering, change-impact visualizations, and documentation generation pipelines.
 
 ### Milestone 15 – AI-Powered Design Assistant (🔲)
@@ -65,7 +66,7 @@ Completed February 2026. Major architectural improvements:
 - **New Features:**
   - "Run Diagnostics" command in the Add-Ins panel for self-tests
   - Production logging to `~/FusionSystemBlocks/logs/`
-  - 48 new core library tests (total: 128 tests)
+  - 48 new core library tests (total: 207 tests)
 
 ---
 
@@ -73,4 +74,3 @@ For historical notes about prior releases or architecture decisions, see:
 - `CHANGELOG.md`
 - `docs/architecture/ADR-001-monolithic-architecture.md`
 - `docs/architecture/REVIEW_REPORT.md`
-- `docs/CRITICAL_ISSUES.md`

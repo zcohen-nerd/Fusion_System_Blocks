@@ -4,7 +4,7 @@ Fusion System Blocks is a Fusion 360 add-in that embeds system block diagrams di
 
 [![License: Community](https://img.shields.io/badge/License-Community-blueviolet.svg)](LICENSE)
 [![Fusion 360](https://img.shields.io/badge/Platform-Fusion%20360-orange.svg)](https://www.autodesk.com/products/fusion-360)
-[![Status](https://img.shields.io/badge/Milestones-15%20of%2016%20Complete-blue.svg)]()
+[![Status](https://img.shields.io/badge/Milestones-14%20of%2017%20Complete-blue.svg)]()
 
 ---
 
@@ -39,10 +39,11 @@ The repository contains the full code base, tests, documentation, and deployment
 | 10.5 | UI/UX improvements | Partially complete |
 | 11 | Advanced block types & templates | Complete |
 | 12 | Enhanced CAD linking | Complete |
-| 13 | 3D visualization & living documentation | In progress |
+| 13 | 3D visualization & living documentation | Not started |
 | 14 | Advanced diagram features | Complete |
-| 15 | AI-powered assistant | Planned |
+| 15 | AI-powered assistant | Not started |
 | 16 | Architecture refactoring & tooling | Complete |
+| 17 | Analytics & reporting | Not started |
 
 A detailed breakdown of remaining work lives in `tasks.md`.
 
@@ -81,7 +82,7 @@ A detailed breakdown of remaining work lives in `tasks.md`.
 - `fusion_addin/` – Fusion 360 adapter layer (logging, diagnostics, selection, document operations).
 - `fusion_system_blocks/` – Packaged add-in files for deployment builds.
 - `src/` – JavaScript frontend modules, CSS, HTML palette, and demos.
-- `tests/` – Pytest suite (128 tests) covering core library and diagram data logic.
+- `tests/` – Pytest suite (207 tests) covering core library and diagram data logic.
 - `docs/` – Design notes, architecture decisions, and JSON schema.
 - `scripts/` – Automation for packaging, deployment, and repository management.
 
@@ -130,7 +131,7 @@ or, with an activated virtual environment:
 pytest
 ```
 
-Use `TESTING_CHECKLIST.md` for a 30-minute manual verification run inside Fusion 360, and `DETAILED_TESTING_DOCUMENTATION.md` for step-by-step validation procedures.
+Use `docs/FUSION_MANUAL_TEST_PLAN.md` for a 30-minute manual verification run inside Fusion 360, and `docs/DETAILED_TESTING_DOCUMENTATION.md` for step-by-step validation procedures.
 
 ---
 
@@ -154,12 +155,9 @@ Contributors focused on documentation can help expand user guides, add screensho
 
 ## Additional Resources
 
-- `FRONTEND_MODULARIZATION_COMPLETE.md` – Notes on the JavaScript modularization work.
-- `PERFORMANCE_FIXES_ROUND3.md` – Details on optimization passes for the canvas and input handling.
-- `CRITICAL_ISSUES.md` – Closed issues discovered during milestone 10 testing.
-- `REPOSITORY_SPLIT_GUIDE.md` & `SPLIT_SUMMARY.md` – Historical documentation of the public/private repo workflow.
 - `docs/MILESTONES.md` – Snapshot of milestone progress and outstanding work.
-- `docs/ux/` – UX research artifacts: JTBD, journey map, and flow for palette redesign.
+- `docs/ux/` – UX research artifacts: JTBD, journey map, and proposed palette redesign flow.
+- `docs/architecture/` – Architecture Decision Records (ADRs) and review report.
 
 ---
 

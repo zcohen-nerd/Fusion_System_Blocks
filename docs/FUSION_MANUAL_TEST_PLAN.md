@@ -16,7 +16,7 @@ Run this when you need to verify the add-in works correctly before releases.
 | 1.1 | Open Fusion 360 | Application starts normally | [ ] |
 | 1.2 | Click Scripts and Add-Ins (Shift+S) | Dialog opens, "Fusion System Blocks" visible | [ ] |
 | 1.3 | Select add-in → click "Run" | Palette appears in right panel | [ ] |
-| 1.4 | Check palette loads | Block diagram canvas visible | [ ] |
+| 1.4 | Check palette loads | Block diagram canvas with ribbon visible | [ ] |
 
 **Troubleshooting**: If add-in fails to load, check `~/FusionSystemBlocks/logs/` for error logs.
 
@@ -41,59 +41,69 @@ Run this when you need to verify the add-in works correctly before releases.
 
 | Step | Action | Expected Result | Pass |
 |------|--------|-----------------|------|
-| 3.1 | Click "Add Block" button | Block creation dialog opens | [ ] |
-| 3.2 | Enter name "MCU", select type "Microcontroller" | Fields accept input | [ ] |
-| 3.3 | Click OK | Block appears on canvas | [ ] |
-| 3.4 | Click block to select | Orange selection highlight appears | [ ] |
-| 3.5 | Drag block | Block moves smoothly | [ ] |
-| 3.6 | Right-click block | Context menu appears | [ ] |
-| 3.7 | Click "Delete" from context menu | Block removed from canvas | [ ] |
-| 3.8 | Press Ctrl+Z | Block restored (undo works) | [ ] |
+| 3.1 | Click "Block" button in Create ribbon group | New block appears on canvas | [ ] |
+| 3.2 | Click block to select | Orange selection highlight appears | [ ] |
+| 3.3 | Drag block | Block moves smoothly | [ ] |
+| 3.4 | Double-click block | Inline text editor appears, type new name, press Enter | [ ] |
+| 3.5 | Right-click block | Context menu with Type, Status, Connect, Delete | [ ] |
+| 3.6 | Change type via context menu | Block type updates | [ ] |
+| 3.7 | Change status via context menu | Block status updates | [ ] |
+| 3.8 | Delete block via context menu | Block removed from canvas | [ ] |
 
-## Phase 4: Connection Operations (3 min)
-
-| Step | Action | Expected Result | Pass |
-|------|--------|-----------------|------|
-| 4.1 | Add two blocks (MCU and Sensor) | Both blocks on canvas | [ ] |
-| 4.2 | Click port on MCU, drag to port on Sensor | Connection line appears | [ ] |
-| 4.3 | Click connection to select | Connection highlighted | [ ] |
-| 4.4 | Right-click connection | Context menu with options | [ ] |
-| 4.5 | Delete connection | Connection removed | [ ] |
-
-## Phase 5: Save/Load (3 min)
+## Phase 4: Connection Operations (5 min)
 
 | Step | Action | Expected Result | Pass |
 |------|--------|-----------------|------|
-| 5.1 | Create a diagram with 3+ blocks | Diagram populated | [ ] |
-| 5.2 | Click "Save" | Success notification appears | [ ] |
-| 5.3 | Click "New" (clear diagram) | Canvas clears | [ ] |
-| 5.4 | Click "Load" | Previous diagram restored | [ ] |
-| 5.5 | Close Fusion, reopen, run add-in, Load | Diagram persists across sessions | [ ] |
+| 4.1 | Add two blocks | Both blocks on canvas | [ ] |
+| 4.2 | Hover a block | Connection port dots appear on left/right sides | [ ] |
+| 4.3 | Select a block, press C (or click Connect button) | Dashed line follows cursor from source block | [ ] |
+| 4.4 | Click second block | Connection line drawn between blocks | [ ] |
+| 4.5 | Right-click block → "Connect to..." | Same connection mode enters | [ ] |
+| 4.6 | Press Escape during connection | Connection mode cancels cleanly | [ ] |
 
-## Phase 6: CAD Linking (5 min)
-
-| Step | Action | Expected Result | Pass |
-|------|--------|-----------------|------|
-| 6.1 | Create or open a Fusion document with components | Document has visible components | [ ] |
-| 6.2 | Select a block in diagram | Block selected | [ ] |
-| 6.3 | Click "Link to CAD" | Selection prompt appears | [ ] |
-| 6.4 | Select a component in viewport | Link created, block shows link indicator | [ ] |
-| 6.5 | Check block status | Status changes to In-Work or Implemented | [ ] |
-
-## Phase 7: Export (2 min)
+## Phase 5: Ribbon UI (3 min)
 
 | Step | Action | Expected Result | Pass |
 |------|--------|-----------------|------|
-| 7.1 | Click "Export Report" | Export dialog/action triggers | [ ] |
-| 7.2 | Check `/exports/` folder | Report file created (Markdown or HTML) | [ ] |
+| 5.1 | Inspect ribbon layout | Commands in logical groups (File, Edit, Create, etc.) | [ ] |
+| 5.2 | Hover ribbon buttons | Professional highlight and tooltip feedback | [ ] |
+| 5.3 | Check button states | Buttons enable/disable based on selection context | [ ] |
+| 5.4 | Resize palette panel | Ribbon adapts to width changes | [ ] |
 
-## Quick Smoke Test (Use for CI/Quick Checks)
+## Phase 6: Save/Load (3 min)
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 6.1 | Create a diagram with 3+ blocks and connections | Diagram populated | [ ] |
+| 6.2 | Click "Save" | Success notification appears | [ ] |
+| 6.3 | Click "New" (clear diagram) | Canvas clears | [ ] |
+| 6.4 | Click "Load" | Previous diagram restored with connections | [ ] |
+| 6.5 | Close Fusion, reopen, run add-in, Load | Diagram persists across sessions | [ ] |
+
+## Phase 7: CAD Linking (5 min)
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 7.1 | Create or open a Fusion document with components | Document has visible components | [ ] |
+| 7.2 | Select a block in diagram | Block selected | [ ] |
+| 7.3 | Click "Link to CAD" | Selection prompt appears | [ ] |
+| 7.4 | Select a component in viewport | Link created, block shows link indicator | [ ] |
+| 7.5 | Check block status | Status changes to In-Work or Implemented | [ ] |
+
+## Phase 8: Export (2 min)
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 8.1 | Click "Export Report" | Export dialog/action triggers | [ ] |
+| 8.2 | Check `/exports/` folder | Report file created (Markdown or HTML) | [ ] |
+
+## Quick Smoke Test
 
 Minimal 3-step validation:
 
 1. [ ] Add-in loads without errors
 2. [ ] "Run Diagnostics" shows 6/6 passed
-3. [ ] Can create and save a block
+3. [ ] Can create, rename, connect, and save blocks
 
 ## Error Log Location
 
@@ -113,11 +123,12 @@ Log filename format: `systemblocks_YYYYMMDD_HHMMSS_<session>.log`
 | 1. Add-in Loading | 4 | _ | _ |
 | 2. Diagnostics | 3 | _ | _ |
 | 3. Block Operations | 8 | _ | _ |
-| 4. Connections | 5 | _ | _ |
-| 5. Save/Load | 5 | _ | _ |
-| 6. CAD Linking | 5 | _ | _ |
-| 7. Export | 2 | _ | _ |
-| **TOTAL** | **32** | _ | _ |
+| 4. Connections | 6 | _ | _ |
+| 5. Ribbon UI | 4 | _ | _ |
+| 6. Save/Load | 5 | _ | _ |
+| 7. CAD Linking | 5 | _ | _ |
+| 8. Export | 2 | _ | _ |
+| **TOTAL** | **37** | _ | _ |
 
 **Tested By**: _________________ **Date**: _________________
 

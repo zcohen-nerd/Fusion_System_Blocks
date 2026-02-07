@@ -49,7 +49,7 @@ This ADR has been superseded by the **Two-Layer Architecture** introduced in Mil
 - Business logic moved to `core/` modules (models, validation, action_plan, serialization)
 - Fusion-specific code isolated in `fusion_addin/` (adapter, selection, document, logging, diagnostics)
 - Entry point (`Fusion_System_Blocks.py`) orchestrates both layers
-- 128 pytest tests run outside of Fusion 360
+- 207 pytest tests run outside of Fusion 360
 
 ### Why This Doesn't Contradict ADR-001
 The monolithic *entry point* pattern remains — `Fusion_System_Blocks.py` is still the single file Fusion loads. The internal organization is now modular, but deployment and lifecycle management are unchanged.
