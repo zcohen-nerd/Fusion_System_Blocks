@@ -233,6 +233,14 @@
       stroke-width: 3px !important;
       filter: drop-shadow(0 0 8px rgba(255, 152, 0, 0.6));
     }
+
+    /* Multi-selection highlight applied by advancedFeatures.addToSelection */
+    g.block.highlighted > g > rect,
+    g.block.highlighted > g > ellipse,
+    g.block.highlighted > g > polygon {
+      stroke: #FF6B35 !important;
+      stroke-width: 3 !important;
+    }
     
     .selection-box {
       fill: rgba(0, 120, 212, 0.1);

@@ -287,9 +287,17 @@ class SystemBlocksMain {
       this.showContextMenu(e.clientX, e.clientY, block, core, renderer, features);
     });
 
-    // Close context menu on any left-click anywhere
+    // Close context menu on any left-click OUTSIDE the menu.
+    // Do NOT hide when clicking inside — otherwise the menu becomes
+    // display:none before the click event fires on the menu item,
+    // preventing all context menu actions from executing.
     document.addEventListener('mousedown', (e) => {
-      if (e.button === 0) this.hideContextMenu();
+      if (e.button === 0) {
+        const menu = document.getElementById('block-context-menu');
+        if (!menu || !menu.contains(e.target)) {
+          this.hideContextMenu();
+        }
+      }
     });
 
     // =========================================================================

@@ -183,18 +183,34 @@ class DiagramEditorCore {
 
   // Selection management
   selectBlock(blockId) {
+    const previousBlock = this.selectedBlock;
     this.selectedBlock = blockId;
-    this.updateBlockVisuals();
+
+    // Only re-render the two affected blocks instead of the entire diagram.
+    if (window.diagramRenderer) {
+      if (previousBlock && previousBlock !== blockId) {
+        const prev = this.diagram.blocks.find(b => b.id === previousBlock);
+        if (prev) window.diagramRenderer.renderBlock(prev);
+      }
+      if (blockId) {
+        const next = this.diagram.blocks.find(b => b.id === blockId);
+        if (next) window.diagramRenderer.renderBlock(next);
+      }
+    }
   }
 
   clearSelection() {
+    const previousBlock = this.selectedBlock;
     this.selectedBlock = null;
-    this.updateBlockVisuals();
+
+    if (previousBlock && window.diagramRenderer) {
+      const prev = this.diagram.blocks.find(b => b.id === previousBlock);
+      if (prev) window.diagramRenderer.renderBlock(prev);
+    }
   }
 
-  // Visual updates
+  // Visual updates — full re-render, used by importDiagram only
   updateBlockVisuals() {
-    // This would be implemented by the UI renderer module
     if (window.diagramRenderer) {
       window.diagramRenderer.updateAllBlocks(this.diagram);
     }

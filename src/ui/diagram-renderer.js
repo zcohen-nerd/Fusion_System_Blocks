@@ -221,16 +221,16 @@ class DiagramRenderer {
     if (this.editor.selectedBlock === block.id) {
       const highlight = this.createBlockShape(
         block.shape || 'rectangle',
-        block.width || 120,
-        block.height || 80,
-        0, 0,
+        (block.width || 120) + 8,
+        (block.height || 80) + 8,
+        -4, -4,
         true // isHalo
       );
       const highlightShape = highlight.firstChild;
       highlightShape.setAttribute('fill', 'none');
       highlightShape.setAttribute('stroke', '#FF6B35');
       highlightShape.setAttribute('stroke-width', '3');
-      highlightShape.setAttribute('opacity', '0.8');
+      highlightShape.setAttribute('opacity', '0.85');
       
       blockGroup.insertBefore(highlight, blockGroup.firstChild);
     }

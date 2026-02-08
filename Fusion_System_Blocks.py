@@ -497,6 +497,10 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         start_cad_selection(block_id, block_name)
         return {'success': True}
 
+    def _handle_response(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Acknowledge response events from Fusion's palette bridge."""
+        return {'success': True}
+
 
 def _create_palette() -> Optional[adsk.core.Palette]:
     """Create the System Blocks palette."""

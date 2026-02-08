@@ -367,6 +367,9 @@ class ToolbarManager {
       }
     } else {
       logger.info('Select a block first, then click Connect');
+      if (window.pythonInterface) {
+        window.pythonInterface.showNotification('Select a block first, then click Connect', 'warning');
+      }
     }
   }
 

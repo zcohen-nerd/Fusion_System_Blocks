@@ -230,7 +230,7 @@ class DiagnosticsRunner:
 
         # Log detailed JSON report
         _log_debug("Full diagnostics report:")
-        _log_debug(json.dumps(report.to_dict(), indent=2))
+        _log_debug(json.dumps(report.to_dict(), indent=2, default=str))
 
         return report
 
