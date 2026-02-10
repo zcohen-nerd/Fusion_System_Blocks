@@ -458,7 +458,13 @@ def _detect_cycles(graph: Graph) -> list[ValidationError]:
     def dfs(node: str, path: list[str]) -> bool:
         """Depth-first search for cycle detection."""
         if state[node] == 1:  # Back edge found - cycle
-            cycle_blocks.extend(path)
+            # Only include the actual cycle, not the path leading to it.
+            # e.g. for path [A, B, C] hitting node B, slice to [B, C].
+            try:
+                start_index = path.index(node)
+                cycle_blocks.extend(path[start_index:])
+            except ValueError:
+                cycle_blocks.extend(path)  # Fallback
             return True
         if state[node] == 2:  # Already fully processed
             return False

@@ -147,7 +147,7 @@ def get_root_component() -> Optional[adsk.fusion.Component]:
     return None
 
 
-def save_diagram_json(json_data: str) -> bool:
+def save_diagram_json(json_data: str | dict) -> bool:
     """Save diagram JSON to Fusion attributes.
 
     Validates the diagram using the fsb_core library before saving.
@@ -155,14 +155,19 @@ def save_diagram_json(json_data: str) -> bool:
     block the save to allow work-in-progress persistence.
 
     Args:
-        json_data: The JSON string representation of the diagram.
+        json_data: JSON string or already-parsed dict of the diagram.
 
     Returns:
         True if successful, False otherwise.
     """
     try:
-        # Parse the JSON data
-        diagram = json.loads(json_data)
+        # Normalise: accept both dict and str so callers from the
+        # JS bridge (which may pass either type) never crash.
+        if isinstance(json_data, dict):
+            diagram = json_data
+            json_data = json.dumps(json_data)
+        else:
+            diagram = json.loads(json_data)
 
         # Core library validation (advisory — does not block save)
         graph = dict_to_graph(diagram)
@@ -288,16 +293,19 @@ def _save_doc_index(index: list[dict[str, str]]) -> None:
     attrs.add(ATTR_GROUP, "docIndex", json.dumps(index))
 
 
-def save_named_diagram(label: str, json_data: str) -> bool:
+def save_named_diagram(label: str, json_data: str | dict) -> bool:
     """Save a diagram under a user-chosen name.
 
     Args:
         label: User-visible name for the document.
-        json_data: JSON string of the diagram.
+        json_data: JSON string or already-parsed dict of the diagram.
 
     Returns:
         True on success.
     """
+    # Normalise to string for attribute storage
+    if isinstance(json_data, dict):
+        json_data = json.dumps(json_data)
     try:
         slug = _slug_from_label(label)
         root_comp = get_root_component()
@@ -636,7 +644,9 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
 
     def _handle_export_reports(self, data: dict[str, Any]) -> dict[str, Any]:
         diagram_json = data.get("diagram", "{}")
-        diagram = json.loads(diagram_json)
+        diagram = (
+            diagram_json if isinstance(diagram_json, dict) else json.loads(diagram_json)
+        )
         addin_path = os.path.dirname(__file__)
         exports_path = os.path.join(addin_path, "exports")
         os.makedirs(exports_path, exist_ok=True)
@@ -657,13 +667,17 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
 
     def _handle_check_rules(self, data: dict[str, Any]) -> dict[str, Any]:
         diagram_json = data.get("diagram", "{}")
-        diagram = json.loads(diagram_json)
+        diagram = (
+            diagram_json if isinstance(diagram_json, dict) else json.loads(diagram_json)
+        )
         rule_results = diagram_data.run_all_rule_checks(diagram)
         return {"success": True, "results": rule_results}
 
     def _handle_sync_components(self, data: dict[str, Any]) -> dict[str, Any]:
         diagram_json = data.get("diagram", "{}")
-        diagram = json.loads(diagram_json)
+        diagram = (
+            diagram_json if isinstance(diagram_json, dict) else json.loads(diagram_json)
+        )
         sync_results = sync_all_components_in_fusion(diagram)
         # Return the updated diagram so JS receives synced component data
         sync_results["diagram"] = diagram

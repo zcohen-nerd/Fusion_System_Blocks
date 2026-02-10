@@ -273,6 +273,39 @@ class TestValidateGraphCycleDetection:
         cycle_errors = filter_by_code(errors, ValidationErrorCode.CYCLE_DETECTED)
         assert len(cycle_errors) == 0
 
+    def test_cycle_excludes_non_cycle_prefix(self):
+        """Only cycle members should be reported, not the leading path.
+
+        Graph: X -> A -> B -> C -> A
+        The cycle is A -> B -> C (-> A).  X is NOT part of the cycle
+        and must not appear in cycle_block_ids.
+        """
+        graph = (
+            GraphBuilder("Prefix Path")
+            .add_block("X")
+            .add_block("A")
+            .add_block("B")
+            .add_block("C")
+            .connect("X", "A")
+            .connect("A", "B")
+            .connect("B", "C")
+            .connect("C", "A")
+            .build()
+        )
+
+        # Map names to generated UUIDs for assertion
+        id_by_name = {b.name: b.id for b in graph.blocks}
+
+        errors = validate_graph(graph)
+        cycle_errors = filter_by_code(errors, ValidationErrorCode.CYCLE_DETECTED)
+        assert len(cycle_errors) >= 1
+        cycle_ids = cycle_errors[0].details["cycle_block_ids"]
+        # X leads into the cycle but is not part of it
+        assert id_by_name["X"] not in cycle_ids
+        # A, B, C form the cycle
+        for member in ("A", "B", "C"):
+            assert id_by_name[member] in cycle_ids
+
 
 class TestValidateGraphDuplicateBlockId:
     """Tests for duplicate block ID detection."""

@@ -74,6 +74,27 @@ class TestSelectOccurrence:
         _adsk_fusion.Occurrence.cast.return_value = None
         assert handler.select_occurrence() is None
 
+    def test_unwraps_selection_entity(self):
+        """selectEntity returns a Selection wrapper; .entity must be used."""
+        handler = _make_handler()
+        occ = _mock_occurrence("Arm", "tok-arm")
+
+        # Simulate the real Fusion API: selectEntity returns a Selection
+        # wrapper whose .entity property holds the actual Occurrence.
+        selection_wrapper = MagicMock(name="Selection")
+        selection_wrapper.entity = occ
+        handler._ui.selectEntity.return_value = selection_wrapper
+
+        mock_app = MagicMock()
+        mock_app.activeDocument.dataFile.id = "d-99"
+        _adsk_core.Application.get.return_value = mock_app
+
+        result = handler.select_occurrence()
+        assert result is not None
+        assert result["occToken"] == "tok-arm"
+        # Occurrence.cast should have been called with the unwrapped entity
+        _adsk_fusion.Occurrence.cast.assert_called_with(occ)
+
 
 # ---------------------------------------------------------------------------
 # Tests: select_multiple_occurrences

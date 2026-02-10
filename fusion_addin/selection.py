@@ -70,7 +70,9 @@ class SelectionHandler:
             if not selection:
                 return None
 
-            occurrence = adsk.fusion.Occurrence.cast(selection)
+            # selectEntity returns a Selection wrapper; unwrap via .entity
+            entity = getattr(selection, "entity", selection)
+            occurrence = adsk.fusion.Occurrence.cast(entity)
             if not occurrence:
                 return None
 
@@ -133,7 +135,9 @@ class SelectionHandler:
                 if not selection:
                     break
 
-                occurrence = adsk.fusion.Occurrence.cast(selection)
+                # selectEntity returns a Selection wrapper; unwrap via .entity
+                entity = getattr(selection, "entity", selection)
+                occurrence = adsk.fusion.Occurrence.cast(entity)
                 if occurrence:
                     selections.append(
                         {
