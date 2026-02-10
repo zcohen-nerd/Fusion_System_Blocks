@@ -398,9 +398,7 @@ class TestAssemblySequenceExport:
         assert "estimatedTotalMinutes" in data
 
     def test_assembly_json_step_fields(self, sample_diagram):
-        data = json.loads(
-            diagram_data.generate_assembly_sequence_json(sample_diagram)
-        )
+        data = json.loads(diagram_data.generate_assembly_sequence_json(sample_diagram))
         for step in data["steps"]:
             assert "order" in step
             assert "blockName" in step
@@ -472,9 +470,7 @@ class TestSVGDiagram:
         assert 'class="conn"' in svg
 
     def test_svg_empty_diagram(self):
-        svg = diagram_data.generate_svg_diagram(
-            {"blocks": [], "connections": []}
-        )
+        svg = diagram_data.generate_svg_diagram({"blocks": [], "connections": []})
         assert "Empty diagram" in svg
 
     def test_svg_status_colours(self, sample_diagram):
@@ -519,10 +515,16 @@ class TestExportProfiles:
             sample_diagram, str(tmp_path), profile="full"
         )
         expected = {
-            "markdown", "html", "csv", "header",
-            "bom_csv", "bom_json",
-            "assembly_md", "assembly_json",
-            "connection_matrix", "svg",
+            "markdown",
+            "html",
+            "csv",
+            "header",
+            "bom_csv",
+            "bom_json",
+            "assembly_md",
+            "assembly_json",
+            "connection_matrix",
+            "svg",
         }
         for key in expected:
             assert key in result, f"Missing key: {key}"
@@ -543,13 +545,12 @@ class TestExportProfiles:
         assert "svg" in result  # SVG is full-only
 
     def test_default_profile_is_full(self, sample_diagram, tmp_path):
-        result = diagram_data.export_report_files(
-            sample_diagram, str(tmp_path)
-        )
+        result = diagram_data.export_report_files(sample_diagram, str(tmp_path))
         assert "svg" in result
 
     def test_export_profiles_constant_exists(self):
         from diagram.export import EXPORT_PROFILES
+
         assert "quick" in EXPORT_PROFILES
         assert "standard" in EXPORT_PROFILES
         assert "full" in EXPORT_PROFILES

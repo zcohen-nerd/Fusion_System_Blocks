@@ -135,9 +135,7 @@ def graph_to_dict(graph: Graph) -> dict[str, Any]:
         "blocks": blocks_data,
         "connections": connections_data,
         "metadata": graph.metadata,
-        "requirements": [
-            _requirement_to_dict(r) for r in graph.requirements
-        ],
+        "requirements": [_requirement_to_dict(r) for r in graph.requirements],
     }
 
 

@@ -343,7 +343,7 @@ class TestValidateRequirements:
         ]
         results = validate_requirements(g)
         assert len(results) == 2
-        assert results[0].passed is True   # 3.8 <= 5
+        assert results[0].passed is True  # 3.8 <= 5
         assert results[1].passed is False  # 3.8 >= 10
 
     def test_no_requirements_returns_empty(self) -> None:

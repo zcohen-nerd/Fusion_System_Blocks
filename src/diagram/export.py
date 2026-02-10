@@ -56,9 +56,7 @@ def _add_arrowhead(
     ay = y2 - uy * size + py * size / 2
     bx = x2 - ux * size - px * size / 2
     by = y2 - uy * size - py * size / 2
-    parts.append(
-        f'<polygon class="arrow" points="{x2},{y2} {ax},{ay} {bx},{by}"/>'
-    )
+    parts.append(f'<polygon class="arrow" points="{x2},{y2} {ax},{ay} {bx},{by}"/>')
 
 
 # ---------------------------------------------------------------------------
@@ -330,9 +328,9 @@ def generate_html_report(diagram: dict[str, Any]) -> str:
     for b in blocks:
         intf_count = len(b.get("interfaces", []))
         link_count = len(b.get("links", []))
-        attrs = "; ".join(
-            f"{k}: {v}" for k, v in b.get("attributes", {}).items()
-        ) or "-"
+        attrs = (
+            "; ".join(f"{k}: {v}" for k, v in b.get("attributes", {}).items()) or "-"
+        )
         block_rows += (
             f"<tr><td>{_esc(b.get('name', 'Unnamed'))}</td>"
             f"<td>{_esc(b.get('type', 'Generic'))}</td>"
@@ -360,9 +358,9 @@ def generate_html_report(diagram: dict[str, Any]) -> str:
         tb = find_block_by_id(diagram, conn["to"]["blockId"])
         if not fb or not tb:
             continue
-        attrs = "; ".join(
-            f"{k}: {v}" for k, v in conn.get("attributes", {}).items()
-        ) or "-"
+        attrs = (
+            "; ".join(f"{k}: {v}" for k, v in conn.get("attributes", {}).items()) or "-"
+        )
         conn_rows += (
             f"<tr><td>{_esc(fb.get('name', ''))}</td>"
             f"<td>{_esc(tb.get('name', ''))}</td>"
@@ -435,26 +433,34 @@ def generate_bom_csv(diagram: dict[str, Any]) -> str:
     bom = generate_living_bom(diagram)
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "Block", "Part Number", "Quantity", "Supplier",
-        "Unit Cost", "Total Cost", "Lead Time (days)", "Category",
-        "CAD Components",
-    ])
+    writer.writerow(
+        [
+            "Block",
+            "Part Number",
+            "Quantity",
+            "Supplier",
+            "Unit Cost",
+            "Total Cost",
+            "Lead Time (days)",
+            "Category",
+            "CAD Components",
+        ]
+    )
     for item in bom.get("items", []):
-        cad_names = "; ".join(
-            c.get("name", "") for c in item.get("cadComponents", [])
+        cad_names = "; ".join(c.get("name", "") for c in item.get("cadComponents", []))
+        writer.writerow(
+            [
+                item.get("blockName", ""),
+                item.get("partNumber", ""),
+                item.get("quantity", 1),
+                item.get("supplier", ""),
+                f"{item.get('cost', 0):.2f}",
+                f"{item.get('totalCost', 0):.2f}",
+                item.get("leadTime", 0),
+                item.get("category", ""),
+                cad_names,
+            ]
         )
-        writer.writerow([
-            item.get("blockName", ""),
-            item.get("partNumber", ""),
-            item.get("quantity", 1),
-            item.get("supplier", ""),
-            f"{item.get('cost', 0):.2f}",
-            f"{item.get('totalCost', 0):.2f}",
-            item.get("leadTime", 0),
-            item.get("category", ""),
-            cad_names,
-        ])
     return output.getvalue()
 
 
@@ -615,22 +621,24 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
         f'viewBox="{min_x} {min_y} {svg_w} {svg_h}" '
         f'width="{svg_w}" height="{svg_h}">'
     )
-    parts.append('<style>')
+    parts.append("<style>")
     parts.append(
-        'rect.block{fill:#f5f5f5;stroke:#555;stroke-width:1.5;rx:6}'
-        'text.block-name{font-family:sans-serif;font-size:12px;'
-        'fill:#222;text-anchor:middle;dominant-baseline:central}'
-        'text.block-type{font-family:sans-serif;font-size:9px;'
-        'fill:#888;text-anchor:middle}'
-        'line.conn{stroke:#999;stroke-width:1.2}'
-        'polygon.arrow{fill:#999}'
+        "rect.block{fill:#f5f5f5;stroke:#555;stroke-width:1.5;rx:6}"
+        "text.block-name{font-family:sans-serif;font-size:12px;"
+        "fill:#222;text-anchor:middle;dominant-baseline:central}"
+        "text.block-type{font-family:sans-serif;font-size:9px;"
+        "fill:#888;text-anchor:middle}"
+        "line.conn{stroke:#999;stroke-width:1.2}"
+        "polygon.arrow{fill:#999}"
     )
-    parts.append('</style>')
+    parts.append("</style>")
 
     # Colour map for status
     status_colours = {
-        "Verified": "#2e7d32", "Implemented": "#1565c0",
-        "In-Work": "#ef6c00", "Planned": "#6a1b9a",
+        "Verified": "#2e7d32",
+        "Implemented": "#1565c0",
+        "In-Work": "#ef6c00",
+        "Planned": "#6a1b9a",
         "Placeholder": "#888",
     }
 
@@ -644,10 +652,7 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
         y1 = fb.get("y", 0) + block_h // 2
         x2 = tb.get("x", 0)
         y2 = tb.get("y", 0) + block_h // 2
-        parts.append(
-            f'<line class="conn" x1="{x1}" y1="{y1}" '
-            f'x2="{x2}" y2="{y2}"/>'
-        )
+        parts.append(f'<line class="conn" x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}"/>')
         # Arrowhead
         _add_arrowhead(parts, x1, y1, x2, y2)
 
@@ -665,15 +670,15 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
         parts.append(
             f'<text class="block-name" x="{bx + block_w // 2}" '
             f'y="{by + block_h // 2 - 6}">'
-            f'{_esc(b.get("name", ""))}</text>'
+            f"{_esc(b.get('name', ''))}</text>"
         )
         parts.append(
             f'<text class="block-type" x="{bx + block_w // 2}" '
             f'y="{by + block_h // 2 + 10}">'
-            f'{_esc(b.get("type", ""))}</text>'
+            f"{_esc(b.get('type', ''))}</text>"
         )
 
-    parts.append('</svg>')
+    parts.append("</svg>")
     return "\n".join(parts)
 
 
@@ -685,16 +690,27 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
 EXPORT_PROFILES: dict[str, list[str]] = {
     "quick": ["markdown", "csv", "header"],
     "standard": [
-        "markdown", "html", "csv", "header",
-        "bom_csv", "bom_json",
-        "assembly_md", "assembly_json",
+        "markdown",
+        "html",
+        "csv",
+        "header",
+        "bom_csv",
+        "bom_json",
+        "assembly_md",
+        "assembly_json",
         "connection_matrix",
     ],
     "full": [
-        "markdown", "html", "csv", "header",
-        "bom_csv", "bom_json",
-        "assembly_md", "assembly_json",
-        "connection_matrix", "svg",
+        "markdown",
+        "html",
+        "csv",
+        "header",
+        "bom_csv",
+        "bom_json",
+        "assembly_md",
+        "assembly_json",
+        "connection_matrix",
+        "svg",
     ],
 }
 
@@ -853,15 +869,27 @@ def export_report_files(
 
     # Map of key -> (filename, generator)
     generators: dict[str, tuple[str, Any]] = {
-        "markdown": ("system_blocks_report.md", lambda: generate_markdown_report(diagram)),
+        "markdown": (
+            "system_blocks_report.md",
+            lambda: generate_markdown_report(diagram),
+        ),
         "html": ("system_blocks_report.html", lambda: generate_html_report(diagram)),
         "csv": ("pin_map.csv", lambda: generate_pin_map_csv(diagram)),
         "header": ("pins.h", lambda: generate_pin_map_header(diagram)),
         "bom_csv": ("bom.csv", lambda: generate_bom_csv(diagram)),
         "bom_json": ("bom.json", lambda: generate_bom_json(diagram)),
-        "assembly_md": ("assembly_sequence.md", lambda: generate_assembly_sequence_markdown(diagram)),
-        "assembly_json": ("assembly_sequence.json", lambda: generate_assembly_sequence_json(diagram)),
-        "connection_matrix": ("connection_matrix.csv", lambda: generate_connection_matrix_csv(diagram)),
+        "assembly_md": (
+            "assembly_sequence.md",
+            lambda: generate_assembly_sequence_markdown(diagram),
+        ),
+        "assembly_json": (
+            "assembly_sequence.json",
+            lambda: generate_assembly_sequence_json(diagram),
+        ),
+        "connection_matrix": (
+            "connection_matrix.csv",
+            lambda: generate_connection_matrix_csv(diagram),
+        ),
         "svg": ("diagram.svg", lambda: generate_svg_diagram(diagram)),
     }
 
