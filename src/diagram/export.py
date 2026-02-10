@@ -14,6 +14,8 @@ Provides functions to generate reports in multiple formats:
 Also supports import from CSV and Mermaid flowchart syntax.
 """
 
+from __future__ import annotations
+
 import csv
 import io
 import json
