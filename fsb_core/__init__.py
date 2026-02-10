@@ -36,11 +36,22 @@ from .graph_builder import (
 from .models import (
     Block,
     BlockStatus,
+    ComparisonOperator,
     Connection,
+    ConnectionChange,
+    DiffResult,
     Graph,
     Port,
     PortDirection,
     PortKind,
+    Requirement,
+    Snapshot,
+    block_fingerprint,
+)
+from .requirements import (
+    RequirementResult,
+    aggregate_attribute,
+    validate_requirements,
 )
 from .serialization import (
     deserialize_graph,
@@ -61,6 +72,16 @@ __all__ = [
     "PortDirection",
     "PortKind",
     "BlockStatus",
+    "ComparisonOperator",
+    "Requirement",
+    "Snapshot",
+    "ConnectionChange",
+    "DiffResult",
+    "block_fingerprint",
+    # Requirements
+    "validate_requirements",
+    "aggregate_attribute",
+    "RequirementResult",
     # Validation
     "validate_graph",
     "ValidationError",

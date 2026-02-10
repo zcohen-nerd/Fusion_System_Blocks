@@ -20,10 +20,36 @@ Classes:
 
 from __future__ import annotations
 
+import hashlib
+import json
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
+
+# ------------------------------------------------------------------
+# Comparison / Requirement enums
+# ------------------------------------------------------------------
+
+
+class ComparisonOperator(Enum):
+    """Comparison operators for requirement checks.
+
+    Attributes:
+        LE: Actual value must be less than or equal to target.
+        GE: Actual value must be greater than or equal to target.
+        EQ: Actual value must be equal to target (within tolerance).
+    """
+
+    LE = "<="
+    GE = ">="
+    EQ = "=="
+
+
+# ------------------------------------------------------------------
+# Port / Block / Connection enums
+# ------------------------------------------------------------------
 
 
 class PortDirection(Enum):
@@ -90,6 +116,65 @@ def generate_id() -> str:
         A UUID4 string suitable for use as block, port, or connection ID.
     """
     return str(uuid.uuid4())
+
+
+# ------------------------------------------------------------------
+# Requirement
+# ------------------------------------------------------------------
+
+
+@dataclass
+class Requirement:
+    """A system-level requirement or budget constraint.
+
+    Requirements define measurable targets that the system design must
+    satisfy, such as maximum weight, minimum power, or exact voltage.
+    Each requirement links to a block attribute and defines a threshold.
+
+    Attributes:
+        id: Unique identifier.
+        name: Human-readable label (e.g. "Max Weight").
+        target_value: Numeric threshold to compare against.
+        operator: Comparison operator (LE, GE, EQ).
+        unit: Engineering unit string (e.g. "kg", "W").
+        linked_attribute: Block-attribute key to aggregate
+            (e.g. "mass", "power_consumption").
+        tolerance: Absolute tolerance for EQ comparisons.
+    """
+
+    id: str = field(default_factory=generate_id)
+    name: str = ""
+    target_value: float = 0.0
+    operator: ComparisonOperator = ComparisonOperator.LE
+    unit: str = ""
+    linked_attribute: str = ""
+    tolerance: float = 1e-9
+
+    def __post_init__(self) -> None:
+        """Coerce string operator values to enum."""
+        if isinstance(self.operator, str):
+            self.operator = ComparisonOperator(self.operator)
+
+    def check(self, actual_value: float) -> bool:
+        """Evaluate whether *actual_value* satisfies this requirement.
+
+        Args:
+            actual_value: The computed/measured value to test.
+
+        Returns:
+            True if the requirement is satisfied.
+        """
+        if self.operator is ComparisonOperator.LE:
+            return actual_value <= self.target_value
+        if self.operator is ComparisonOperator.GE:
+            return actual_value >= self.target_value
+        # EQ — within tolerance
+        return abs(actual_value - self.target_value) <= self.tolerance
+
+
+# ------------------------------------------------------------------
+# Port
+# ------------------------------------------------------------------
 
 
 @dataclass
@@ -250,6 +335,7 @@ class Graph:
         blocks: List of all blocks in the diagram.
         connections: List of all connections between blocks.
         metadata: Additional diagram metadata.
+        requirements: System-level requirements / budget constraints.
     """
 
     id: str = field(default_factory=generate_id)
@@ -258,6 +344,7 @@ class Graph:
     blocks: list[Block] = field(default_factory=list)
     connections: list[Connection] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+    requirements: list[Requirement] = field(default_factory=list)
 
     def add_block(self, block: Block) -> None:
         """Add a block to the graph.
@@ -408,3 +495,111 @@ class Graph:
             for port in block.ports:
                 port_ids.add(port.id)
         return port_ids
+
+
+# ------------------------------------------------------------------
+# Block fingerprinting (used by version control diffing)
+# ------------------------------------------------------------------
+
+
+def block_fingerprint(block: Block) -> str:
+    """Compute a deterministic hash of a block's observable state.
+
+    The fingerprint covers name, type, position, status, attributes,
+    ports, and links — everything that would matter for a visual diff.
+
+    Args:
+        block: The block to fingerprint.
+
+    Returns:
+        A hex-digest string (SHA-256, truncated to 16 chars).
+    """
+    canonical: dict[str, Any] = {
+        "name": block.name,
+        "type": block.block_type,
+        "x": block.x,
+        "y": block.y,
+        "status": block.status.value,
+        "attributes": block.attributes,
+        "ports": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "direction": p.direction.value,
+                "kind": p.kind.value,
+                "side": p.side,
+                "index": p.index,
+                "params": p.params,
+            }
+            for p in sorted(block.ports, key=lambda p: p.id)
+        ],
+        "links": block.links,
+    }
+    raw = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+# ------------------------------------------------------------------
+# Snapshot & Diff models  (Milestone 21 — Visual Version Control)
+# ------------------------------------------------------------------
+
+
+@dataclass
+class Snapshot:
+    """A frozen point-in-time capture of a Graph.
+
+    Snapshots are immutable records stored in the document history,
+    enabling comparison and visual diffing between revisions.
+
+    Attributes:
+        id: Unique snapshot identifier.
+        graph_json: Serialized Graph state (JSON string).
+        timestamp: ISO-8601 UTC timestamp of the capture.
+        author: Name or identifier of the person who created it.
+        description: Free-form commit note.
+    """
+
+    id: str = field(default_factory=generate_id)
+    graph_json: str = ""
+    timestamp: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+    )
+    author: str = ""
+    description: str = ""
+
+
+@dataclass
+class ConnectionChange:
+    """Describes a single connection-level change between two graph revisions.
+
+    Attributes:
+        connection_id: The connection's unique ID.
+        change_type: One of 'added', 'removed', or 'modified'.
+        details: Extra context (e.g. old/new kind).
+    """
+
+    connection_id: str = ""
+    change_type: str = ""  # "added" | "removed" | "modified"
+    details: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class DiffResult:
+    """Structured result of comparing two Graph revisions.
+
+    Produced by `compare_graphs` and consumed by the frontend to
+    render green/red/yellow visual overlays on the diagram.
+
+    Attributes:
+        added_block_ids: Blocks present in *new* but not *old*.
+        removed_block_ids: Blocks present in *old* but not *new*.
+        modified_block_ids: Blocks present in both but changed.
+        connection_changes: Per-connection diff details.
+    """
+
+    added_block_ids: list[str] = field(default_factory=list)
+    removed_block_ids: list[str] = field(default_factory=list)
+    modified_block_ids: list[str] = field(default_factory=list)
+    connection_changes: list[ConnectionChange] = field(
+        default_factory=list,
+    )

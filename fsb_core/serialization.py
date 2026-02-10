@@ -15,11 +15,13 @@ from typing import Any
 from .models import (
     Block,
     BlockStatus,
+    ComparisonOperator,
     Connection,
     Graph,
     Port,
     PortDirection,
     PortKind,
+    Requirement,
 )
 
 
@@ -133,6 +135,9 @@ def graph_to_dict(graph: Graph) -> dict[str, Any]:
         "blocks": blocks_data,
         "connections": connections_data,
         "metadata": graph.metadata,
+        "requirements": [
+            _requirement_to_dict(r) for r in graph.requirements
+        ],
     }
 
 
@@ -164,6 +169,10 @@ def dict_to_graph(data: dict[str, Any]) -> Graph:
     for conn_data in data.get("connections", []):
         conn = _parse_connection(conn_data)
         graph.add_connection(conn)
+
+    # Parse requirements (Milestone 18)
+    for req_data in data.get("requirements", []):
+        graph.requirements.append(_parse_requirement(req_data))
 
     return graph
 
@@ -328,3 +337,57 @@ def export_to_legacy_format(graph: Graph) -> dict[str, Any]:
         Legacy-compatible dictionary.
     """
     return graph_to_dict(graph)
+
+
+# ------------------------------------------------------------------
+# Requirement helpers
+# ------------------------------------------------------------------
+
+
+def _requirement_to_dict(req: Requirement) -> dict[str, Any]:
+    """Serialize a Requirement to dictionary.
+
+    Args:
+        req: The requirement to serialize.
+
+    Returns:
+        Dictionary representation.
+    """
+    return {
+        "id": req.id,
+        "name": req.name,
+        "targetValue": req.target_value,
+        "operator": req.operator.value,
+        "unit": req.unit,
+        "linkedAttribute": req.linked_attribute,
+        "tolerance": req.tolerance,
+    }
+
+
+def _parse_requirement(data: dict[str, Any]) -> Requirement:
+    """Parse a Requirement from dictionary data.
+
+    Args:
+        data: Requirement dictionary.
+
+    Returns:
+        Constructed Requirement instance.
+    """
+    op_str = data.get("operator", "<=")
+    try:
+        operator = ComparisonOperator(op_str)
+    except ValueError:
+        operator = ComparisonOperator.LE
+
+    return Requirement(
+        id=data.get("id", ""),
+        name=data.get("name", ""),
+        target_value=float(data.get("targetValue", 0.0)),
+        operator=operator,
+        unit=data.get("unit", ""),
+        linked_attribute=data.get(
+            "linkedAttribute",
+            data.get("linked_attribute", ""),
+        ),
+        tolerance=float(data.get("tolerance", 1e-9)),
+    )

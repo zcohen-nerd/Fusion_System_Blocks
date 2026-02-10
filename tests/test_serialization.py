@@ -164,6 +164,7 @@ class TestDictConversion:
             "blocks",
             "connections",
             "metadata",
+            "requirements",
         }
 
     def test_graph_to_dict_uses_interfaces_key(self, sample_graph):
