@@ -2,15 +2,9 @@
 Test module for status tracking functionality in diagram_data.py
 """
 
-import os
-import sys
-
 import pytest
 
-# Add src directory to path so we can import diagram_data
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from diagram_data import (  # noqa: E402
+from diagram_data import (
     compute_block_status,
     update_block_statuses,
     get_status_color,
@@ -144,6 +138,27 @@ class TestStatusTracking:
             {"id": "gnd", "name": "GND", "kind": "power"},
         ]
         assert compute_block_status(block) == "Implemented"
+
+    def test_status_verified_both_cad_and_ecad(self):
+        """A block with both CAD and ECAD links should be Verified."""
+        block = create_block("MCU", 0, 0)
+        block["attributes"] = {"voltage": "3.3V"}
+        block["interfaces"] = [{"id": "vcc", "name": "VCC", "kind": "power"}]
+        block["links"] = [
+            {"target": "cad", "occToken": "t", "docId": "d"},
+            {"target": "ecad", "device": "U1"},
+        ]
+        assert compute_block_status(block) == "Verified"
+
+    def test_status_in_work_link_only(self):
+        """A block with a CAD link but no attributes/interfaces is In-Work."""
+        block = create_block("Shell", 0, 0)
+        block["links"] = [{"target": "cad", "occToken": "t", "docId": "d"}]
+        assert compute_block_status(block) == "In-Work"
+
+    def test_get_status_color_unknown_string(self):
+        """Unknown status returns the default grey."""
+        assert get_status_color("SomethingWeird") == "#cccccc"
 
 
 if __name__ == "__main__":

@@ -2,23 +2,21 @@
 Test module for rule checking functionality in diagram_data.py
 """
 
-import os
-import sys
-
 import pytest
 
-# Add src directory to path so we can import diagram_data
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from diagram_data import (  # noqa: E402
+from diagram_data import (
     check_logic_level_compatibility,
     check_power_budget,
+    check_power_budget_bulk,
     check_implementation_completeness,
     run_all_rule_checks,
     get_rule_failures,
     create_block,
     create_empty_diagram,
 )
+
+# Direct import for unit-testing the helper
+from diagram.rules import _parse_power_value_mw
 
 
 class TestRuleChecks:
@@ -271,6 +269,179 @@ class TestRuleChecks:
         assert result["success"] is False
         assert result["severity"] == "error"
         assert "Cannot find connected interfaces" in result["message"]
+
+    # ------------------------------------------------------------------
+    # Power budget: unified attribute support
+    # ------------------------------------------------------------------
+
+    def test_power_budget_with_mw_attributes(self):
+        """check_power_budget accepts power_supply_mw / power_consumption_mw."""
+        diagram = {
+            "blocks": [
+                {
+                    "id": "psu",
+                    "name": "PSU",
+                    "attributes": {"power_supply_mw": "5000"},
+                },
+                {
+                    "id": "load",
+                    "name": "Load",
+                    "attributes": {"power_consumption_mw": "3000"},
+                },
+            ],
+            "connections": [],
+        }
+        result = check_power_budget(diagram)
+        assert result["success"] is True
+        assert "Power budget OK" in result["message"]
+
+    def test_power_budget_exceeded_with_mw_attributes(self):
+        """check_power_budget detects overrun with power_*_mw attributes."""
+        diagram = {
+            "blocks": [
+                {
+                    "id": "psu",
+                    "name": "Tiny PSU",
+                    "attributes": {"power_supply_mw": "100"},
+                },
+                {
+                    "id": "load",
+                    "name": "Big Load",
+                    "attributes": {"power_consumption_mw": "500"},
+                },
+            ],
+            "connections": [],
+        }
+        result = check_power_budget(diagram)
+        assert result["success"] is False
+        assert "exceeded" in result["message"]
+
+    def test_power_budget_bulk_returns_violations(self):
+        """check_power_budget_bulk returns a list of violation dicts."""
+        diagram = {
+            "blocks": [
+                {
+                    "id": "supply1",
+                    "name": "Small Supply",
+                    "attributes": {"output_current": "100mA"},
+                },
+                {
+                    "id": "hungry1",
+                    "name": "Motor",
+                    "attributes": {"current": "200mA"},
+                },
+            ],
+            "connections": [],
+        }
+        violations = check_power_budget_bulk(diagram)
+        assert isinstance(violations, list)
+        assert len(violations) == 1
+        assert violations[0]["type"] == "power_budget_exceeded"
+        assert violations[0]["details"]["deficit"] > 0
+
+    def test_power_budget_bulk_no_violation(self):
+        """check_power_budget_bulk returns empty list when budget is fine."""
+        diagram = {
+            "blocks": [
+                {
+                    "id": "psu",
+                    "name": "PSU",
+                    "attributes": {"output_current": "1000mA"},
+                },
+                {
+                    "id": "mcu",
+                    "name": "MCU",
+                    "attributes": {"current": "50mA"},
+                },
+            ],
+            "connections": [],
+        }
+        violations = check_power_budget_bulk(diagram)
+        assert violations == []
+
+    def test_power_budget_bulk_with_mw_attributes(self):
+        """check_power_budget_bulk accepts power_supply_mw / power_consumption_mw."""
+        diagram = {
+            "blocks": [
+                {
+                    "id": "psu",
+                    "name": "PSU",
+                    "attributes": {"power_supply_mw": "1000"},
+                },
+                {
+                    "id": "load",
+                    "name": "Load",
+                    "attributes": {"power_consumption_mw": "2000"},
+                },
+            ],
+            "connections": [],
+        }
+        violations = check_power_budget_bulk(diagram)
+        assert len(violations) == 1
+        assert violations[0]["details"]["total_supply"] == 1000.0
+        assert violations[0]["details"]["total_consumption"] == 2000.0
+
+
+# ------------------------------------------------------------------
+# Direct tests for _parse_power_value_mw helper
+# ------------------------------------------------------------------
+
+class TestParsePowerValueMw:
+    """Unit tests for the _parse_power_value_mw helper."""
+
+    def test_plain_numeric_string(self):
+        assert _parse_power_value_mw("500") == 500.0
+
+    def test_integer_input(self):
+        assert _parse_power_value_mw(250) == 250.0
+
+    def test_float_input(self):
+        assert _parse_power_value_mw(99.5) == 99.5
+
+    def test_ma_suffix_converted(self):
+        # 100 mA * 3.3 V = 330 mW
+        assert _parse_power_value_mw("100mA") == pytest.approx(330.0)
+
+    def test_ma_suffix_with_space(self):
+        # "50 mA" — mA is present even with whitespace
+        result = _parse_power_value_mw("50mA")
+        assert result == pytest.approx(165.0)
+
+    def test_invalid_value_raises(self):
+        with pytest.raises(ValueError):
+            _parse_power_value_mw("not-a-number")
+
+
+# ------------------------------------------------------------------
+# Completeness edge cases
+# ------------------------------------------------------------------
+
+class TestImplementationCompletenessEdge:
+    """Edge cases for implementation completeness."""
+
+    def test_completeness_all_complete(self):
+        """All Implemented blocks with attrs/interfaces/links pass."""
+        diagram = {
+            "blocks": [
+                {
+                    "id": "b1",
+                    "name": "MCU",
+                    "status": "Implemented",
+                    "attributes": {"v": "3.3V"},
+                    "interfaces": [{"id": "i1", "name": "SPI", "kind": "data"}],
+                    "links": [{"target": "cad", "occToken": "t"}],
+                },
+            ],
+            "connections": [],
+        }
+        result = check_implementation_completeness(diagram)
+        assert result["success"] is True
+
+    def test_completeness_empty_diagram(self):
+        """Empty diagram has no incomplete blocks — success."""
+        diagram = {"blocks": [], "connections": []}
+        result = check_implementation_completeness(diagram)
+        assert result["success"] is True
 
 
 if __name__ == "__main__":

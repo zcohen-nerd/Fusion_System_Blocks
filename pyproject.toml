@@ -28,12 +28,16 @@ dependencies = [
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+    "hypothesis>=6.0",
+    "mutmut>=2.4",
     "mypy>=1.0",
     "ruff>=0.1.0",
+    "pre-commit>=3.0",
 ]
 test = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+    "hypothesis>=6.0",
 ]
 
 [build-system]
@@ -56,6 +60,13 @@ addopts = [
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
+]
+markers = [
+    "unit: Pure unit tests with no I/O or filesystem access",
+    "integration: Tests that touch the filesystem or cross module boundaries",
+    "slow: Tests that take more than 1 second",
+    "serialization: Serialization round-trip and format conversion tests",
+    "property_based: Hypothesis property-based / fuzz tests",
 ]
 
 [tool.mypy]
@@ -96,8 +107,18 @@ omit = [
 ]
 
 [tool.coverage.report]
+fail_under = 80
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
+
+# ---------------------------------------------------------------------------
+# Mutation testing (Phase 7)
+# ---------------------------------------------------------------------------
+[tool.mutmut]
+paths_to_mutate = "core/"
+tests_dir = "tests/"
+runner = "python -m pytest -x -q"
+

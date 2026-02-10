@@ -1,13 +1,8 @@
 """Tests for diagram_data module."""
 
-import os
-import sys
 import pytest
 
-# Add src directory to path so we can import diagram_data
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-import diagram_data  # noqa: E402
+import diagram_data
 
 
 def test_create_empty_diagram():
@@ -133,3 +128,53 @@ def test_generate_unique_ids():
         new_id = diagram_data.generate_id()
         assert new_id not in ids
         ids.add(new_id)
+
+
+# ------------------------------------------------------------------
+# Additional coverage for core.py helpers and validation paths
+# ------------------------------------------------------------------
+
+def test_add_block_to_diagram():
+    """Test add_block_to_diagram appends correctly."""
+    d = diagram_data.create_empty_diagram()
+    b = diagram_data.create_block("MCU", 0, 0)
+    diagram_data.add_block_to_diagram(d, b)
+    assert len(d["blocks"]) == 1
+    assert d["blocks"][0]["name"] == "MCU"
+
+
+def test_add_connection_to_diagram():
+    """Test add_connection_to_diagram appends correctly."""
+    d = diagram_data.create_empty_diagram()
+    c = diagram_data.create_connection("b1", "b2")
+    diagram_data.add_connection_to_diagram(d, c)
+    assert len(d["connections"]) == 1
+    assert d["connections"][0]["from"]["blockId"] == "b1"
+
+
+def test_serialize_with_validation_success():
+    """Serialize with validate=True on a valid diagram."""
+    d = diagram_data.create_empty_diagram()
+    b = diagram_data.create_block("Valid", 0, 0)
+    d["blocks"].append(b)
+    json_str = diagram_data.serialize_diagram(d, validate=True)
+    assert '"Valid"' in json_str
+
+
+def test_deserialize_with_validation_error():
+    """Deserialize with validate=True on invalid JSON payload."""
+    bad_json = '{"blocks": []}'
+    with pytest.raises(ValueError):
+        diagram_data.deserialize_diagram(bad_json, validate=True)
+
+
+def test_remove_block_not_found():
+    """Removing a nonexistent block returns False."""
+    d = diagram_data.create_empty_diagram()
+    assert diagram_data.remove_block_from_diagram(d, "nosuchid") is False
+
+
+def test_find_block_by_id_not_found():
+    """Finding a block that doesn't exist returns None."""
+    d = diagram_data.create_empty_diagram()
+    assert diagram_data.find_block_by_id(d, "nosuchid") is None

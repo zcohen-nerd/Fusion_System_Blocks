@@ -59,7 +59,12 @@ class ToolbarManager {
       'fit-view': 'btn-fit-view',
       'zoom-in': 'btn-zoom-in',
       'zoom-out': 'btn-zoom-out',
-      'connect': 'btn-connect'
+      'connect': 'btn-connect',
+      'save-as': 'btn-save-as',
+      'open-named': 'btn-open-named',
+      'go-up': 'btn-go-up',
+      'drill-down': 'btn-drill-down',
+      'create-child': 'btn-create-child'
     };
 
     this.initializeToolbar();
@@ -75,7 +80,7 @@ class ToolbarManager {
   setupRibbonGroups() {
     const ribbonGroups = {
       'File': {
-        buttons: ['new', 'save', 'load', 'export'],
+        buttons: ['new', 'save', 'save-as', 'load', 'open-named', 'export'],
         order: 1
       },
       'Edit': {
@@ -98,6 +103,10 @@ class ToolbarManager {
         buttons: ['check-rules'],
         order: 6
       },
+      'Navigate': {
+        buttons: ['go-up', 'drill-down', 'create-child'],
+        order: 7
+      },
       'View': {
         buttons: ['fit-view', 'zoom-in', 'zoom-out', 'snap-grid'],
         order: 7
@@ -118,7 +127,7 @@ class ToolbarManager {
 
   getDefaultButtonState(buttonId) {
     // Buttons that are always enabled
-    const alwaysEnabled = ['new', 'load', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'connect'];
+    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'connect'];
     if (alwaysEnabled.includes(buttonId)) return true;
 
     // Undo/redo: enabled when there are states to restore
@@ -129,8 +138,30 @@ class ToolbarManager {
       return window.advancedFeatures && window.advancedFeatures.redoStack && window.advancedFeatures.redoStack.length > 0;
     }
 
+    // Navigation buttons — enabled based on hierarchy state
+    if (buttonId === 'go-up') {
+      return window.advancedFeatures && window.advancedFeatures._hierarchyStack
+        && window.advancedFeatures._hierarchyStack.length > 0;
+    }
+    if (buttonId === 'drill-down') {
+      // Enabled when a selected block has a child diagram
+      if (!this.editor.selectedBlock) return false;
+      const block = this.editor.diagram.blocks.find(
+        b => b.id === this.editor.selectedBlock);
+      return block && block.childDiagram &&
+        block.childDiagram.blocks !== undefined;
+    }
+    if (buttonId === 'create-child') {
+      // Enabled when a block is selected and doesn't already have child
+      if (!this.editor.selectedBlock) return false;
+      const blk = this.editor.diagram.blocks.find(
+        b => b.id === this.editor.selectedBlock);
+      return blk && !(blk.childDiagram &&
+        blk.childDiagram.blocks !== undefined);
+    }
+
     // Buttons enabled when diagram has content
-    const needsContent = ['save', 'export', 'select-all'];
+    const needsContent = ['save', 'save-as', 'export', 'select-all'];
     if (needsContent.includes(buttonId)) {
       return this.editor.diagram.blocks.length > 0;
     }
@@ -149,7 +180,9 @@ class ToolbarManager {
     // File operations
     this.addButtonListener('new', () => this.handleNewDiagram());
     this.addButtonListener('save', () => this.handleSave());
+    this.addButtonListener('save-as', () => this.handleSaveAs());
     this.addButtonListener('load', () => this.handleLoad());
+    this.addButtonListener('open-named', () => this.handleOpenNamed());
     this.addButtonListener('export', () => this.handleExport());
 
     // Edit operations
@@ -166,6 +199,11 @@ class ToolbarManager {
     this.addButtonListener('note', () => this.handleAddNote());
     this.addButtonListener('dimension', () => this.handleAddDimension());
     this.addButtonListener('callout', () => this.handleAddCallout());
+
+    // Navigation operations
+    this.addButtonListener('go-up', () => this.handleNavigateUp());
+    this.addButtonListener('drill-down', () => this.handleDrillDown());
+    this.addButtonListener('create-child', () => this.handleCreateChild());
 
     // Selection operations
     this.addButtonListener('select-all', () => this.handleSelectAll());
@@ -211,7 +249,9 @@ class ToolbarManager {
     const shortcuts = {
       'KeyN': { ctrl: true, handler: () => this.handleNewDiagram() },
       'KeyS': { ctrl: true, handler: () => this.handleSave() },
+      'Shift+KeyS': { ctrl: true, shift: true, handler: () => this.handleSaveAs() },
       'KeyO': { ctrl: true, handler: () => this.handleLoad() },
+      'Shift+KeyO': { ctrl: true, shift: true, handler: () => this.handleOpenNamed() },
       'KeyZ': { ctrl: true, handler: () => this.handleUndo() },
       'KeyY': { ctrl: true, handler: () => this.handleRedo() },
       'KeyA': { ctrl: true, handler: () => this.handleSelectAll() },
@@ -235,7 +275,9 @@ class ToolbarManager {
       return;
     }
 
-    const shortcut = this.keyboardShortcuts.get(e.code);
+    // Try compound key with Shift modifier first, then plain code
+    const compoundKey = e.shiftKey ? 'Shift+' + e.code : null;
+    const shortcut = (compoundKey && this.keyboardShortcuts.get(compoundKey)) || this.keyboardShortcuts.get(e.code);
     if (!shortcut) return;
 
     const ctrlMatch = shortcut.ctrl ? e.ctrlKey : !e.ctrlKey;
@@ -261,7 +303,11 @@ class ToolbarManager {
   handleSave() {
     try {
       if (window.pythonInterface) {
-        window.pythonInterface.saveDiagram();
+        window.pythonInterface.saveDiagram().then(() => {
+          // Update the "Last saved" footer pill
+          const el = document.getElementById('status-last-saved');
+          if (el) el.textContent = 'Last saved: ' + new Date().toLocaleString();
+        });
       } else {
         logger.error('Save failed: Python interface not available');
       }
@@ -280,6 +326,114 @@ class ToolbarManager {
     } catch (error) {
       logger.error('Load failed:', error);
     }
+  }
+
+  handleSaveAs() {
+    const overlay = document.getElementById('save-as-overlay');
+    const nameInput = document.getElementById('save-as-name');
+    if (!overlay || !nameInput) return;
+
+    nameInput.value = '';
+    overlay.style.display = 'flex';
+    nameInput.focus();
+
+    // Wire confirm/cancel (remove old listeners via clone trick)
+    const confirmBtn = document.getElementById('save-as-confirm');
+    const cancelBtn = document.getElementById('save-as-cancel');
+
+    const newConfirm = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+    const newCancel = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+    newCancel.addEventListener('click', () => {
+      overlay.style.display = 'none';
+    });
+
+    newConfirm.addEventListener('click', () => {
+      const label = nameInput.value.trim();
+      if (!label) {
+        nameInput.style.borderColor = '#dc3545';
+        return;
+      }
+      nameInput.style.borderColor = '';
+      overlay.style.display = 'none';
+      if (window.pythonInterface) {
+        window.pythonInterface.saveNamedDiagram(label);
+      }
+    });
+
+    // Allow Enter to confirm
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        newConfirm.click();
+      }
+    });
+  }
+
+  handleOpenNamed() {
+    const overlay = document.getElementById('open-doc-overlay');
+    const listContainer = document.getElementById('open-doc-list');
+    const cancelBtn = document.getElementById('open-doc-cancel');
+    if (!overlay || !listContainer) return;
+
+    listContainer.innerHTML = '<div style="text-align:center;color:#999;padding:16px;">Loading…</div>';
+    overlay.style.display = 'flex';
+
+    // Wire cancel
+    const newCancel = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+    newCancel.addEventListener('click', () => {
+      overlay.style.display = 'none';
+    });
+
+    if (!window.pythonInterface) return;
+
+    window.pythonInterface.listDocuments().then(docs => {
+      listContainer.innerHTML = '';
+      if (!docs || docs.length === 0) {
+        listContainer.innerHTML = '<div style="text-align:center;color:#999;padding:16px;">No saved documents.</div>';
+        return;
+      }
+      docs.forEach(doc => {
+        const item = document.createElement('div');
+        item.className = 'doc-list-item';
+        item.innerHTML =
+          '<div style="flex:1;cursor:pointer;">' +
+            '<strong>' + this._escapeHtml(doc.label) + '</strong>' +
+            '<div style="font-size:11px;color:#999;">' + (doc.modified || '') + '</div>' +
+          '</div>' +
+          '<button class="doc-delete-btn" title="Delete" style="background:none;border:none;color:#dc3545;cursor:pointer;font-size:16px;">✕</button>';
+
+        // Click to open
+        item.querySelector('div').addEventListener('click', () => {
+          overlay.style.display = 'none';
+          window.pythonInterface.loadNamedDiagram(doc.slug);
+        });
+
+        // Click to delete
+        item.querySelector('.doc-delete-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (confirm('Delete "' + doc.label + '"?')) {
+            window.pythonInterface.deleteNamedDiagram(doc.slug).then(() => {
+              item.remove();
+              if (listContainer.children.length === 0) {
+                listContainer.innerHTML = '<div style="text-align:center;color:#999;padding:16px;">No saved documents.</div>';
+              }
+            });
+          }
+        });
+
+        listContainer.appendChild(item);
+      });
+    });
+  }
+
+  _escapeHtml(text) {
+    const el = document.createElement('span');
+    el.textContent = text;
+    return el.innerHTML;
   }
 
   handleExport() {
@@ -340,21 +494,102 @@ class ToolbarManager {
   }
 
   handleCreateBlock() {
-    const newBlock = this.editor.addBlock({
-      name: 'New Block',
-      type: 'Generic',
-      x: Math.random() * 300 + 100,
-      y: Math.random() * 200 + 100
-    });
-    
-    this.renderer.renderBlock(newBlock);
-    this.editor.selectBlock(newBlock.id);
+    // Track how many blocks have been created in this session so each new
+    // block cascades diagonally instead of stacking on the same spot.
+    if (this._blockCreationCount === undefined) this._blockCreationCount = 0;
 
-    // Hide the empty-canvas overlay once a block exists
-    const emptyState = document.getElementById('empty-canvas-state');
-    if (emptyState) {
-      emptyState.classList.add('hidden');
-    }
+    this.showBlockTypeDropdown((type) => {
+      // Place new block at center of current viewport (not random)
+      const cx = this.editor.viewBox.x + this.editor.viewBox.width / 2;
+      const cy = this.editor.viewBox.y + this.editor.viewBox.height / 2;
+
+      // Cascade offset: each successive block shifts right+down by one
+      // grid step (20px).  After 8 blocks the offset wraps so blocks
+      // don't march off-screen.
+      const step = this.editor.gridSize || 20;
+      const idx  = this._blockCreationCount % 8;
+      this._blockCreationCount++;
+
+      const offsetX = idx * step;
+      const offsetY = idx * step;
+      const snapped = this.editor.snapToGrid(
+        cx - 60 + offsetX,
+        cy - 40 + offsetY
+      );
+
+      const newBlock = this.editor.addBlock({
+        name: 'New ' + type + ' Block',
+        type: type,
+        x: snapped.x,
+        y: snapped.y
+      });
+
+      this.renderer.renderBlock(newBlock);
+      this.editor.selectBlock(newBlock.id);
+
+      // Hide the empty-canvas overlay once a block exists
+      const emptyState = document.getElementById('empty-canvas-state');
+      if (emptyState) {
+        emptyState.classList.add('hidden');
+      }
+    });
+  }
+
+  showBlockTypeDropdown(callback) {
+    // Remove any existing dropdown
+    const existing = document.getElementById('block-type-dropdown');
+    if (existing) existing.remove();
+
+    const btn = document.getElementById(this.buttonIdMap['block']);
+    if (!btn) { callback('Generic'); return; }
+    const rect = btn.getBoundingClientRect();
+
+    const dropdown = document.createElement('div');
+    dropdown.id = 'block-type-dropdown';
+    dropdown.style.cssText = `
+      position: fixed; left: ${rect.left}px; top: ${rect.bottom + 4}px;
+      background: var(--fusion-panel-bg, #2b2b2b);
+      border: 1px solid var(--fusion-panel-border, #555);
+      border-radius: 6px; padding: 4px 0; z-index: 100000;
+      min-width: 170px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      color: var(--fusion-text-primary, #fff);
+    `;
+
+    const types = [
+      { name: 'Generic',    icon: '\u2B1C' },
+      { name: 'Electrical', icon: '\u26A1' },
+      { name: 'Mechanical', icon: '\u2699\uFE0F' },
+      { name: 'Software',   icon: '\uD83D\uDCBB' }
+    ];
+
+    types.forEach(t => {
+      const item = document.createElement('div');
+      item.textContent = t.icon + '  ' + t.name;
+      item.style.cssText = 'padding: 8px 16px; cursor: pointer; font-size: 13px;';
+      item.addEventListener('mouseenter', () =>
+        item.style.background = 'var(--fusion-hover-bg, #3a3a3a)');
+      item.addEventListener('mouseleave', () =>
+        item.style.background = '');
+      item.addEventListener('click', () => {
+        dropdown.remove();
+        cleanupListener();
+        callback(t.name);
+      });
+      dropdown.appendChild(item);
+    });
+
+    document.body.appendChild(dropdown);
+
+    // Close on outside click
+    const cleanupListener = () =>
+      document.removeEventListener('mousedown', outsideClick);
+    const outsideClick = (e) => {
+      if (!dropdown.contains(e.target) && e.target !== btn) {
+        dropdown.remove();
+        cleanupListener();
+      }
+    };
+    setTimeout(() => document.addEventListener('mousedown', outsideClick), 0);
   }
 
   handleConnect() {
@@ -426,7 +661,8 @@ class ToolbarManager {
 
   handleDeleteSelected() {
     // Delete all blocks in the multi-selection (advancedFeatures), or
-    // fall back to the single-selected block from the core editor.
+    // fall back to the single-selected block from the core editor,
+    // or delete the currently-selected connection.
     const multiIds = window.advancedFeatures && window.advancedFeatures.hasSelection()
       ? window.advancedFeatures.getSelectedBlocks()
       : [];
@@ -441,6 +677,14 @@ class ToolbarManager {
       this.editor.removeBlock(this.editor.selectedBlock);
       this.renderer.updateAllBlocks(this.editor.diagram);
       this.editor.clearSelection();
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
+    } else if (window.SystemBlocksMain && window.SystemBlocksMain._selectedConnection) {
+      // Delete the selected connection
+      const connId = window.SystemBlocksMain._selectedConnection;
+      this.editor.removeConnection(connId);
+      this.renderer.clearConnectionHighlights();
+      window.SystemBlocksMain._selectedConnection = null;
+      this.renderer.updateAllBlocks(this.editor.diagram);
       if (window.advancedFeatures) window.advancedFeatures.saveState();
     }
   }
@@ -516,6 +760,89 @@ class ToolbarManager {
     }
   }
 
+  // === HIERARCHY NAVIGATION ===
+
+  handleNavigateUp() {
+    const features = window.advancedFeatures;
+    if (!features || !features._hierarchyStack || features._hierarchyStack.length === 0) {
+      logger.warn('Navigate Up: already at root');
+      return;
+    }
+    const entry = features._hierarchyStack.pop();
+    // Restore parent diagram
+    this.editor.diagram = entry.diagram;
+    this.editor.clearSelection();
+    this.renderer.updateAllBlocks(this.editor.diagram);
+    this._updateBreadcrumb();
+    this.updateButtonStates();
+    logger.info('Navigated up to', entry.name || 'Root');
+  }
+
+  handleDrillDown() {
+    if (!this.editor.selectedBlock) return;
+    const block = this.editor.diagram.blocks.find(
+      b => b.id === this.editor.selectedBlock);
+    if (!block || !block.childDiagram) return;
+
+    const features = window.advancedFeatures;
+    if (!features) return;
+    if (!features._hierarchyStack) features._hierarchyStack = [];
+
+    // Push current diagram onto hierarchy stack
+    features._hierarchyStack.push({
+      diagram: JSON.parse(JSON.stringify(this.editor.diagram)),
+      name: block.name || block.id
+    });
+
+    // Load child diagram
+    this.editor.diagram = block.childDiagram;
+    this.editor.clearSelection();
+    this.renderer.updateAllBlocks(this.editor.diagram);
+    this._updateBreadcrumb();
+    this.updateButtonStates();
+    logger.info('Drilled down into', block.name || block.id);
+  }
+
+  handleCreateChild() {
+    if (!this.editor.selectedBlock) return;
+    const block = this.editor.diagram.blocks.find(
+      b => b.id === this.editor.selectedBlock);
+    if (!block) return;
+    if (block.childDiagram && block.childDiagram.blocks !== undefined) {
+      logger.warn('Block already has a child diagram');
+      return;
+    }
+    // Create empty child diagram
+    block.childDiagram = {
+      blocks: [],
+      connections: [],
+      metadata: {
+        created: new Date().toISOString(),
+        modified: new Date().toISOString(),
+        version: '2.0',
+        parentBlockId: block.id
+      }
+    };
+    // Re-render the block to show visual hint (could add an icon)
+    this.renderer.renderBlock(block);
+    this.updateButtonStates();
+    if (window.advancedFeatures) window.advancedFeatures.saveState();
+    logger.info('Created child diagram for', block.name || block.id);
+  }
+
+  _updateBreadcrumb() {
+    const crumb = document.getElementById('breadcrumb-path');
+    if (!crumb) return;
+    const features = window.advancedFeatures;
+    if (!features || !features._hierarchyStack || features._hierarchyStack.length === 0) {
+      crumb.textContent = 'Root';
+      return;
+    }
+    const path = ['Root'].concat(
+      features._hierarchyStack.map(e => e.name));
+    crumb.textContent = path.join(' › ');
+  }
+
   handleFitView() {
     const blocks = this.editor.diagram.blocks;
     if (blocks.length === 0) {
@@ -533,17 +860,56 @@ class ToolbarManager {
       maxY = Math.max(maxY, block.y + (block.height || 80));
     });
 
-    // Add padding (10% of content size, min 50px in viewBox units)
+    // Add generous padding (25% of content size, min 100px)
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
-    const padX = Math.max(50, contentWidth * 0.1);
-    const padY = Math.max(50, contentHeight * 0.1);
+    const padX = Math.max(100, contentWidth * 0.25);
+    const padY = Math.max(100, contentHeight * 0.25);
+
+    let fitW = contentWidth + padX * 2;
+    let fitH = contentHeight + padY * 2;
+
+    // Match the SVG container's actual visible aspect ratio so the
+    // viewBox maps 1:1 to pixels.  SVG defaults to preserveAspectRatio
+    // "xMidYMid meet" which uniformly scales and centres the viewBox,
+    // but that can clip content along one axis when the AR doesn't match.
+    const svgEl = document.getElementById('svg-canvas');
+    if (svgEl) {
+      const rect = svgEl.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        const containerAR = rect.width / rect.height;
+        const fitAR = fitW / fitH;
+        if (fitAR > containerAR) {
+          // Content wider than container — expand height
+          fitH = fitW / containerAR;
+        } else {
+          // Content taller than container — expand width
+          fitW = fitH * containerAR;
+        }
+      }
+    }
+
+    // Extra safety margin — 10% compensates for Fusion 360's CEF
+    // webview where getBoundingClientRect can under-report height,
+    // especially near the bottom edge occupied by the ribbon/toolbar.
+    fitW *= 1.10;
+    fitH *= 1.10;
+
+    // Enforce a minimum viewBox size so we never zoom in too aggressively
+    const MIN_VB_W = 600;
+    const MIN_VB_H = 400;
+    if (fitW < MIN_VB_W) { fitW = MIN_VB_W; }
+    if (fitH < MIN_VB_H) { fitH = MIN_VB_H; }
+
+    // Keep the content centred within the (possibly enlarged) viewBox
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
 
     this.editor.setViewBox(
-      minX - padX,
-      minY - padY,
-      contentWidth + padX * 2,
-      contentHeight + padY * 2
+      cx - fitW / 2,
+      cy - fitH / 2,
+      fitW,
+      fitH
     );
   }
 

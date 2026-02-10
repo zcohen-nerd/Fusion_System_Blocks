@@ -309,21 +309,21 @@ def export_report_files(diagram: Dict[str, Any], output_dir: str = None) -> Dict
         # Generate markdown report
         markdown_content = generate_markdown_report(diagram)
         markdown_path = output_path / "system_blocks_report.md"
-        with open(markdown_path, "w") as f:
+        with open(markdown_path, "w", encoding="utf-8") as f:
             f.write(markdown_content)
         results["markdown"] = str(markdown_path)
 
         # Generate CSV pin map
         csv_content = generate_pin_map_csv(diagram)
         csv_path = output_path / "pin_map.csv"
-        with open(csv_path, "w") as f:
+        with open(csv_path, "w", encoding="utf-8") as f:
             f.write(csv_content)
         results["csv"] = str(csv_path)
 
         # Generate C header
         header_content = generate_pin_map_header(diagram)
         header_path = output_path / "pins.h"
-        with open(header_path, "w") as f:
+        with open(header_path, "w", encoding="utf-8") as f:
             f.write(header_content)
         results["header"] = str(header_path)
 

@@ -254,20 +254,31 @@ def _parse_connection(data: Dict[str, Any]) -> Connection:
     Returns:
         Constructed Connection instance.
     """
-    # Handle legacy nested format or flat format
+    # Handle multiple connection formats produced by the JS front-end
+    # and the Python core library:
+    #   1. Nested:  { from: { blockId, interfaceId }, to: { ... } }
+    #   2. Flat:    { from_block_id, to_block_id, ... }
+    #   3. JS-flat: { fromBlock, toBlock }             (diagram-editor.js)
     from_data = data.get("from", {})
     to_data = data.get("to", {})
 
-    if isinstance(from_data, dict):
+    if isinstance(from_data, dict) and from_data:
         from_block_id = from_data.get("blockId", "")
         from_port_id = from_data.get("interfaceId")
+    elif data.get("fromBlock"):
+        # JS diagram-editor format: { fromBlock, toBlock }
+        from_block_id = data["fromBlock"]
+        from_port_id = data.get("fromPort")
     else:
         from_block_id = data.get("from_block_id", "")
         from_port_id = data.get("from_port_id")
 
-    if isinstance(to_data, dict):
+    if isinstance(to_data, dict) and to_data:
         to_block_id = to_data.get("blockId", "")
         to_port_id = to_data.get("interfaceId")
+    elif data.get("toBlock"):
+        to_block_id = data["toBlock"]
+        to_port_id = data.get("toPort")
     else:
         to_block_id = data.get("to_block_id", "")
         to_port_id = data.get("to_port_id")
@@ -278,8 +289,13 @@ def _parse_connection(data: Dict[str, Any]) -> Connection:
         from_port_id=from_port_id,
         to_block_id=to_block_id,
         to_port_id=to_port_id,
-        kind=data.get("kind", data.get("protocol", "data")),
-        attributes=data.get("attributes", {}),
+        kind=data.get("kind", data.get("type",
+             data.get("protocol", "data"))),
+        attributes={
+            **data.get("attributes", {}),
+            **({"arrowDirection": data["arrowDirection"]}
+               if data.get("arrowDirection") else {}),
+        },
     )
 
 

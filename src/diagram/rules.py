@@ -70,42 +70,77 @@ def check_logic_level_compatibility_bulk(diagram: Dict[str, Any]) -> List[Dict[s
     return violations
 
 
+def _parse_power_value_mw(raw_value: Any) -> float:
+    """Parse a power value to milliwatts.
+
+    Accepts plain numeric strings (interpreted as mW) and strings
+    suffixed with ``mA`` (converted at an assumed 3.3 V rail).
+
+    Args:
+        raw_value: The raw attribute value (str, int, or float).
+
+    Returns:
+        The value in milliwatts.
+
+    Raises:
+        ValueError: If the value cannot be parsed.
+    """
+    text = str(raw_value)
+    if "mA" in text:
+        current_ma = float(text.replace("mA", ""))
+        return current_ma * 3.3  # Assume 3.3 V rail
+    return float(text)
+
+
 def check_power_budget_bulk(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Check if power consumption exceeds power supply capability.
 
+    Recognises several attribute conventions for supply and consumption:
+
+    * ``power_supply_mw`` / ``output_current`` — power supply (mW or mA)
+    * ``power_consumption_mw`` / ``current`` — power consumption (mW or mA)
+
+    Values suffixed with ``mA`` are converted to mW assuming a 3.3 V rail.
+
     Args:
-        diagram: The diagram to check
+        diagram: The diagram to check.
 
     Returns:
-        List of violation dictionaries
+        List of violation dictionaries.
     """
     violations = []
 
-    # Find power supply blocks
-    power_supplies = []
-    power_consumers = []
+    power_supplies: List[tuple] = []
+    power_consumers: List[tuple] = []
 
     for block in diagram.get("blocks", []):
         attributes = block.get("attributes", {})
-        power_supply = attributes.get("power_supply_mw")
-        power_consumption = attributes.get("power_consumption_mw")
 
-        if power_supply:
+        # Accept multiple attribute names for supply
+        supply_raw = (
+            attributes.get("output_current")
+            or attributes.get("power_supply_mw")
+        )
+        if supply_raw:
             try:
-                power_supplies.append((block, float(power_supply)))
-            except ValueError:
+                power_supplies.append((block, _parse_power_value_mw(supply_raw)))
+            except (ValueError, TypeError):
                 pass
 
-        if power_consumption:
+        # Accept multiple attribute names for consumption
+        consumption_raw = (
+            attributes.get("current")
+            or attributes.get("power_consumption_mw")
+        )
+        if consumption_raw:
             try:
-                power_consumers.append((block, float(power_consumption)))
-            except ValueError:
+                power_consumers.append((block, _parse_power_value_mw(consumption_raw)))
+            except (ValueError, TypeError):
                 pass
 
-    # Calculate totals
-    total_supply = sum(supply for _, supply in power_supplies)
-    total_consumption = sum(consumption for _, consumption in power_consumers)
+    total_supply = sum(s for _, s in power_supplies)
+    total_consumption = sum(c for _, c in power_consumers)
 
     if total_consumption > total_supply:
         violations.append(
@@ -113,8 +148,8 @@ def check_power_budget_bulk(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "type": "power_budget_exceeded",
                 "severity": "error",
                 "message": (
-                    f"Power consumption ({total_consumption}mW) exceeds supply "
-                    f"({total_supply}mW)"
+                    f"Power consumption ({total_consumption:.1f}mW) exceeds supply "
+                    f"({total_supply:.1f}mW)"
                 ),
                 "blocks": [block["id"] for block, _ in power_consumers],
                 "details": {
@@ -303,67 +338,74 @@ def check_power_budget(diagram: Dict[str, Any]) -> Dict[str, Any]:
     """
     Check power budget for entire diagram.
 
+    Delegates to :func:`check_power_budget_bulk` for the actual calculation
+    and returns a single result dictionary suitable for
+    :func:`run_all_rule_checks`.
+
     Args:
-        diagram: The diagram to check
+        diagram: The diagram to check.
 
     Returns:
-        Dictionary with check results
+        Dictionary with check results.
     """
-    total_supply = 0
-    total_consumption = 0
-    has_power_specs = False
+    violations = check_power_budget_bulk(diagram)
 
-    for block in diagram.get("blocks", []):
-        attributes = block.get("attributes", {})
-
-        # Check for various power supply attribute names
-        supply_current = attributes.get(
-            "output_current") or attributes.get("power_supply_mw")
-        if supply_current:
-            has_power_specs = True
-            try:
-                # Convert mA to mW (assume 3.3V for current)
-                if "mA" in str(supply_current):
-                    current_ma = float(supply_current.replace("mA", ""))
-                    total_supply += current_ma * 3.3  # Convert to mW
-                else:
-                    total_supply += float(supply_current)
-            except (ValueError, TypeError):
-                pass
-
-        # Check for various power consumption attribute names
-        consumption = attributes.get(
-            "current") or attributes.get("power_consumption_mw")
-        if consumption:
-            has_power_specs = True
-            try:
-                # Convert mA to mW (assume 3.3V for current)
-                if "mA" in str(consumption):
-                    current_ma = float(consumption.replace("mA", ""))
-                    total_consumption += current_ma * 3.3  # Convert to mW
-                else:
-                    total_consumption += float(consumption)
-            except (ValueError, TypeError):
-                pass
+    # Determine whether any blocks had power specs at all
+    has_power_specs = any(
+        attributes.get("output_current")
+        or attributes.get("power_supply_mw")
+        or attributes.get("current")
+        or attributes.get("power_consumption_mw")
+        for block in diagram.get("blocks", [])
+        for attributes in [block.get("attributes", {})]
+    )
 
     if not has_power_specs:
-        return {"success": True, "rule": "power_budget", "message": "No power specifications found"}
-
-    if total_consumption <= total_supply:
         return {
             "success": True,
             "rule": "power_budget",
-            "message": f"Power budget OK: {total_consumption:.1f}mW used of "
-            f"{total_supply:.1f}mW available",
+            "message": "No power specifications found",
         }
-    else:
+
+    if violations:
+        v = violations[0]
+        details = v.get("details", {})
         return {
             "success": False,
             "rule": "power_budget",
-            "message": f"Power budget exceeded: {total_consumption:.1f}mW needed, "
-            f"{total_supply:.1f}mW available",
+            "message": (
+                f"Power budget exceeded: {details['total_consumption']:.1f}mW needed, "
+                f"{details['total_supply']:.1f}mW available"
+            ),
             "severity": "error",
         }
+
+    # Re-calculate totals for the OK message
+    total_supply = 0.0
+    total_consumption = 0.0
+    for block in diagram.get("blocks", []):
+        attributes = block.get("attributes", {})
+        supply_raw = attributes.get("output_current") or attributes.get("power_supply_mw")
+        if supply_raw:
+            try:
+                total_supply += _parse_power_value_mw(supply_raw)
+            except (ValueError, TypeError):
+                pass
+        consumption_raw = attributes.get("current") or attributes.get("power_consumption_mw")
+        if consumption_raw:
+            try:
+                total_consumption += _parse_power_value_mw(consumption_raw)
+            except (ValueError, TypeError):
+                pass
+
+    return {
+        "success": True,
+        "rule": "power_budget",
+        "message": (
+            f"Power budget OK: {total_consumption:.1f}mW used of "
+            f"{total_supply:.1f}mW available"
+        ),
+    }
 
 
 def check_implementation_completeness(diagram: Dict[str, Any]) -> Dict[str, Any]:

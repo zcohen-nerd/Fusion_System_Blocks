@@ -1,13 +1,9 @@
 """Tests for diagram validation functionality."""
 
-import os
-import sys
 import pytest
+from unittest.mock import patch
 
-# Add src directory to path so we can import diagram_data
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-import diagram_data  # noqa: E402
+import diagram_data
 
 
 def test_schema_loading():
@@ -194,3 +190,55 @@ def test_deserialize_with_validation():
 
     with pytest.raises(ValueError, match="validation failed"):
         diagram_data.deserialize_diagram(invalid_json, validate=True)
+
+
+# ------------------------------------------------------------------
+# Additional edge-case coverage
+# ------------------------------------------------------------------
+
+def test_validate_links_empty_list():
+    """A block with an empty links list is valid."""
+    block = {"name": "Empty", "links": []}
+    is_valid, error = diagram_data.validate_links(block)
+    assert is_valid is True
+    assert error is None
+
+
+def test_validate_diagram_links_mixed():
+    """validate_diagram_links reports errors only for bad blocks."""
+    diagram = {
+        "blocks": [
+            {
+                "name": "Good",
+                "links": [{"target": "cad", "occToken": "t", "docId": "d"}],
+            },
+            {
+                "name": "Bad",
+                "links": [{"target": "cad"}],  # missing occToken
+            },
+        ]
+    }
+    all_valid, errors = diagram_data.validate_diagram_links(diagram)
+    assert all_valid is False
+    assert len(errors) == 1
+    assert "Bad" in errors[0]
+
+
+@patch("diagram.validation.JSONSCHEMA_AVAILABLE", False)
+def test_validate_diagram_basic_fallback():
+    """When jsonschema is unavailable, basic validation still works."""
+    d = diagram_data.create_empty_diagram()
+    is_valid, err = diagram_data.validate_diagram(d)
+    assert is_valid is True
+
+    # Invalid — missing blocks key
+    is_valid, err = diagram_data.validate_diagram({"connections": []})
+    assert is_valid is False
+    assert "blocks" in err
+
+
+@patch("diagram.validation.JSONSCHEMA_AVAILABLE", False)
+def test_validate_diagram_non_dict_fallback():
+    """Non-dict input fails basic validation."""
+    is_valid, err = diagram_data.validate_diagram("not a dict")
+    assert is_valid is False

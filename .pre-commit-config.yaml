@@ -1,0 +1,43 @@
+# Pre-commit hooks for Fusion System Blocks
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+# See https://pre-commit.com for more information
+
+repos:
+  # ----------------------------------------------------------------
+  # Ruff — fast Python linter and formatter (configured in pyproject.toml)
+  # ----------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # ----------------------------------------------------------------
+  # General file hygiene
+  # ----------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # ----------------------------------------------------------------
+  # Quick pytest gate (fast fail on first error, short timeout)
+  # ----------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: pytest-quick
+        name: Quick pytest
+        entry: python -m pytest tests/ -x -q --timeout=30
+        language: python
+        pass_filenames: false
+        stages: [pre-commit]
+        additional_dependencies: [pytest, pytest-timeout, jsonschema]

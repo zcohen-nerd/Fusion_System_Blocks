@@ -2,24 +2,87 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  build:
+  # -------------------------------------------------------------------
+  # Lint: ruff (configured in pyproject.toml)
+  # -------------------------------------------------------------------
+  lint:
+    name: Lint (ruff)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest jsonschema flake8
-        pip install -e .
-    - name: Lint with flake8
-      run: flake8 . --max-line-length=100 --exclude=.venv,__pycache__,.git
-    - name: Run tests
-      run: pytest -q
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install ruff
+        run: pip install ruff
+      - name: Ruff check
+        run: ruff check .
+      - name: Ruff format check
+        run: ruff format --check .
+
+  # -------------------------------------------------------------------
+  # Type-check: mypy on core/
+  # -------------------------------------------------------------------
+  type-check:
+    name: Type check (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install mypy jsonschema
+          pip install -e .
+      - name: Run mypy
+        run: mypy core/ --ignore-missing-imports
+
+  # -------------------------------------------------------------------
+  # Test: pytest on multiple Python versions with coverage
+  # -------------------------------------------------------------------
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --cov=core \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            --junitxml=results.xml \
+            -q
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Test Report
+        if: always() && matrix.python-version == '3.11'
+        uses: dorny/test-reporter@v1
+        with:
+          name: Pytest Results
+          path: results.xml
+          reporter: java-junit
+

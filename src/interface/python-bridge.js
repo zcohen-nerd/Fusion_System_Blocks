@@ -127,39 +127,56 @@ class PythonInterface {
       }
 
       const payload = JSON.stringify(message.data ?? {});
-      const sendPromise = adsk.fusionSendData(message.action, payload);
+      const result = adsk.fusionSendData(message.action, payload);
 
       if (expectResponse) {
-        sendPromise
-          .then((rawResponse) => {
-            const pending = this.pendingRequests.get(message.id);
-            if (!pending) {
-              return;
-            }
+        const resolvePending = (rawResponse) => {
+          const pending = this.pendingRequests.get(message.id);
+          if (!pending) return;
+          try {
+            const parsed = rawResponse ? JSON.parse(rawResponse) : {};
+            pending.resolve(parsed);
+          } catch (parseError) {
+            pending.resolve(rawResponse);
+          } finally {
+            this.pendingRequests.delete(message.id);
+          }
+        };
 
-            try {
-              const parsed = rawResponse ? JSON.parse(rawResponse) : {};
-              pending.resolve(parsed);
-            } catch (parseError) {
-              pending.resolve(rawResponse);
-            } finally {
-              this.pendingRequests.delete(message.id);
-            }
-          })
-          .catch((error) => {
-            const pending = this.pendingRequests.get(message.id);
-            if (pending) {
-              pending.reject(error);
-              this.pendingRequests.delete(message.id);
-            }
-          });
+        const rejectPending = (error) => {
+          const pending = this.pendingRequests.get(message.id);
+          if (pending) {
+            pending.reject(error);
+            this.pendingRequests.delete(message.id);
+          }
+        };
+
+        // Fusion 360 CEF: fusionSendData may return a Promise OR the
+        // response string synchronously, depending on the API version.
+        if (result && typeof result.then === 'function') {
+          result.then(resolvePending).catch(rejectPending);
+        } else {
+          // Synchronous return — resolve immediately
+          resolvePending(result);
+        }
       } else {
-        sendPromise.catch((error) => {
-          logger.error('Failed to send message to Python:', error);
-        });
+        if (result && typeof result.catch === 'function') {
+          result.catch((error) => {
+            logger.error('Failed to send message to Python:', error);
+          });
+        }
       }
     } catch (error) {
       logger.error('Failed to send message to Python:', error);
+      // If we expected a response, reject the pending promise so callers
+      // don't hang forever.
+      if (expectResponse) {
+        const pending = this.pendingRequests.get(message.id);
+        if (pending) {
+          pending.reject(error);
+          this.pendingRequests.delete(message.id);
+        }
+      }
     }
   }
 
@@ -174,6 +191,10 @@ class PythonInterface {
         const jsonString = typeof jsonData === 'string' ? jsonData : JSON.stringify(jsonData);
         const success = window.diagramEditor.importDiagram(jsonString);
         if (success) {
+          // Hide the empty-canvas placeholder when a diagram is loaded
+          var emptyState = document.getElementById('empty-canvas-state');
+          if (emptyState) emptyState.style.display = 'none';
+
           this.showNotification('Diagram loaded successfully', 'success');
         } else {
           this.showNotification('Failed to load diagram', 'error');
@@ -384,6 +405,62 @@ class PythonInterface {
       });
   }
 
+  // === NAMED DOCUMENT OPERATIONS ===
+
+  listDocuments() {
+    return this.sendMessage('list_documents', {}, true)
+      .then(response => response.documents || [])
+      .catch(() => []);
+  }
+
+  saveNamedDiagram(label) {
+    if (!window.diagramEditor) return Promise.reject('No diagram editor available');
+    const diagramJson = window.diagramEditor.exportDiagram();
+    return this.sendMessage('save_named_diagram', { label, diagram: diagramJson }, true)
+      .then(response => {
+        if (response.success) {
+          this.showNotification('Saved as "' + label + '"', 'success');
+        } else {
+          throw new Error(response.error || 'Save As failed');
+        }
+        return response;
+      })
+      .catch(error => {
+        this.showNotification('Failed to save as: ' + error.message, 'error');
+        throw error;
+      });
+  }
+
+  loadNamedDiagram(slug) {
+    return this.sendMessage('load_named_diagram', { slug }, true)
+      .then(response => {
+        if (response.success && response.diagram) {
+          this.handleLoadDiagram(response.diagram);
+        } else {
+          throw new Error(response.error || 'Load failed');
+        }
+        return response;
+      })
+      .catch(error => {
+        this.showNotification('Failed to open document: ' + error.message, 'error');
+        throw error;
+      });
+  }
+
+  deleteNamedDiagram(slug) {
+    return this.sendMessage('delete_named_diagram', { slug }, true)
+      .then(response => {
+        if (response.success) {
+          this.showNotification('Document deleted', 'info');
+        }
+        return response;
+      })
+      .catch(error => {
+        this.showNotification('Failed to delete: ' + error.message, 'error');
+        throw error;
+      });
+  }
+
   // === UI HELPERS ===
 
   showNotification(message, type = 'info') {
@@ -429,19 +506,99 @@ class PythonInterface {
   }
 
   displayRuleResults(results) {
-    // This would display rule check results in the UI
     logger.debug('Rule check results:', results);
-    
-    const hasErrors = results.some(result => result.severity === 'error');
-    const hasWarnings = results.some(result => result.severity === 'warning');
-    
+
+    const panel = document.getElementById('rule-results');
+    const hasErrors = results.some(r => r.severity === 'error');
+    const hasWarnings = results.some(r => r.severity === 'warning');
+    const failures = results.filter(r => !r.success);
+
+    // Summary toast
     if (hasErrors) {
-      this.showNotification(`Rule check found ${results.length} issues`, 'error');
+      this.showNotification(`Rule check found ${failures.length} issue(s)`, 'error');
     } else if (hasWarnings) {
-      this.showNotification(`Rule check found ${results.length} warnings`, 'warning');
+      this.showNotification(`Rule check found ${failures.length} warning(s)`, 'warning');
     } else {
       this.showNotification('All rule checks passed', 'success');
     }
+
+    // Populate detail panel
+    if (!panel) return;
+    panel.innerHTML = '';
+
+    // Show the rule panel container
+    var rulePanel = document.getElementById('rule-panel');
+    if (rulePanel) {
+      rulePanel.style.display = '';
+    }
+
+    // Clear previous highlights
+    if (window.diagramRenderer) {
+      window.diagramRenderer.clearConnectionHighlights();
+      (window.diagramEditor || {}).diagram &&
+        window.diagramEditor.diagram.blocks.forEach(b => {
+          window.diagramRenderer.highlightBlock(b.id, false);
+        });
+    }
+
+    if (results.length === 0) {
+      panel.innerHTML = '<div class="rule-result info"><span class="rule-icon">ℹ️</span><span class="rule-message">No rules to check</span></div>';
+      return;
+    }
+
+    results.forEach(result => {
+      const div = document.createElement('div');
+      const cls = result.success ? 'success' : (result.severity === 'error' ? 'error' : 'warning');
+      div.className = 'rule-result ' + cls;
+
+      const iconMap = { success: '✅', error: '❌', warning: '⚠️' };
+      const icon = result.success ? iconMap.success : (iconMap[result.severity] || '⚠️');
+
+      div.innerHTML =
+        '<span class="rule-icon">' + icon + '</span>' +
+        '<span class="rule-message">' +
+          '<strong>' + (result.rule || 'check') + '</strong>: ' +
+          (result.message || '') +
+        '</span>';
+
+      // Click to highlight offending blocks/connections
+      const blockIds = result.blocks || [];
+      const connId = result.connection || null;
+      if (blockIds.length > 0 || connId) {
+        div.style.cursor = 'pointer';
+        div.addEventListener('click', () => {
+          // Clear previous
+          if (window.diagramRenderer) {
+            window.diagramRenderer.clearConnectionHighlights();
+            window.diagramEditor.diagram.blocks.forEach(b =>
+              window.diagramRenderer.highlightBlock(b.id, false));
+          }
+          // Highlight relevant items
+          blockIds.forEach(bid => {
+            if (window.diagramRenderer) {
+              window.diagramRenderer.highlightBlock(bid, true);
+            }
+          });
+          if (connId && window.diagramRenderer) {
+            window.diagramRenderer.highlightConnection(connId, true);
+          }
+        });
+      }
+
+      panel.appendChild(div);
+    });
+
+    // Auto-highlight errors on canvas
+    failures.forEach(r => {
+      (r.blocks || []).forEach(bid => {
+        if (window.diagramRenderer) {
+          window.diagramRenderer.highlightBlock(bid, true);
+        }
+      });
+      if (r.connection && window.diagramRenderer) {
+        window.diagramRenderer.highlightConnection(r.connection, true);
+      }
+    });
   }
 
   displaySyncResults(results) {

@@ -131,6 +131,18 @@ class SystemBlocksMain {
     let lastMousePos = { x: 0, y: 0 };
     let draggedBlock = null;
     let dragOffset = { x: 0, y: 0 };
+    let dragMoved = false; // tracks whether block actually moved during drag
+
+    // Track whether a connection mode was JUST entered in this mousedown,
+    // so the corresponding mouseup doesn't immediately complete/exit it.
+    let connectionStartedThisClick = false;
+
+    // --- Manual double-click detection state ---
+    // Fusion 360's CEF may not reliably fire 'dblclick' on SVG elements,
+    // so we detect double-clicks ourselves in the mousedown handler.
+    let lastClickTime = 0;
+    let lastClickBlockId = null;
+    const DBLCLICK_THRESHOLD = 400; // ms
 
     // Convert screen (client) coordinates to SVG/diagram coordinates.
     // Uses getScreenCTM() which correctly handles viewBox + preserveAspectRatio,
@@ -152,22 +164,122 @@ class SystemBlocksMain {
       };
     };
 
+    // --- Helper: find a connection port near the given SVG coordinates ---
+    // Returns { block, portType } or null.
+    // Used as a fallback when e.target.closest('.connection-port') fails
+    // (which can happen in Fusion 360's Chromium with opacity-0 SVG elements).
+    const findPortAt = (svgX, svgY) => {
+      const PORT_HIT_RADIUS = 10; // slightly larger than visual r=6
+      for (let i = core.diagram.blocks.length - 1; i >= 0; i--) {
+        const block = core.diagram.blocks[i];
+        const w = block.width || 120;
+        const h = block.height || 80;
+        // Output port (right center)
+        const outX = block.x + w;
+        const outY = block.y + h / 2;
+        if (Math.hypot(svgX - outX, svgY - outY) <= PORT_HIT_RADIUS) {
+          return { block, portType: 'output' };
+        }
+        // Input port (left center)
+        const inX = block.x;
+        const inY = block.y + h / 2;
+        if (Math.hypot(svgX - inX, svgY - inY) <= PORT_HIT_RADIUS) {
+          return { block, portType: 'input' };
+        }
+      }
+      return null;
+    };
+
     // Mouse down - start drag or selection
     svg.addEventListener('mousedown', (e) => {
-      // Do not start drag/select while in connection drawing mode (handled by click)
+      // Track mouse position for ALL buttons so middle-button pan
+      // (handled in mousemove, e.buttons === 4) has a valid origin.
+      lastMousePos = { x: e.clientX, y: e.clientY };
+
+      // Only handle primary (left) button for selection/drag.
+      if (e.button !== 0) return;
+
+      // Do not start drag/select while in connection drawing mode
       if (this._connectionMode && this._connectionMode.active) return;
 
       const { x, y } = screenToSVG(e.clientX, e.clientY);
-      
-      lastMousePos = { x: e.clientX, y: e.clientY };
+
+      // --- Port click: start connection mode from that block ---
+      // Primary: DOM-based detection via closest()
+      let portEl = e.target.closest
+        ? e.target.closest('.connection-port')
+        : null;
+
+      // Fallback: check getAttribute('class') directly — closest() may not
+      // work correctly on SVG elements in Fusion 360's Chromium
+      if (!portEl && e.target.getAttribute &&
+          e.target.getAttribute('class') &&
+          e.target.getAttribute('class').indexOf('connection-port') !== -1) {
+        portEl = e.target;
+      }
+
+      if (portEl && portEl.getAttribute('data-block-id')) {
+        const blockId = portEl.getAttribute('data-block-id');
+        const block = core.diagram.blocks.find(b => b.id === blockId);
+        if (block) {
+          e.preventDefault();
+          e.stopPropagation();
+          connectionStartedThisClick = true;
+          this.enterConnectionMode(block, core, renderer);
+          return;
+        }
+      }
+
+      // Second fallback: coordinate-based port detection
+      const portHit = findPortAt(x, y);
+      if (portHit) {
+        e.preventDefault();
+        e.stopPropagation();
+        connectionStartedThisClick = true;
+        this.enterConnectionMode(portHit.block, core, renderer);
+        return;
+      }
+
+      // --- Connection click: select / highlight a connection ---
+      const connEl = e.target.closest
+        ? e.target.closest('[data-connection-id]')
+        : null;
+      if (connEl && !core.getBlockAt(x, y)) {
+        const connId = connEl.getAttribute('data-connection-id');
+        this._selectedConnection = connId;
+        renderer.clearConnectionHighlights();
+        renderer.highlightConnection(connId, true);
+        features.clearSelection();
+        core.clearSelection();
+        e.preventDefault();
+        return;
+      }
       
       const clickedBlock = core.getBlockAt(x, y);
       
       if (clickedBlock) {
-        // Block clicked
+        // --- Manual double-click detection ---
+        const now = performance.now();
+        if (lastClickBlockId === clickedBlock.id &&
+            (now - lastClickTime) < DBLCLICK_THRESHOLD) {
+          // Double-click detected — start inline edit
+          lastClickTime = 0;
+          lastClickBlockId = null;
+          e.preventDefault();
+          this.startInlineEdit(clickedBlock, svg, core, renderer);
+          return;
+        }
+        lastClickTime = now;
+        lastClickBlockId = clickedBlock.id;
+
+        // Block clicked — clear any connection selection
+        this._selectedConnection = null;
+        renderer.clearConnectionHighlights();
+
         if (e.ctrlKey || e.metaKey) {
-          // Multi-select mode
+          // Multi-select mode — toggle without clearing others
           features.toggleSelection(clickedBlock.id);
+          // Do NOT call core.selectBlock() here — it clears multi-select
         } else {
           // Single select
           if (!features.selectedBlocks.has(clickedBlock.id)) {
@@ -177,13 +289,22 @@ class SystemBlocksMain {
           core.selectBlock(clickedBlock.id);
         }
         
-        // Start drag
-        draggedBlock = clickedBlock;
-        dragOffset = { x: x - clickedBlock.x, y: y - clickedBlock.y };
+        // Start drag — only when NOT in Ctrl+click multi-select
+        if (!e.ctrlKey && !e.metaKey) {
+          draggedBlock = clickedBlock;
+          dragOffset = { x: x - clickedBlock.x, y: y - clickedBlock.y };
+          dragMoved = false;
+        }
         
         e.preventDefault();
       } else {
-        // Empty space clicked
+        // Empty space clicked — reset double-click tracking
+        lastClickBlockId = null;
+
+        // Clear connection selection
+        this._selectedConnection = null;
+        renderer.clearConnectionHighlights();
+
         if (!e.ctrlKey && !e.metaKey) {
           features.clearSelection();
           core.clearSelection();
@@ -203,15 +324,44 @@ class SystemBlocksMain {
       const { x, y } = screenToSVG(e.clientX, e.clientY);
       
       if (draggedBlock) {
-        // Drag block - update position using SVG-accurate coordinates
+        // Drag block — if block is part of multi-selection, move ALL selected
         const newPos = core.snapToGrid(x - dragOffset.x, y - dragOffset.y);
-        core.updateBlock(draggedBlock.id, { x: newPos.x, y: newPos.y });
-        renderer.renderBlock(core.diagram.blocks.find(b => b.id === draggedBlock.id));
+        const dx = newPos.x - draggedBlock.x;
+        const dy = newPos.y - draggedBlock.y;
+
+        if (dx !== 0 || dy !== 0) {
+          dragMoved = true;
+        }
+
+        // Determine blocks to move: multi-selection or just the dragged one
+        const movedIds = features.selectedBlocks.has(draggedBlock.id) && features.selectedBlocks.size > 1
+          ? Array.from(features.selectedBlocks)
+          : [draggedBlock.id];
+
+        movedIds.forEach(bid => {
+          const b = core.diagram.blocks.find(bl => bl.id === bid);
+          if (b) {
+            core.updateBlock(bid, { x: b.x + dx, y: b.y + dy });
+            renderer.renderBlock(core.diagram.blocks.find(bl => bl.id === bid));
+          }
+        });
+
+        // Update draggedBlock reference so next frame uses new position
+        const updatedDragged = core.diagram.blocks.find(bl => bl.id === draggedBlock.id);
+        if (updatedDragged) draggedBlock = updatedDragged;
+
+        // Re-render connections attached to any moved block
+        const movedSet = new Set(movedIds);
+        core.diagram.connections.forEach(conn => {
+          if (movedSet.has(conn.fromBlock) || movedSet.has(conn.toBlock)) {
+            renderer.renderConnection(conn);
+          }
+        });
       } else if (features.isLassoSelecting) {
         // Update lasso selection
         features.updateLassoSelection(x, y);
-      } else if (e.buttons === 1 && !draggedBlock) {
-        // Pan canvas — but NOT while drawing a connection
+      } else if (e.buttons === 4) {
+        // Middle-mouse-button pan (like Fusion 360 orbit/pan)
         if (this._connectionMode && this._connectionMode.active) return;
 
         const ctm = svg.getScreenCTM();
@@ -233,18 +383,61 @@ class SystemBlocksMain {
       }
     });
     
-    // Mouse up - end drag or selection
+    // Mouse up - end drag or selection, AND complete connections
     svg.addEventListener('mouseup', (e) => {
       if (draggedBlock) {
-        // End block drag
-        features.saveState(); // For undo/redo
+        // End block drag — save state only if block actually moved
+        if (dragMoved) {
+          features.saveState();
+        }
         draggedBlock = null;
         dragOffset = { x: 0, y: 0 };
+        dragMoved = false;
       } else if (features.isLassoSelecting) {
         // End lasso selection
         const { x, y } = screenToSVG(e.clientX, e.clientY);
         features.finishLassoSelection(x, y);
       }
+
+      // --- Connection mode: complete connection on mouseup ---
+      // Fusion 360's Chromium may not synthesize a 'click' event
+      // from mousedown+mouseup on SVG elements, so we handle the
+      // connection target selection here as the primary path.
+      // HOWEVER, skip if the connection mode was JUST started in this
+      // same mousedown (port click) — otherwise the instant mouseup
+      // would complete/exit the mode before the user can pick a target.
+      if (this._connectionMode && this._connectionMode.active && !connectionStartedThisClick) {
+        const { x, y } = screenToSVG(e.clientX, e.clientY);
+        const targetBlock = core.getBlockAt(x, y);
+
+        if (targetBlock && targetBlock.id !== this._connectionMode.sourceBlock.id) {
+          const connType = document.getElementById('connection-type-select');
+          const type = connType ? connType.value : 'auto';
+          const arrowDir = document.getElementById('arrow-direction-select');
+          const direction = arrowDir ? arrowDir.value : 'forward';
+          const sourceId = this._connectionMode.sourceBlock
+            ? this._connectionMode.sourceBlock.id : null;
+          const conn = core.addConnection(sourceId, targetBlock.id, type, direction);
+          if (conn) {
+            // Re-render ALL connections touching these blocks so fan
+            // offsets recalculate correctly (not just the new one).
+            core.diagram.connections.forEach(c => {
+              if (c.fromBlock === sourceId || c.toBlock === sourceId ||
+                  c.fromBlock === targetBlock.id || c.toBlock === targetBlock.id) {
+                renderer.renderConnection(c);
+              }
+            });
+            logger.info('Connection created:', conn.id,
+              'from', this._connectionMode.sourceBlock.name || sourceId,
+              'to', targetBlock.name || targetBlock.id);
+            if (window.advancedFeatures) window.advancedFeatures.saveState();
+          }
+        }
+        this.exitConnectionMode(svg);
+        e.stopPropagation();
+      }
+      // Reset the flag so the NEXT mouseup can complete connections
+      connectionStartedThisClick = false;
     });
     
     // Mouse wheel - zoom
@@ -258,7 +451,9 @@ class SystemBlocksMain {
     });
 
     // =========================================================================
-    // DOUBLE-CLICK — inline rename block
+    // DOUBLE-CLICK — inline rename block (native event as secondary path)
+    // The manual detection in mousedown is the primary path; this fires
+    // as a backup in browsers where native dblclick works on SVG.
     // =========================================================================
     svg.addEventListener('dblclick', (e) => {
       // Suppress rename if we just exited connection mode (click → dblclick)
@@ -309,32 +504,53 @@ class SystemBlocksMain {
       tempLine: null
     };
     this._connectionModeExitTime = 0;
+    this._connectionModeEntryTime = 0;
 
     svg.addEventListener('mousemove', (e) => {
       if (!this._connectionMode.active || !this._connectionMode.tempLine) return;
 
       const { x, y } = screenToSVG(e.clientX, e.clientY);
-      const src = this._connectionMode.sourceBlock;
-      const fromX = src.x + (src.width || 120);
-      const fromY = src.y + (src.height || 80) / 2;
 
       this._connectionMode.tempLine.setAttribute('x2', x);
       this._connectionMode.tempLine.setAttribute('y2', y);
     });
 
+    // Keep the click handler as an additional path for connection completion.
+    // In some Chromium versions the 'click' event fires after mouseup;
+    // in others (Fusion CEF) it doesn't. The mouseup handler above is
+    // the primary path. The addConnection() duplicate guard prevents
+    // double-creation if both fire.
     svg.addEventListener('click', (e) => {
       if (!this._connectionMode.active) return;
+
+      // If connection mode was JUST entered (e.g. port single-click),
+      // the synthesized click event should NOT exit the mode.
+      if (this._connectionModeEntryTime &&
+          performance.now() - this._connectionModeEntryTime < 500) {
+        return;
+      }
 
       const { x, y } = screenToSVG(e.clientX, e.clientY);
       const targetBlock = core.getBlockAt(x, y);
 
       if (targetBlock && targetBlock.id !== this._connectionMode.sourceBlock.id) {
-        // Create the connection
         const connType = document.getElementById('connection-type-select');
         const type = connType ? connType.value : 'auto';
-        const conn = core.addConnection(this._connectionMode.sourceBlock.id, targetBlock.id, type);
+        const arrowDir = document.getElementById('arrow-direction-select');
+        const direction = arrowDir ? arrowDir.value : 'forward';
+        const sourceId = this._connectionMode.sourceBlock
+          ? this._connectionMode.sourceBlock.id : null;
+        const conn = core.addConnection(sourceId, targetBlock.id, type, direction);
         if (conn) {
-          renderer.renderConnection(conn);
+          // Re-render ALL connections touching these blocks so fan
+          // offsets recalculate correctly (not just the new one).
+          core.diagram.connections.forEach(c => {
+            if (c.fromBlock === sourceId || c.toBlock === sourceId ||
+                c.fromBlock === targetBlock.id || c.toBlock === targetBlock.id) {
+              renderer.renderConnection(c);
+            }
+          });
+          logger.info('Connection created (via click):', conn.id);
           if (window.advancedFeatures) window.advancedFeatures.saveState();
         }
       }
@@ -354,6 +570,10 @@ class SystemBlocksMain {
   // INLINE EDIT (double-click rename)
   // =========================================================================
   startInlineEdit(block, svg, core, renderer) {
+    // Prevent opening multiple inline editors (both the manual double-click
+    // detection in mousedown and the native dblclick handler can fire)
+    if (svg.querySelector('foreignObject')) return;
+
     // Create a foreignObject to host an HTML input over the block
     const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
     const bw = block.width || 120;
@@ -400,6 +620,130 @@ class SystemBlocksMain {
   }
 
   // =========================================================================
+  // PROPERTY EDITOR DIALOG
+  // =========================================================================
+  openPropertyEditor(block, core, renderer) {
+    // Remove any existing dialog
+    const old = document.getElementById('property-editor-dialog');
+    if (old) old.remove();
+
+    const dialog = document.createElement('div');
+    dialog.id = 'property-editor-dialog';
+    dialog.style.cssText = `
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: var(--fusion-panel-bg, #2b2b2b); color: var(--fusion-text-primary, #fff);
+      border: 2px solid var(--fusion-panel-border, #555); border-radius: 8px;
+      padding: 20px; z-index: 100001; min-width: 360px; max-width: 480px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5); font-family: Arial, sans-serif;
+    `;
+
+    const labelStyle = 'display:block; margin: 10px 0 4px; font-size:12px; color:#aaa;';
+    const inputStyle = `
+      width: 100%; padding: 6px 8px; border: 1px solid #555; border-radius: 4px;
+      background: #1e1e1e; color: #fff; font-size: 13px; box-sizing: border-box;
+    `;
+    const selectStyle = inputStyle;
+
+    // Build attributes key-value rows
+    const attrs = block.attributes || {};
+    const attrKeys = Object.keys(attrs);
+
+    dialog.innerHTML = `
+      <div style="font-size:15px; font-weight:bold; margin-bottom:12px; border-bottom:1px solid #444; padding-bottom:8px;">
+        Block Properties
+      </div>
+      <label style="${labelStyle}">Name</label>
+      <input id="prop-name" style="${inputStyle}" value="${(block.name || '').replace(/"/g, '&quot;')}" />
+      <label style="${labelStyle}">Type</label>
+      <select id="prop-type" style="${selectStyle}">
+        <option value="Generic"    ${block.type === 'Generic'    ? 'selected' : ''}>Generic</option>
+        <option value="Electrical" ${block.type === 'Electrical' ? 'selected' : ''}>Electrical</option>
+        <option value="Mechanical" ${block.type === 'Mechanical' ? 'selected' : ''}>Mechanical</option>
+        <option value="Software"   ${block.type === 'Software'   ? 'selected' : ''}>Software</option>
+      </select>
+      <label style="${labelStyle}">Status</label>
+      <select id="prop-status" style="${selectStyle}">
+        <option value="Placeholder" ${block.status === 'Placeholder' ? 'selected' : ''}>Placeholder</option>
+        <option value="In Progress" ${block.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+        <option value="Completed"   ${block.status === 'Completed'   ? 'selected' : ''}>Completed</option>
+      </select>
+      <label style="${labelStyle}">Attributes</label>
+      <div id="prop-attrs" style="max-height:140px; overflow-y:auto;">
+        ${attrKeys.map(k => `
+          <div style="display:flex; gap:6px; margin-bottom:4px;" class="attr-row">
+            <input class="attr-key" style="${inputStyle} width:40%;" value="${k.replace(/"/g, '&quot;')}" />
+            <input class="attr-val" style="${inputStyle} width:55%;" value="${String(attrs[k]).replace(/"/g, '&quot;')}" />
+            <button class="attr-del" style="background:#d32f2f; color:#fff; border:none; border-radius:4px; cursor:pointer; padding:0 8px;">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <button id="prop-add-attr" style="margin-top:4px; padding:4px 10px; font-size:12px;
+        background:#333; color:#ccc; border:1px solid #555; border-radius:4px; cursor:pointer;">
+        + Add Attribute
+      </button>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button id="prop-cancel" style="padding:6px 16px; background:#444; color:#ccc;
+          border:1px solid #555; border-radius:4px; cursor:pointer;">Cancel</button>
+        <button id="prop-save" style="padding:6px 16px; background:#FF6B35; color:#fff;
+          border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Save</button>
+      </div>
+    `;
+
+    document.body.appendChild(dialog);
+
+    // --- Wire events ---
+    const cancel = () => dialog.remove();
+    dialog.querySelector('#prop-cancel').addEventListener('click', cancel);
+
+    // Delete attribute row buttons
+    dialog.querySelectorAll('.attr-del').forEach(btn => {
+      btn.addEventListener('click', () => btn.closest('.attr-row').remove());
+    });
+
+    // Add attribute row
+    dialog.querySelector('#prop-add-attr').addEventListener('click', () => {
+      const container = dialog.querySelector('#prop-attrs');
+      const row = document.createElement('div');
+      row.className = 'attr-row';
+      row.style.cssText = 'display:flex; gap:6px; margin-bottom:4px;';
+      row.innerHTML = `
+        <input class="attr-key" style="${inputStyle} width:40%;" placeholder="key" />
+        <input class="attr-val" style="${inputStyle} width:55%;" placeholder="value" />
+        <button class="attr-del" style="background:#d32f2f; color:#fff; border:none; border-radius:4px; cursor:pointer; padding:0 8px;">✕</button>
+      `;
+      row.querySelector('.attr-del').addEventListener('click', () => row.remove());
+      container.appendChild(row);
+    });
+
+    // Save
+    dialog.querySelector('#prop-save').addEventListener('click', () => {
+      const newAttrs = {};
+      dialog.querySelectorAll('.attr-row').forEach(row => {
+        const k = row.querySelector('.attr-key').value.trim();
+        const v = row.querySelector('.attr-val').value.trim();
+        if (k) newAttrs[k] = v;
+      });
+
+      core.updateBlock(block.id, {
+        name: dialog.querySelector('#prop-name').value.trim() || block.name,
+        type: dialog.querySelector('#prop-type').value,
+        status: dialog.querySelector('#prop-status').value,
+        attributes: newAttrs
+      });
+
+      renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
+      dialog.remove();
+    });
+
+    // Close on Escape
+    const onKey = (e) => {
+      if (e.key === 'Escape') { cancel(); document.removeEventListener('keydown', onKey); }
+    };
+    document.addEventListener('keydown', onKey);
+  }
+
+  // =========================================================================
   // CONTEXT MENU
   // =========================================================================
   showContextMenu(clientX, clientY, block, core, renderer, features) {
@@ -427,6 +771,11 @@ class SystemBlocksMain {
         this.hideContextMenu();
         const svg = document.getElementById('svg-canvas');
         this.startInlineEdit(block, svg, core, renderer);
+      });
+
+      this._ctxAction(freshMenu, 'ctx-properties', () => {
+        this.hideContextMenu();
+        this.openPropertyEditor(block, core, renderer);
       });
 
       this._ctxAction(freshMenu, 'ctx-delete', () => {
@@ -515,6 +864,7 @@ class SystemBlocksMain {
 
     this._connectionMode.active = true;
     this._connectionMode.sourceBlock = sourceBlock;
+    this._connectionModeEntryTime = performance.now();
 
     // Highlight source block
     renderer.highlightBlock(sourceBlock.id, true);
@@ -569,11 +919,15 @@ class SystemBlocksMain {
       toolbar.updateButtonStates();
     };
     
-    // Update toolbar when diagram changes
+    // Update toolbar when diagram changes — also save undo state
     const originalAddBlock = core.addBlock.bind(core);
     core.addBlock = function(blockData) {
       const result = originalAddBlock(blockData);
       toolbar.updateButtonStates();
+      // Save state for undo/redo after block creation
+      if (window.advancedFeatures && !window.advancedFeatures.isPerformingUndoRedo) {
+        window.advancedFeatures.saveState();
+      }
       return result;
     };
     
@@ -587,13 +941,21 @@ class SystemBlocksMain {
   setupAdvancedFeaturesIntegration(core, renderer, features) {
     // Save state when blocks are modified, with debounce to avoid flooding
     // during drag operations (~60 updateBlock calls/sec).
+    // IMPORTANT: only save if the redo stack is empty, otherwise the
+    // debounced save fires after an undo and clears the redo stack.
     let saveTimer = null;
     const originalUpdateBlock = core.updateBlock.bind(core);
     core.updateBlock = function(blockId, updates) {
       const result = originalUpdateBlock(blockId, updates);
       if (result && !features.isPerformingUndoRedo) {
         clearTimeout(saveTimer);
-        saveTimer = setTimeout(() => features.saveState(), 250);
+        saveTimer = setTimeout(() => {
+          // Don't auto-save state right after an undo/redo — the restoreState
+          // triggers updateBlock which would wipe the redo stack.
+          if (features.redoStack.length === 0) {
+            features.saveState();
+          }
+        }, 250);
       }
       return result;
     };

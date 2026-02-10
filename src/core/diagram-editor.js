@@ -85,7 +85,10 @@ class DiagramEditorCore {
     this.diagram.metadata.modified = new Date().toISOString();
   }
 
-  addConnection(fromBlockId, toBlockId, connectionType = 'auto') {
+  addConnection(fromBlockId, toBlockId, connectionType = 'auto', arrowDirection = 'forward') {
+    // Prevent connections with missing block IDs
+    if (!fromBlockId || !toBlockId) return null;
+
     // Prevent self-connections
     if (fromBlockId === toBlockId) return null;
 
@@ -99,7 +102,8 @@ class DiagramEditorCore {
       id: 'conn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
       fromBlock: fromBlockId,
       toBlock: toBlockId,
-      type: connectionType
+      type: connectionType,
+      arrowDirection: arrowDirection
     };
 
     this.diagram.connections.push(connection);
@@ -218,6 +222,11 @@ class DiagramEditorCore {
 
   // Data export/import
   exportDiagram() {
+    // Sanitize: strip connections with missing/empty source or target.
+    // This guards against corrupt data that slipped through earlier versions.
+    this.diagram.connections = this.diagram.connections.filter(
+      c => c.fromBlock && c.toBlock
+    );
     return JSON.stringify(this.diagram, null, 2);
   }
 
@@ -237,6 +246,14 @@ class DiagramEditorCore {
       if (!importedDiagram.metadata) {
         importedDiagram.metadata = { created: new Date().toISOString() };
       }
+
+      // Sanitize connections: remove those with missing source/target IDs,
+      // or references to blocks not present in the imported diagram.
+      const blockIds = new Set(importedDiagram.blocks.map(b => b.id));
+      importedDiagram.connections = importedDiagram.connections.filter(c => {
+        return c.fromBlock && c.toBlock &&
+               blockIds.has(c.fromBlock) && blockIds.has(c.toBlock);
+      });
       
       this.diagram = importedDiagram;
       this.diagram.metadata.modified = new Date().toISOString();

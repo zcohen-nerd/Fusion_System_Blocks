@@ -41,6 +41,9 @@ class AdvancedFeatures {
     this.maxUndoLevels = 50;
     this.isPerformingUndoRedo = false;
     
+    // Hierarchy navigation stack (pushed by toolbar drill-down)
+    this._hierarchyStack = [];
+    
     this.initializeAdvancedFeatures();
   }
 

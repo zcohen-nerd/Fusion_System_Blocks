@@ -4,6 +4,7 @@ import traceback
 import json
 import sys
 import os
+import datetime
 from typing import Optional, Dict, Any, List
 
 # Add src directory to path so we can import our modules
@@ -166,7 +167,7 @@ def save_diagram_json(json_data: str) -> bool:
         # Parse the JSON data
         diagram = json.loads(json_data)
 
-        # Use core library validation if available
+        # Use core library validation if available (advisory — does not block save)
         if CORE_AVAILABLE:
             graph = dict_to_graph(diagram)
             validation_errors = validate_graph(graph)
@@ -174,21 +175,24 @@ def save_diagram_json(json_data: str) -> bool:
             if validation_errors:
                 error_summary = get_error_summary(validation_errors)
                 _show_validation_errors_dialog(validation_errors)
-                notify_error(f"Graph validation failed:\n{error_summary}")
-                return False
+                # Log warnings but do NOT block save — let the user persist
+                # their work-in-progress and fix issues later.
+                if LOGGING_AVAILABLE:
+                    _logger.warning(
+                        "Saving diagram despite validation warnings:\n%s",
+                        error_summary,
+                    )
         else:
-            # Fallback to legacy validation
+            # Fallback to legacy validation — advisory only
             is_valid, error = diagram_data.validate_diagram(diagram)
             if not is_valid:
-                notify_error(f"Diagram validation failed: {error}")
-                return False
+                notify_error(f"Diagram saved with validation warnings: {error}")
 
             # Check link validation specifically
             links_valid, link_errors = diagram_data.validate_diagram_links(diagram)
             if not links_valid:
-                error_msg = 'Link validation errors:\n' + '\n'.join(link_errors)
+                error_msg = 'Link warnings:\n' + '\n'.join(link_errors)
                 notify_error(error_msg)
-                return False
 
         root_comp = get_root_component()
         if not root_comp:
@@ -246,6 +250,145 @@ def load_diagram_data():
     except (json.JSONDecodeError, TypeError) as exc:
         notify_error(f"Invalid diagram data: {exc}")
         return None
+
+
+# ── Named document helpers ──────────────────────────────────────────────
+# Each named document is stored as an attribute:
+#   group = ATTR_GROUP, name = "doc_<slug>"
+# A manifest attribute "docIndex" holds a JSON list of
+# { "slug": "<slug>", "label": "<user name>", "modified": "<ISO>" }.
+
+def _doc_attr_name(slug: str) -> str:
+    """Return the Fusion attribute name for a named document."""
+    return f"doc_{slug}"
+
+
+def _slug_from_label(label: str) -> str:
+    """Derive a filesystem-safe slug from a user-visible label."""
+    import re
+    slug = re.sub(r'[^a-zA-Z0-9_-]', '_', label.strip())[:64]
+    return slug or "untitled"
+
+
+def list_named_diagrams() -> List[Dict[str, str]]:
+    """Return the list of named documents stored on the root component.
+
+    Returns:
+        List of dicts with keys 'slug', 'label', 'modified'.
+    """
+    try:
+        root_comp = get_root_component()
+        if not root_comp:
+            return []
+        for attr in root_comp.attributes:
+            if attr.groupName == ATTR_GROUP and attr.name == 'docIndex':
+                return json.loads(attr.value)
+    except Exception:
+        pass
+    return []
+
+
+def _save_doc_index(index: List[Dict[str, str]]) -> None:
+    """Persist the document manifest to a Fusion attribute."""
+    root_comp = get_root_component()
+    if not root_comp:
+        return
+    attrs = root_comp.attributes
+    for attr in attrs:
+        if attr.groupName == ATTR_GROUP and attr.name == 'docIndex':
+            attr.deleteMe()
+            break
+    attrs.add(ATTR_GROUP, 'docIndex', json.dumps(index))
+
+
+def save_named_diagram(label: str, json_data: str) -> bool:
+    """Save a diagram under a user-chosen name.
+
+    Args:
+        label: User-visible name for the document.
+        json_data: JSON string of the diagram.
+
+    Returns:
+        True on success.
+    """
+    try:
+        slug = _slug_from_label(label)
+        root_comp = get_root_component()
+        if not root_comp:
+            notify_error("No active design found")
+            return False
+
+        attr_name = _doc_attr_name(slug)
+        attrs = root_comp.attributes
+        # Remove existing attribute with same name
+        for attr in attrs:
+            if attr.groupName == ATTR_GROUP and attr.name == attr_name:
+                attr.deleteMe()
+                break
+        attrs.add(ATTR_GROUP, attr_name, json_data)
+
+        # Update manifest
+        index = list_named_diagrams()
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        entry = next((e for e in index if e['slug'] == slug), None)
+        if entry:
+            entry['modified'] = now
+            entry['label'] = label
+        else:
+            index.append({'slug': slug, 'label': label, 'modified': now})
+        _save_doc_index(index)
+        return True
+    except Exception as e:
+        notify_error(f"Failed to save named diagram: {e}")
+        return False
+
+
+def load_named_diagram(slug: str) -> Optional[str]:
+    """Load a named diagram's JSON by slug.
+
+    Args:
+        slug: The document slug.
+
+    Returns:
+        JSON string or None.
+    """
+    try:
+        root_comp = get_root_component()
+        if not root_comp:
+            return None
+        attr_name = _doc_attr_name(slug)
+        for attr in root_comp.attributes:
+            if attr.groupName == ATTR_GROUP and attr.name == attr_name:
+                return attr.value
+    except Exception as e:
+        notify_error(f"Failed to load named diagram: {e}")
+    return None
+
+
+def delete_named_diagram(slug: str) -> bool:
+    """Delete a named diagram.
+
+    Args:
+        slug: The document slug to remove.
+
+    Returns:
+        True on success.
+    """
+    try:
+        root_comp = get_root_component()
+        if not root_comp:
+            return False
+        attr_name = _doc_attr_name(slug)
+        for attr in root_comp.attributes:
+            if attr.groupName == ATTR_GROUP and attr.name == attr_name:
+                attr.deleteMe()
+                break
+        index = [e for e in list_named_diagrams() if e['slug'] != slug]
+        _save_doc_index(index)
+        return True
+    except Exception as e:
+        notify_error(f"Failed to delete named diagram: {e}")
+        return False
 
 
 def select_occurrence_for_linking():
@@ -500,6 +643,42 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
     def _handle_response(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Acknowledge response events from Fusion's palette bridge."""
         return {'success': True}
+
+    # ── Named document handlers ──────────────────────────────────────
+
+    def _handle_list_documents(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Return the manifest of all saved named diagrams."""
+        docs = list_named_diagrams()
+        return {'success': True, 'documents': docs}
+
+    def _handle_save_named_diagram(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Save diagram under a user-chosen name."""
+        label = data.get('label', 'Untitled')
+        json_data = data.get('diagram', '{}')
+        ok = save_named_diagram(label, json_data)
+        if ok:
+            return {'success': True, 'documents': list_named_diagrams()}
+        return {'success': False, 'error': 'Save failed'}
+
+    def _handle_load_named_diagram(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Load a named diagram by slug."""
+        slug = data.get('slug', '')
+        json_str = load_named_diagram(slug)
+        if json_str:
+            try:
+                diagram = json.loads(json_str)
+            except json.JSONDecodeError:
+                diagram = diagram_data.create_empty_diagram()
+            return {'success': True, 'diagram': diagram}
+        return {'success': False, 'error': 'Document not found'}
+
+    def _handle_delete_named_diagram(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Delete a named document."""
+        slug = data.get('slug', '')
+        ok = delete_named_diagram(slug)
+        if ok:
+            return {'success': True, 'documents': list_named_diagrams()}
+        return {'success': False, 'error': 'Delete failed'}
 
 
 def _create_palette() -> Optional[adsk.core.Palette]:

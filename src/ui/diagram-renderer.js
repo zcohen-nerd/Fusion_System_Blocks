@@ -83,38 +83,44 @@ class DiagramRenderer {
   setupDefs() {
     const defs = this.svg.querySelector('defs') || this.svg.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'defs'));
     
-    // Add arrow markers for connections
-    const arrowMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-    arrowMarker.setAttribute('id', 'arrowhead');
-    arrowMarker.setAttribute('markerWidth', '10');
-    arrowMarker.setAttribute('markerHeight', '7');
-    arrowMarker.setAttribute('refX', '9');
-    arrowMarker.setAttribute('refY', '3.5');
-    arrowMarker.setAttribute('orient', 'auto');
-    
-    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
-    polygon.setAttribute('fill', '#666');
-    
-    arrowMarker.appendChild(polygon);
-    defs.appendChild(arrowMarker);
+    // Only create arrowhead marker if one doesn't already exist in the HTML.
+    // palette.html ships its own <marker id="arrowhead">; creating a duplicate
+    // produces undefined url(#arrowhead) behaviour in some Chromium builds.
+    if (!defs.querySelector('#arrowhead')) {
+      const arrowMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+      arrowMarker.setAttribute('id', 'arrowhead');
+      arrowMarker.setAttribute('markerWidth', '10');
+      arrowMarker.setAttribute('markerHeight', '7');
+      arrowMarker.setAttribute('refX', '9');
+      arrowMarker.setAttribute('refY', '3.5');
+      arrowMarker.setAttribute('orient', 'auto');
+      
+      const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+      polygon.setAttribute('fill', '#666');
+      
+      arrowMarker.appendChild(polygon);
+      defs.appendChild(arrowMarker);
+    }
 
-    // Add drop shadow filter
-    const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
-    filter.setAttribute('id', 'drop-shadow');
-    filter.setAttribute('x', '-20%');
-    filter.setAttribute('y', '-20%');
-    filter.setAttribute('width', '140%');
-    filter.setAttribute('height', '140%');
+    // Only create drop shadow filter if one doesn't already exist
+    if (!defs.querySelector('#drop-shadow')) {
+      const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+      filter.setAttribute('id', 'drop-shadow');
+      filter.setAttribute('x', '-20%');
+      filter.setAttribute('y', '-20%');
+      filter.setAttribute('width', '140%');
+      filter.setAttribute('height', '140%');
 
-    const feDropShadow = document.createElementNS('http://www.w3.org/2000/svg', 'feDropShadow');
-    feDropShadow.setAttribute('dx', '2');
-    feDropShadow.setAttribute('dy', '2');
-    feDropShadow.setAttribute('stdDeviation', '2');
-    feDropShadow.setAttribute('flood-opacity', '0.2');
+      const feDropShadow = document.createElementNS('http://www.w3.org/2000/svg', 'feDropShadow');
+      feDropShadow.setAttribute('dx', '2');
+      feDropShadow.setAttribute('dy', '2');
+      feDropShadow.setAttribute('stdDeviation', '2');
+      feDropShadow.setAttribute('flood-opacity', '0.2');
 
-    filter.appendChild(feDropShadow);
-    defs.appendChild(filter);
+      filter.appendChild(feDropShadow);
+      defs.appendChild(filter);
+    }
   }
 
   // Block rendering with different shapes
@@ -235,18 +241,63 @@ class DiagramRenderer {
       blockGroup.insertBefore(highlight, blockGroup.firstChild);
     }
 
-    // Add text label
+    // Add text label — explicitly reset stroke/fill to prevent inheritance
+    // from the parent <g class="block"> which has CSS stroke set on it.
+    const blockW = block.width || 120;
+    const blockH = block.height || 80;
+    const textPadding = 10; // px padding on each side
+    const maxTextWidth = blockW - textPadding * 2;
+
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', (block.width || 120) / 2);
-    text.setAttribute('y', (block.height || 80) / 2);
+    text.setAttribute('x', blockW / 2);
     text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('dominant-baseline', 'middle');
     text.setAttribute('fill', styling.textColor);
+    text.setAttribute('stroke', 'none');           // prevent inherited outline
     text.setAttribute('font-family', 'Arial, sans-serif');
-    text.setAttribute('font-size', '12');
     text.setAttribute('font-weight', 'bold');
-    text.textContent = block.name || 'Block';
-    
+    text.setAttribute('pointer-events', 'none');   // clicks pass through to block
+
+    // Word-wrap the label into multiple lines that fit the block width.
+    // SVG <text> doesn't support native wrapping, so we use <tspan> elements.
+    const label = block.name || 'Block';
+    const fontSize = 12;
+    text.setAttribute('font-size', String(fontSize));
+    const words = label.split(/\s+/);
+    const lines = [];
+    let currentLine = '';
+
+    // Approximate character width: 0.6 * fontSize for Arial bold
+    const charWidth = fontSize * 0.6;
+    words.forEach(word => {
+      const testLine = currentLine ? currentLine + ' ' + word : word;
+      if (testLine.length * charWidth > maxTextWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    });
+    if (currentLine) lines.push(currentLine);
+
+    // Limit to 3 lines max; truncate with ellipsis if needed
+    const maxLines = 3;
+    if (lines.length > maxLines) {
+      lines.length = maxLines;
+      lines[maxLines - 1] = lines[maxLines - 1].slice(0, -1) + '…';
+    }
+
+    const lineHeight = fontSize * 1.3;
+    const totalTextHeight = lines.length * lineHeight;
+    const startY = (blockH - totalTextHeight) / 2 + lineHeight * 0.75;
+
+    lines.forEach((line, i) => {
+      const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      tspan.setAttribute('x', blockW / 2);
+      tspan.setAttribute('dy', i === 0 ? String(startY) : String(lineHeight));
+      tspan.textContent = line;
+      text.appendChild(tspan);
+    });
+
     blockGroup.appendChild(text);
 
     // Add status indicator
@@ -275,11 +326,14 @@ class DiagramRenderer {
       'Generic': { fill: '#F5F5F5', stroke: '#757575' }
     };
     
-    // Status modifications
+    // Status modifications — aligned with the 5 canonical statuses used
+    // by the legend sidebar, context menu, and Python hierarchy module.
     const statusModifications = {
-      'Completed': { fillOpacity: 1.0, strokeWidth: 3 },
-      'In Progress': { fillOpacity: 0.8, strokeWidth: 2 },
-      'Placeholder': { fillOpacity: 0.4, strokeWidth: 1 }
+      'Placeholder':  { fillOpacity: 0.4, strokeWidth: 1 },
+      'Planned':      { fillOpacity: 0.6, strokeWidth: 1.5 },
+      'In-Work':      { fillOpacity: 0.8, strokeWidth: 2 },
+      'Implemented':  { fillOpacity: 1.0, strokeWidth: 3 },
+      'Verified':     { fillOpacity: 1.0, strokeWidth: 3 }
     };
     
     const baseColor = typeColors[type] || typeColors['Generic'];
@@ -295,11 +349,14 @@ class DiagramRenderer {
 
   addStatusIndicator(blockGroup, block) {
     const status = block.status || 'Placeholder';
+    // Colors aligned with fusion-theme.css CSS variables
     const colors = {
-      'Completed': '#4CAF50',
-      'In Progress': '#FF9800',
-      'Placeholder': '#9E9E9E',
-      'Error': '#F44336'
+      'Placeholder':  '#969696',   // --fusion-status-placeholder
+      'Planned':      '#87ceeb',   // --fusion-status-planned
+      'In-Work':      '#ffc107',   // --fusion-status-in-work
+      'Implemented':  '#4caf50',   // --fusion-status-implemented
+      'Verified':     '#006064',   // --fusion-status-verified (teal)
+      'Error':        '#F44336'
     };
     
     const indicator = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -307,37 +364,77 @@ class DiagramRenderer {
     indicator.setAttribute('cy', 10);
     indicator.setAttribute('r', 4);
     indicator.setAttribute('fill', colors[status] || colors['Placeholder']);
+    indicator.setAttribute('stroke', 'none');  // prevent inherited outline
     
     blockGroup.appendChild(indicator);
+
+    // CAD link badge — small chain-link icon at top-left if block is linked
+    if (block.links && block.links.some(l => l.target === 'cad')) {
+      const badge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      badge.setAttribute('x', '6');
+      badge.setAttribute('y', '13');
+      badge.setAttribute('font-size', '12');
+      badge.setAttribute('fill', '#2196F3');
+      badge.setAttribute('stroke', 'none');
+      badge.setAttribute('pointer-events', 'none');
+      badge.textContent = '\uD83D\uDD17';  // 🔗 emoji
+      blockGroup.appendChild(badge);
+    }
+
+    // Child-diagram indicator — small nested-squares icon at bottom-left
+    if (block.childDiagram) {
+      const childBadge = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      childBadge.setAttribute('transform', 'translate(4,' + ((block.height || 80) - 16) + ')');
+      childBadge.setAttribute('pointer-events', 'none');
+      // Outer square
+      const outer = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      outer.setAttribute('x', '0'); outer.setAttribute('y', '0');
+      outer.setAttribute('width', '10'); outer.setAttribute('height', '10');
+      outer.setAttribute('rx', '1');
+      outer.setAttribute('fill', 'none'); outer.setAttribute('stroke', '#FF6B35');
+      outer.setAttribute('stroke-width', '1.5');
+      childBadge.appendChild(outer);
+      // Inner square (nested)
+      const inner = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      inner.setAttribute('x', '3'); inner.setAttribute('y', '3');
+      inner.setAttribute('width', '6'); inner.setAttribute('height', '6');
+      inner.setAttribute('rx', '1');
+      inner.setAttribute('fill', '#FF6B35'); inner.setAttribute('stroke', 'none');
+      inner.setAttribute('opacity', '0.5');
+      childBadge.appendChild(inner);
+      blockGroup.appendChild(childBadge);
+    }
   }
 
   addConnectionPorts(blockGroup, block) {
     const w = block.width || 120;
     const h = block.height || 80;
 
+    const createPort = (cx, cy, portType) => {
+      const port = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      port.setAttribute('cx', cx);
+      port.setAttribute('cy', cy);
+      port.setAttribute('r', 6);
+      port.setAttribute('fill', '#fff');
+      port.setAttribute('stroke', '#FF6B35');
+      port.setAttribute('stroke-width', '2');
+      port.setAttribute('class', 'connection-port');
+      port.setAttribute('data-block-id', block.id);
+      port.setAttribute('data-port-type', portType);
+      port.setAttribute('opacity', '0');
+      // Ensure the port is always hittable even at opacity 0.
+      // Without this, some Chromium builds (including Fusion 360's CEF)
+      // skip opacity-0 elements during hit testing.
+      port.setAttribute('pointer-events', 'all');
+      port.style.cursor = 'crosshair';
+      blockGroup.appendChild(port);
+    };
+
     // Input port (left center)
-    const inPort = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    inPort.setAttribute('cx', 0);
-    inPort.setAttribute('cy', h / 2);
-    inPort.setAttribute('r', 5);
-    inPort.setAttribute('fill', '#fff');
-    inPort.setAttribute('stroke', '#666');
-    inPort.setAttribute('stroke-width', '1.5');
-    inPort.setAttribute('class', 'connection-port');
-    inPort.setAttribute('opacity', '0');
-    blockGroup.appendChild(inPort);
+    createPort(0, h / 2, 'input');
 
     // Output port (right center)
-    const outPort = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    outPort.setAttribute('cx', w);
-    outPort.setAttribute('cy', h / 2);
-    outPort.setAttribute('r', 5);
-    outPort.setAttribute('fill', '#fff');
-    outPort.setAttribute('stroke', '#666');
-    outPort.setAttribute('stroke-width', '1.5');
-    outPort.setAttribute('class', 'connection-port');
-    outPort.setAttribute('opacity', '0');
-    blockGroup.appendChild(outPort);
+    createPort(w, h / 2, 'output');
   }
 
   renderConnection(connection) {
@@ -349,28 +446,184 @@ class DiagramRenderer {
     const fromBlock = this.editor.diagram.blocks.find(b => b.id === connection.fromBlock);
     const toBlock = this.editor.diagram.blocks.find(b => b.id === connection.toBlock);
     
-    if (!fromBlock || !toBlock) return null;
+    if (!fromBlock || !toBlock) {
+      logger.warn('renderConnection: missing block(s) for', connection.id,
+        'from:', connection.fromBlock, !!fromBlock,
+        'to:', connection.toBlock, !!toBlock);
+      return null;
+    }
 
-    // Calculate connection points
+    // --- Connection type styling ---
+    const connType = (connection.type || 'auto').toLowerCase();
+    const styling = this.getConnectionStyling(connType);
+
+    // --- Arrow direction ---
+    const direction = (connection.arrowDirection || 'forward').toLowerCase();
+    const markerSuffix = connType === 'auto' ? '' : '-' + connType;
+    const fwdMarker = 'url(#arrowhead' + markerSuffix + ')';
+    const revMarker = 'url(#arrowhead' + markerSuffix + '-reverse)';
+
+    // --- Fan-in / fan-out port offsets ---
+    // Count how many connections attach to the output side of fromBlock
+    // and the input side of toBlock so we can distribute vertically.
+    const outConns = this.editor.diagram.connections.filter(
+      c => c.fromBlock === connection.fromBlock
+    );
+    const inConns = this.editor.diagram.connections.filter(
+      c => c.toBlock === connection.toBlock
+    );
+    const outIdx = outConns.indexOf(connection);
+    const inIdx = inConns.indexOf(connection);
+    const fromH = fromBlock.height || 80;
+    const toH = toBlock.height || 80;
+    const fromYOffset = this._fanOffset(outIdx, outConns.length, fromH);
+    const toYOffset = this._fanOffset(inIdx, inConns.length, toH);
+
+    // Calculate connection points with fan offsets
     const fromX = fromBlock.x + (fromBlock.width || 120);
-    const fromY = fromBlock.y + (fromBlock.height || 80) / 2;
+    const fromY = fromBlock.y + fromYOffset;
     const toX = toBlock.x;
-    const toY = toBlock.y + (toBlock.height || 80) / 2;
+    const toY = toBlock.y + toYOffset;
 
-    // Create curved path
+    // Create curved path definition.
+    const dx = Math.abs(toX - fromX);
+    const dy = toY - fromY;
+    const yBulge = Math.abs(dy) < 10 ? Math.max(30, dx * 0.15) : 0;
     const midX = (fromX + toX) / 2;
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M ${fromX} ${fromY} Q ${midX} ${fromY} ${midX} ${(fromY + toY) / 2} Q ${midX} ${toY} ${toX} ${toY}`);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', '#666');
-    path.setAttribute('stroke-width', '2');
-    path.setAttribute('marker-end', 'url(#arrowhead)');
-    
-    const target = this.connectionsLayer || this.svg;
-    target.appendChild(path);
-    this.connectionElements.set(connection.id, path);
+    const d = `M ${fromX} ${fromY} C ${midX} ${fromY - yBulge} ${midX} ${toY - yBulge} ${toX} ${toY}`;
 
-    return path;
+    // Group element for the connection (hit area + visible stroke)
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    group.setAttribute('class', 'connection-group');
+    group.setAttribute('data-connection-id', connection.id);
+    group.setAttribute('data-connection-type', connType);
+
+    // Wide invisible hit area for easier clicking / selection
+    const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    hitPath.setAttribute('d', d);
+    hitPath.setAttribute('fill', 'none');
+    hitPath.setAttribute('stroke', 'transparent');
+    hitPath.setAttribute('stroke-width', '14');
+    hitPath.setAttribute('pointer-events', 'stroke');
+    hitPath.setAttribute('cursor', 'pointer');
+    group.appendChild(hitPath);
+
+    // Visible path — type-specific color, width, and dash
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', styling.stroke);
+    path.setAttribute('stroke-width', String(styling.strokeWidth));
+    if (styling.dashArray) {
+      path.setAttribute('stroke-dasharray', styling.dashArray);
+    }
+    path.setAttribute('class', 'connection-line');
+
+    // Apply directional markers
+    if (direction === 'forward') {
+      path.setAttribute('marker-end', fwdMarker);
+    } else if (direction === 'bidirectional') {
+      path.setAttribute('marker-end', fwdMarker);
+      // CEF workaround: marker-start is unreliable in Fusion 360's
+      // Chromium, so render a manual reverse arrow polygon instead.
+      this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke);
+    } else if (direction === 'backward') {
+      // CEF workaround: use a manual polygon for the start arrow
+      this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke);
+    }
+    // direction === 'none' → no markers
+    group.appendChild(path);
+
+    // Ensure connectionsLayer is still in the DOM (defensive)
+    const target = this.connectionsLayer && this.connectionsLayer.parentNode
+      ? this.connectionsLayer
+      : (this.svg.querySelector('#connections-layer') || this.svg);
+    target.appendChild(group);
+    this.connectionElements.set(connection.id, group);
+
+    logger.debug('renderConnection: rendered', connection.id,
+      'type:', connType, 'direction:', direction,
+      'path:', d.substring(0, 60) + '...');
+
+    return group;
+  }
+
+  /**
+   * Return stroke color, width, and optional dash pattern for a connection type.
+   */
+  getConnectionStyling(connType) {
+    const styles = {
+      'power':      { stroke: '#dc3545', strokeWidth: 3, dashArray: null },
+      'data':       { stroke: '#007bff', strokeWidth: 2, dashArray: '8,4' },
+      'electrical': { stroke: '#28a745', strokeWidth: 2, dashArray: '4,2' },
+      'mechanical': { stroke: '#6c757d', strokeWidth: 2, dashArray: '12,6' }
+    };
+    return styles[connType] || { stroke: '#666', strokeWidth: 2, dashArray: null };
+  }
+
+  /**
+   * Compute a vertical offset for the i-th connection out of total,
+   * distributed symmetrically around the block's vertical center.
+   * Keeps a 10 px margin from top/bottom edges.
+   */
+  _fanOffset(index, total, blockHeight) {
+    if (total <= 1) return blockHeight / 2;
+    const margin = 10;
+    const usable = blockHeight - 2 * margin;
+    const step = usable / (total - 1);
+    return margin + index * step;
+  }
+
+  /**
+   * CEF workaround — render a small reverse-arrow triangle at the start
+   * of a connection path. Fusion 360's Chromium does not reliably render
+   * SVG marker-start, so we draw a manual polygon instead.
+   */
+  _addManualStartArrow(group, fromX, fromY, toX, toY, fillColor) {
+    const size = 10;
+    // Angle from start toward end (approximate — ignores bezier curvature)
+    const dx = toX - fromX;
+    const dy = toY - fromY;
+    const angle = Math.atan2(dy, dx);
+    // Arrow points backward (opposite the path direction)
+    const tipX = fromX;
+    const tipY = fromY;
+    const halfSpread = 0.45; // ~25 degrees
+    const baseX1 = fromX + Math.cos(angle + halfSpread) * size;
+    const baseY1 = fromY + Math.sin(angle + halfSpread) * size;
+    const baseX2 = fromX + Math.cos(angle - halfSpread) * size;
+    const baseY2 = fromY + Math.sin(angle - halfSpread) * size;
+
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    arrow.setAttribute('points',
+      `${tipX},${tipY} ${baseX1},${baseY1} ${baseX2},${baseY2}`);
+    arrow.setAttribute('fill', fillColor);
+    arrow.setAttribute('stroke', 'none');
+    arrow.setAttribute('class', 'manual-start-arrow');
+    group.appendChild(arrow);
+  }
+
+  highlightConnection(connectionId, highlight = true) {
+    const group = this.connectionElements.get(connectionId);
+    if (!group) return;
+    const line = group.querySelector('.connection-line');
+    if (!line) return;
+    if (highlight) {
+      line.setAttribute('stroke', '#FF6B35');
+      line.setAttribute('stroke-width', '3');
+    } else {
+      // Restore type-specific styling
+      const connType = group.getAttribute('data-connection-type') || 'auto';
+      const styling = this.getConnectionStyling(connType);
+      line.setAttribute('stroke', styling.stroke);
+      line.setAttribute('stroke-width', String(styling.strokeWidth));
+    }
+  }
+
+  clearConnectionHighlights() {
+    this.connectionElements.forEach((group, id) => {
+      this.highlightConnection(id, false);
+    });
   }
 
   updateAllBlocks(diagram) {

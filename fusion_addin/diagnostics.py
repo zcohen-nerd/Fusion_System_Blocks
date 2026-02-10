@@ -643,14 +643,544 @@ class DiagnosticsRunner:
                 except Exception as cleanup_error:
                     _log_error(f"Sketch cleanup failed: {cleanup_error}")
 
+    # =========================================================================
+    # SERIALIZATION & ACTION PLAN CHECKS
+    # =========================================================================
+
+    def test_core_serialization_roundtrip(self) -> DiagnosticResult:
+        """Build a graph, serialize → deserialize, and verify equality."""
+        try:
+            from core.models import Block, Connection, Graph, Port, PortDirection
+            from core.serialization import serialize_graph, deserialize_graph
+
+            block = Block(
+                id="diag_b1",
+                name="DiagSensor",
+                block_type="electrical",
+                x=50,
+                y=75,
+                ports=[
+                    Port(
+                        id="diag_p1",
+                        name="out",
+                        direction=PortDirection.OUTPUT,
+                    ),
+                ],
+            )
+            graph = Graph(
+                id="diag_graph",
+                name="DiagTest",
+                blocks=[block],
+            )
+
+            json_str = serialize_graph(graph)
+            restored = deserialize_graph(json_str)
+
+            checks = {
+                "id_match": restored.id == graph.id,
+                "name_match": restored.name == graph.name,
+                "block_count": len(restored.blocks) == 1,
+                "block_name": restored.blocks[0].name == "DiagSensor",
+                "port_count": len(restored.blocks[0].ports) == 1,
+            }
+
+            if all(checks.values()):
+                return DiagnosticResult(
+                    passed=True,
+                    message="Serialization round-trip verified",
+                    details={"json_length": len(json_str), **checks},
+                )
+            else:
+                failed = [k for k, v in checks.items() if not v]
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Round-trip mismatches: {failed}",
+                    details=checks,
+                )
+
+        except ImportError as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Core serialization not available: {e}",
+                details={"import_error": str(e)},
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Serialization error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    def test_core_action_plan_generation(self) -> DiagnosticResult:
+        """Build a graph and verify action plan generation succeeds."""
+        try:
+            from core.models import Block, Graph
+            from core.action_plan import build_action_plan, ActionType
+
+            block = Block(id="ap_b1", name="PlanTestBlock")
+            graph = Graph(id="ap_graph", blocks=[block])
+
+            actions = build_action_plan(graph)
+
+            # Should have at least CREATE_BLOCK + SAVE_ATTRIBUTES
+            action_types = [a.action_type for a in actions]
+
+            has_create = ActionType.CREATE_BLOCK in action_types
+            has_save = ActionType.SAVE_ATTRIBUTES in action_types
+
+            if has_create and has_save:
+                return DiagnosticResult(
+                    passed=True,
+                    message=f"Action plan generated {len(actions)} actions",
+                    details={
+                        "action_count": len(actions),
+                        "types": [a.action_type.value for a in actions],
+                    },
+                )
+            else:
+                return DiagnosticResult(
+                    passed=False,
+                    message="Action plan missing expected action types",
+                    details={
+                        "has_create": has_create,
+                        "has_save": has_save,
+                        "types": [a.action_type.value for a in actions],
+                    },
+                )
+
+        except ImportError as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Core action_plan not available: {e}",
+                details={"import_error": str(e)},
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Action plan error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # LOGGING / FILESYSTEM CHECKS
+    # =========================================================================
+
+    def test_log_file_writable(self) -> DiagnosticResult:
+        """Verify that the log directory exists and a test file is writable."""
+        try:
+            import os
+            import tempfile
+
+            if not LOGGING_AVAILABLE:
+                return DiagnosticResult(
+                    passed=False,
+                    message="Logging module not available",
+                    details={},
+                )
+
+            log_path = get_log_file_path_str()
+            log_dir = os.path.dirname(log_path)
+
+            if not os.path.isdir(log_dir):
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Log directory does not exist: {log_dir}",
+                    details={"log_dir": log_dir},
+                )
+
+            # Try writing a probe file
+            probe_path = os.path.join(log_dir, "__diag_probe__.tmp")
+            try:
+                with open(probe_path, "w", encoding="utf-8") as f:
+                    f.write("diagnostics probe")
+                os.remove(probe_path)
+            except OSError as e:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Log directory not writable: {e}",
+                    details={"log_dir": log_dir, "error": str(e)},
+                )
+
+            return DiagnosticResult(
+                passed=True,
+                message=f"Log directory writable: {log_dir}",
+                details={"log_dir": log_dir, "log_file": log_path},
+            )
+
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Log check error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # FUSION ATTRIBUTE PERSISTENCE CHECK
+    # =========================================================================
+
+    def test_fusion_attribute_read_write(self) -> DiagnosticResult:
+        """Write, read, and delete a test attribute to verify persistence."""
+        attr_written = False
+        try:
+            import adsk.core
+            import adsk.fusion
+
+            app = self._app or adsk.core.Application.get()
+            design = self._design or adsk.fusion.Design.cast(app.activeProduct)
+
+            if design is None:
+                return DiagnosticResult(
+                    passed=False,
+                    message="No active design available",
+                    details={},
+                )
+
+            root_comp = design.rootComponent
+            attrs = root_comp.attributes
+
+            test_group = "__SystemBlocks_DiagAttr__"
+            test_name = "probe"
+            test_value = "diagnostics_ok"
+
+            # Write
+            attrs.add(test_group, test_name, test_value)
+            attr_written = True
+
+            # Read back
+            attr = attrs.itemByName(test_group, test_name)
+            if attr is None:
+                return DiagnosticResult(
+                    passed=False,
+                    message="Attribute written but could not be read back",
+                    details={},
+                )
+
+            read_value = attr.value
+            if read_value != test_value:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Attribute value mismatch: wrote '{test_value}', read '{read_value}'",
+                    details={"wrote": test_value, "read": read_value},
+                )
+
+            return DiagnosticResult(
+                passed=True,
+                message="Attribute write/read/delete cycle succeeded",
+                details={"group": test_group, "name": test_name},
+            )
+
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Attribute persistence error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+        finally:
+            # CLEANUP: delete the test attribute
+            if attr_written:
+                try:
+                    import adsk.core
+                    import adsk.fusion
+                    app = self._app or adsk.core.Application.get()
+                    design = self._design or adsk.fusion.Design.cast(app.activeProduct)
+                    if design:
+                        attr = design.rootComponent.attributes.itemByName(
+                            "__SystemBlocks_DiagAttr__", "probe"
+                        )
+                        if attr:
+                            attr.deleteMe()
+                except Exception:
+                    pass
+
+    # =========================================================================
+    # RULE CHECKING
+    # =========================================================================
+
+    def test_core_rule_engine(self) -> DiagnosticResult:
+        """Verify rule checking engine runs on a valid graph without errors."""
+        try:
+            from src.diagram.rules import run_all_rule_checks
+            from core.models import Graph, Block, Port, Connection, PortDirection
+
+            block_a = Block(
+                id="rule_a",
+                name="Controller",
+                block_type="Software",
+                ports=[Port(id="p_out", name="cmd", direction=PortDirection.OUTPUT)],
+            )
+            block_b = Block(
+                id="rule_b",
+                name="Actuator",
+                block_type="Mechanical",
+                ports=[Port(id="p_in", name="signal", direction=PortDirection.INPUT)],
+            )
+            conn = Connection(
+                id="rule_conn",
+                from_block_id="rule_a",
+                from_port_id="p_out",
+                to_block_id="rule_b",
+                to_port_id="p_in",
+            )
+
+            # run_all_rule_checks expects a raw dict, not a Graph dataclass
+            diagram_dict = {
+                "blocks": [
+                    {"id": "rule_a", "name": "Controller", "type": "Software",
+                     "ports": [{"id": "p_out", "name": "cmd", "direction": "output"}]},
+                    {"id": "rule_b", "name": "Actuator", "type": "Mechanical",
+                     "ports": [{"id": "p_in", "name": "signal", "direction": "input"}]},
+                ],
+                "connections": [
+                    {"id": "rule_conn", "from": {"blockId": "rule_a", "portId": "p_out"},
+                     "to": {"blockId": "rule_b", "portId": "p_in"}},
+                ],
+            }
+
+            results = run_all_rule_checks(diagram_dict)
+
+            if not isinstance(results, list):
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Expected list, got {type(results).__name__}",
+                    details={"type": type(results).__name__},
+                )
+
+            return DiagnosticResult(
+                passed=True,
+                message=f"Rule engine returned {len(results)} results",
+                details={"result_count": len(results)},
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Rule engine error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # HIERARCHY VALIDATION
+    # =========================================================================
+
+    def test_core_hierarchy_operations(self) -> DiagnosticResult:
+        """Verify child diagram creation and hierarchy traversal."""
+        try:
+            from src.diagram.hierarchy import (
+                create_child_diagram,
+                has_child_diagram,
+                get_child_diagram,
+                find_block_path,
+            )
+
+            # hierarchy functions operate on raw dicts, not Graph model objects
+            parent_block = {
+                "id": "parent_1",
+                "name": "Subsystem",
+                "type": "Generic",
+            }
+            diagram = {
+                "blocks": [parent_block],
+                "connections": [],
+            }
+
+            # Create child diagram (takes a block dict)
+            child = create_child_diagram(parent_block)
+            if child is None:
+                return DiagnosticResult(
+                    passed=False,
+                    message="create_child_diagram returned None",
+                    details={},
+                )
+
+            # Verify parent has child (takes a block dict)
+            if not has_child_diagram(parent_block):
+                return DiagnosticResult(
+                    passed=False,
+                    message="has_child_diagram returned False after creation",
+                    details={},
+                )
+
+            # Retrieve child (takes a block dict)
+            retrieved = get_child_diagram(parent_block)
+            if retrieved is None:
+                return DiagnosticResult(
+                    passed=False,
+                    message="get_child_diagram returned None after creation",
+                    details={},
+                )
+
+            # Find block path (takes a diagram dict + block id)
+            path = find_block_path(diagram, "parent_1")
+
+            return DiagnosticResult(
+                passed=True,
+                message="Hierarchy operations passed",
+                details={
+                    "child_created": True,
+                    "has_child": True,
+                    "path": path,
+                },
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Hierarchy error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # TYPED CONNECTION ROUNDTRIP
+    # =========================================================================
+
+    def test_core_typed_connection_roundtrip(self) -> DiagnosticResult:
+        """Verify typed connections survive serialization roundtrip."""
+        try:
+            from core.models import Graph, Block, Port, Connection, PortDirection
+            from core.serialization import serialize_graph, deserialize_graph
+
+            block_a = Block(
+                id="tc_a",
+                name="PSU",
+                block_type="Electrical",
+                ports=[Port(id="pwr_out", name="12V", direction=PortDirection.OUTPUT)],
+            )
+            block_b = Block(
+                id="tc_b",
+                name="Motor",
+                block_type="Mechanical",
+                ports=[Port(id="pwr_in", name="supply", direction=PortDirection.INPUT)],
+            )
+            conn = Connection(
+                id="tc_conn",
+                from_block_id="tc_a",
+                from_port_id="pwr_out",
+                to_block_id="tc_b",
+                to_port_id="pwr_in",
+                kind="power",
+                attributes={"arrowDirection": "bidirectional"},
+            )
+            graph = Graph(blocks=[block_a, block_b], connections=[conn])
+
+            serialized = serialize_graph(graph)
+            restored = deserialize_graph(serialized)
+
+            restored_conn = restored.connections[0] if restored.connections else None
+            if restored_conn is None:
+                return DiagnosticResult(
+                    passed=False,
+                    message="Connection lost during roundtrip",
+                    details={},
+                )
+
+            kind_match = restored_conn.kind == "power"
+            arrow_match = restored_conn.attributes.get("arrowDirection") == "bidirectional"
+
+            if not kind_match or not arrow_match:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Type/direction mismatch: kind={restored_conn.kind}, arrow={restored_conn.attributes}",
+                    details={
+                        "kind": restored_conn.kind,
+                        "attributes": restored_conn.attributes,
+                    },
+                )
+
+            return DiagnosticResult(
+                passed=True,
+                message="Typed connection roundtrip succeeded",
+                details={
+                    "kind": restored_conn.kind,
+                    "arrowDirection": restored_conn.attributes.get("arrowDirection"),
+                },
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Typed connection roundtrip error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # PALETTE HTML INTEGRITY
+    # =========================================================================
+
+    def test_palette_html_integrity(self) -> DiagnosticResult:
+        """Verify palette.html exists and contains key elements."""
+        try:
+            import os
+
+            # Find palette.html relative to this file
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            html_path = os.path.join(base_dir, "src", "palette.html")
+
+            if not os.path.isfile(html_path):
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"palette.html not found at {html_path}",
+                    details={"path": html_path},
+                )
+
+            with open(html_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            size_kb = len(content) / 1024
+            required_markers = [
+                "svg-canvas",
+                "diagram-editor.js",
+                "python-bridge.js",
+                "toolbar-manager.js",
+                "main-coordinator.js",
+                "save-as-overlay",
+                "open-doc-overlay",
+            ]
+            missing = [m for m in required_markers if m not in content]
+
+            if missing:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"palette.html missing {len(missing)} markers",
+                    details={"missing": missing, "size_kb": round(size_kb, 1)},
+                )
+
+            return DiagnosticResult(
+                passed=True,
+                message=f"palette.html OK ({round(size_kb, 1)} KB, all markers present)",
+                details={"size_kb": round(size_kb, 1), "marker_count": len(required_markers)},
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Palette check error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
 
 def run_diagnostics_and_show_result() -> DiagnosticsReport:
     """Run all diagnostics and show result in a Fusion message box.
 
+    Also writes a JSON report to the log directory for audit trails.
+
     Returns:
         The complete DiagnosticsReport.
     """
+    import os
+    import datetime
+
     _log_info("Starting diagnostics from UI command")
+
+    runner = DiagnosticsRunner()
+    report = runner.run_all()
+
+    # ----- Write JSON report to log directory -----
+    try:
+        if LOGGING_AVAILABLE:
+            log_dir = os.path.dirname(get_log_file_path_str())
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            report_path = os.path.join(log_dir, f"diagnostics_{ts}.json")
+            with open(report_path, "w", encoding="utf-8") as fp:
+                json.dump(report.to_dict(), fp, indent=2, default=str)
+            _log_info(f"Diagnostics report written to {report_path}")
+    except Exception as e:
+        _log_error(f"Failed to write diagnostics JSON report: {e}")
 
     runner = DiagnosticsRunner()
     report = runner.run_all()

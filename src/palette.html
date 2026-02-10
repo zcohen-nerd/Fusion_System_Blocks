@@ -497,15 +497,16 @@
     }
     
     /* Enhanced Typography - Professional Text Rendering */
-    .block-text {
-      fill: var(--fusion-text-primary);
+    .block-text,
+    .block > text,
+    g.block > text {
+      fill: #333333 !important;        /* dark text on light block backgrounds */
+      stroke: none !important;         /* prevent inherited stroke from parent .block group */
       font-family: var(--fusion-font-family);
-      font-size: var(--fusion-font-size-normal);
       font-weight: 500;
       text-anchor: middle;
       dominant-baseline: middle;
       pointer-events: none;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
     
     /* Block Type Indicators - Status-Based Styling */
@@ -1107,6 +1108,16 @@
       border-left: 3px solid var(--fusion-status-success);
     }
     
+    .rule-result.success {
+      background: var(--fusion-status-success-bg);
+      border-left: 3px solid var(--fusion-status-success);
+    }
+    
+    .rule-result[style*="cursor: pointer"]:hover,
+    .rule-result[style*="cursor:pointer"]:hover {
+      filter: brightness(1.2);
+    }
+    
     .rule-icon {
       margin-right: var(--fusion-spacing-xs);
       font-weight: bold;
@@ -1120,6 +1131,58 @@
       color: var(--fusion-text-primary);
     }
     
+    /* === MODAL DIALOG STYLES === */
+    .fusion-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 200000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .fusion-modal {
+      background: var(--fusion-panel-bg);
+      border: 1px solid var(--fusion-panel-border);
+      border-radius: var(--fusion-radius-large, 8px);
+      padding: 20px;
+      min-width: 300px;
+      max-width: 420px;
+      box-shadow: var(--fusion-shadow-large, 0 8px 24px rgba(0,0,0,0.4));
+      color: var(--fusion-text-primary);
+    }
+    .fusion-modal h3 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+    }
+    .doc-list-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: var(--fusion-radius-small);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .doc-list-item:hover {
+      background: var(--fusion-hover-bg, rgba(255,255,255,0.08));
+    }
+    .doc-list-item .doc-name {
+      font-weight: 600;
+    }
+    .doc-list-item .doc-date {
+      font-size: 11px;
+      color: var(--fusion-text-secondary);
+    }
+    .doc-list-item .doc-delete {
+      color: var(--fusion-accent-red, #dc3545);
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 8px;
+      opacity: 0.6;
+    }
+    .doc-list-item .doc-delete:hover { opacity: 1; }
+
     /* === FUSION 360 SEARCH AND FILTER STYLES === */
     .search-container {
       display: flex;
@@ -1301,13 +1364,23 @@
                   <div class="ribbon-icon-small" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-save"/></svg></div>
                   <span>Save</span>
                 </button>
-                <button id="btn-load" class="ribbon-button-small" title="Load Diagram (Ctrl+O)" aria-label="Load Diagram">
-                  <div class="ribbon-icon-small" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-load"/></svg></div>
-                  <span>Load</span>
+                <button id="btn-save-as" class="ribbon-button-small" title="Save As… (Ctrl+Shift+S)" aria-label="Save As">
+                  <div class="ribbon-icon-small" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-save"/></svg></div>
+                  <span>Save As…</span>
                 </button>
                 <button id="btn-export-report" class="ribbon-button-small" title="Export Report" aria-label="Export Report">
                   <div class="ribbon-icon-small" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-export"/></svg></div>
                   <span>Export</span>
+                </button>
+              </div>
+              <div class="ribbon-buttons-column">
+                <button id="btn-load" class="ribbon-button-small" title="Load Diagram (Ctrl+O)" aria-label="Load Diagram">
+                  <div class="ribbon-icon-small" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-load"/></svg></div>
+                  <span>Load</span>
+                </button>
+                <button id="btn-open-named" class="ribbon-button-small" title="Open Named Document (Ctrl+Shift+O)" aria-label="Open Named Document">
+                  <div class="ribbon-icon-small" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-load"/></svg></div>
+                  <span>Open…</span>
                 </button>
               </div>
             </div>
@@ -1383,7 +1456,7 @@
               </button>
               <button id="btn-create-child" class="ribbon-button-small" disabled title="Create Child Diagram">
                 <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-child"/></svg></div>
-                <span>Child</span>
+                <span>Create Child</span>
               </button>
             </div>
           </div>
@@ -1497,7 +1570,7 @@
           <div class="ribbon-content">
             <button id="btn-check-rules" class="ribbon-button-large" title="Check Rules">
               <div class="ribbon-icon"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-check"/></svg></div>
-              <div class="ribbon-text">Validate</div>
+              <div class="ribbon-text">Check Rules</div>
             </button>
           </div>
           <div class="ribbon-group-label" aria-hidden="true">Validate</div>
@@ -1576,14 +1649,60 @@
         Add Block
       </button>
     </div>
-    <svg id="svg-canvas" viewBox="0 0 1000 1000">
+    <svg id="svg-canvas" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet">
       <defs>
-        <!-- Connection Arrow Marker -->
-        <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+        <!-- === Connection Arrow Markers (typed + directional) === -->
+        <!-- Generic (auto / default) — forward -->
+        <marker id="arrowhead" markerWidth="10" markerHeight="7"
                 refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" class="connection-generic" />
+          <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
         </marker>
-        
+        <!-- Generic reverse (for bidirectional start) -->
+        <marker id="arrowhead-reverse" markerWidth="10" markerHeight="7"
+                refX="1" refY="3.5" orient="auto">
+          <polygon points="10 0, 0 3.5, 10 7" fill="#666" />
+        </marker>
+
+        <!-- Power — forward & reverse -->
+        <marker id="arrowhead-power" markerWidth="10" markerHeight="7"
+                refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#dc3545" />
+        </marker>
+        <marker id="arrowhead-power-reverse" markerWidth="10" markerHeight="7"
+                refX="1" refY="3.5" orient="auto">
+          <polygon points="10 0, 0 3.5, 10 7" fill="#dc3545" />
+        </marker>
+
+        <!-- Data — forward & reverse -->
+        <marker id="arrowhead-data" markerWidth="10" markerHeight="7"
+                refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#007bff" />
+        </marker>
+        <marker id="arrowhead-data-reverse" markerWidth="10" markerHeight="7"
+                refX="1" refY="3.5" orient="auto">
+          <polygon points="10 0, 0 3.5, 10 7" fill="#007bff" />
+        </marker>
+
+        <!-- Electrical — forward & reverse -->
+        <marker id="arrowhead-electrical" markerWidth="10" markerHeight="7"
+                refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#28a745" />
+        </marker>
+        <marker id="arrowhead-electrical-reverse" markerWidth="10" markerHeight="7"
+                refX="1" refY="3.5" orient="auto">
+          <polygon points="10 0, 0 3.5, 10 7" fill="#28a745" />
+        </marker>
+
+        <!-- Mechanical — forward & reverse -->
+        <marker id="arrowhead-mechanical" markerWidth="10" markerHeight="7"
+                refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#6c757d" />
+        </marker>
+        <marker id="arrowhead-mechanical-reverse" markerWidth="10" markerHeight="7"
+                refX="1" refY="3.5" orient="auto">
+          <polygon points="10 0, 0 3.5, 10 7" fill="#6c757d" />
+        </marker>
+
         <!-- ========== FUSION 360 PROFESSIONAL ICON DEFINITIONS - PHASE 3 ========== -->
         
         <!-- Power Connection Icon -->
@@ -2187,7 +2306,7 @@
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" class="connection-data" stroke-width="2"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-data" stroke-width="2" stroke-dasharray="8,4"/>
           <polygon points="30,6 26,3 26,9" class="connection-data"/>
         </svg>
         <span>
@@ -2199,7 +2318,7 @@
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" class="connection-electrical" stroke-width="1.5" stroke-dasharray="5,3"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-electrical" stroke-width="2" stroke-dasharray="4,2"/>
           <polygon points="30,6 26,3 26,9" class="connection-electrical"/>
         </svg>
         <span>
@@ -2211,7 +2330,7 @@
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" class="connection-mechanical" stroke-width="2" stroke-dasharray="8,4"/>
+          <line x1="0" y1="6" x2="30" y2="6" class="connection-mechanical" stroke-width="2" stroke-dasharray="12,6"/>
           <line x1="30" y1="3" x2="26" y2="6" class="connection-mechanical" stroke-width="2"/>
           <line x1="30" y1="9" x2="26" y2="6" class="connection-mechanical" stroke-width="2"/>
         </svg>
@@ -2248,24 +2367,46 @@
     </div>
     
     <!-- Rule Results Panel -->
-    <div class="rule-panel" id="rule-panel">
-      <h4>Rule Checks</h4>
-      <div id="rule-results">
-        <div class="rule-result info">
-          <span class="rule-icon">ℹ️</span>
-          <span class="rule-message">Run checks to see results</span>
-        </div>
-      </div>
+    <div class="rule-panel" id="rule-panel" style="display:none;">
+      <h4>Rule Check Results</h4>
+      <div id="rule-results"></div>
     </div>
   </div>
   
-  <!-- Import Dialog -->
+  <!-- ========== DOCUMENT DIALOGS ========== -->
+  <!-- Save As dialog -->
+  <div id="save-as-overlay" class="fusion-modal-overlay" style="display:none;">
+    <div class="fusion-modal">
+      <h3>Save As…</h3>
+      <label class="fusion-label" for="save-as-name">Document name:</label>
+      <input type="text" id="save-as-name" class="fusion-input" placeholder="My Diagram" style="width:100%;margin:8px 0;">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+        <button id="save-as-cancel" class="fusion-button">Cancel</button>
+        <button id="save-as-confirm" class="fusion-button primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Open Document picker -->
+  <div id="open-doc-overlay" class="fusion-modal-overlay" style="display:none;">
+    <div class="fusion-modal">
+      <h3>Open Document</h3>
+      <div id="open-doc-list" style="max-height:220px;overflow-y:auto;margin:8px 0;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+        <button id="open-doc-cancel" class="fusion-button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== BLOCK CONTEXT MENU ========== -->
   <div id="block-context-menu" class="fusion-context-menu" style="position:fixed; z-index:1000000;">
     <!-- Block-specific items -->
     <div id="ctx-rename" class="fusion-context-menu-item" data-needs-block>
       <span class="ctx-icon">✏️</span> Rename
       <span class="ctx-shortcut">Dbl-click</span>
+    </div>
+    <div id="ctx-properties" class="fusion-context-menu-item" data-needs-block>
+      <span class="ctx-icon">⚙️</span> Properties…
     </div>
     <div class="fusion-context-menu-item has-submenu" data-needs-block>
       <span class="ctx-icon">🔷</span> Type
@@ -2282,8 +2423,10 @@
       <span class="ctx-arrow">▸</span>
       <div class="fusion-context-submenu">
         <div class="fusion-context-menu-item" data-set-status="Placeholder">Placeholder</div>
-        <div class="fusion-context-menu-item" data-set-status="In Progress">In Progress</div>
-        <div class="fusion-context-menu-item" data-set-status="Completed">Completed</div>
+        <div class="fusion-context-menu-item" data-set-status="Planned">Planned</div>
+        <div class="fusion-context-menu-item" data-set-status="In-Work">In-Work</div>
+        <div class="fusion-context-menu-item" data-set-status="Implemented">Implemented</div>
+        <div class="fusion-context-menu-item" data-set-status="Verified">Verified</div>
       </div>
     </div>
     <div class="fusion-context-menu-separator" data-needs-block></div>
@@ -4154,14 +4297,17 @@
         },
 
         'btn-go-up': function() {
+          if (window._systemBlocksInitialized) return; // handled by modular toolbar
           showToast('Navigate Up: No parent diagram', 'info');
         },
 
         'btn-drill-down': function() {
+          if (window._systemBlocksInitialized) return;
           showToast('Drill Down: Select a block first', 'info');
         },
 
         'btn-create-child': function() {
+          if (window._systemBlocksInitialized) return;
           showToast('Create Child: Select a block first', 'info');
         },
 

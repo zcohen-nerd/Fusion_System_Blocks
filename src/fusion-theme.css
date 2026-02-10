@@ -94,9 +94,9 @@
   --fusion-status-in-work-bg: rgba(255, 193, 7, 0.1);
   --fusion-status-implemented: #4caf50;
   --fusion-status-implemented-bg: rgba(76, 175, 80, 0.1);
-  /* Verified - muted green to match Fusion palette */
-  --fusion-status-verified: #66bb6a;
-  --fusion-status-verified-bg: rgba(102, 187, 106, 0.12);
+  /* Verified - teal, clearly distinct from Implemented green */
+  --fusion-status-verified: #006064;
+  --fusion-status-verified-bg: rgba(0, 96, 100, 0.12);
   --fusion-status-error: #f44336;
   --fusion-status-error-bg: rgba(244, 67, 54, 0.1);
   --fusion-status-warning: #ff9800;
