@@ -30,7 +30,7 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
   - `diagnostics.py`: DiagnosticsRunner with self-test suite
 - **Entry Point**: `Fusion_System_Blocks.py` orchestrates both layers (hard-fail imports, no fallback)
 - **Legacy Data Management**: `src/diagram_data.py` for backward compatibility
-- **Testing**: 482 pytest tests in `tests/` across 21 files (runs outside Fusion 360)
+- **Testing**: 518 pytest tests in `tests/` across 21 files (runs outside Fusion 360)
 
 ## Development Standards
 
@@ -52,7 +52,7 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
 
 ## Testing Approach
 
-### Test Coverage (482 tests across 21 files)
+### Test Coverage (518 tests across 21 files)
 - **Core Library Tests**: `test_core_validation.py`, `test_core_action_plan.py`, `test_models.py`, `test_serialization.py`, `test_delta.py`
 - **Adapter Tests**: `test_adapter.py`, `test_selection.py`, `test_document.py`, `test_cad.py`
 - **Legacy Logic Tests**: `test_diagram_data.py`, `test_validation.py` 

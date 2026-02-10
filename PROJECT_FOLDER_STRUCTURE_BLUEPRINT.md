@@ -121,7 +121,7 @@ Fusion_System_Blocks/
 │   ├── palette.html               # Main HTML palette UI (entry point for frontend)
 │   └── palette.js                 # Palette initialization and legacy orchestration
 ├── tasks.md                       # Project task list and TODOs
-├── tests/                         # Automated tests (pytest) - 482 tests across 21 files
+├── tests/                         # Automated tests (pytest) - 518 tests across 21 files
 │   ├── test_adapter.py            # Tests for fusion_addin/adapter.py
 │   ├── test_cad.py                # Tests for CAD linking and component operations
 │   ├── test_core_action_plan.py   # Tests for fsb_core/action_plan.py
@@ -232,7 +232,7 @@ The source directory contains both Python business logic and JavaScript frontend
 ### `tests/`: Automated Test Suite
 - **Test Organization**: Tests mirror the structure of `src/` and `fsb_core/` with `test_*.py` naming
 - **Framework**: pytest with fixtures for diagram creation and validation
-- **Count**: 482 tests across 21 files
+- **Count**: 518 tests across 21 files
 - **Coverage**:
   - `test_adapter.py`: FusionAdapter translation layer
   - `test_cad.py`: CAD linking and component operations
@@ -241,7 +241,7 @@ The source directory contains both Python business logic and JavaScript frontend
   - `test_delta.py`: Delta serialization (compute/apply/trivial patch)
   - `test_diagram_data.py`: Core diagram operations and validation
   - `test_document.py`: DocumentManager operations
-  - `test_export_reports.py`: JSON/CSV/HTML export functionality
+  - `test_export_reports.py`: 10-format export pipeline (HTML, BOM CSV/JSON, assembly sequence MD/JSON, connection matrix, SVG, profiles)
   - `test_graph_builder.py`: Fluent graph construction API
   - `test_hierarchy.py`: Multi-level diagram nesting and navigation
   - `test_import.py`: Import operations from external sources

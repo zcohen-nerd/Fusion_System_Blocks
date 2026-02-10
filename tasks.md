@@ -356,7 +356,15 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ## 📊 Milestone 17: Analytics and Reporting
 
-**Priority: LOW** - Advanced project insights
+**Priority: LOW** - Advanced project insights — **Partially started** (export pipeline)
+
+- [x] **10-Format Export Pipeline** (implemented in `src/diagram/export.py`)
+  - [x] Self-contained HTML report (blocks, interfaces, connections, rules, BOM)
+  - [x] BOM export in CSV and JSON with cost roll-ups
+  - [x] Assembly sequence in Markdown and JSON with dependency ordering
+  - [x] Block × block connection adjacency matrix (CSV)
+  - [x] SVG diagram snapshot for design reviews
+  - [x] Configurable export profiles: quick / standard / full
 
 - [ ] **Advanced Reporting**
   - [ ] Detailed component analysis with CAD integration
@@ -364,8 +372,7 @@ Keep commits **small and incremental** (one feature or fix at a time).
   - [ ] Design complexity metrics and assembly time estimation
   - [ ] Progress tracking dashboards with real manufacturing status
 
-- [ ] **Data Export**
-  - [ ] Excel/CSV export capabilities with live CAD data
+- [ ] **Data Export (remaining)**
   - [ ] PDF report generation with 3D component images
   - [ ] Integration with project management tools
   - [ ] Custom report templates with CAD property binding
@@ -376,7 +383,7 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 **Completed:** M1–M12, M14, M16 (Architecture)
 **Partial:** M10.5 (ribbon done; responsive breakpoints and accessibility remaining)
-**Not Started:** M13 (Visual Integration), M15 (AI Assistant), M17 (Analytics)
+**Not Started:** M13 (Visual Integration), M15 (AI Assistant), M17 (Analytics — export pipeline done, remaining items pending)
 
 ---
 
@@ -397,8 +404,8 @@ Keep commits **small and incremental** (one feature or fix at a time).
 **Completed Milestones:** 14 (M1–M12, M14, M16-Arch)
 **Partial:** 1 (M10.5)
 **Not Started:** 3 (M13, M15, M17)
-**Test Coverage:** 482 passing tests across 21 test files
-**Current State:** Professional engineering block system with two-layer architecture, production logging, self-diagnostics, delta serialization, shared bridge constants, and native Fusion 360 UI integration.
+**Test Coverage:** 518 passing tests across 21 test files
+**Current State:** Professional engineering block system with two-layer architecture, production logging, self-diagnostics, delta serialization, shared bridge constants, native Fusion 360 UI integration, and 10-format export pipeline with configurable profiles.
 
 **Next Steps:**
 - Complete M10.5 (responsive breakpoints, accessibility)

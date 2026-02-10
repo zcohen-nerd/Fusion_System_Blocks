@@ -2,7 +2,7 @@
 ## Fusion System Blocks - Complete Feature Documentation & Validation Reference
 
 **Created:** September 25, 2025  
-**Updated:** February 2026 (Beta release: 482 automated tests, delta serialization, bridge constants)  
+**Updated:** February 2026 (Beta release: 518 automated tests, 10-format export pipeline, delta serialization, bridge constants)  
 **System Status:** 14/17 Milestones Complete (3 not started: M13, M15, M17)  
 **Document Purpose:** Comprehensive reference documentation for all system features and testing procedures
 
@@ -265,7 +265,7 @@ This detailed documentation provides comprehensive validation procedures for the
 ## Milestone 5: Import/Export Capabilities
 
 ### Test 5.1: Export Functionality
-**Objective**: Validate all export formats
+**Objective**: Validate all 10 export formats and configurable profiles
 
 **Test Steps**:
 1. **JSON Export**
@@ -274,29 +274,56 @@ This detailed documentation provides comprehensive validation procedures for the
    - [ ] Test with complex diagrams (50+ blocks)
    - [ ] Confirm schema compliance
 
-2. **CSV Export**
+2. **CSV / Pin Map Export**
    - [ ] Export block data to CSV
    - [ ] Verify all properties included
    - [ ] Test with various block types
    - [ ] Confirm Excel compatibility
 
-3. **PDF Report Export**
-   - [ ] Generate professional PDF reports
-   - [ ] Verify diagram rendering quality
-   - [ ] Test multi-page documents
-   - [ ] Confirm professional formatting
+3. **HTML Report**
+   - [ ] Generate self-contained HTML report with embedded CSS
+   - [ ] Verify blocks, connections, interfaces, rules sections rendered
+   - [ ] Confirm status colour classes (placeholder, planned, in-work, implemented)
+   - [ ] Verify XSS escaping for user-supplied names
+   - [ ] Test print styles (landscape layout, colour preservation)
 
-4. **CAD Integration Export**
-   - [ ] Export to Fusion 360 assembly structure
-   - [ ] Verify component placement accuracy
-   - [ ] Test with complex hierarchies
-   - [ ] Confirm parametric relationships
+4. **BOM Export (CSV & JSON)**
+   - [ ] Generate BOM CSV with Block, Part Number, Qty, Supplier, Unit Cost, Total Cost, Lead Time
+   - [ ] Generate BOM JSON with items array and summary totals
+   - [ ] Verify empty diagrams produce header-only CSV and empty items array
+
+5. **Assembly Sequence Export (Markdown & JSON)**
+   - [ ] Generate step-by-step Markdown with topological ordering
+   - [ ] Generate JSON with totalSteps, estimatedTotalMinutes metadata
+   - [ ] Verify dependency lists and complexity indicators
+
+6. **Connection Matrix CSV**
+   - [ ] Generate block × block adjacency matrix
+   - [ ] Verify directional connection recording (1 in correct cells)
+   - [ ] Confirm empty diagrams produce header-only CSV
+
+7. **SVG Diagram Snapshot**
+   - [ ] Generate valid SVG XML with xmlns attribute
+   - [ ] Verify blocks rendered as rectangles with names and types
+   - [ ] Confirm connection lines drawn between blocks
+   - [ ] Verify status-based stroke colours
+
+8. **C Header Stubs**
+   - [ ] Generate C header with interface constants
+   - [ ] Verify include guard and struct definitions
+
+9. **Export Profiles**
+   - [ ] `quick` profile generates 3 files (summary, pin map, header)
+   - [ ] `standard` profile generates 9 files
+   - [ ] `full` profile generates 10 files (includes SVG)
+   - [ ] Unknown profile name falls back to `full`
+   - [ ] Default profile (no parameter) uses `full`
 
 **Expected Results**:
-- High-quality exports in all formats
+- High-quality exports in all 10 formats
 - Perfect data preservation
 - Professional document formatting
-- Seamless CAD integration
+- Profile system correctly filters output files
 
 ### Test 5.2: Import Functionality
 **Objective**: Validate import from external sources

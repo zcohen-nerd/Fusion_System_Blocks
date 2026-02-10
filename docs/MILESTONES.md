@@ -29,7 +29,7 @@ This document summarizes the development milestones that guide Fusion System Blo
 | 14 | Advanced Diagram Features | ✅ | Auto layout, alignment tools, annotations, grouping |
 | 15 | AI-Powered Design Assistant | 🔲 | Intelligent suggestions, rule insights, automation hooks |
 | 16 | Architecture Refactoring & Tooling | ✅ | Two-layer architecture, production logging, diagnostics, delta serialization |
-| 17 | Analytics & Reporting | 🔲 | Component analysis, connection reports, PDF/CSV export |
+| 17 | Analytics & Reporting | � | 10-format export pipeline with profiles; advanced analytics pending |
 
 ## Notes on Active Milestones
 
@@ -40,6 +40,13 @@ This document summarizes the development milestones that guide Fusion System Blo
 ### Milestone 13 – 3D Visualization & Living Documentation (🔲)
 - Not started. Backend scaffolding for linking diagram entities to 3D occurrences is in place.
 - Next steps: viewport overlay rendering, change-impact visualizations, and documentation generation pipelines.
+
+### Milestone 17 – Analytics & Reporting (🟠)
+- Export pipeline partially implemented with 10 output formats:
+  - HTML, Markdown summary, CSV pin map, C header stubs,
+    BOM CSV, BOM JSON, Assembly Sequence (MD + JSON), Connection Matrix CSV, SVG snapshot
+- Configurable export profiles: `quick` (3 files), `standard` (9 files), `full` (10 files)
+- Remaining work: 3D-integrated analytics, PDF generation, project management integration
 
 ### Milestone 15 – AI-Powered Design Assistant (🔲)
 - Concept outlines live in `tasks.md` but implementation has not started.
@@ -71,7 +78,7 @@ Completed February 2026. Major architectural improvements:
   - Delta serialization for incremental saves (JS + Python)
   - Shared bridge action constants eliminating magic strings
   - GitHub Actions CI pipeline (ruff, mypy, pytest on Python 3.9–3.12)
-  - 482 automated tests across 21 files
+  - 518 automated tests across 21 files
 
 ---
 

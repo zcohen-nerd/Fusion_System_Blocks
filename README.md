@@ -5,7 +5,7 @@ Fusion System Blocks is a Fusion 360 add-in that embeds system block diagrams di
 [![License: Community](https://img.shields.io/badge/License-Community-blueviolet.svg)](LICENSE)
 [![Fusion 360](https://img.shields.io/badge/Platform-Fusion%20360-orange.svg)](https://www.autodesk.com/products/fusion-360)
 [![CI](https://github.com/zcohen-nerd/Fusion_System_Blocks/actions/workflows/ci.yml/badge.svg)](https://github.com/zcohen-nerd/Fusion_System_Blocks/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Tests-482%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-518%20passing-brightgreen.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.9%E2%80%933.12-blue.svg)]()
 
 ---
@@ -68,7 +68,14 @@ A detailed breakdown of remaining work lives in `tasks.md`.
 ### Reporting & Validation
 - Save/load diagrams inside Fusion 360 document attributes.
 - Delta serialization for incremental saves (JSON-Patch style diffs).
-- Export reports (JSON, CSV, HTML) and comprehensive BOMs.
+- **10-format export pipeline** with configurable profiles (quick / standard / full):
+  - Markdown system report with rule-check results and block tables.
+  - Self-contained HTML report styled for printing and sharing.
+  - CSV pin map, C header with pin definitions.
+  - BOM (Bill of Materials) in CSV and JSON with cost roll-ups.
+  - Assembly sequence in Markdown and JSON with dependency ordering.
+  - Block × block connection adjacency matrix (CSV).
+  - SVG diagram snapshot for embedding in design reviews.
 - Rule-checking engine for orphan detection, interface compatibility, and system status.
 - Status dashboards with automatic progression based on linked data.
 
@@ -77,7 +84,7 @@ A detailed breakdown of remaining work lives in `tasks.md`.
 - Shared bridge action constants between Python (`BridgeAction`/`BridgeEvent` enums) and JavaScript.
 - Production logging with session IDs, environment info, and `@log_exceptions` decorator.
 - Built-in "Run Diagnostics" command with 6 self-tests.
-- 482 automated tests across 21 test files; CI runs on Python 3.9–3.12.
+- 518 automated tests across 21 test files; CI runs on Python 3.9–3.12.
 
 ### User Experience
 - Fusion 360-style ribbon interface with responsive layout.
@@ -120,7 +127,7 @@ Fusion_System_Blocks/
 │   │   ├── logger.js
 │   │   └── delta-utils.js         #   JS delta utilities (computePatch, applyPatch)
 │   └── *.css                      #   Fusion theme, ribbon, and icon styles
-├── tests/                         # 482 pytest tests across 21 files
+├── tests/                         # 518 pytest tests across 21 files
 ├── docs/                          # Architecture decisions, test plans, milestones
 ├── scripts/                       # PowerShell build and deployment automation
 ├── fusion_system_blocks/          # Packaged add-in folder for distribution
@@ -200,13 +207,25 @@ See `FUSION_DEPLOYMENT_GUIDE.md` for packaging instructions and troubleshooting 
 | **Load diagram** | **File → Load** to restore a previously saved diagram. |
 | **Link to CAD** | Select a block, click **Link to CAD**, then select a component in the viewport. |
 | **Run rule checks** | Click **Check Rules** to validate orphan blocks, interface compatibility, and more. |
-| **Export report** | **File → Export Report** generates HTML/JSON/CSV summaries in the `exports/` folder. |
+| **Export report** | **File → Export Report** generates up to 10 files in the `exports/` folder (profile-dependent). |
 | **Run diagnostics** | In the Add-Ins panel, click **Run Diagnostics** to verify add-in health (6 self-tests). |
 | **Navigate hierarchy** | Use **Drill Down** / **Go Up** buttons to move through nested sub-diagrams. |
 
 ### Delta Saves
 
 The add-in tracks diagram changes in memory. When you save, only the changed portions (a JSON-Patch style delta) are sent to the backend, reducing serialization overhead. If the delta path fails, a full save is used as a fallback automatically.
+
+### Export Profiles
+
+The **Export Report** command supports three output profiles:
+
+| Profile | Files produced |
+| --- | --- |
+| **quick** | Markdown report, CSV pin map, C header (3 files) |
+| **standard** | Quick + HTML report, BOM (CSV & JSON), assembly sequence (Markdown & JSON), connection matrix (9 files) |
+| **full** (default) | Standard + SVG diagram snapshot (10 files) |
+
+All files are written to the `exports/` folder. The profile can be passed programmatically via the bridge; the ribbon button uses the **full** profile by default.
 
 ---
 
@@ -217,7 +236,7 @@ The add-in tracks diagram changes in memory. When you save, only the changed por
 The test suite covers the core library, diagram data logic, adapter stubs, and property-based scenarios.
 
 ```bash
-# Run all 482 tests
+# Run all 518 tests
 pytest
 
 # Run with coverage report

@@ -23,7 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - mypy type checking on `fsb_core/`
   - pytest on Python 3.9, 3.10, 3.11, and 3.12 with coverage
   - Codecov upload and test report integration
-- **New Tests (275 additional tests, total: 482 across 21 files):**
+- **10-Format Export Pipeline with Profiles:**
+  - Self-contained HTML report with embedded CSS (printable, shareable)
+  - BOM export in CSV and JSON with cost roll-ups and supplier data
+  - Assembly sequence in Markdown and JSON with dependency-ordered steps
+  - Block × block connection adjacency matrix (CSV)
+  - SVG diagram snapshot for design reviews and documentation
+  - Configurable export profiles: `quick` (3 files), `standard` (9 files), `full` (10 files, default)
+  - Entry-point handler accepts optional `profile` parameter from the bridge
+- **New Tests (311 additional tests, total: 518 across 21 files):****
   - `test_delta.py` – Delta serialization compute/apply/trivial-patch tests
   - `test_adapter.py` – FusionAdapter translation layer
   - `test_cad.py` – CAD linking and component operations

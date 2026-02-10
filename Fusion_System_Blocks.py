@@ -647,10 +647,11 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         diagram = (
             diagram_json if isinstance(diagram_json, dict) else json.loads(diagram_json)
         )
+        profile = data.get("profile", "full")
         addin_path = os.path.dirname(__file__)
         exports_path = os.path.join(addin_path, "exports")
         os.makedirs(exports_path, exist_ok=True)
-        files_created = diagram_data.export_report_files(diagram, exports_path)
+        files_created = diagram_data.export_report_files(diagram, exports_path, profile=profile)
         # Convert dict to list of file paths for consistent JS handling
         if isinstance(files_created, dict):
             error = files_created.pop("error", None)
