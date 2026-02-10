@@ -172,13 +172,16 @@ class DiagramEditorCore {
     return 'block_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   }
 
-  getBlockAt(x, y) {
+  getBlockAt(x, y, tolerance = 0) {
     // x, y are already in diagram/viewBox coordinates (converted by caller)
     // Find block at coordinates (reverse order for top-most)
+    // tolerance: extra margin in user units for lenient hit detection
     for (let i = this.diagram.blocks.length - 1; i >= 0; i--) {
       const block = this.diagram.blocks[i];
-      if (x >= block.x && x <= block.x + (block.width || 120) &&
-          y >= block.y && y <= block.y + (block.height || 80)) {
+      if (x >= block.x - tolerance &&
+          x <= block.x + (block.width || 120) + tolerance &&
+          y >= block.y - tolerance &&
+          y <= block.y + (block.height || 80) + tolerance) {
         return block;
       }
     }

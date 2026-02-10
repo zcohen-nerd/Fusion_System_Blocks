@@ -13,8 +13,9 @@ from __future__ import annotations
 import importlib
 import os
 import sys
+from collections.abc import Iterable
 from types import ModuleType
-from typing import Any, Iterable
+from typing import Any
 
 
 def _resolve_shared_module() -> ModuleType:

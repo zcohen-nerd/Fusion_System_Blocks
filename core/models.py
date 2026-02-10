@@ -23,7 +23,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class PortDirection(Enum):
@@ -116,8 +116,8 @@ class Port:
     kind: PortKind = PortKind.GENERIC
     side: str = "right"
     index: int = 0
-    params: Dict[str, Any] = field(default_factory=dict)
-    block_id: Optional[str] = None
+    params: dict[str, Any] = field(default_factory=dict)
+    block_id: str | None = None
 
     def __post_init__(self) -> None:
         """Validate and normalize port attributes after initialization."""
@@ -155,10 +155,10 @@ class Block:
     x: int = 0
     y: int = 0
     status: BlockStatus = BlockStatus.PLACEHOLDER
-    ports: List[Port] = field(default_factory=list)
-    attributes: Dict[str, Any] = field(default_factory=dict)
-    links: List[Dict[str, Any]] = field(default_factory=list)
-    child_diagram_id: Optional[str] = None
+    ports: list[Port] = field(default_factory=list)
+    attributes: dict[str, Any] = field(default_factory=dict)
+    links: list[dict[str, Any]] = field(default_factory=list)
+    child_diagram_id: str | None = None
 
     def __post_init__(self) -> None:
         """Validate and normalize block attributes after initialization."""
@@ -179,7 +179,7 @@ class Block:
         port.block_id = self.id
         self.ports.append(port)
 
-    def get_port_by_id(self, port_id: str) -> Optional[Port]:
+    def get_port_by_id(self, port_id: str) -> Port | None:
         """Find a port by its ID.
 
         Args:
@@ -193,7 +193,7 @@ class Block:
                 return port
         return None
 
-    def get_port_by_name(self, name: str) -> Optional[Port]:
+    def get_port_by_name(self, name: str) -> Port | None:
         """Find a port by its name.
 
         Args:
@@ -228,11 +228,11 @@ class Connection:
 
     id: str = field(default_factory=generate_id)
     from_block_id: str = ""
-    from_port_id: Optional[str] = None
+    from_port_id: str | None = None
     to_block_id: str = ""
-    to_port_id: Optional[str] = None
+    to_port_id: str | None = None
     kind: str = "data"
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    attributes: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -255,9 +255,9 @@ class Graph:
     id: str = field(default_factory=generate_id)
     name: str = "Untitled Diagram"
     schema: str = "system-blocks-v2"
-    blocks: List[Block] = field(default_factory=list)
-    connections: List[Connection] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    blocks: list[Block] = field(default_factory=list)
+    connections: list[Connection] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def add_block(self, block: Block) -> None:
         """Add a block to the graph.
@@ -275,7 +275,7 @@ class Graph:
         """
         self.connections.append(connection)
 
-    def get_block_by_id(self, block_id: str) -> Optional[Block]:
+    def get_block_by_id(self, block_id: str) -> Block | None:
         """Find a block by its ID.
 
         Args:
@@ -289,7 +289,7 @@ class Graph:
                 return block
         return None
 
-    def get_block_by_name(self, name: str) -> Optional[Block]:
+    def get_block_by_name(self, name: str) -> Block | None:
         """Find a block by its name.
 
         Args:
@@ -303,7 +303,7 @@ class Graph:
                 return block
         return None
 
-    def get_connection_by_id(self, connection_id: str) -> Optional[Connection]:
+    def get_connection_by_id(self, connection_id: str) -> Connection | None:
         """Find a connection by its ID.
 
         Args:
@@ -317,7 +317,7 @@ class Graph:
                 return conn
         return None
 
-    def get_connections_for_block(self, block_id: str) -> List[Connection]:
+    def get_connections_for_block(self, block_id: str) -> list[Connection]:
         """Get all connections involving a specific block.
 
         Args:
@@ -332,7 +332,7 @@ class Graph:
             if conn.from_block_id == block_id or conn.to_block_id == block_id
         ]
 
-    def get_outgoing_connections(self, block_id: str) -> List[Connection]:
+    def get_outgoing_connections(self, block_id: str) -> list[Connection]:
         """Get connections where the specified block is the source.
 
         Args:
@@ -341,11 +341,9 @@ class Graph:
         Returns:
             List of outgoing connections from the block.
         """
-        return [
-            conn for conn in self.connections if conn.from_block_id == block_id
-        ]
+        return [conn for conn in self.connections if conn.from_block_id == block_id]
 
-    def get_incoming_connections(self, block_id: str) -> List[Connection]:
+    def get_incoming_connections(self, block_id: str) -> list[Connection]:
         """Get connections where the specified block is the destination.
 
         Args:

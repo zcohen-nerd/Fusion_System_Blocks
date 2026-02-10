@@ -12,12 +12,13 @@ Classes:
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 # Fusion 360 imports - only in this adapter layer
 try:
     import adsk.core
     import adsk.fusion
+
     _FUSION_AVAILABLE = True
 except ImportError:
     _FUSION_AVAILABLE = False
@@ -37,7 +38,7 @@ class DocumentManager:
         app: The Fusion 360 Application object.
     """
 
-    def __init__(self, app: "adsk.core.Application") -> None:
+    def __init__(self, app: adsk.core.Application) -> None:
         """Initialize the DocumentManager.
 
         Args:
@@ -46,21 +47,21 @@ class DocumentManager:
         self._app = app
 
     @property
-    def active_document(self) -> Optional["adsk.core.Document"]:
+    def active_document(self) -> adsk.core.Document | None:
         """Get the active Fusion document."""
         if not _FUSION_AVAILABLE:
             return None
         return self._app.activeDocument
 
     @property
-    def active_design(self) -> Optional["adsk.fusion.Design"]:
+    def active_design(self) -> adsk.fusion.Design | None:
         """Get the active Fusion design."""
         if not _FUSION_AVAILABLE:
             return None
         return adsk.fusion.Design.cast(self._app.activeProduct)
 
     @property
-    def root_component(self) -> Optional["adsk.fusion.Component"]:
+    def root_component(self) -> adsk.fusion.Component | None:
         """Get the root component of the active design."""
         design = self.active_design
         return design.rootComponent if design else None
@@ -69,7 +70,7 @@ class DocumentManager:
         self,
         group_name: str,
         attr_name: str,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get an attribute value from the root component.
 
         Args:
@@ -158,7 +159,7 @@ class DocumentManager:
         self,
         group_name: str,
         attr_name: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get a JSON-encoded attribute value.
 
         Args:
@@ -181,7 +182,7 @@ class DocumentManager:
         self,
         group_name: str,
         attr_name: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
     ) -> bool:
         """Set a JSON-encoded attribute value.
 
@@ -199,7 +200,7 @@ class DocumentManager:
         except (TypeError, ValueError):
             return False
 
-    def get_document_info(self) -> Dict[str, Any]:
+    def get_document_info(self) -> dict[str, Any]:
         """Get information about the active document.
 
         Returns:
@@ -229,7 +230,7 @@ class DocumentManager:
 
         return info
 
-    def get_all_occurrences(self) -> List["adsk.fusion.Occurrence"]:
+    def get_all_occurrences(self) -> list[adsk.fusion.Occurrence]:
         """Get all occurrences in the active design.
 
         Returns:
@@ -244,7 +245,7 @@ class DocumentManager:
         except Exception:
             return []
 
-    def get_all_components(self) -> List["adsk.fusion.Component"]:
+    def get_all_components(self) -> list[adsk.fusion.Component]:
         """Get all unique components in the active design.
 
         Returns:

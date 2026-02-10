@@ -1,14 +1,15 @@
+import datetime
+import json
+import os
+import sys
+import traceback
+from typing import Any, Optional
+
 import adsk.core
 import adsk.fusion
-import traceback
-import json
-import sys
-import os
-import datetime
-from typing import Optional, Dict, Any, List
 
 # Add src directory to path so we can import our modules
-src_path = os.path.join(os.path.dirname(__file__), 'src')
+src_path = os.path.join(os.path.dirname(__file__), "src")
 sys.path.insert(0, src_path)
 import diagram_data  # noqa: E402
 
@@ -19,25 +20,28 @@ if repo_root not in sys.path:
 
 # Import the new core library for validation and action planning
 try:
-    from core.validation import validate_graph, get_error_summary
     from core.serialization import dict_to_graph
+    from core.validation import get_error_summary, validate_graph
+
     CORE_AVAILABLE = True
 except ImportError as _core_err:
     CORE_AVAILABLE = False
     # Log so the failure is diagnosable; logger may not exist yet.
     import traceback as _tb
+
     print(f"[SystemBlocks] Core import failed: {_core_err}")
     _tb.print_exc()
 
 # Import logging utilities
 try:
     from fusion_addin.logging_util import (
-        setup_logging,
+        cleanup_old_logs,
+        get_log_file_path,
         get_logger,
         log_environment_info,
-        get_log_file_path,
-        cleanup_old_logs,
+        setup_logging,
     )
+
     _logger = get_logger("main")
     LOGGING_AVAILABLE = True
 except ImportError:
@@ -47,16 +51,17 @@ except ImportError:
 # Import diagnostics module
 try:
     from fusion_addin.diagnostics import (
-        run_diagnostics_and_show_result,
         cleanup_any_remaining_temp_objects,
+        run_diagnostics_and_show_result,
     )
+
     DIAGNOSTICS_AVAILABLE = True
 except ImportError:
     DIAGNOSTICS_AVAILABLE = False
 
 APP = adsk.core.Application.get()
 UI = APP.userInterface
-ATTR_GROUP = 'systemBlocks'
+ATTR_GROUP = "systemBlocks"
 
 _handlers = []  # keep event handlers alive
 
@@ -103,7 +108,7 @@ def notify_info(message: str) -> None:
     send_palette_notification(message, level="info")
 
 
-def _show_validation_errors_dialog(errors: List) -> None:
+def _show_validation_errors_dialog(errors: list) -> None:
     """Display validation errors in a message box.
 
     Shows a formatted list of validation errors from the core library
@@ -118,7 +123,7 @@ def _show_validation_errors_dialog(errors: List) -> None:
     # Format errors for display
     lines = [f"Found {len(errors)} validation error(s):\n"]
     for i, error in enumerate(errors[:10], 1):  # Limit to first 10 errors
-        code = error.code.value if hasattr(error.code, 'value') else str(error.code)
+        code = error.code.value if hasattr(error.code, "value") else str(error.code)
         lines.append(f"{i}. [{code}] {error.message}")
 
     if len(errors) > 10:
@@ -132,7 +137,7 @@ def _show_validation_errors_dialog(errors: List) -> None:
             error_text,
             "Graph Validation Errors",
             adsk.core.MessageBoxButtonTypes.OKButtonType,
-            adsk.core.MessageBoxIconTypes.WarningIconType
+            adsk.core.MessageBoxIconTypes.WarningIconType,
         )
     except Exception:
         # Fallback to simple notification
@@ -191,7 +196,7 @@ def save_diagram_json(json_data: str) -> bool:
             # Check link validation specifically
             links_valid, link_errors = diagram_data.validate_diagram_links(diagram)
             if not links_valid:
-                error_msg = 'Link warnings:\n' + '\n'.join(link_errors)
+                error_msg = "Link warnings:\n" + "\n".join(link_errors)
                 notify_error(error_msg)
 
         root_comp = get_root_component()
@@ -203,12 +208,12 @@ def save_diagram_json(json_data: str) -> bool:
 
         # Remove existing attribute if it exists
         for attr in attrs:
-            if attr.groupName == ATTR_GROUP and attr.name == 'diagramJson':
+            if attr.groupName == ATTR_GROUP and attr.name == "diagramJson":
                 attr.deleteMe()
                 break
 
         # Add new attribute
-        attrs.add(ATTR_GROUP, 'diagramJson', json_data)
+        attrs.add(ATTR_GROUP, "diagramJson", json_data)
         return True
 
     except Exception as e:
@@ -226,7 +231,7 @@ def load_diagram_json():
         attrs = root_comp.attributes
 
         for attr in attrs:
-            if attr.groupName == ATTR_GROUP and attr.name == 'diagramJson':
+            if attr.groupName == ATTR_GROUP and attr.name == "diagramJson":
                 return attr.value
 
         return None
@@ -258,6 +263,7 @@ def load_diagram_data():
 # A manifest attribute "docIndex" holds a JSON list of
 # { "slug": "<slug>", "label": "<user name>", "modified": "<ISO>" }.
 
+
 def _doc_attr_name(slug: str) -> str:
     """Return the Fusion attribute name for a named document."""
     return f"doc_{slug}"
@@ -266,11 +272,12 @@ def _doc_attr_name(slug: str) -> str:
 def _slug_from_label(label: str) -> str:
     """Derive a filesystem-safe slug from a user-visible label."""
     import re
-    slug = re.sub(r'[^a-zA-Z0-9_-]', '_', label.strip())[:64]
+
+    slug = re.sub(r"[^a-zA-Z0-9_-]", "_", label.strip())[:64]
     return slug or "untitled"
 
 
-def list_named_diagrams() -> List[Dict[str, str]]:
+def list_named_diagrams() -> list[dict[str, str]]:
     """Return the list of named documents stored on the root component.
 
     Returns:
@@ -281,24 +288,24 @@ def list_named_diagrams() -> List[Dict[str, str]]:
         if not root_comp:
             return []
         for attr in root_comp.attributes:
-            if attr.groupName == ATTR_GROUP and attr.name == 'docIndex':
+            if attr.groupName == ATTR_GROUP and attr.name == "docIndex":
                 return json.loads(attr.value)
     except Exception:
         pass
     return []
 
 
-def _save_doc_index(index: List[Dict[str, str]]) -> None:
+def _save_doc_index(index: list[dict[str, str]]) -> None:
     """Persist the document manifest to a Fusion attribute."""
     root_comp = get_root_component()
     if not root_comp:
         return
     attrs = root_comp.attributes
     for attr in attrs:
-        if attr.groupName == ATTR_GROUP and attr.name == 'docIndex':
+        if attr.groupName == ATTR_GROUP and attr.name == "docIndex":
             attr.deleteMe()
             break
-    attrs.add(ATTR_GROUP, 'docIndex', json.dumps(index))
+    attrs.add(ATTR_GROUP, "docIndex", json.dumps(index))
 
 
 def save_named_diagram(label: str, json_data: str) -> bool:
@@ -330,12 +337,12 @@ def save_named_diagram(label: str, json_data: str) -> bool:
         # Update manifest
         index = list_named_diagrams()
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        entry = next((e for e in index if e['slug'] == slug), None)
+        entry = next((e for e in index if e["slug"] == slug), None)
         if entry:
-            entry['modified'] = now
-            entry['label'] = label
+            entry["modified"] = now
+            entry["label"] = label
         else:
-            index.append({'slug': slug, 'label': label, 'modified': now})
+            index.append({"slug": slug, "label": label, "modified": now})
         _save_doc_index(index)
         return True
     except Exception as e:
@@ -383,7 +390,7 @@ def delete_named_diagram(slug: str) -> bool:
             if attr.groupName == ATTR_GROUP and attr.name == attr_name:
                 attr.deleteMe()
                 break
-        index = [e for e in list_named_diagrams() if e['slug'] != slug]
+        index = [e for e in list_named_diagrams() if e["slug"] != slug]
         _save_doc_index(index)
         return True
     except Exception as e:
@@ -396,24 +403,26 @@ def select_occurrence_for_linking():
     try:
         # Create selection input
         selectionInput = UI.createSelectionInput(
-            'selectOccurrence',
-            'Select Component',
-            'Select the component to link to this block'
+            "selectOccurrence",
+            "Select Component",
+            "Select the component to link to this block",
         )
-        selectionInput.addSelectionFilter('Occurrences')
+        selectionInput.addSelectionFilter("Occurrences")
         selectionInput.setSelectionLimits(1, 1)
 
         # Get the selection
-        result = UI.commandDefinitions.itemById('SelectOccurrenceCommand')
+        result = UI.commandDefinitions.itemById("SelectOccurrenceCommand")
         if not result:
             UI.commandDefinitions.addButtonDefinition(
-                'SelectOccurrenceCommand',
-                'Select Component',
-                'Select a component to link'
+                "SelectOccurrenceCommand",
+                "Select Component",
+                "Select a component to link",
             )
 
         # Create and show selection dialog
-        selection = UI.selectEntity('Select the component to link to this block', 'Occurrences')
+        selection = UI.selectEntity(
+            "Select the component to link to this block", "Occurrences"
+        )
 
         if selection:
             occurrence = adsk.fusion.Occurrence.cast(selection)
@@ -423,10 +432,10 @@ def select_occurrence_for_linking():
                     doc_file = APP.activeDocument.dataFile
 
                 return {
-                    'type': 'CAD',
-                    'occToken': occurrence.entityToken,
-                    'name': occurrence.name,
-                    'docId': doc_file.id if doc_file else None
+                    "type": "CAD",
+                    "occToken": occurrence.entityToken,
+                    "name": occurrence.name,
+                    "docId": doc_file.id if doc_file else None,
                 }
 
         return None
@@ -525,14 +534,14 @@ class CommandExecuteHandler(adsk.core.CommandEventHandler):
     def notify(self, args):
         try:
             # Get the palette
-            palette = UI.palettes.itemById('SystemBlocksPalette')
+            palette = UI.palettes.itemById("SystemBlocksPalette")
             if not palette:
-                notify_warning('Palette not found - creating it now')
+                notify_warning("Palette not found - creating it now")
                 palette = _create_palette()
 
             if palette:
                 palette.isVisible = True
-                notify_success('Palette should now be visible')
+                notify_success("Palette should now be visible")
 
         except Exception as e:
             notify_error(f"Error showing palette: {str(e)}")
@@ -564,26 +573,25 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             else:
                 if LOGGING_AVAILABLE:
                     _logger.warning(f"Unknown HTML action: '{action}'")
-                htmlArgs.returnData = json.dumps({
-                    'success': False,
-                    'error': f"Unknown action: {action}"
-                })
+                htmlArgs.returnData = json.dumps(
+                    {"success": False, "error": f"Unknown action: {action}"}
+                )
 
         except Exception as e:
             if LOGGING_AVAILABLE:
                 _logger.exception(f"Error in PaletteHTMLEventHandler: {e}")
             notify_error(f"Error in HTML event handler: {str(e)}")
             if args:
-                args.returnData = json.dumps({'success': False, 'error': str(e)})
+                args.returnData = json.dumps({"success": False, "error": str(e)})
 
-    def _handle_save_diagram(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        json_data = data.get('diagram', '{}')
+    def _handle_save_diagram(self, data: dict[str, Any]) -> dict[str, Any]:
+        json_data = data.get("diagram", "{}")
         success = save_diagram_json(json_data)
         if success:
-            return {'success': True}
-        return {'success': False, 'error': 'Diagram validation or save failed'}
+            return {"success": True}
+        return {"success": False, "error": "Diagram validation or save failed"}
 
-    def _handle_load_diagram(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_load_diagram(self, data: dict[str, Any]) -> dict[str, Any]:
         diagram_json = load_diagram_json()
         if diagram_json:
             try:
@@ -597,111 +605,111 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
                 diagram_dict = diagram_data.create_empty_diagram()
         else:
             diagram_dict = diagram_data.create_empty_diagram()
-        return {'success': True, 'diagram': diagram_dict}
+        return {"success": True, "diagram": diagram_dict}
 
-    def _handle_export_reports(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        diagram_json = data.get('diagram', '{}')
+    def _handle_export_reports(self, data: dict[str, Any]) -> dict[str, Any]:
+        diagram_json = data.get("diagram", "{}")
         diagram = json.loads(diagram_json)
         addin_path = os.path.dirname(__file__)
-        exports_path = os.path.join(addin_path, 'exports')
+        exports_path = os.path.join(addin_path, "exports")
         os.makedirs(exports_path, exist_ok=True)
         files_created = diagram_data.export_report_files(diagram, exports_path)
         # Convert dict to list of file paths for consistent JS handling
         if isinstance(files_created, dict):
-            error = files_created.pop('error', None)
+            error = files_created.pop("error", None)
             file_list = list(files_created.values())
             if error:
                 return {
-                    'success': False,
-                    'error': error,
-                    'files': file_list,
-                    'path': exports_path,
+                    "success": False,
+                    "error": error,
+                    "files": file_list,
+                    "path": exports_path,
                 }
-            return {'success': True, 'files': file_list, 'path': exports_path}
-        return {'success': True, 'files': files_created, 'path': exports_path}
+            return {"success": True, "files": file_list, "path": exports_path}
+        return {"success": True, "files": files_created, "path": exports_path}
 
-    def _handle_check_rules(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        diagram_json = data.get('diagram', '{}')
+    def _handle_check_rules(self, data: dict[str, Any]) -> dict[str, Any]:
+        diagram_json = data.get("diagram", "{}")
         diagram = json.loads(diagram_json)
         rule_results = diagram_data.run_all_rule_checks(diagram)
-        return {'success': True, 'results': rule_results}
+        return {"success": True, "results": rule_results}
 
-    def _handle_sync_components(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        diagram_json = data.get('diagram', '{}')
+    def _handle_sync_components(self, data: dict[str, Any]) -> dict[str, Any]:
+        diagram_json = data.get("diagram", "{}")
         diagram = json.loads(diagram_json)
         sync_results = sync_all_components_in_fusion(diagram)
         # Return the updated diagram so JS receives synced component data
-        sync_results['diagram'] = diagram
+        sync_results["diagram"] = diagram
         return sync_results
 
-    def _handle_start_cad_selection(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        block_id = data.get('blockId', '')
-        block_name = data.get('blockName', 'Unknown Block')
+    def _handle_start_cad_selection(self, data: dict[str, Any]) -> dict[str, Any]:
+        block_id = data.get("blockId", "")
+        block_name = data.get("blockName", "Unknown Block")
         start_cad_selection(block_id, block_name)
-        return {'success': True}
+        return {"success": True}
 
-    def _handle_response(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_response(self, data: dict[str, Any]) -> dict[str, Any]:
         """Acknowledge response events from Fusion's palette bridge."""
-        return {'success': True}
+        return {"success": True}
 
     # ── Named document handlers ──────────────────────────────────────
 
-    def _handle_list_documents(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_list_documents(self, data: dict[str, Any]) -> dict[str, Any]:
         """Return the manifest of all saved named diagrams."""
         docs = list_named_diagrams()
-        return {'success': True, 'documents': docs}
+        return {"success": True, "documents": docs}
 
-    def _handle_save_named_diagram(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_save_named_diagram(self, data: dict[str, Any]) -> dict[str, Any]:
         """Save diagram under a user-chosen name."""
-        label = data.get('label', 'Untitled')
-        json_data = data.get('diagram', '{}')
+        label = data.get("label", "Untitled")
+        json_data = data.get("diagram", "{}")
         ok = save_named_diagram(label, json_data)
         if ok:
-            return {'success': True, 'documents': list_named_diagrams()}
-        return {'success': False, 'error': 'Save failed'}
+            return {"success": True, "documents": list_named_diagrams()}
+        return {"success": False, "error": "Save failed"}
 
-    def _handle_load_named_diagram(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_load_named_diagram(self, data: dict[str, Any]) -> dict[str, Any]:
         """Load a named diagram by slug."""
-        slug = data.get('slug', '')
+        slug = data.get("slug", "")
         json_str = load_named_diagram(slug)
         if json_str:
             try:
                 diagram = json.loads(json_str)
             except json.JSONDecodeError:
                 diagram = diagram_data.create_empty_diagram()
-            return {'success': True, 'diagram': diagram}
-        return {'success': False, 'error': 'Document not found'}
+            return {"success": True, "diagram": diagram}
+        return {"success": False, "error": "Document not found"}
 
-    def _handle_delete_named_diagram(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_delete_named_diagram(self, data: dict[str, Any]) -> dict[str, Any]:
         """Delete a named document."""
-        slug = data.get('slug', '')
+        slug = data.get("slug", "")
         ok = delete_named_diagram(slug)
         if ok:
-            return {'success': True, 'documents': list_named_diagrams()}
-        return {'success': False, 'error': 'Delete failed'}
+            return {"success": True, "documents": list_named_diagrams()}
+        return {"success": False, "error": "Delete failed"}
 
 
 def _create_palette() -> Optional[adsk.core.Palette]:
     """Create the System Blocks palette."""
     try:
         addin_path = os.path.dirname(__file__)
-        html_file = os.path.join(addin_path, 'src', 'palette.html')
+        html_file = os.path.join(addin_path, "src", "palette.html")
 
         # Convert Windows path to file URL format
-        html_file = html_file.replace('\\', '/')
-        if not html_file.startswith('file:///'):
-            html_file = 'file:///' + html_file
+        html_file = html_file.replace("\\", "/")
+        if not html_file.startswith("file:///"):
+            html_file = "file:///" + html_file
 
         palette = UI.palettes.add(
-            'SystemBlocksPalette',
-            'System Blocks Diagram',
+            "SystemBlocksPalette",
+            "System Blocks Diagram",
             html_file,
             True,  # isVisible
             True,  # showCloseButton
             True,  # isResizable
-            300,   # width
-            600,   # height
-            True   # useNewWebBrowser
+            300,  # width
+            600,  # height
+            True,  # useNewWebBrowser
         )
 
         # Add HTML event handler
@@ -753,9 +761,7 @@ def sync_all_components_in_fusion(diagram):
 
         for block in diagram.get("blocks", []):
             cad_links = [
-                link
-                for link in block.get("links", [])
-                if link.get("target") == "cad"
+                link for link in block.get("links", []) if link.get("target") == "cad"
             ]
 
             if cad_links:
@@ -805,9 +811,7 @@ def sync_all_components_in_fusion(diagram):
 
                     except Exception as e:
                         results["sync_failed"] += 1
-                        results["errors"].append(
-                            f"Failed to sync component: {str(e)}"
-                        )
+                        results["errors"].append(f"Failed to sync component: {str(e)}")
 
         return results
 
@@ -884,9 +888,9 @@ def get_component_info_from_fusion(doc_id, occ_token):
         try:
             if hasattr(component, "attributes"):
                 for attr in component.attributes:
-                    info["customProperties"][
-                        f"{attr.groupName}:{attr.name}"
-                    ] = attr.value
+                    info["customProperties"][f"{attr.groupName}:{attr.name}"] = (
+                        attr.value
+                    )
         except Exception:
             pass  # Custom properties might not exist
 
@@ -1031,58 +1035,58 @@ class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
                 selected_occurrence = selection_input.selection(0).entity
                 if selected_occurrence:
                     # Get occurrence data
-                    doc_id = ''
-                    doc_name = ''
+                    doc_id = ""
+                    doc_name = ""
                     if APP.activeDocument and APP.activeDocument.dataFile:
-                        doc_id = APP.activeDocument.dataFile.id or ''
-                        doc_name = APP.activeDocument.dataFile.name or ''
+                        doc_id = APP.activeDocument.dataFile.id or ""
+                        doc_name = APP.activeDocument.dataFile.name or ""
 
                     link_data = {
-                        'success': True,
-                        'occToken': selected_occurrence.entityToken,
-                        'componentName': selected_occurrence.component.name,
-                        'docId': doc_id,
-                        'docName': doc_name,
-                        'blockId': self.block_id,
-                        'blockName': self.block_name,
+                        "success": True,
+                        "occToken": selected_occurrence.entityToken,
+                        "componentName": selected_occurrence.component.name,
+                        "docId": doc_id,
+                        "docName": doc_name,
+                        "blockId": self.block_id,
+                        "blockName": self.block_name,
                     }
 
                     # Send data back to JavaScript
-                    palette = UI.palettes.itemById('SystemBlocksPalette')
+                    palette = UI.palettes.itemById("SystemBlocksPalette")
                     if palette:
                         self._send_cad_link_payload(palette, link_data)
                 else:
-                    palette = UI.palettes.itemById('SystemBlocksPalette')
+                    palette = UI.palettes.itemById("SystemBlocksPalette")
                     if palette:
                         self._send_cad_link_payload(
                             palette,
                             {
-                                'success': False,
-                                'blockId': self.block_id,
-                                'error': 'No component selected',
+                                "success": False,
+                                "blockId": self.block_id,
+                                "error": "No component selected",
                             },
                         )
             else:
-                palette = UI.palettes.itemById('SystemBlocksPalette')
+                palette = UI.palettes.itemById("SystemBlocksPalette")
                 if palette:
                     self._send_cad_link_payload(
                         palette,
                         {
-                            'success': False,
-                            'blockId': self.block_id,
-                            'error': 'No selection made',
+                            "success": False,
+                            "blockId": self.block_id,
+                            "error": "No selection made",
                         },
                     )
 
         except Exception as e:
-            palette = UI.palettes.itemById('SystemBlocksPalette')
+            palette = UI.palettes.itemById("SystemBlocksPalette")
             if palette:
                 self._send_cad_link_payload(
                     palette,
                     {
-                        'success': False,
-                        'blockId': self.block_id,
-                        'error': f'CAD selection failed: {str(e)}',
+                        "success": False,
+                        "blockId": self.block_id,
+                        "error": f"CAD selection failed: {str(e)}",
                     },
                 )
             notify_error(f"CAD selection execution failed: {str(e)}")
@@ -1211,9 +1215,7 @@ def highlight_block_components(block_id, highlight_color):
             )
         else:
             block_name = target_block.get("name", "Unknown")
-            notify_warning(
-                f"No CAD components found for block: {block_name}"
-            )
+            notify_warning(f"No CAD components found for block: {block_name}")
 
     except Exception as e:
         notify_error(f"Component highlighting error: {str(e)}")
@@ -1235,9 +1237,7 @@ def create_connection_route_3d(connection_id, from_block_id, to_block_id, route_
             return
 
         # For now, show a message about route creation
-        notify_info(
-            f"Creating 3D route from {from_block_id} to {to_block_id}"
-        )
+        notify_info(f"Creating 3D route from {from_block_id} to {to_block_id}")
 
         # In a full implementation, this would:
         # 1. Find the 3D positions of components linked to both blocks
@@ -1457,14 +1457,10 @@ def generate_service_manual_for_block(block_id, diagram):
             return
 
         # Initialize living documentation
-        target_block = diagram_data.initialize_living_documentation(
-            target_block
-        )
+        target_block = diagram_data.initialize_living_documentation(target_block)
 
         # Generate service manual content
-        service_manual_doc = target_block["livingDocumentation"][
-            "serviceManual"
-        ]
+        service_manual_doc = target_block["livingDocumentation"]["serviceManual"]
         service_manual = {
             "blockName": target_block.get("name", "Unknown"),
             "blockId": block_id,
@@ -1479,11 +1475,7 @@ def generate_service_manual_for_block(block_id, diagram):
         palette = UI.palettes.itemById("SystemBlocksPalette")
         if palette:
             payload = json.dumps(service_manual)
-            script = (
-                "if(editor) { "
-                f"editor.displayServiceManual({payload});"
-                " }"
-            )
+            script = f"if(editor) {{ editor.displayServiceManual({payload}); }}"
             palette.sendInfoToHTML("service-manual", script)
 
     except Exception as e:
@@ -1531,14 +1523,12 @@ def run(context):
             cleanup_old_logs()
 
         # Create command definition for showing palette
-        cmdDef = UI.commandDefinitions.itemById(
-            'SystemBlocksPaletteShowCommand'
-        )
+        cmdDef = UI.commandDefinitions.itemById("SystemBlocksPaletteShowCommand")
         if not cmdDef:
             cmdDef = UI.commandDefinitions.addButtonDefinition(
-                'SystemBlocksPaletteShowCommand',
-                'System Blocks',
-                'Show the System Blocks Diagram Editor'
+                "SystemBlocksPaletteShowCommand",
+                "System Blocks",
+                "Show the System Blocks Diagram Editor",
                 # Removed the resource folder path - will use default icon
             )
 
@@ -1548,33 +1538,35 @@ def run(context):
         _handlers.append(onCommandCreated)
 
         if LOGGING_AVAILABLE:
-            _logger.info("Command definition registered: SystemBlocksPaletteShowCommand")
+            _logger.info(
+                "Command definition registered: SystemBlocksPaletteShowCommand"
+            )
 
         # Create the palette
-        palette = UI.palettes.itemById('SystemBlocksPalette')
+        palette = UI.palettes.itemById("SystemBlocksPalette")
         if not palette:
             # Get the HTML file path and convert to proper file URL
             addin_path = os.path.dirname(__file__)
-            html_file = os.path.join(addin_path, 'src', 'palette.html')
+            html_file = os.path.join(addin_path, "src", "palette.html")
 
             # Convert Windows path to file URL format
-            html_file = html_file.replace('\\', '/')
-            if not html_file.startswith('file:///'):
-                html_file = 'file:///' + html_file
+            html_file = html_file.replace("\\", "/")
+            if not html_file.startswith("file:///"):
+                html_file = "file:///" + html_file
 
             if LOGGING_AVAILABLE:
                 _logger.debug(f"Creating palette with HTML: {html_file}")
 
             palette = UI.palettes.add(
-                'SystemBlocksPalette',
-                'System Blocks Diagram',
+                "SystemBlocksPalette",
+                "System Blocks Diagram",
                 html_file,
                 True,  # isVisible
                 True,  # showCloseButton
                 True,  # isResizable
-                300,   # width
-                600,   # height
-                True   # useNewWebBrowser
+                300,  # width
+                600,  # height
+                True,  # useNewWebBrowser
             )
 
             # Add HTML event handler
@@ -1587,21 +1579,20 @@ def run(context):
 
         # Add to appropriate workspace
         workspaces = UI.workspaces
-        designWorkspace = workspaces.itemById('FusionSolidEnvironment')
+        designWorkspace = workspaces.itemById("FusionSolidEnvironment")
         if designWorkspace:
             # Add to Add-ins panel
             addInsPanel = designWorkspace.toolbarPanels.itemById(
-                'SolidScriptsAddinsPanel'
+                "SolidScriptsAddinsPanel"
             )
             if not addInsPanel:
                 addInsPanel = designWorkspace.toolbarPanels.add(
-                    'SolidScriptsAddinsPanel', 'Add-Ins')
+                    "SolidScriptsAddinsPanel", "Add-Ins"
+                )
 
             # Add our command to the panel
             controls = addInsPanel.controls
-            systemBlocksControl = controls.itemById(
-                'SystemBlocksPaletteShowCommand'
-            )
+            systemBlocksControl = controls.itemById("SystemBlocksPaletteShowCommand")
             if not systemBlocksControl:
                 systemBlocksControl = controls.addCommand(cmdDef)
 
@@ -1609,12 +1600,12 @@ def run(context):
                 _logger.info("Added command to workspace panel")
 
         # Create diagnostics command
-        diagCmdDef = UI.commandDefinitions.itemById('SystemBlocksDiagnosticsCommand')
+        diagCmdDef = UI.commandDefinitions.itemById("SystemBlocksDiagnosticsCommand")
         if not diagCmdDef:
             diagCmdDef = UI.commandDefinitions.addButtonDefinition(
-                'SystemBlocksDiagnosticsCommand',
-                'Run Diagnostics',
-                'Run self-tests to verify add-in health'
+                "SystemBlocksDiagnosticsCommand",
+                "Run Diagnostics",
+                "Run self-tests to verify add-in health",
             )
 
         onDiagCreated = DiagnosticsCommandHandler()
@@ -1622,13 +1613,19 @@ def run(context):
         _handlers.append(onDiagCreated)
 
         if LOGGING_AVAILABLE:
-            _logger.info("Command definition registered: SystemBlocksDiagnosticsCommand")
+            _logger.info(
+                "Command definition registered: SystemBlocksDiagnosticsCommand"
+            )
 
         # Add diagnostics command to panel
         if designWorkspace:
-            addInsPanel = designWorkspace.toolbarPanels.itemById('SolidScriptsAddinsPanel')
+            addInsPanel = designWorkspace.toolbarPanels.itemById(
+                "SolidScriptsAddinsPanel"
+            )
             if addInsPanel:
-                diagControl = addInsPanel.controls.itemById('SystemBlocksDiagnosticsCommand')
+                diagControl = addInsPanel.controls.itemById(
+                    "SystemBlocksDiagnosticsCommand"
+                )
                 if not diagControl:
                     diagControl = addInsPanel.controls.addCommand(diagCmdDef)
 
@@ -1638,14 +1635,13 @@ def run(context):
             _logger.info(f"Log file: {get_log_file_path()}")
             _logger.info("=" * 60)
 
-        notify_success('System Blocks add-in loaded successfully!')
+        notify_success("System Blocks add-in loaded successfully!")
 
     except Exception as e:
         if LOGGING_AVAILABLE:
             _logger.exception(f"STARTUP FAILED: {e}")
         notify_error(
-            'Failed to run System Blocks add-in: '
-            f"{str(e)}\n{traceback.format_exc()}"
+            f"Failed to run System Blocks add-in: {str(e)}\n{traceback.format_exc()}"
         )
 
 
@@ -1662,39 +1658,37 @@ def stop(context):
                 pass
 
         # Clean up UI elements
-        cmdDef = UI.commandDefinitions.itemById(
-            'SystemBlocksPaletteShowCommand'
-        )
+        cmdDef = UI.commandDefinitions.itemById("SystemBlocksPaletteShowCommand")
         if cmdDef:
             cmdDef.deleteMe()
 
         # Clean up diagnostics command
-        diagCmdDef = UI.commandDefinitions.itemById(
-            'SystemBlocksDiagnosticsCommand'
-        )
+        diagCmdDef = UI.commandDefinitions.itemById("SystemBlocksDiagnosticsCommand")
         if diagCmdDef:
             diagCmdDef.deleteMe()
 
         # Remove from workspace
         workspaces = UI.workspaces
-        designWorkspace = workspaces.itemById('FusionSolidEnvironment')
+        designWorkspace = workspaces.itemById("FusionSolidEnvironment")
         if designWorkspace:
             addInsPanel = designWorkspace.toolbarPanels.itemById(
-                'SolidScriptsAddinsPanel'
+                "SolidScriptsAddinsPanel"
             )
             if addInsPanel:
                 systemBlocksControl = addInsPanel.controls.itemById(
-                    'SystemBlocksPaletteShowCommand')
+                    "SystemBlocksPaletteShowCommand"
+                )
                 if systemBlocksControl:
                     systemBlocksControl.deleteMe()
 
                 diagControl = addInsPanel.controls.itemById(
-                    'SystemBlocksDiagnosticsCommand')
+                    "SystemBlocksDiagnosticsCommand"
+                )
                 if diagControl:
                     diagControl.deleteMe()
 
         # Remove palette
-        palette = UI.palettes.itemById('SystemBlocksPalette')
+        palette = UI.palettes.itemById("SystemBlocksPalette")
         if palette:
             palette.deleteMe()
 
@@ -1707,4 +1701,4 @@ def stop(context):
     except Exception as e:
         if LOGGING_AVAILABLE:
             _logger.exception(f"Error during shutdown: {e}")
-        notify_error(f'Failed to stop System Blocks add-in: {str(e)}')
+        notify_error(f"Failed to stop System Blocks add-in: {str(e)}")

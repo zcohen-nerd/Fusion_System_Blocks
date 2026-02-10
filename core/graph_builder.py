@@ -8,7 +8,7 @@ BOUNDARY: This module contains NO Fusion 360 dependencies.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .models import (
     Block,
@@ -47,8 +47,8 @@ class GraphBuilder:
             name: The name of the graph being built.
         """
         self._graph = Graph(name=name)
-        self._current_block: Optional[Block] = None
-        self._block_by_name: Dict[str, Block] = {}
+        self._current_block: Block | None = None
+        self._block_by_name: dict[str, Block] = {}
 
     def add_block(
         self,
@@ -57,7 +57,7 @@ class GraphBuilder:
         x: int = 0,
         y: int = 0,
         status: BlockStatus = BlockStatus.PLACEHOLDER,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ) -> GraphBuilder:
         """Add a new block to the graph.
 
@@ -94,8 +94,8 @@ class GraphBuilder:
         direction: PortDirection = PortDirection.BIDIRECTIONAL,
         kind: PortKind = PortKind.GENERIC,
         side: str = "right",
-        index: Optional[int] = None,
-        params: Optional[Dict[str, Any]] = None,
+        index: int | None = None,
+        params: dict[str, Any] | None = None,
     ) -> GraphBuilder:
         """Add a port to the current block.
 
@@ -120,9 +120,7 @@ class GraphBuilder:
 
         # Auto-calculate index if not provided
         if index is None:
-            same_side_ports = [
-                p for p in self._current_block.ports if p.side == side
-            ]
+            same_side_ports = [p for p in self._current_block.ports if p.side == side]
             index = len(same_side_ports)
 
         port = Port(
@@ -158,9 +156,9 @@ class GraphBuilder:
         from_block_name: str,
         to_block_name: str,
         kind: str = "data",
-        from_port_name: Optional[str] = None,
-        to_port_name: Optional[str] = None,
-        attributes: Optional[Dict[str, Any]] = None,
+        from_port_name: str | None = None,
+        to_port_name: str | None = None,
+        attributes: dict[str, Any] | None = None,
     ) -> GraphBuilder:
         """Add a connection between two blocks.
 
@@ -238,7 +236,7 @@ class GraphBuilder:
         """
         return self._graph
 
-    def get_block(self, name: str) -> Optional[Block]:
+    def get_block(self, name: str) -> Block | None:
         """Get a block by name during construction.
 
         Args:
@@ -251,8 +249,8 @@ class GraphBuilder:
 
 
 def create_simple_graph(
-    blocks: List[Dict[str, Any]],
-    connections: Optional[List[Dict[str, Any]]] = None,
+    blocks: list[dict[str, Any]],
+    connections: list[dict[str, Any]] | None = None,
 ) -> Graph:
     """Create a graph from simple dictionary definitions.
 

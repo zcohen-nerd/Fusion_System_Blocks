@@ -10,7 +10,7 @@ BOUNDARY: This module contains NO Fusion 360 dependencies.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
+from typing import Any
 
 from .models import (
     Block,
@@ -59,10 +59,10 @@ def deserialize_graph(json_str: str) -> Graph:
         data = json.loads(json_str)
         return dict_to_graph(data)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON: {e}")
+        raise ValueError(f"Invalid JSON: {e}") from e
 
 
-def graph_to_dict(graph: Graph) -> Dict[str, Any]:
+def graph_to_dict(graph: Graph) -> dict[str, Any]:
     """Convert a Graph to a dictionary.
 
     Produces a normalized format that's compatible with the legacy
@@ -85,10 +85,10 @@ def graph_to_dict(graph: Graph) -> Dict[str, Any]:
             "status": block.status.value,
             "attributes": block.attributes,
             "links": block.links,
-            "interfaces": [],  # Legacy compatibility
         }
 
         # Convert ports to legacy "interfaces" format
+        interfaces_list: list[dict[str, Any]] = []
         for port in block.ports:
             interface = {
                 "id": port.id,
@@ -101,7 +101,8 @@ def graph_to_dict(graph: Graph) -> Dict[str, Any]:
                 },
                 "params": port.params,
             }
-            block_dict["interfaces"].append(interface)
+            interfaces_list.append(interface)
+        block_dict["interfaces"] = interfaces_list
 
         if block.child_diagram_id:
             block_dict["childDiagramId"] = block.child_diagram_id
@@ -135,7 +136,7 @@ def graph_to_dict(graph: Graph) -> Dict[str, Any]:
     }
 
 
-def dict_to_graph(data: Dict[str, Any]) -> Graph:
+def dict_to_graph(data: dict[str, Any]) -> Graph:
     """Convert a dictionary to a Graph.
 
     Handles both the new format and legacy "diagram" format with
@@ -167,7 +168,7 @@ def dict_to_graph(data: Dict[str, Any]) -> Graph:
     return graph
 
 
-def _parse_block(data: Dict[str, Any]) -> Block:
+def _parse_block(data: dict[str, Any]) -> Block:
     """Parse a block from dictionary data.
 
     Args:
@@ -204,7 +205,7 @@ def _parse_block(data: Dict[str, Any]) -> Block:
     return block
 
 
-def _parse_port(data: Dict[str, Any], block_id: str) -> Port:
+def _parse_port(data: dict[str, Any], block_id: str) -> Port:
     """Parse a port from dictionary data.
 
     Args:
@@ -245,7 +246,7 @@ def _parse_port(data: Dict[str, Any], block_id: str) -> Port:
     )
 
 
-def _parse_connection(data: Dict[str, Any]) -> Connection:
+def _parse_connection(data: dict[str, Any]) -> Connection:
     """Parse a connection from dictionary data.
 
     Args:
@@ -289,17 +290,19 @@ def _parse_connection(data: Dict[str, Any]) -> Connection:
         from_port_id=from_port_id,
         to_block_id=to_block_id,
         to_port_id=to_port_id,
-        kind=data.get("kind", data.get("type",
-             data.get("protocol", "data"))),
+        kind=data.get("kind", data.get("type", data.get("protocol", "data"))),
         attributes={
             **data.get("attributes", {}),
-            **({"arrowDirection": data["arrowDirection"]}
-               if data.get("arrowDirection") else {}),
+            **(
+                {"arrowDirection": data["arrowDirection"]}
+                if data.get("arrowDirection")
+                else {}
+            ),
         },
     )
 
 
-def convert_legacy_diagram(diagram: Dict[str, Any]) -> Graph:
+def convert_legacy_diagram(diagram: dict[str, Any]) -> Graph:
     """Convert a legacy diagram dictionary to a Graph.
 
     Convenience wrapper around dict_to_graph for explicit legacy conversion.
@@ -313,7 +316,7 @@ def convert_legacy_diagram(diagram: Dict[str, Any]) -> Graph:
     return dict_to_graph(diagram)
 
 
-def export_to_legacy_format(graph: Graph) -> Dict[str, Any]:
+def export_to_legacy_format(graph: Graph) -> dict[str, Any]:
     """Export a Graph to legacy dictionary format.
 
     Convenience wrapper around graph_to_dict for explicit legacy export.

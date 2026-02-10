@@ -10,7 +10,7 @@ Markers:
 """
 
 import pytest
-from hypothesis import given, settings, assume
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from core.models import (
@@ -68,15 +68,13 @@ _block_strategy = st.builds(
 
 def _graph_strategy():
     """Build a Graph with N blocks and valid connections between them."""
-    return (
-        st.lists(_block_strategy, min_size=0, max_size=8)
-        .map(_build_graph_from_blocks)
+    return st.lists(_block_strategy, min_size=0, max_size=8).map(
+        _build_graph_from_blocks
     )
 
 
 def _build_graph_from_blocks(blocks):
     """Helper: add valid connections between randomly chosen block pairs."""
-    import random
     graph = Graph(id="prop_graph", name="Property Test", blocks=blocks)
     if len(blocks) >= 2:
         # Add a few random connections (block-level only, no port refs)
@@ -108,8 +106,10 @@ class TestSerializationProperties:
         restored = deserialize_graph(serialize_graph(graph))
         assert restored.name == name
 
-    @given(x=st.integers(min_value=-100000, max_value=100000),
-           y=st.integers(min_value=-100000, max_value=100000))
+    @given(
+        x=st.integers(min_value=-100000, max_value=100000),
+        y=st.integers(min_value=-100000, max_value=100000),
+    )
     @settings(max_examples=50)
     def test_block_position_survives_round_trip(self, x, y):
         """Integer coordinates should survive round-trip exactly."""
@@ -177,9 +177,7 @@ class TestValidationProperties:
     @settings(max_examples=10)
     def test_disconnected_blocks_produce_no_errors(self, n):
         """N disconnected blocks with unique IDs should validate cleanly."""
-        blocks = [
-            Block(id=f"b{i}", name=f"Block {i}") for i in range(n)
-        ]
+        blocks = [Block(id=f"b{i}", name=f"Block {i}") for i in range(n)]
         graph = Graph(id="g1", blocks=blocks)
         errors = validate_graph(graph)
         # No connections → no connection errors; unique IDs → no dup errors
@@ -195,8 +193,10 @@ class TestValidationProperties:
         b2 = Block(id="b2", name="Target", ports=[p_in])
         conn = Connection(
             id="c1",
-            from_block_id="b1", from_port_id="po",
-            to_block_id="b2", to_port_id="pi",
+            from_block_id="b1",
+            from_port_id="po",
+            to_block_id="b2",
+            to_port_id="pi",
         )
         graph = Graph(id="g1", blocks=[b1, b2], connections=[conn])
         errors = validate_graph(graph)
@@ -206,7 +206,9 @@ class TestValidationProperties:
         """A connection from a block to itself should always be flagged."""
         block = Block(id="b1", name="Loop")
         conn = Connection(
-            id="c1", from_block_id="b1", to_block_id="b1",
+            id="c1",
+            from_block_id="b1",
+            to_block_id="b1",
         )
         graph = Graph(id="g1", blocks=[block], connections=[conn])
         errors = validate_graph(graph)
@@ -217,7 +219,9 @@ class TestValidationProperties:
         """A connection to a non-existent block should always be flagged."""
         block = Block(id="b1", name="Src")
         conn = Connection(
-            id="c1", from_block_id="b1", to_block_id="ghost",
+            id="c1",
+            from_block_id="b1",
+            to_block_id="ghost",
         )
         graph = Graph(id="g1", blocks=[block], connections=[conn])
         errors = validate_graph(graph)

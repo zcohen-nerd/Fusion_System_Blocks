@@ -4,9 +4,8 @@ This module centralizes path setup and reusable fixtures so that
 individual test files do not need to manipulate sys.path themselves.
 """
 
-import os
-import sys
 import pathlib
+import sys
 from unittest.mock import MagicMock
 
 import pytest
@@ -139,8 +138,11 @@ def sample_diagram():
     diagram_data.add_block_to_diagram(diagram, block2)
 
     conn = diagram_data.create_connection(
-        block1["id"], block2["id"], "electrical",
-        iface1["id"], iface2["id"],
+        block1["id"],
+        block2["id"],
+        "electrical",
+        iface1["id"],
+        iface2["id"],
     )
     diagram_data.add_connection_to_diagram(diagram, conn)
 

@@ -16,6 +16,16 @@ Test coverage:
     - cleanup_old_logs function
 """
 
+import logging
+
+# Import the logging utilities - note: these are in fusion_addin
+# which should work fine since logging_util.py is mostly pure Python
+import sys
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
+
 from fusion_addin.logging_util import (
     ADDIN_VERSION,
     SessionFormatter,
@@ -30,15 +40,6 @@ from fusion_addin.logging_util import (
     log_handler_entry,
     setup_logging,
 )
-import logging
-from pathlib import Path
-from unittest.mock import MagicMock
-
-import pytest
-
-# Import the logging utilities - note: these are in fusion_addin
-# which should work fine since logging_util.py is mostly pure Python
-import sys
 
 # Add fusion_addin to path if needed
 sys.path.insert(0, str(Path(__file__).parent.parent))

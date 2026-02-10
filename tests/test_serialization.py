@@ -7,8 +7,6 @@ Markers:
     serialization — all tests in this file carry this marker automatically.
 """
 
-import json
-
 import pytest
 
 from core.models import (
@@ -160,7 +158,12 @@ class TestDictConversion:
         """graph_to_dict produces expected top-level keys."""
         d = graph_to_dict(sample_graph)
         assert set(d.keys()) == {
-            "schema", "id", "name", "blocks", "connections", "metadata",
+            "schema",
+            "id",
+            "name",
+            "blocks",
+            "connections",
+            "metadata",
         }
 
     def test_graph_to_dict_uses_interfaces_key(self, sample_graph):
@@ -296,9 +299,7 @@ class TestSerializationEdgeCases:
                 {
                     "id": "b1",
                     "name": "X",
-                    "interfaces": [
-                        {"id": "p1", "name": "X", "direction": "weird"}
-                    ],
+                    "interfaces": [{"id": "p1", "name": "X", "direction": "weird"}],
                 }
             ],
             "connections": [],
@@ -314,9 +315,7 @@ class TestSerializationEdgeCases:
                 {
                     "id": "b1",
                     "name": "X",
-                    "interfaces": [
-                        {"id": "p1", "name": "X", "kind": "exotic_kind"}
-                    ],
+                    "interfaces": [{"id": "p1", "name": "X", "kind": "exotic_kind"}],
                 }
             ],
             "connections": [],

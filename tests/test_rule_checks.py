@@ -4,23 +4,21 @@ Test module for rule checking functionality in diagram_data.py
 
 import pytest
 
+# Direct import for unit-testing the helper
+from diagram.rules import _parse_power_value_mw
 from diagram_data import (
+    check_implementation_completeness,
     check_logic_level_compatibility,
     check_power_budget,
     check_power_budget_bulk,
-    check_implementation_completeness,
-    run_all_rule_checks,
-    get_rule_failures,
     create_block,
     create_empty_diagram,
+    get_rule_failures,
+    run_all_rule_checks,
 )
-
-# Direct import for unit-testing the helper
-from diagram.rules import _parse_power_value_mw
 
 
 class TestRuleChecks:
-
     def test_logic_level_compatibility_success(self):
         """Test compatible logic levels pass the check"""
         diagram = {
@@ -41,8 +39,12 @@ class TestRuleChecks:
                     "id": "block2",
                     "name": "Sensor",
                     "interfaces": [
-                        {"id": "in1", "name": "Data", "kind": "data",
-                            "params": {"voltage": "3.3V"}}
+                        {
+                            "id": "in1",
+                            "name": "Data",
+                            "kind": "data",
+                            "params": {"voltage": "3.3V"},
+                        }
                     ],
                 },
             ],
@@ -79,8 +81,12 @@ class TestRuleChecks:
                     "id": "block2",
                     "name": "Sensor",
                     "interfaces": [
-                        {"id": "in1", "name": "Data", "kind": "data",
-                            "params": {"voltage": "5V"}}
+                        {
+                            "id": "in1",
+                            "name": "Data",
+                            "kind": "data",
+                            "params": {"voltage": "5V"},
+                        }
                     ],
                 },
             ],
@@ -157,8 +163,12 @@ class TestRuleChecks:
         """Test power budget with no power specifications"""
         diagram = {
             "blocks": [
-                {"id": "block1", "name": "Unknown Block",
-                    "type": "Custom", "attributes": {}}
+                {
+                    "id": "block1",
+                    "name": "Unknown Block",
+                    "type": "Custom",
+                    "attributes": {},
+                }
             ],
             "connections": [],
         }
@@ -386,6 +396,7 @@ class TestRuleChecks:
 # Direct tests for _parse_power_value_mw helper
 # ------------------------------------------------------------------
 
+
 class TestParsePowerValueMw:
     """Unit tests for the _parse_power_value_mw helper."""
 
@@ -415,6 +426,7 @@ class TestParsePowerValueMw:
 # ------------------------------------------------------------------
 # Completeness edge cases
 # ------------------------------------------------------------------
+
 
 class TestImplementationCompletenessEdge:
     """Edge cases for implementation completeness."""

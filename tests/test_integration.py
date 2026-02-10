@@ -5,12 +5,9 @@ status → rules → export → serialize/deserialize round-trip all produce
 consistent, correct results.
 """
 
-import json
-
 import pytest
 
 import diagram_data
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -51,12 +48,14 @@ def _build_power_system_diagram():
         diagram_data.add_block_to_diagram(d, b)
 
     conn1 = diagram_data.create_connection(
-        psu["id"], mcu["id"],
+        psu["id"],
+        mcu["id"],
         from_interface=vout["id"],
         to_interface=vin["id"],
     )
     conn2 = diagram_data.create_connection(
-        mcu["id"], sensor["id"],
+        mcu["id"],
+        sensor["id"],
         from_interface=gpio["id"],
         to_interface=sdata["id"],
     )

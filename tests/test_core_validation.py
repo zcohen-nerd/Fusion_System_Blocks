@@ -13,6 +13,7 @@ Test coverage:
     - Invalid port direction case
 """
 
+from core.graph_builder import GraphBuilder
 from core.models import (
     Block,
     Connection,
@@ -23,12 +24,11 @@ from core.models import (
 from core.validation import (
     ValidationError,
     ValidationErrorCode,
-    validate_graph,
     filter_by_code,
     get_error_summary,
     has_errors,
+    validate_graph,
 )
-from core.graph_builder import GraphBuilder
 
 
 class TestValidateGraphValidCases:

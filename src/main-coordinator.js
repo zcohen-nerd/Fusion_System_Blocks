@@ -350,13 +350,25 @@ class SystemBlocksMain {
         const updatedDragged = core.diagram.blocks.find(bl => bl.id === draggedBlock.id);
         if (updatedDragged) draggedBlock = updatedDragged;
 
-        // Re-render connections attached to any moved block
+        // Re-render connections attached to any moved block using batched
+        // scheduling to avoid per-pixel re-renders during fast drags.
         const movedSet = new Set(movedIds);
+        const affectedConns = [];
         core.diagram.connections.forEach(conn => {
           if (movedSet.has(conn.fromBlock) || movedSet.has(conn.toBlock)) {
-            renderer.renderConnection(conn);
+            affectedConns.push(conn.id);
           }
         });
+        if (affectedConns.length > 0 && renderer.scheduleConnectionRender) {
+          renderer.scheduleConnectionRender(affectedConns);
+        } else {
+          // Fallback: immediate render
+          core.diagram.connections.forEach(conn => {
+            if (movedSet.has(conn.fromBlock) || movedSet.has(conn.toBlock)) {
+              renderer.renderConnection(conn);
+            }
+          });
+        }
       } else if (features.isLassoSelecting) {
         // Update lasso selection
         features.updateLassoSelection(x, y);
@@ -408,7 +420,10 @@ class SystemBlocksMain {
       // would complete/exit the mode before the user can pick a target.
       if (this._connectionMode && this._connectionMode.active && !connectionStartedThisClick) {
         const { x, y } = screenToSVG(e.clientX, e.clientY);
-        const targetBlock = core.getBlockAt(x, y);
+        // Use lenient hit detection (8px tolerance) for connection target —
+        // users sometimes release just outside the block boundary.
+        let targetBlock = core.getBlockAt(x, y);
+        if (!targetBlock) targetBlock = core.getBlockAt(x, y, 8);
 
         if (targetBlock && targetBlock.id !== this._connectionMode.sourceBlock.id) {
           const connType = document.getElementById('connection-type-select');
@@ -526,12 +541,14 @@ class SystemBlocksMain {
       // If connection mode was JUST entered (e.g. port single-click),
       // the synthesized click event should NOT exit the mode.
       if (this._connectionModeEntryTime &&
-          performance.now() - this._connectionModeEntryTime < 500) {
+          performance.now() - this._connectionModeEntryTime < 250) {
         return;
       }
 
       const { x, y } = screenToSVG(e.clientX, e.clientY);
-      const targetBlock = core.getBlockAt(x, y);
+      // Use lenient hit detection (8px tolerance) for connection target
+      let targetBlock = core.getBlockAt(x, y);
+      if (!targetBlock) targetBlock = core.getBlockAt(x, y, 8);
 
       if (targetBlock && targetBlock.id !== this._connectionMode.sourceBlock.id) {
         const connType = document.getElementById('connection-type-select');

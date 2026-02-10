@@ -439,7 +439,14 @@ class ToolbarManager {
   handleExport() {
     try {
       if (window.pythonInterface) {
-        window.pythonInterface.exportReports();
+        window.pythonInterface.exportReports()
+          .catch(error => {
+            logger.error('Export failed:', error);
+            window.pythonInterface.showNotification(
+              'Export failed — ensure the Python bridge is connected',
+              'error'
+            );
+          });
       } else {
         logger.error('Export failed: Python interface not available');
       }
@@ -751,7 +758,15 @@ class ToolbarManager {
   handleCheckRules() {
     try {
       if (window.pythonInterface) {
-        window.pythonInterface.checkRules();
+        window.pythonInterface.checkRules()
+          .catch(error => {
+            logger.error('Check rules failed:', error);
+            // Show inline fallback so the user sees feedback
+            window.pythonInterface.showNotification(
+              'Check rules failed — ensure the Python bridge is connected',
+              'error'
+            );
+          });
       } else {
         logger.error('Check rules failed: Python interface not available');
       }
@@ -889,15 +904,16 @@ class ToolbarManager {
       }
     }
 
-    // Extra safety margin — 10% compensates for Fusion 360's CEF
-    // webview where getBoundingClientRect can under-report height,
-    // especially near the bottom edge occupied by the ribbon/toolbar.
-    fitW *= 1.10;
-    fitH *= 1.10;
+    // Extra safety margin — compensates for Fusion 360's CEF webview
+    // where getBoundingClientRect can under-report height, especially
+    // near the bottom edge occupied by the ribbon/toolbar/status bar.
+    // Use 15% horizontal + 20% vertical (ribbon steals vertical space).
+    fitW *= 1.15;
+    fitH *= 1.20;
 
     // Enforce a minimum viewBox size so we never zoom in too aggressively
     const MIN_VB_W = 600;
-    const MIN_VB_H = 400;
+    const MIN_VB_H = 500;
     if (fitW < MIN_VB_W) { fitW = MIN_VB_W; }
     if (fitH < MIN_VB_H) { fitH = MIN_VB_H; }
 

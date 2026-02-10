@@ -368,16 +368,29 @@ class DiagramRenderer {
     
     blockGroup.appendChild(indicator);
 
-    // CAD link badge — small chain-link icon at top-left if block is linked
+    // CAD link badge — small chain-link SVG icon at top-left if block is linked.
+    // Using SVG paths instead of emoji because Fusion 360's CEF may not
+    // render Unicode emoji characters reliably.
     if (block.links && block.links.some(l => l.target === 'cad')) {
-      const badge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      badge.setAttribute('x', '6');
-      badge.setAttribute('y', '13');
-      badge.setAttribute('font-size', '12');
-      badge.setAttribute('fill', '#2196F3');
-      badge.setAttribute('stroke', 'none');
+      const badge = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      badge.setAttribute('transform', 'translate(3, 3)');
       badge.setAttribute('pointer-events', 'none');
-      badge.textContent = '\uD83D\uDD17';  // 🔗 emoji
+      // Blue circle background
+      const bg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      bg.setAttribute('cx', '6');
+      bg.setAttribute('cy', '6');
+      bg.setAttribute('r', '6');
+      bg.setAttribute('fill', '#2196F3');
+      bg.setAttribute('opacity', '0.85');
+      badge.appendChild(bg);
+      // Chain-link icon (two overlapping links)
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      icon.setAttribute('d', 'M4 5.5h2.5a1.5 1.5 0 0 1 0 3H4a1.5 1.5 0 0 1 0-3zM5.5 5h2.5a1.5 1.5 0 0 1 0 3H5.5');
+      icon.setAttribute('fill', 'none');
+      icon.setAttribute('stroke', '#fff');
+      icon.setAttribute('stroke-width', '1.2');
+      icon.setAttribute('stroke-linecap', 'round');
+      badge.appendChild(icon);
       blockGroup.appendChild(badge);
     }
 
@@ -526,10 +539,10 @@ class DiagramRenderer {
       path.setAttribute('marker-end', fwdMarker);
       // CEF workaround: marker-start is unreliable in Fusion 360's
       // Chromium, so render a manual reverse arrow polygon instead.
-      this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke);
+      this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke, styling.strokeWidth);
     } else if (direction === 'backward') {
       // CEF workaround: use a manual polygon for the start arrow
-      this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke);
+      this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke, styling.strokeWidth);
     }
     // direction === 'none' → no markers
     group.appendChild(path);
@@ -578,9 +591,12 @@ class DiagramRenderer {
    * CEF workaround — render a small reverse-arrow triangle at the start
    * of a connection path. Fusion 360's Chromium does not reliably render
    * SVG marker-start, so we draw a manual polygon instead.
+   * strokeWidth scales the arrow to match the SVG marker (markerUnits=strokeWidth).
    */
-  _addManualStartArrow(group, fromX, fromY, toX, toY, fillColor) {
-    const size = 10;
+  _addManualStartArrow(group, fromX, fromY, toX, toY, fillColor, strokeWidth = 2) {
+    // SVG markers use markerWidth=8 in strokeWidth units, so actual
+    // size = 8 * strokeWidth. Match that for the manual polygon.
+    const size = 8 * strokeWidth;
     // Angle from start toward end (approximate — ignores bezier curvature)
     const dx = toX - fromX;
     const dy = toY - fromY;
@@ -588,7 +604,7 @@ class DiagramRenderer {
     // Arrow points backward (opposite the path direction)
     const tipX = fromX;
     const tipY = fromY;
-    const halfSpread = 0.45; // ~25 degrees
+    const halfSpread = 0.55; // ~31 degrees — wider for better visibility
     const baseX1 = fromX + Math.cos(angle + halfSpread) * size;
     const baseY1 = fromY + Math.sin(angle + halfSpread) * size;
     const baseX2 = fromX + Math.cos(angle - halfSpread) * size;
@@ -633,6 +649,10 @@ class DiagramRenderer {
     this.blockElements.clear();
     this.connectionElements.clear();
 
+    // Batch render using documentFragment for fewer reflows
+    const blocksTarget = this.blocksLayer || this.svg;
+    const connsTarget = this.connectionsLayer || this.svg;
+
     // Render all blocks
     diagram.blocks.forEach(block => {
       this.renderBlock(block);
@@ -642,6 +662,31 @@ class DiagramRenderer {
     diagram.connections.forEach(connection => {
       this.renderConnection(connection);
     });
+  }
+
+  /**
+   * Schedule a batched connection re-render for the given connection IDs.
+   * Uses requestAnimationFrame to coalesce multiple updates in a single
+   * frame, avoiding per-pixel re-renders during block drags.
+   */
+  scheduleConnectionRender(connectionIds) {
+    if (!this._pendingConnRender) {
+      this._pendingConnRender = new Set();
+    }
+    connectionIds.forEach(id => this._pendingConnRender.add(id));
+
+    if (!this._connRenderRaf) {
+      this._connRenderRaf = requestAnimationFrame(() => {
+        this._connRenderRaf = null;
+        const pending = this._pendingConnRender;
+        this._pendingConnRender = null;
+        if (!pending || !this.editor) return;
+        pending.forEach(connId => {
+          const conn = this.editor.diagram.connections.find(c => c.id === connId);
+          if (conn) this.renderConnection(conn);
+        });
+      });
+    }
   }
 
   highlightBlock(blockId, highlight = true) {

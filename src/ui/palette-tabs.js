@@ -100,7 +100,7 @@
         if (e.target.checked) {
           timer = setInterval(() => {
             if (window.pythonInterface) {
-              window.pythonInterface.saveDiagram().then(updateLastSaved).catch(() => {});
+              window.pythonInterface.saveDiagram({ silent: true }).then(updateLastSaved).catch(() => {});
             }
           }, 5000);
         } else if (timer) {

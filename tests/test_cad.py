@@ -7,39 +7,39 @@ import pytest
 
 from diagram_data import (
     CADLinkingError,
-    create_enhanced_cad_link,
-    update_component_properties,
-    mark_component_as_missing,
-    mark_component_as_error,
-    validate_enhanced_cad_link,
     calculate_component_completion_percentage,
-    get_component_health_status,
-    generate_component_thumbnail_placeholder,
-    generate_component_thumbnail_data,
-    sync_all_components_in_diagram,
-    create_component_dashboard_data,
-    initialize_3d_visualization,
-    update_3d_overlay_position,
-    set_component_highlight_color,
-    enable_system_grouping,
     create_3d_connection_route,
-    update_live_thumbnail,
-    initialize_living_documentation,
-    generate_assembly_sequence,
-    estimate_assembly_time,
-    determine_complexity,
-    generate_assembly_instructions,
-    generate_living_bom,
-    track_change_impact,
-    update_manufacturing_progress,
-    create_empty_diagram,
     create_block,
+    create_component_dashboard_data,
+    create_empty_diagram,
+    create_enhanced_cad_link,
+    determine_complexity,
+    enable_system_grouping,
+    estimate_assembly_time,
+    generate_assembly_instructions,
+    generate_assembly_sequence,
+    generate_component_thumbnail_data,
+    generate_component_thumbnail_placeholder,
+    generate_living_bom,
+    get_component_health_status,
+    initialize_3d_visualization,
+    initialize_living_documentation,
+    mark_component_as_error,
+    mark_component_as_missing,
+    set_component_highlight_color,
+    sync_all_components_in_diagram,
+    track_change_impact,
+    update_3d_overlay_position,
+    update_component_properties,
+    update_live_thumbnail,
+    update_manufacturing_progress,
+    validate_enhanced_cad_link,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def basic_cad_link():
@@ -86,8 +86,8 @@ def diagram_with_cad(block_with_cad_link):
 # create_enhanced_cad_link
 # ===================================================================
 
-class TestCreateEnhancedCADLink:
 
+class TestCreateEnhancedCADLink:
     def test_minimal_args(self):
         link = create_enhanced_cad_link("d1", "t1")
         assert link["target"] == "cad"
@@ -119,8 +119,8 @@ class TestCreateEnhancedCADLink:
 # update_component_properties
 # ===================================================================
 
-class TestUpdateComponentProperties:
 
+class TestUpdateComponentProperties:
     def test_update_material(self, basic_cad_link):
         updated = update_component_properties(basic_cad_link, material="Steel")
         assert updated["componentProperties"]["material"] == "Steel"
@@ -161,8 +161,8 @@ class TestUpdateComponentProperties:
 # mark_component_as_missing / mark_component_as_error
 # ===================================================================
 
-class TestMarkComponentStatus:
 
+class TestMarkComponentStatus:
     def test_mark_missing(self, basic_cad_link):
         updated = mark_component_as_missing(basic_cad_link, "Not found in assembly")
         assert updated["syncStatus"]["status"] == "missing"
@@ -190,8 +190,8 @@ class TestMarkComponentStatus:
 # validate_enhanced_cad_link
 # ===================================================================
 
-class TestValidateEnhancedCADLink:
 
+class TestValidateEnhancedCADLink:
     def test_valid_link(self, full_cad_link):
         result = validate_enhanced_cad_link(full_cad_link)
         assert result["valid"] is True
@@ -236,8 +236,8 @@ class TestValidateEnhancedCADLink:
 # calculate_component_completion_percentage
 # ===================================================================
 
-class TestCompletionPercentage:
 
+class TestCompletionPercentage:
     def test_no_cad_links(self):
         block = create_block("Empty", 0, 0)
         assert calculate_component_completion_percentage(block) == 0.0
@@ -267,8 +267,8 @@ class TestCompletionPercentage:
 # get_component_health_status
 # ===================================================================
 
-class TestComponentHealthStatus:
 
+class TestComponentHealthStatus:
     def test_no_components(self):
         block = create_block("Empty", 0, 0)
         health = get_component_health_status(block)
@@ -315,8 +315,8 @@ class TestComponentHealthStatus:
 # Thumbnails
 # ===================================================================
 
-class TestThumbnails:
 
+class TestThumbnails:
     def test_placeholder_returns_data_url(self):
         thumb = generate_component_thumbnail_placeholder()
         assert thumb["dataUrl"].startswith("data:image/svg+xml;base64,")
@@ -342,8 +342,8 @@ class TestThumbnails:
 # sync_all_components_in_diagram
 # ===================================================================
 
-class TestSyncAllComponents:
 
+class TestSyncAllComponents:
     def test_empty_diagram(self):
         diagram = create_empty_diagram()
         results = sync_all_components_in_diagram(diagram)
@@ -369,8 +369,8 @@ class TestSyncAllComponents:
 # create_component_dashboard_data
 # ===================================================================
 
-class TestDashboard:
 
+class TestDashboard:
     def test_empty_diagram(self):
         dashboard = create_component_dashboard_data(create_empty_diagram())
         assert dashboard["overview"]["total_blocks"] == 0
@@ -397,8 +397,8 @@ class TestDashboard:
 # 3D Visualization
 # ===================================================================
 
-class TestVisualization3D:
 
+class TestVisualization3D:
     def test_initialize_adds_key(self):
         block = create_block("Motor", 0, 0)
         assert "visualization3D" not in block
@@ -458,7 +458,9 @@ class TestVisualization3D:
         ]
         updated = create_3d_connection_route(conn, waypoints)
         assert updated["visualization3D"]["routingStatus"] == "routed"
-        assert updated["visualization3D"]["cableProperties"]["length"] == pytest.approx(5.0)
+        assert updated["visualization3D"]["cableProperties"]["length"] == pytest.approx(
+            5.0
+        )
 
     def test_create_3d_route_none_connection(self):
         assert create_3d_connection_route(None, [{"x": 0, "y": 0, "z": 0}]) is None
@@ -471,7 +473,7 @@ class TestVisualization3D:
         block = create_block("Motor", 0, 0)
         link = create_enhanced_cad_link("d", "t")
         block["links"] = [link]
-        updated = update_live_thumbnail(block, "data:image/png;base64,abc")
+        update_live_thumbnail(block, "data:image/png;base64,abc")
         assert block["links"][0]["thumbnail"]["dataUrl"] == "data:image/png;base64,abc"
 
     def test_update_live_thumbnail_none_block(self):
@@ -488,8 +490,8 @@ class TestVisualization3D:
 # Living Documentation
 # ===================================================================
 
-class TestLivingDocumentation:
 
+class TestLivingDocumentation:
     def test_initialize_adds_key(self):
         block = create_block("Motor", 0, 0)
         updated = initialize_living_documentation(block)
@@ -549,8 +551,8 @@ class TestLivingDocumentation:
 # generate_assembly_sequence
 # ===================================================================
 
-class TestAssemblySequence:
 
+class TestAssemblySequence:
     def test_empty_diagram(self):
         diagram = create_empty_diagram()
         seq = generate_assembly_sequence(diagram)
@@ -571,11 +573,13 @@ class TestAssemblySequence:
         b1 = create_block("Power Supply", 0, 0)
         b2 = create_block("Controller", 100, 0)
         diagram["blocks"] = [b1, b2]
-        diagram["connections"] = [{
-            "id": "c1",
-            "from": {"blockId": b1["id"], "interfaceId": None},
-            "to": {"blockId": b2["id"], "interfaceId": None},
-        }]
+        diagram["connections"] = [
+            {
+                "id": "c1",
+                "from": {"blockId": b1["id"], "interfaceId": None},
+                "to": {"blockId": b2["id"], "interfaceId": None},
+            }
+        ]
         seq = generate_assembly_sequence(diagram)
         assert len(seq) == 2
         # Power Supply (no deps) should come before Controller
@@ -600,8 +604,8 @@ class TestAssemblySequence:
 # generate_living_bom
 # ===================================================================
 
-class TestLivingBOM:
 
+class TestLivingBOM:
     def test_empty_diagram(self):
         bom = generate_living_bom(create_empty_diagram())
         assert bom["items"] == []
@@ -636,8 +640,8 @@ class TestLivingBOM:
 # track_change_impact
 # ===================================================================
 
-class TestChangeImpact:
 
+class TestChangeImpact:
     def test_no_connections_low_impact(self):
         diagram = create_empty_diagram()
         block = create_block("Isolated", 0, 0)
@@ -651,11 +655,13 @@ class TestChangeImpact:
         b1 = create_block("Hub", 0, 0)
         b2 = create_block("Leaf", 100, 0)
         diagram["blocks"] = [b1, b2]
-        diagram["connections"] = [{
-            "id": "c1",
-            "from": {"blockId": b1["id"]},
-            "to": {"blockId": b2["id"]},
-        }]
+        diagram["connections"] = [
+            {
+                "id": "c1",
+                "from": {"blockId": b1["id"]},
+                "to": {"blockId": b2["id"]},
+            }
+        ]
         result = track_change_impact(diagram, b1["id"], "Redesign")
         assert b2["id"] in result["affectedBlocks"]
         assert result["impactLevel"] in ("medium", "high", "critical")
@@ -667,11 +673,13 @@ class TestChangeImpact:
         for i in range(6):
             leaf = create_block(f"Leaf{i}", i * 100, 0)
             diagram["blocks"].append(leaf)
-            diagram["connections"].append({
-                "id": f"c{i}",
-                "from": {"blockId": hub["id"]},
-                "to": {"blockId": leaf["id"]},
-            })
+            diagram["connections"].append(
+                {
+                    "id": f"c{i}",
+                    "from": {"blockId": hub["id"]},
+                    "to": {"blockId": leaf["id"]},
+                }
+            )
         result = track_change_impact(diagram, hub["id"], "Major change")
         assert result["impactLevel"] == "critical"
 
@@ -689,8 +697,8 @@ class TestChangeImpact:
 # update_manufacturing_progress
 # ===================================================================
 
-class TestManufacturingProgress:
 
+class TestManufacturingProgress:
     def test_update_stage_and_completion(self):
         block = create_block("Part", 0, 0)
         updated = update_manufacturing_progress(block, "prototype", 45.0)
@@ -701,12 +709,22 @@ class TestManufacturingProgress:
     def test_completion_clamped_to_100(self):
         block = create_block("Part", 0, 0)
         updated = update_manufacturing_progress(block, "complete", 150.0)
-        assert updated["livingDocumentation"]["manufacturingProgress"]["completionPercentage"] == 100.0
+        assert (
+            updated["livingDocumentation"]["manufacturingProgress"][
+                "completionPercentage"
+            ]
+            == 100.0
+        )
 
     def test_completion_clamped_to_0(self):
         block = create_block("Part", 0, 0)
         updated = update_manufacturing_progress(block, "design", -10.0)
-        assert updated["livingDocumentation"]["manufacturingProgress"]["completionPercentage"] == 0.0
+        assert (
+            updated["livingDocumentation"]["manufacturingProgress"][
+                "completionPercentage"
+            ]
+            == 0.0
+        )
 
     def test_none_block(self):
         assert update_manufacturing_progress(None, "x", 50) is None

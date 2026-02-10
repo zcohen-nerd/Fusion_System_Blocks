@@ -30,8 +30,7 @@ def test_create_block():
 
 def test_create_interface():
     """Test creating an interface."""
-    interface = diagram_data.create_interface(
-        "VCC", "power", "input", "left", 0)
+    interface = diagram_data.create_interface("VCC", "power", "input", "left", 0)
     assert "id" in interface
     assert interface["name"] == "VCC"
     assert interface["kind"] == "power"
@@ -133,6 +132,7 @@ def test_generate_unique_ids():
 # ------------------------------------------------------------------
 # Additional coverage for core.py helpers and validation paths
 # ------------------------------------------------------------------
+
 
 def test_add_block_to_diagram():
     """Test add_block_to_diagram appends correctly."""

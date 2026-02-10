@@ -7,25 +7,23 @@ Fusion-specific touchpoint is replaced with unittest.mock objects.
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
-
-import pytest
 
 # Use shared adsk mocks registered by conftest.py
 import sys
+from unittest.mock import MagicMock, patch
+
 _adsk_core = sys.modules["adsk.core"]
 _adsk_fusion = sys.modules["adsk.fusion"]
 
 # Force _FUSION_AVAILABLE to True for testing
-import fusion_addin.adapter as adapter_mod
+import fusion_addin.adapter as adapter_mod  # noqa: E402
+
 adapter_mod._FUSION_AVAILABLE = True
 
-from fusion_addin.adapter import FusionAdapter, ATTR_GROUP, ATTR_NAME
-from core.models import Graph, Block, Connection
-from core.action_plan import ActionPlan, ActionType
-from core.serialization import graph_to_dict
-
+from core.action_plan import ActionPlan, ActionType  # noqa: E402
+from core.models import Block, Graph  # noqa: E402
+from core.serialization import graph_to_dict  # noqa: E402
+from fusion_addin.adapter import ATTR_GROUP, ATTR_NAME, FusionAdapter  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Helpers

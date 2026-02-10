@@ -10,12 +10,6 @@ Test coverage:
     - CAD sync actions
 """
 
-from core.models import (
-    Block,
-    Connection,
-    Graph,
-    PortDirection,
-)
 from core.action_plan import (
     ActionPlan,
     ActionType,
@@ -23,6 +17,12 @@ from core.action_plan import (
     get_action_plan_summary,
 )
 from core.graph_builder import GraphBuilder
+from core.models import (
+    Block,
+    Connection,
+    Graph,
+    PortDirection,
+)
 
 
 class TestBuildActionPlanCreation:
@@ -48,7 +48,9 @@ class TestBuildActionPlanCreation:
 
         actions = build_action_plan(graph)
 
-        create_actions = [a for a in actions if a.action_type == ActionType.CREATE_BLOCK]
+        create_actions = [
+            a for a in actions if a.action_type == ActionType.CREATE_BLOCK
+        ]
         assert len(create_actions) == 1
 
         action = create_actions[0]
@@ -119,7 +121,9 @@ class TestBuildActionPlanCreation:
 
         block_actions = [a for a in actions if a.action_type == ActionType.CREATE_BLOCK]
         port_actions = [a for a in actions if a.action_type == ActionType.CREATE_PORT]
-        conn_actions = [a for a in actions if a.action_type == ActionType.CREATE_CONNECTION]
+        conn_actions = [
+            a for a in actions if a.action_type == ActionType.CREATE_CONNECTION
+        ]
 
         assert len(block_actions) == 3
         assert len(port_actions) == 4
@@ -145,7 +149,8 @@ class TestBuildActionPlanDelta:
         actions = build_action_plan(current, previous_graph=previous)
 
         create_actions = [
-            a for a in actions
+            a
+            for a in actions
             if a.action_type == ActionType.CREATE_BLOCK and a.target_id == block_b.id
         ]
         assert len(create_actions) == 1
@@ -167,7 +172,8 @@ class TestBuildActionPlanDelta:
         actions = build_action_plan(current, previous_graph=previous)
 
         delete_actions = [
-            a for a in actions
+            a
+            for a in actions
             if a.action_type == ActionType.DELETE_BLOCK and a.target_id == block_b.id
         ]
         assert len(delete_actions) == 1
@@ -187,7 +193,8 @@ class TestBuildActionPlanDelta:
         actions = build_action_plan(current, previous_graph=previous)
 
         update_actions = [
-            a for a in actions
+            a
+            for a in actions
             if a.action_type == ActionType.UPDATE_BLOCK and a.target_id == block_id
         ]
         assert len(update_actions) == 1
@@ -211,7 +218,8 @@ class TestBuildActionPlanDelta:
         actions = build_action_plan(current, previous_graph=previous)
 
         move_actions = [
-            a for a in actions
+            a
+            for a in actions
             if a.action_type == ActionType.MOVE_BLOCK and a.target_id == block_id
         ]
         assert len(move_actions) == 1
@@ -257,11 +265,13 @@ class TestBuildActionPlanDelta:
         previous = Graph(name="Previous")
         previous.add_block(Block(id=block_a.id, name="A"))
         previous.add_block(Block(id=block_b.id, name="B"))
-        previous.add_connection(Connection(
-            id=conn.id,
-            from_block_id=block_a.id,
-            to_block_id=block_b.id,
-        ))
+        previous.add_connection(
+            Connection(
+                id=conn.id,
+                from_block_id=block_a.id,
+                to_block_id=block_b.id,
+            )
+        )
 
         # Current state: two blocks, no connection
         current = Graph(name="Current")
@@ -272,7 +282,8 @@ class TestBuildActionPlanDelta:
         actions = build_action_plan(current, previous_graph=previous)
 
         delete_conn = [
-            a for a in actions
+            a
+            for a in actions
             if a.action_type == ActionType.DELETE_CONNECTION and a.target_id == conn.id
         ]
         assert len(delete_conn) == 1
@@ -324,12 +335,7 @@ class TestBuildActionPlanOrdering:
 
     def test_blocks_before_ports(self):
         """Block creation should come before port creation."""
-        graph = (
-            GraphBuilder("Ordered")
-            .add_block("MCU")
-            .add_port("TX")
-            .build()
-        )
+        graph = GraphBuilder("Ordered").add_block("MCU").add_port("TX").build()
 
         actions = build_action_plan(graph)
 

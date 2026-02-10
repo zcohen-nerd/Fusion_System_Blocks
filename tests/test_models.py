@@ -67,7 +67,7 @@ class TestBlockCoercion:
 
     def test_ports_get_block_id_on_init(self):
         port = Port(id="p1", name="VCC")
-        block = Block(id="b1", name="MCU", ports=[port])
+        Block(id="b1", name="MCU", ports=[port])
         assert port.block_id == "b1"
 
     def test_add_port_sets_block_id(self):
@@ -166,7 +166,9 @@ class TestGraphQueries:
         c1 = Connection(id="c1", from_block_id="b1", to_block_id="b2")
         c2 = Connection(id="c2", from_block_id="b2", to_block_id="b3")
         return Graph(
-            id="g1", blocks=[b1, b2, b3], connections=[c1, c2],
+            id="g1",
+            blocks=[b1, b2, b3],
+            connections=[c1, c2],
         )
 
     def test_get_block_by_id(self):

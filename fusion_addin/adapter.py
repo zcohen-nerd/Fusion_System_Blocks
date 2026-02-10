@@ -14,21 +14,22 @@ Classes:
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 # Fusion 360 imports - only in this adapter layer
 try:
     import adsk.core
     import adsk.fusion
+
     _FUSION_AVAILABLE = True
 except ImportError:
     _FUSION_AVAILABLE = False
 
 # Core library imports
-from core.models import Graph
-from core.validation import ValidationError, validate_graph, get_error_summary
 from core.action_plan import ActionPlan, ActionType, build_action_plan
-from core.serialization import graph_to_dict, dict_to_graph
+from core.models import Graph
+from core.serialization import dict_to_graph, graph_to_dict
+from core.validation import ValidationError, get_error_summary, validate_graph
 
 if TYPE_CHECKING:
     import adsk.core
@@ -59,8 +60,8 @@ class FusionAdapter:
 
     def __init__(
         self,
-        app: "adsk.core.Application",
-        ui: "adsk.core.UserInterface",
+        app: adsk.core.Application,
+        ui: adsk.core.UserInterface,
     ) -> None:
         """Initialize the FusionAdapter.
 
@@ -72,16 +73,16 @@ class FusionAdapter:
         self._ui = ui
 
     @property
-    def app(self) -> "adsk.core.Application":
+    def app(self) -> adsk.core.Application:
         """Get the Fusion 360 Application object."""
         return self._app
 
     @property
-    def ui(self) -> "adsk.core.UserInterface":
+    def ui(self) -> adsk.core.UserInterface:
         """Get the Fusion 360 UserInterface object."""
         return self._ui
 
-    def get_root_component(self) -> Optional["adsk.fusion.Component"]:
+    def get_root_component(self) -> adsk.fusion.Component | None:
         """Get the root component of the active design.
 
         Returns:
@@ -98,7 +99,7 @@ class FusionAdapter:
             pass
         return None
 
-    def load_graph(self) -> Optional[Graph]:
+    def load_graph(self) -> Graph | None:
         """Load the graph from Fusion document attributes.
 
         Reads the serialized diagram JSON from the document's custom
@@ -164,7 +165,7 @@ class FusionAdapter:
             self.show_error(f"Failed to save diagram: {str(e)}")
             return False
 
-    def validate_and_get_errors(self, graph: Graph) -> List[ValidationError]:
+    def validate_and_get_errors(self, graph: Graph) -> list[ValidationError]:
         """Validate a graph and return any errors.
 
         Delegates to the core validation function.
@@ -180,8 +181,8 @@ class FusionAdapter:
     def build_action_plan_for_graph(
         self,
         graph: Graph,
-        previous_graph: Optional[Graph] = None,
-    ) -> List[ActionPlan]:
+        previous_graph: Graph | None = None,
+    ) -> list[ActionPlan]:
         """Build an action plan for synchronizing the Fusion document.
 
         Delegates to the core action plan builder.
@@ -195,7 +196,7 @@ class FusionAdapter:
         """
         return build_action_plan(graph, previous_graph)
 
-    def execute_action_plan(self, actions: List[ActionPlan]) -> bool:
+    def execute_action_plan(self, actions: list[ActionPlan]) -> bool:
         """Execute an action plan to modify the Fusion document.
 
         Iterates through the action plan and executes each action
@@ -215,9 +216,7 @@ class FusionAdapter:
                 if not result:
                     success = False
             except Exception as e:
-                self.show_error(
-                    f"Action '{action.action_type.value}' failed: {str(e)}"
-                )
+                self.show_error(f"Action '{action.action_type.value}' failed: {str(e)}")
                 success = False
 
         return success
@@ -309,7 +308,7 @@ class FusionAdapter:
         self.show_error(message)
         return True
 
-    def show_validation_errors(self, errors: List[ValidationError]) -> None:
+    def show_validation_errors(self, errors: list[ValidationError]) -> None:
         """Display validation errors to the user.
 
         Shows a message box with a summary of all validation errors.
@@ -351,7 +350,7 @@ class FusionAdapter:
             self._ui.messageBox(message, "Information")
 
 
-def create_adapter_from_globals() -> Optional[FusionAdapter]:
+def create_adapter_from_globals() -> FusionAdapter | None:
     """Create an adapter using global Fusion Application.
 
     Convenience function for use in Fusion add-in entry points.

@@ -310,21 +310,26 @@ class PythonInterface {
 
   // === COMMON OPERATIONS ===
 
-  saveDiagram() {
+  saveDiagram(options = {}) {
     if (!window.diagramEditor) return Promise.reject('No diagram editor available');
+    const silent = options.silent || false;
     
     const diagramJson = window.diagramEditor.exportDiagram();
     return this.sendMessage('save_diagram', { diagram: diagramJson }, true)
       .then(response => {
         if (response.success) {
-          this.showNotification('Diagram saved successfully', 'success');
+          if (!silent) {
+            this.showNotification('Diagram saved successfully', 'success');
+          }
         } else {
           throw new Error(response.error || 'Save failed');
         }
         return response;
       })
       .catch(error => {
-        this.showNotification('Failed to save diagram: ' + error.message, 'error');
+        if (!silent) {
+          this.showNotification('Failed to save diagram: ' + error.message, 'error');
+        }
         throw error;
       });
   }
@@ -507,6 +512,9 @@ class PythonInterface {
 
   displayRuleResults(results) {
     logger.debug('Rule check results:', results);
+
+    // Defensive: ensure results is always an array
+    if (!Array.isArray(results)) results = [];
 
     const panel = document.getElementById('rule-results');
     const hasErrors = results.some(r => r.severity === 'error');

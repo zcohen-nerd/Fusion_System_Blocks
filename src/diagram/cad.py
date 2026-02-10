@@ -7,7 +7,7 @@ including component tracking, 3D visualization, assembly sequences, and living d
 
 import base64
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Any, Optional
 
 
 class CADLinkingError(Exception):
@@ -21,9 +21,9 @@ def create_enhanced_cad_link(
     material: str = "",
     mass: float = 0.0,
     volume: float = 0.0,
-    bounding_box: Optional[Dict[str, List[float]]] = None,
-    custom_properties: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    bounding_box: Optional[dict[str, list[float]]] = None,
+    custom_properties: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
     """
     Create an enhanced CAD link with component properties and sync status.
 
@@ -67,7 +67,7 @@ def create_enhanced_cad_link(
     return link
 
 
-def update_component_properties(link: Dict[str, Any], **properties) -> Dict[str, Any]:
+def update_component_properties(link: dict[str, Any], **properties) -> dict[str, Any]:
     """
     Update component properties in a CAD link.
 
@@ -122,7 +122,9 @@ def update_component_properties(link: Dict[str, Any], **properties) -> Dict[str,
     return link
 
 
-def mark_component_as_missing(link: Dict[str, Any], error_message: str = "") -> Dict[str, Any]:
+def mark_component_as_missing(
+    link: dict[str, Any], error_message: str = ""
+) -> dict[str, Any]:
     """
     Mark a component as missing (not found in Fusion 360).
 
@@ -147,7 +149,9 @@ def mark_component_as_missing(link: Dict[str, Any], error_message: str = "") -> 
     return link
 
 
-def mark_component_as_error(cad_link: Dict[str, Any], error_message: str) -> Dict[str, Any]:
+def mark_component_as_error(
+    cad_link: dict[str, Any], error_message: str
+) -> dict[str, Any]:
     """
     Mark a CAD component as having an error.
 
@@ -164,7 +168,9 @@ def mark_component_as_error(cad_link: Dict[str, Any], error_message: str) -> Dic
     # Update sync status
     cad_link["syncStatus"] = {
         "status": "error",
-        "lastSync": cad_link.get("syncStatus", {}).get("lastSync", datetime.now().isoformat()),
+        "lastSync": cad_link.get("syncStatus", {}).get(
+            "lastSync", datetime.now().isoformat()
+        ),
         "lastModified": datetime.now().isoformat(),
         "syncErrors": [error_message],
         "changesSinceSync": cad_link.get("syncStatus", {}).get("changesSinceSync", []),
@@ -173,7 +179,7 @@ def mark_component_as_error(cad_link: Dict[str, Any], error_message: str) -> Dic
     return cad_link
 
 
-def validate_enhanced_cad_link(cad_link: Dict[str, Any]) -> Dict[str, Any]:
+def validate_enhanced_cad_link(cad_link: dict[str, Any]) -> dict[str, Any]:
     """
     Validate that an enhanced CAD link has all required properties.
 
@@ -200,18 +206,25 @@ def validate_enhanced_cad_link(cad_link: Dict[str, Any]) -> Dict[str, Any]:
     # Check sync status structure
     if "syncStatus" not in cad_link:
         warnings.append(
-            "Missing syncStatus - component may not be properly synchronized")
+            "Missing syncStatus - component may not be properly synchronized"
+        )
     else:
         sync_status = cad_link["syncStatus"]
         if "status" not in sync_status:
             errors.append("Missing status in syncStatus")
-        elif sync_status["status"] not in ["synchronized", "modified", "missing", "error"]:
+        elif sync_status["status"] not in [
+            "synchronized",
+            "modified",
+            "missing",
+            "error",
+        ]:
             errors.append(f"Invalid sync status: {sync_status['status']}")
 
     # Check component properties
     if "componentProperties" not in cad_link:
         warnings.append(
-            "Missing componentProperties - physical properties may not be available")
+            "Missing componentProperties - physical properties may not be available"
+        )
     else:
         props = cad_link["componentProperties"]
         if not isinstance(props, dict):
@@ -219,13 +232,12 @@ def validate_enhanced_cad_link(cad_link: Dict[str, Any]) -> Dict[str, Any]:
 
     # Check thumbnail
     if "thumbnail" not in cad_link:
-        warnings.append(
-            "Missing thumbnail - visual representation not available")
+        warnings.append("Missing thumbnail - visual representation not available")
 
     return {"valid": len(errors) == 0, "errors": errors, "warnings": warnings}
 
 
-def calculate_component_completion_percentage(block: Dict[str, Any]) -> float:
+def calculate_component_completion_percentage(block: dict[str, Any]) -> float:
     """
     Calculate completion percentage based on component status and properties.
 
@@ -235,8 +247,7 @@ def calculate_component_completion_percentage(block: Dict[str, Any]) -> float:
     Returns:
         Completion percentage (0.0 to 100.0)
     """
-    cad_links = [link for link in block.get(
-        "links", []) if link.get("target") == "cad"]
+    cad_links = [link for link in block.get("links", []) if link.get("target") == "cad"]
 
     if not cad_links:
         return 0.0
@@ -276,7 +287,7 @@ def calculate_component_completion_percentage(block: Dict[str, Any]) -> float:
     return (total_score / max_score) * 100 if max_score > 0 else 0.0
 
 
-def get_component_health_status(block: Dict[str, Any]) -> Dict[str, Any]:
+def get_component_health_status(block: dict[str, Any]) -> dict[str, Any]:
     """
     Get comprehensive health status for all components in a block.
 
@@ -286,8 +297,7 @@ def get_component_health_status(block: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Health status dictionary with detailed information
     """
-    cad_links = [link for link in block.get(
-        "links", []) if link.get("target") == "cad"]
+    cad_links = [link for link in block.get("links", []) if link.get("target") == "cad"]
 
     if not cad_links:
         return {
@@ -300,8 +310,13 @@ def get_component_health_status(block: Dict[str, Any]) -> Dict[str, Any]:
         }
 
     # Analyze each component
-    status_counts = {"synchronized": 0, "modified": 0,
-                     "missing": 0, "error": 0, "unknown": 0}
+    status_counts = {
+        "synchronized": 0,
+        "modified": 0,
+        "missing": 0,
+        "error": 0,
+        "unknown": 0,
+    }
     issues = []
     recommendations = []
 
@@ -312,8 +327,7 @@ def get_component_health_status(block: Dict[str, Any]) -> Dict[str, Any]:
         # Check for issues
         if sync_status == "missing":
             issues.append(f"Component {i + 1}: Not found in Fusion 360")
-            recommendations.append(
-                f"Check if component {i + 1} was deleted or moved")
+            recommendations.append(f"Check if component {i + 1} was deleted or moved")
         elif sync_status == "error":
             errors = link.get("syncStatus", {}).get("syncErrors", [])
             for error in errors:
@@ -326,11 +340,9 @@ def get_component_health_status(block: Dict[str, Any]) -> Dict[str, Any]:
         # Check for missing properties
         props = link.get("componentProperties", {})
         if not props.get("material"):
-            recommendations.append(
-                f"Component {i + 1}: Add material information")
+            recommendations.append(f"Component {i + 1}: Add material information")
         if not props.get("mass", 0):
-            recommendations.append(
-                f"Component {i + 1}: Add mass/weight information")
+            recommendations.append(f"Component {i + 1}: Add mass/weight information")
 
     # Determine overall status
     total_components = len(cad_links)
@@ -358,7 +370,7 @@ def get_component_health_status(block: Dict[str, Any]) -> Dict[str, Any]:
 
 def generate_component_thumbnail_placeholder(
     width: int = 64, height: int = 64, component_name: str = "Component"
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Generate a placeholder thumbnail for components without actual thumbnails.
 
@@ -395,7 +407,7 @@ def generate_component_thumbnail_placeholder(
 
 def generate_component_thumbnail_data(
     component_name: str, thumbnail_bytes: bytes = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Generate thumbnail data from actual component image.
 
@@ -420,7 +432,7 @@ def generate_component_thumbnail_data(
         return generate_component_thumbnail_placeholder(component_name=component_name)
 
 
-def sync_all_components_in_diagram(diagram: Dict[str, Any]) -> Dict[str, Any]:
+def sync_all_components_in_diagram(diagram: dict[str, Any]) -> dict[str, Any]:
     """
     Sync all CAD components in a diagram (placeholder for Fusion 360 integration).
 
@@ -440,8 +452,9 @@ def sync_all_components_in_diagram(diagram: Dict[str, Any]) -> Dict[str, Any]:
     }
 
     for block in diagram.get("blocks", []):
-        cad_links = [link for link in block.get(
-            "links", []) if link.get("target") == "cad"]
+        cad_links = [
+            link for link in block.get("links", []) if link.get("target") == "cad"
+        ]
 
         if cad_links:
             results["blocks_with_cad"] += 1
@@ -467,7 +480,7 @@ def sync_all_components_in_diagram(diagram: Dict[str, Any]) -> Dict[str, Any]:
     return results
 
 
-def create_component_dashboard_data(diagram: Dict[str, Any]) -> Dict[str, Any]:
+def create_component_dashboard_data(diagram: dict[str, Any]) -> dict[str, Any]:
     """
     Create dashboard data for component status visualization.
 
@@ -493,7 +506,12 @@ def create_component_dashboard_data(diagram: Dict[str, Any]) -> Dict[str, Any]:
         },
         "completion_stats": {
             "average_completion": 0.0,
-            "blocks_by_completion": {"0-25%": 0, "26-50%": 0, "51-75%": 0, "76-100%": 0},
+            "blocks_by_completion": {
+                "0-25%": 0,
+                "26-50%": 0,
+                "51-75%": 0,
+                "76-100%": 0,
+            },
         },
         "issues": [],
         "recommendations": [],
@@ -503,8 +521,9 @@ def create_component_dashboard_data(diagram: Dict[str, Any]) -> Dict[str, Any]:
     blocks_with_cad = 0
 
     for block in diagram.get("blocks", []):
-        cad_links = [link for link in block.get(
-            "links", []) if link.get("target") == "cad"]
+        cad_links = [
+            link for link in block.get("links", []) if link.get("target") == "cad"
+        ]
 
         if cad_links:
             blocks_with_cad += 1
@@ -537,7 +556,9 @@ def create_component_dashboard_data(diagram: Dict[str, Any]) -> Dict[str, Any]:
     dashboard["overview"]["blocks_with_cad"] = blocks_with_cad
 
     if blocks_with_cad > 0:
-        dashboard["completion_stats"]["average_completion"] = total_completion / blocks_with_cad
+        dashboard["completion_stats"]["average_completion"] = (
+            total_completion / blocks_with_cad
+        )
 
         # Determine overall health
         total_components = dashboard["overview"]["total_components"]
@@ -545,7 +566,10 @@ def create_component_dashboard_data(diagram: Dict[str, Any]) -> Dict[str, Any]:
             dashboard["overview"]["overall_health"] = "no_components"
         elif dashboard["status_summary"]["missing"] > total_components * 0.3:
             dashboard["overview"]["overall_health"] = "critical"
-        elif dashboard["status_summary"]["error"] > 0 or dashboard["status_summary"]["missing"] > 0:
+        elif (
+            dashboard["status_summary"]["error"] > 0
+            or dashboard["status_summary"]["missing"] > 0
+        ):
             dashboard["overview"]["overall_health"] = "warning"
         elif dashboard["status_summary"]["synchronized"] == total_components:
             dashboard["overview"]["overall_health"] = "healthy"
@@ -563,7 +587,7 @@ def create_component_dashboard_data(diagram: Dict[str, Any]) -> Dict[str, Any]:
 # ============================================================================
 
 
-def initialize_3d_visualization(block: Dict[str, Any]) -> Dict[str, Any]:
+def initialize_3d_visualization(block: dict[str, Any]) -> dict[str, Any]:
     """
     Initialize 3D visualization properties for a block.
 
@@ -600,8 +624,8 @@ def initialize_3d_visualization(block: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def update_3d_overlay_position(
-    block: Dict[str, Any], x: float, y: float, z: float
-) -> Dict[str, Any]:
+    block: dict[str, Any], x: float, y: float, z: float
+) -> dict[str, Any]:
     """
     Update the 3D overlay position for a block.
 
@@ -624,7 +648,7 @@ def update_3d_overlay_position(
     return block
 
 
-def set_component_highlight_color(block: Dict[str, Any], color: str) -> Dict[str, Any]:
+def set_component_highlight_color(block: dict[str, Any], color: str) -> dict[str, Any]:
     """
     Set the highlight color for 3D components linked to this block.
 
@@ -652,8 +676,8 @@ def set_component_highlight_color(block: Dict[str, Any], color: str) -> Dict[str
 
 
 def enable_system_grouping(
-    blocks: List[Dict[str, Any]], group_color: str = "#2196F3"
-) -> List[Dict[str, Any]]:
+    blocks: list[dict[str, Any]], group_color: str = "#2196F3"
+) -> list[dict[str, Any]]:
     """
     Enable system grouping visualization for a set of blocks.
 
@@ -685,8 +709,8 @@ def enable_system_grouping(
 
 
 def create_3d_connection_route(
-    connection: Dict[str, Any], waypoints: List[Dict[str, float]]
-) -> Dict[str, Any]:
+    connection: dict[str, Any], waypoints: list[dict[str, float]]
+) -> dict[str, Any]:
     """
     Create a 3D route path for a connection.
 
@@ -741,7 +765,7 @@ def create_3d_connection_route(
     return connection
 
 
-def update_live_thumbnail(block: Dict[str, Any], thumbnail_data: str) -> Dict[str, Any]:
+def update_live_thumbnail(block: dict[str, Any], thumbnail_data: str) -> dict[str, Any]:
     """
     Update the live 3D thumbnail for a block.
 
@@ -769,12 +793,14 @@ def update_live_thumbnail(block: Dict[str, Any], thumbnail_data: str) -> Dict[st
             }
 
     # Update last thumbnail update time
-    block["visualization3D"]["liveThumbnail"]["lastUpdated"] = datetime.now().isoformat()
+    block["visualization3D"]["liveThumbnail"]["lastUpdated"] = (
+        datetime.now().isoformat()
+    )
 
     return block
 
 
-def initialize_living_documentation(block: Dict[str, Any]) -> Dict[str, Any]:
+def initialize_living_documentation(block: dict[str, Any]) -> dict[str, Any]:
     """
     Initialize living documentation properties for a block.
 
@@ -827,7 +853,7 @@ def initialize_living_documentation(block: Dict[str, Any]) -> Dict[str, Any]:
     return block
 
 
-def generate_assembly_sequence(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
+def generate_assembly_sequence(diagram: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Auto-generate assembly sequence from block diagram dependencies.
 
@@ -884,7 +910,7 @@ def generate_assembly_sequence(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
 
     # Then add blocks with dependencies in topological order
     remaining_blocks = [b for b in blocks if b.get("id", "") in dependency_map]
-    processed = set(step["blockId"] for step in assembly_steps)
+    processed = {step["blockId"] for step in assembly_steps}
 
     while remaining_blocks:
         progress_made = False
@@ -909,7 +935,9 @@ def generate_assembly_sequence(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
 
                 # Update block's living documentation
                 block["livingDocumentation"]["assemblySequence"]["order"] = order
-                block["livingDocumentation"]["assemblySequence"]["dependencies"] = dependencies
+                block["livingDocumentation"]["assemblySequence"]["dependencies"] = (
+                    dependencies
+                )
 
                 remaining_blocks.remove(block)
                 processed.add(block_id)
@@ -936,7 +964,7 @@ def generate_assembly_sequence(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
     return assembly_steps
 
 
-def estimate_assembly_time(block: Dict[str, Any]) -> float:
+def estimate_assembly_time(block: dict[str, Any]) -> float:
     """
     Estimate assembly time for a block based on its properties.
 
@@ -953,20 +981,23 @@ def estimate_assembly_time(block: Dict[str, Any]) -> float:
     base_time += len(interfaces) * 2.0
 
     # Add time based on CAD links (more complex components)
-    cad_links = [link for link in block.get(
-        "links", []) if link.get("target") == "cad"]
+    cad_links = [link for link in block.get("links", []) if link.get("target") == "cad"]
     base_time += len(cad_links) * 5.0
 
     # Adjust based on block type
     block_type = block.get("type", "")
-    type_multipliers = {"mechanical": 1.5,
-                        "electrical": 1.2, "software": 0.8, "control": 1.3}
+    type_multipliers = {
+        "mechanical": 1.5,
+        "electrical": 1.2,
+        "software": 0.8,
+        "control": 1.3,
+    }
     multiplier = type_multipliers.get(block_type, 1.0)
 
     return base_time * multiplier
 
 
-def determine_complexity(block: Dict[str, Any]) -> str:
+def determine_complexity(block: dict[str, Any]) -> str:
     """
     Determine complexity level of a block for assembly.
 
@@ -983,8 +1014,7 @@ def determine_complexity(block: Dict[str, Any]) -> str:
     complexity_score += len(interfaces)
 
     # CAD links add complexity
-    cad_links = [link for link in block.get(
-        "links", []) if link.get("target") == "cad"]
+    cad_links = [link for link in block.get("links", []) if link.get("target") == "cad"]
     complexity_score += len(cad_links) * 2
 
     # Child diagrams add significant complexity
@@ -1002,7 +1032,7 @@ def determine_complexity(block: Dict[str, Any]) -> str:
         return "critical"
 
 
-def generate_assembly_instructions(block: Dict[str, Any]) -> List[str]:
+def generate_assembly_instructions(block: dict[str, Any]) -> list[str]:
     """
     Generate assembly instructions for a block.
 
@@ -1019,13 +1049,13 @@ def generate_assembly_instructions(block: Dict[str, Any]) -> List[str]:
     instructions.append(f"1. Prepare {block_name} for assembly")
 
     # CAD component instructions
-    cad_links = [link for link in block.get(
-        "links", []) if link.get("target") == "cad"]
+    cad_links = [link for link in block.get("links", []) if link.get("target") == "cad"]
     if cad_links:
         instructions.append("2. Verify all CAD components are available:")
         for i, link in enumerate(cad_links):
             component_name = link.get("componentProperties", {}).get(
-                "name", f"Component {i + 1}")
+                "name", f"Component {i + 1}"
+            )
             instructions.append(f"   - {component_name}")
 
     # Interface instructions
@@ -1043,7 +1073,7 @@ def generate_assembly_instructions(block: Dict[str, Any]) -> List[str]:
     return instructions
 
 
-def generate_living_bom(diagram: Dict[str, Any]) -> Dict[str, Any]:
+def generate_living_bom(diagram: dict[str, Any]) -> dict[str, Any]:
     """
     Generate a living Bill of Materials from the diagram.
 
@@ -1080,8 +1110,9 @@ def generate_living_bom(diagram: Dict[str, Any]) -> Dict[str, Any]:
         }
 
         # Add CAD component details if available
-        cad_links = [link for link in block.get(
-            "links", []) if link.get("target") == "cad"]
+        cad_links = [
+            link for link in block.get("links", []) if link.get("target") == "cad"
+        ]
         if cad_links:
             item["cadComponents"] = []
             for link in cad_links:
@@ -1117,8 +1148,8 @@ def generate_living_bom(diagram: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def track_change_impact(
-    diagram: Dict[str, Any], changed_block_id: str, change_reason: str
-) -> Dict[str, Any]:
+    diagram: dict[str, Any], changed_block_id: str, change_reason: str
+) -> dict[str, Any]:
     """
     Track and analyze the impact of changes to a block.
 
@@ -1198,8 +1229,8 @@ def track_change_impact(
 
 
 def update_manufacturing_progress(
-    block: Dict[str, Any], stage: str, completion: float
-) -> Dict[str, Any]:
+    block: dict[str, Any], stage: str, completion: float
+) -> dict[str, Any]:
     """
     Update manufacturing progress for a block.
 

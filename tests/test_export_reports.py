@@ -1,6 +1,6 @@
 """Test export functionality for Fusion System Blocks."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -40,8 +40,7 @@ class TestExportFunctions:
                             "docId": "doc1",
                             "name": "PSU_Module",
                         },
-                        {"target": "ecad", "device": "LM3940",
-                            "footprint": "TO-220"},
+                        {"target": "ecad", "device": "LM3940", "footprint": "TO-220"},
                     ],
                     "attributes": {"power_rating": "5W", "efficiency": "85%"},
                 },
@@ -145,7 +144,9 @@ class TestExportFunctions:
     @patch("builtins.open", create=True)
     @patch("pathlib.Path.mkdir")
     @patch("pathlib.Path.exists")
-    def test_export_report_files(self, mock_exists, mock_mkdir, mock_open, sample_diagram):
+    def test_export_report_files(
+        self, mock_exists, mock_mkdir, mock_open, sample_diagram
+    ):
         """Test export file writing."""
         # Mock file system
         mock_exists.return_value = False

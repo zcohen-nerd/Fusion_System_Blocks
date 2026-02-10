@@ -7,7 +7,7 @@ block diagrams.
 
 import json
 import uuid
-from typing import Dict, Any, Optional
+from typing import Any, Optional
 
 
 def generate_id() -> str:
@@ -15,7 +15,7 @@ def generate_id() -> str:
     return str(uuid.uuid4())
 
 
-def create_empty_diagram() -> Dict[str, Any]:
+def create_empty_diagram() -> dict[str, Any]:
     """Create an empty diagram structure."""
     return {
         "schema": "system-blocks-v1",
@@ -25,8 +25,12 @@ def create_empty_diagram() -> Dict[str, Any]:
 
 
 def create_block(
-    name: str, x: int = 0, y: int = 0, block_type: str = "Generic", status: str = "Placeholder"
-) -> Dict[str, Any]:
+    name: str,
+    x: int = 0,
+    y: int = 0,
+    block_type: str = "Generic",
+    status: str = "Placeholder",
+) -> dict[str, Any]:
     """Create a new block with the given parameters."""
     return {
         "id": generate_id(),
@@ -47,7 +51,7 @@ def create_interface(
     direction: str = "bidirectional",
     side: str = "right",
     index: int = 0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a new interface for a block."""
     return {
         "id": generate_id(),
@@ -65,7 +69,7 @@ def create_connection(
     protocol: str = "data",
     from_interface: str = None,
     to_interface: str = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a new connection between two blocks."""
     connection = {
         "id": generate_id(),
@@ -78,17 +82,21 @@ def create_connection(
     return connection
 
 
-def add_block_to_diagram(diagram: Dict[str, Any], block: Dict[str, Any]) -> None:
+def add_block_to_diagram(diagram: dict[str, Any], block: dict[str, Any]) -> None:
     """Add a block to the diagram."""
     diagram["blocks"].append(block)
 
 
-def add_connection_to_diagram(diagram: Dict[str, Any], connection: Dict[str, Any]) -> None:
+def add_connection_to_diagram(
+    diagram: dict[str, Any], connection: dict[str, Any]
+) -> None:
     """Add a connection to the diagram."""
     diagram["connections"].append(connection)
 
 
-def find_block_by_id(diagram: Dict[str, Any], block_id: str) -> Optional[Dict[str, Any]]:
+def find_block_by_id(
+    diagram: dict[str, Any], block_id: str
+) -> Optional[dict[str, Any]]:
     """Find a block by its ID."""
     for block in diagram["blocks"]:
         if block["id"] == block_id:
@@ -96,7 +104,7 @@ def find_block_by_id(diagram: Dict[str, Any], block_id: str) -> Optional[Dict[st
     return None
 
 
-def remove_block_from_diagram(diagram: Dict[str, Any], block_id: str) -> bool:
+def remove_block_from_diagram(diagram: dict[str, Any], block_id: str) -> bool:
     """
     Remove a block and its connections from the diagram.
 
@@ -122,7 +130,7 @@ def remove_block_from_diagram(diagram: Dict[str, Any], block_id: str) -> bool:
     return block_removed
 
 
-def serialize_diagram(diagram: Dict[str, Any], validate: bool = False) -> str:
+def serialize_diagram(diagram: dict[str, Any], validate: bool = False) -> str:
     """
     Serialize diagram to JSON string.
 
@@ -139,6 +147,7 @@ def serialize_diagram(diagram: Dict[str, Any], validate: bool = False) -> str:
     if validate:
         # Import here to avoid circular dependency
         from .validation import validate_diagram
+
         is_valid, error = validate_diagram(diagram)
         if not is_valid:
             raise ValueError(f"Diagram validation failed: {error}")
@@ -146,7 +155,7 @@ def serialize_diagram(diagram: Dict[str, Any], validate: bool = False) -> str:
     return json.dumps(diagram, indent=2)
 
 
-def deserialize_diagram(json_str: str, validate: bool = False) -> Dict[str, Any]:
+def deserialize_diagram(json_str: str, validate: bool = False) -> dict[str, Any]:
     """
     Deserialize diagram from JSON string.
 
@@ -166,10 +175,11 @@ def deserialize_diagram(json_str: str, validate: bool = False) -> Dict[str, Any]
         if validate:
             # Import here to avoid circular dependency
             from .validation import validate_diagram
+
             is_valid, error = validate_diagram(diagram)
             if not is_valid:
                 raise ValueError(f"Diagram validation failed: {error}")
 
         return diagram
     except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON: {e}")
+        raise ValueError(f"Invalid JSON: {e}") from e

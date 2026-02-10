@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from .models import Block, Graph, Port, PortDirection
 
@@ -76,12 +76,12 @@ class ValidationError:
 
     code: ValidationErrorCode
     message: str
-    block_id: Optional[str] = None
-    port_id: Optional[str] = None
-    connection_id: Optional[str] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    block_id: str | None = None
+    port_id: str | None = None
+    connection_id: str | None = None
+    details: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert error to dictionary for serialization.
 
         Returns:
@@ -97,7 +97,7 @@ class ValidationError:
         }
 
 
-def validate_graph(graph: Graph) -> List[ValidationError]:
+def validate_graph(graph: Graph) -> list[ValidationError]:
     """Validate a graph and return all validation errors.
 
     Performs comprehensive validation including:
@@ -120,7 +120,7 @@ def validate_graph(graph: Graph) -> List[ValidationError]:
         ...     for error in errors:
         ...         print(f"{error.code.value}: {error.message}")
     """
-    errors: List[ValidationError] = []
+    errors: list[ValidationError] = []
 
     # Run all validation checks
     errors.extend(_validate_block_ids(graph))
@@ -131,7 +131,7 @@ def validate_graph(graph: Graph) -> List[ValidationError]:
     return errors
 
 
-def _validate_block_ids(graph: Graph) -> List[ValidationError]:
+def _validate_block_ids(graph: Graph) -> list[ValidationError]:
     """Check for duplicate block IDs and empty names.
 
     Args:
@@ -140,8 +140,8 @@ def _validate_block_ids(graph: Graph) -> List[ValidationError]:
     Returns:
         List of validation errors found.
     """
-    errors: List[ValidationError] = []
-    seen_ids: Dict[str, Block] = {}
+    errors: list[ValidationError] = []
+    seen_ids: dict[str, Block] = {}
 
     for block in graph.blocks:
         # Check for duplicate IDs
@@ -177,7 +177,7 @@ def _validate_block_ids(graph: Graph) -> List[ValidationError]:
     return errors
 
 
-def _validate_port_ids(graph: Graph) -> List[ValidationError]:
+def _validate_port_ids(graph: Graph) -> list[ValidationError]:
     """Check for duplicate port IDs across the graph.
 
     Args:
@@ -186,8 +186,8 @@ def _validate_port_ids(graph: Graph) -> List[ValidationError]:
     Returns:
         List of validation errors found.
     """
-    errors: List[ValidationError] = []
-    seen_port_ids: Dict[str, tuple[str, str]] = {}  # port_id -> (block_id, port_name)
+    errors: list[ValidationError] = []
+    seen_port_ids: dict[str, tuple[str, str]] = {}  # port_id -> (block_id, port_name)
 
     for block in graph.blocks:
         for port in block.ports:
@@ -217,7 +217,7 @@ def _validate_port_ids(graph: Graph) -> List[ValidationError]:
     return errors
 
 
-def _validate_connections(graph: Graph) -> List[ValidationError]:
+def _validate_connections(graph: Graph) -> list[ValidationError]:
     """Validate all connections in the graph.
 
     Checks for:
@@ -233,12 +233,12 @@ def _validate_connections(graph: Graph) -> List[ValidationError]:
     Returns:
         List of validation errors found.
     """
-    errors: List[ValidationError] = []
-    block_ids: Set[str] = {block.id for block in graph.blocks}
-    seen_connections: Set[tuple[str, str, str, str]] = set()
+    errors: list[ValidationError] = []
+    block_ids: set[str] = {block.id for block in graph.blocks}
+    seen_connections: set[tuple[str, str, str, str]] = set()
 
     # Build port lookup: block_id -> set of port_ids
-    port_lookup: Dict[str, Set[str]] = {}
+    port_lookup: dict[str, set[str]] = {}
     for block in graph.blocks:
         port_lookup[block.id] = {port.id for port in block.ports}
 
@@ -354,7 +354,7 @@ def _validate_connections(graph: Graph) -> List[ValidationError]:
     return errors
 
 
-def _validate_port_directions(graph: Graph) -> List[ValidationError]:
+def _validate_port_directions(graph: Graph) -> list[ValidationError]:
     """Check that connected ports have compatible directions.
 
     A valid connection should go from an OUTPUT/BIDIRECTIONAL port
@@ -366,10 +366,10 @@ def _validate_port_directions(graph: Graph) -> List[ValidationError]:
     Returns:
         List of validation errors found.
     """
-    errors: List[ValidationError] = []
+    errors: list[ValidationError] = []
 
     # Build port lookup: port_id -> Port
-    port_by_id: Dict[str, Port] = {}
+    port_by_id: dict[str, Port] = {}
     for block in graph.blocks:
         for port in block.ports:
             port_by_id[port.id] = port
@@ -431,7 +431,7 @@ def _validate_port_directions(graph: Graph) -> List[ValidationError]:
     return errors
 
 
-def _detect_cycles(graph: Graph) -> List[ValidationError]:
+def _detect_cycles(graph: Graph) -> list[ValidationError]:
     """Detect cycles in the connection graph.
 
     Uses depth-first search to find cycles. Cycles may indicate
@@ -443,19 +443,19 @@ def _detect_cycles(graph: Graph) -> List[ValidationError]:
     Returns:
         List of validation errors if cycles are found.
     """
-    errors: List[ValidationError] = []
+    errors: list[ValidationError] = []
 
     # Build adjacency list
-    adjacency: Dict[str, List[str]] = {block.id: [] for block in graph.blocks}
+    adjacency: dict[str, list[str]] = {block.id: [] for block in graph.blocks}
     for conn in graph.connections:
         if conn.from_block_id in adjacency:
             adjacency[conn.from_block_id].append(conn.to_block_id)
 
     # Track visit state: 0=unvisited, 1=in_progress, 2=completed
-    state: Dict[str, int] = {block_id: 0 for block_id in adjacency}
-    cycle_blocks: List[str] = []
+    state: dict[str, int] = dict.fromkeys(adjacency, 0)
+    cycle_blocks: list[str] = []
 
-    def dfs(node: str, path: List[str]) -> bool:
+    def dfs(node: str, path: list[str]) -> bool:
         """Depth-first search for cycle detection."""
         if state[node] == 1:  # Back edge found - cycle
             cycle_blocks.extend(path)
@@ -503,7 +503,7 @@ def _detect_cycles(graph: Graph) -> List[ValidationError]:
     return errors
 
 
-def has_errors(errors: List[ValidationError]) -> bool:
+def has_errors(errors: list[ValidationError]) -> bool:
     """Check if the error list contains any errors.
 
     Args:
@@ -516,8 +516,8 @@ def has_errors(errors: List[ValidationError]) -> bool:
 
 
 def filter_by_code(
-    errors: List[ValidationError], code: ValidationErrorCode
-) -> List[ValidationError]:
+    errors: list[ValidationError], code: ValidationErrorCode
+) -> list[ValidationError]:
     """Filter errors by a specific error code.
 
     Args:
@@ -530,7 +530,7 @@ def filter_by_code(
     return [e for e in errors if e.code == code]
 
 
-def get_error_summary(errors: List[ValidationError]) -> str:
+def get_error_summary(errors: list[ValidationError]) -> str:
     """Generate a human-readable summary of validation errors.
 
     Args:

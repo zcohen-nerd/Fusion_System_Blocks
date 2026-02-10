@@ -4,19 +4,20 @@ Diagram validation and status tracking functions.
 Provides schema validation, link validation, and block status computation.
 """
 
-import os
 import json
-from typing import Dict, List, Tuple, Any, Optional
+import os
+from typing import Any, Optional
 
 # jsonschema is optional - not available in Fusion 360's Python environment
 try:
     import jsonschema
+
     JSONSCHEMA_AVAILABLE = True
 except ImportError:
     JSONSCHEMA_AVAILABLE = False
 
 
-def load_schema() -> Dict[str, Any]:
+def load_schema() -> dict[str, Any]:
     """
     Load the JSON schema for diagram validation.
 
@@ -28,7 +29,7 @@ def load_schema() -> Dict[str, Any]:
     schema_path = os.path.join(current_dir, "..", "..", "docs", "schema.json")
 
     try:
-        with open(schema_path, "r") as f:
+        with open(schema_path) as f:
             return json.load(f)
     except FileNotFoundError:
         # Fallback basic schema if file doesn't exist
@@ -44,7 +45,7 @@ def load_schema() -> Dict[str, Any]:
         }
 
 
-def validate_diagram(diagram: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
+def validate_diagram(diagram: dict[str, Any]) -> tuple[bool, Optional[str]]:
     """
     Validate a diagram against the JSON schema.
 
@@ -75,7 +76,7 @@ def validate_diagram(diagram: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
         return False, f"Validation error: {e}"
 
 
-def validate_links(block: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
+def validate_links(block: dict[str, Any]) -> tuple[bool, Optional[str]]:
     """
     Validate the links in a block.
 
@@ -106,7 +107,10 @@ def validate_links(block: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
         elif target == "ecad":
             # ECAD links must have device
             if not link.get("device"):
-                return False, f"ECAD link missing device in block '{block.get('name', 'Unknown')}'"
+                return (
+                    False,
+                    f"ECAD link missing device in block '{block.get('name', 'Unknown')}'",
+                )
 
         elif target == "external":
             # External links must have identifier
@@ -124,7 +128,7 @@ def validate_links(block: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-def validate_diagram_links(diagram: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def validate_diagram_links(diagram: dict[str, Any]) -> tuple[bool, list[str]]:
     """
     Validate all links in a diagram.
 
@@ -144,7 +148,7 @@ def validate_diagram_links(diagram: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-def compute_block_status(block: Dict[str, Any]) -> str:
+def compute_block_status(block: dict[str, Any]) -> str:
     """
     Compute the status of a block based on its content and links.
 
@@ -189,7 +193,7 @@ def compute_block_status(block: Dict[str, Any]) -> str:
         return "Placeholder"
 
 
-def update_block_statuses(diagram: Dict[str, Any]) -> Dict[str, Any]:
+def update_block_statuses(diagram: dict[str, Any]) -> dict[str, Any]:
     """
     Update the status of all blocks in a diagram.
 

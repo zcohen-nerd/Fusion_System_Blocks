@@ -62,21 +62,13 @@ class TestGraphBuilderBlocks:
 
     def test_add_block_with_type(self):
         """Block type is set correctly."""
-        graph = (
-            GraphBuilder()
-            .add_block("Sensor", block_type="ADC")
-            .build()
-        )
+        graph = GraphBuilder().add_block("Sensor", block_type="ADC").build()
 
         assert graph.blocks[0].block_type == "ADC"
 
     def test_add_block_with_position(self):
         """Block position is set correctly."""
-        graph = (
-            GraphBuilder()
-            .add_block("MCU", x=100, y=200)
-            .build()
-        )
+        graph = GraphBuilder().add_block("MCU", x=100, y=200).build()
 
         block = graph.blocks[0]
         assert block.x == 100
@@ -84,11 +76,7 @@ class TestGraphBuilderBlocks:
 
     def test_add_block_with_status(self):
         """Block status is set correctly."""
-        graph = (
-            GraphBuilder()
-            .add_block("MCU", status=BlockStatus.IMPLEMENTED)
-            .build()
-        )
+        graph = GraphBuilder().add_block("MCU", status=BlockStatus.IMPLEMENTED).build()
 
         assert graph.blocks[0].status == BlockStatus.IMPLEMENTED
 
@@ -131,12 +119,7 @@ class TestGraphBuilderPorts:
 
     def test_add_port_to_block(self):
         """Can add a port to the current block."""
-        graph = (
-            GraphBuilder()
-            .add_block("MCU")
-            .add_port("TX")
-            .build()
-        )
+        graph = GraphBuilder().add_block("MCU").add_port("TX").build()
 
         block = graph.blocks[0]
         assert len(block.ports) == 1
@@ -157,10 +140,7 @@ class TestGraphBuilderPorts:
     def test_add_port_with_kind(self):
         """Port kind is set correctly."""
         graph = (
-            GraphBuilder()
-            .add_block("MCU")
-            .add_port("VCC", kind=PortKind.POWER)
-            .build()
+            GraphBuilder().add_block("MCU").add_port("VCC", kind=PortKind.POWER).build()
         )
 
         port = graph.blocks[0].ports[0]
@@ -168,12 +148,7 @@ class TestGraphBuilderPorts:
 
     def test_add_port_with_side(self):
         """Port side is set correctly."""
-        graph = (
-            GraphBuilder()
-            .add_block("MCU")
-            .add_port("VCC", side="top")
-            .build()
-        )
+        graph = GraphBuilder().add_block("MCU").add_port("VCC", side="top").build()
 
         port = graph.blocks[0].ports[0]
         assert port.side == "top"
@@ -208,12 +183,7 @@ class TestGraphBuilderPorts:
 
     def test_add_port_explicit_index(self):
         """Can specify explicit port index."""
-        graph = (
-            GraphBuilder()
-            .add_block("MCU")
-            .add_port("TX", index=5)
-            .build()
-        )
+        graph = GraphBuilder().add_block("MCU").add_port("TX", index=5).build()
 
         port = graph.blocks[0].ports[0]
         assert port.index == 5
@@ -331,8 +301,7 @@ class TestGraphBuilderConnections:
             .add_block("MCU")
             .add_block("Sensor")
             .connect(
-                "MCU", "Sensor",
-                attributes={"baud_rate": 115200, "parity": "none"}
+                "MCU", "Sensor", attributes={"baud_rate": 115200, "parity": "none"}
             )
             .build()
         )
@@ -357,31 +326,16 @@ class TestGraphBuilderConnections:
 
     def test_connect_source_port_not_found_raises(self):
         """Connecting from nonexistent port raises ValueError."""
-        builder = (
-            GraphBuilder()
-            .add_block("MCU")
-            .add_block("Sensor")
-        )
+        builder = GraphBuilder().add_block("MCU").add_block("Sensor")
 
-        with pytest.raises(
-            ValueError,
-            match="Port 'TX' not found on block 'MCU'"
-        ):
+        with pytest.raises(ValueError, match="Port 'TX' not found on block 'MCU'"):
             builder.connect("MCU", "Sensor", from_port_name="TX")
 
     def test_connect_target_port_not_found_raises(self):
         """Connecting to nonexistent port raises ValueError."""
-        builder = (
-            GraphBuilder()
-            .add_block("MCU")
-            .add_port("TX")
-            .add_block("Sensor")
-        )
+        builder = GraphBuilder().add_block("MCU").add_port("TX").add_block("Sensor")
 
-        with pytest.raises(
-            ValueError,
-            match="Port 'RX' not found on block 'Sensor'"
-        ):
+        with pytest.raises(ValueError, match="Port 'RX' not found on block 'Sensor'"):
             builder.connect("MCU", "Sensor", to_port_name="RX")
 
     def test_connect_returns_self(self):
@@ -494,7 +448,7 @@ class TestCreateSimpleGraph:
             ],
             connections=[
                 {"from": "MCU", "to": "Sensor"},
-            ]
+            ],
         )
 
         assert len(graph.connections) == 1
@@ -513,7 +467,7 @@ class TestCreateSimpleGraph:
             ],
             connections=[
                 {"from": "MCU", "to": "Sensor", "kind": "SPI"},
-            ]
+            ],
         )
 
         conn = graph.connections[0]
@@ -530,7 +484,7 @@ class TestCreateSimpleGraph:
             connections=[
                 {"from": "MCU", "to": "Sensor1", "kind": "I2C"},
                 {"from": "MCU", "to": "Sensor2", "kind": "SPI"},
-            ]
+            ],
         )
 
         assert len(graph.connections) == 2
@@ -547,21 +501,25 @@ class TestGraphBuilderComplexScenarios:
             .add_block("MCU", block_type="STM32F4", x=100, y=100)
             .add_port("SPI_MOSI", direction=PortDirection.OUTPUT, kind=PortKind.DATA)
             .add_port("SPI_MISO", direction=PortDirection.INPUT, kind=PortKind.DATA)
-            .add_port("VCC", direction=PortDirection.INPUT, kind=PortKind.POWER, side="top")
+            .add_port(
+                "VCC", direction=PortDirection.INPUT, kind=PortKind.POWER, side="top"
+            )
             .add_block("Sensor", block_type="BME280", x=300, y=100)
             .add_port("SDI", direction=PortDirection.INPUT, kind=PortKind.DATA)
             .add_port("SDO", direction=PortDirection.OUTPUT, kind=PortKind.DATA)
             .connect(
-                "MCU", "Sensor",
+                "MCU",
+                "Sensor",
                 kind="SPI",
                 from_port_name="SPI_MOSI",
-                to_port_name="SDI"
+                to_port_name="SDI",
             )
             .connect(
-                "Sensor", "MCU",
+                "Sensor",
+                "MCU",
                 kind="SPI",
                 from_port_name="SDO",
-                to_port_name="SPI_MISO"
+                to_port_name="SPI_MISO",
             )
             .build()
         )

@@ -34,11 +34,12 @@ import json
 import time
 import traceback
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 # Try to import logging utilities
 try:
-    from fusion_addin.logging_util import get_logger, get_log_file_path_str
+    from fusion_addin.logging_util import get_log_file_path_str, get_logger
+
     _logger = get_logger("diagnostics")
     LOGGING_AVAILABLE = True
 except ImportError:
@@ -74,12 +75,13 @@ class DiagnosticResult:
         details: Additional structured data about the test.
         duration_ms: Time taken to run the test in milliseconds.
     """
+
     passed: bool
     message: str
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
     duration_ms: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
             "passed": self.passed,
@@ -100,13 +102,14 @@ class DiagnosticsReport:
         total_duration_ms: Total time for all tests in milliseconds.
         overall_passed: Whether all tests passed.
     """
-    tests: Dict[str, DiagnosticResult] = field(default_factory=dict)
+
+    tests: dict[str, DiagnosticResult] = field(default_factory=dict)
     total_passed: int = 0
     total_failed: int = 0
     total_duration_ms: float = 0.0
     overall_passed: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
             "overall_passed": self.overall_passed,
@@ -154,11 +157,11 @@ class DiagnosticsRunner:
 
     def __init__(self) -> None:
         """Initialize the diagnostics runner."""
-        self._app: Optional[Any] = None
-        self._ui: Optional[Any] = None
-        self._design: Optional[Any] = None
+        self._app: Any | None = None
+        self._ui: Any | None = None
+        self._design: Any | None = None
 
-    def _get_test_methods(self) -> List[Tuple[str, Callable[[], DiagnosticResult]]]:
+    def _get_test_methods(self) -> list[tuple[str, Callable[[], DiagnosticResult]]]:
         """Discover all test methods in this class.
 
         Returns:
@@ -352,7 +355,7 @@ class DiagnosticsRunner:
         """Construct a valid in-memory graph and verify validation passes."""
         try:
             # Try to import core library
-            from core.models import Graph, Block, Port, Connection, PortDirection
+            from core.models import Block, Connection, Graph, Port, PortDirection
             from core.validation import validate_graph
 
             # Create a minimal valid graph: 2 blocks, 1 connection
@@ -363,7 +366,11 @@ class DiagnosticsRunner:
                 x=100,
                 y=100,
                 ports=[
-                    Port(id="port_a_out", name="signal_out", direction=PortDirection.OUTPUT),
+                    Port(
+                        id="port_a_out",
+                        name="signal_out",
+                        direction=PortDirection.OUTPUT,
+                    ),
                 ],
             )
 
@@ -374,7 +381,9 @@ class DiagnosticsRunner:
                 x=300,
                 y=100,
                 ports=[
-                    Port(id="port_b_in", name="signal_in", direction=PortDirection.INPUT),
+                    Port(
+                        id="port_b_in", name="signal_in", direction=PortDirection.INPUT
+                    ),
                 ],
             )
 
@@ -429,7 +438,7 @@ class DiagnosticsRunner:
     def test_core_invalid_graph_detection(self) -> DiagnosticResult:
         """Verify that validation detects errors in an invalid graph."""
         try:
-            from core.models import Graph, Block, Port, Connection, PortDirection
+            from core.models import Block, Connection, Graph, Port, PortDirection
             from core.validation import validate_graph
 
             # Create an invalid graph: connection references non-existent block
@@ -440,7 +449,11 @@ class DiagnosticsRunner:
                 x=100,
                 y=100,
                 ports=[
-                    Port(id="port_a_out", name="signal_out", direction=PortDirection.OUTPUT),
+                    Port(
+                        id="port_a_out",
+                        name="signal_out",
+                        direction=PortDirection.OUTPUT,
+                    ),
                 ],
             )
 
@@ -558,9 +571,8 @@ class DiagnosticsRunner:
                     if design:
                         root_comp = design.rootComponent
                         for occ in root_comp.occurrences:
-                            if (
-                                occ.component
-                                and occ.component.name.startswith(self.TEMP_PREFIX)
+                            if occ.component and occ.component.name.startswith(
+                                self.TEMP_PREFIX
                             ):
                                 occ.deleteMe()
                                 break
@@ -616,7 +628,9 @@ class DiagnosticsRunner:
             sketch_points = temp_sketch.sketchPoints
             sketch_points.add(adsk.core.Point3D.create(0.5, 0.5, 0))
 
-            geometry_count = temp_sketch.sketchCurves.count + temp_sketch.sketchPoints.count
+            geometry_count = (
+                temp_sketch.sketchCurves.count + temp_sketch.sketchPoints.count
+            )
 
             return DiagnosticResult(
                 passed=True,
@@ -650,8 +664,8 @@ class DiagnosticsRunner:
     def test_core_serialization_roundtrip(self) -> DiagnosticResult:
         """Build a graph, serialize → deserialize, and verify equality."""
         try:
-            from core.models import Block, Connection, Graph, Port, PortDirection
-            from core.serialization import serialize_graph, deserialize_graph
+            from core.models import Block, Graph, Port, PortDirection
+            from core.serialization import deserialize_graph, serialize_graph
 
             block = Block(
                 id="diag_b1",
@@ -714,8 +728,8 @@ class DiagnosticsRunner:
     def test_core_action_plan_generation(self) -> DiagnosticResult:
         """Build a graph and verify action plan generation succeeds."""
         try:
+            from core.action_plan import ActionType, build_action_plan
             from core.models import Block, Graph
-            from core.action_plan import build_action_plan, ActionType
 
             block = Block(id="ap_b1", name="PlanTestBlock")
             graph = Graph(id="ap_graph", blocks=[block])
@@ -769,7 +783,6 @@ class DiagnosticsRunner:
         """Verify that the log directory exists and a test file is writable."""
         try:
             import os
-            import tempfile
 
             if not LOGGING_AVAILABLE:
                 return DiagnosticResult(
@@ -881,6 +894,7 @@ class DiagnosticsRunner:
                 try:
                     import adsk.core
                     import adsk.fusion
+
                     app = self._app or adsk.core.Application.get()
                     design = self._design or adsk.fusion.Design.cast(app.activeProduct)
                     if design:
@@ -899,22 +913,22 @@ class DiagnosticsRunner:
     def test_core_rule_engine(self) -> DiagnosticResult:
         """Verify rule checking engine runs on a valid graph without errors."""
         try:
+            from core.models import Block, Connection, Port, PortDirection
             from src.diagram.rules import run_all_rule_checks
-            from core.models import Graph, Block, Port, Connection, PortDirection
 
-            block_a = Block(
+            Block(
                 id="rule_a",
                 name="Controller",
                 block_type="Software",
                 ports=[Port(id="p_out", name="cmd", direction=PortDirection.OUTPUT)],
             )
-            block_b = Block(
+            Block(
                 id="rule_b",
                 name="Actuator",
                 block_type="Mechanical",
                 ports=[Port(id="p_in", name="signal", direction=PortDirection.INPUT)],
             )
-            conn = Connection(
+            Connection(
                 id="rule_conn",
                 from_block_id="rule_a",
                 from_port_id="p_out",
@@ -925,14 +939,29 @@ class DiagnosticsRunner:
             # run_all_rule_checks expects a raw dict, not a Graph dataclass
             diagram_dict = {
                 "blocks": [
-                    {"id": "rule_a", "name": "Controller", "type": "Software",
-                     "ports": [{"id": "p_out", "name": "cmd", "direction": "output"}]},
-                    {"id": "rule_b", "name": "Actuator", "type": "Mechanical",
-                     "ports": [{"id": "p_in", "name": "signal", "direction": "input"}]},
+                    {
+                        "id": "rule_a",
+                        "name": "Controller",
+                        "type": "Software",
+                        "ports": [
+                            {"id": "p_out", "name": "cmd", "direction": "output"}
+                        ],
+                    },
+                    {
+                        "id": "rule_b",
+                        "name": "Actuator",
+                        "type": "Mechanical",
+                        "ports": [
+                            {"id": "p_in", "name": "signal", "direction": "input"}
+                        ],
+                    },
                 ],
                 "connections": [
-                    {"id": "rule_conn", "from": {"blockId": "rule_a", "portId": "p_out"},
-                     "to": {"blockId": "rule_b", "portId": "p_in"}},
+                    {
+                        "id": "rule_conn",
+                        "from": {"blockId": "rule_a", "portId": "p_out"},
+                        "to": {"blockId": "rule_b", "portId": "p_in"},
+                    },
                 ],
             }
 
@@ -966,9 +995,9 @@ class DiagnosticsRunner:
         try:
             from src.diagram.hierarchy import (
                 create_child_diagram,
-                has_child_diagram,
-                get_child_diagram,
                 find_block_path,
+                get_child_diagram,
+                has_child_diagram,
             )
 
             # hierarchy functions operate on raw dicts, not Graph model objects
@@ -1034,8 +1063,8 @@ class DiagnosticsRunner:
     def test_core_typed_connection_roundtrip(self) -> DiagnosticResult:
         """Verify typed connections survive serialization roundtrip."""
         try:
-            from core.models import Graph, Block, Port, Connection, PortDirection
-            from core.serialization import serialize_graph, deserialize_graph
+            from core.models import Block, Connection, Graph, Port, PortDirection
+            from core.serialization import deserialize_graph, serialize_graph
 
             block_a = Block(
                 id="tc_a",
@@ -1072,7 +1101,9 @@ class DiagnosticsRunner:
                 )
 
             kind_match = restored_conn.kind == "power"
-            arrow_match = restored_conn.attributes.get("arrowDirection") == "bidirectional"
+            arrow_match = (
+                restored_conn.attributes.get("arrowDirection") == "bidirectional"
+            )
 
             if not kind_match or not arrow_match:
                 return DiagnosticResult(
@@ -1119,7 +1150,7 @@ class DiagnosticsRunner:
                     details={"path": html_path},
                 )
 
-            with open(html_path, "r", encoding="utf-8") as f:
+            with open(html_path, encoding="utf-8") as f:
                 content = f.read()
 
             size_kb = len(content) / 1024
@@ -1144,7 +1175,10 @@ class DiagnosticsRunner:
             return DiagnosticResult(
                 passed=True,
                 message=f"palette.html OK ({round(size_kb, 1)} KB, all markers present)",
-                details={"size_kb": round(size_kb, 1), "marker_count": len(required_markers)},
+                details={
+                    "size_kb": round(size_kb, 1),
+                    "marker_count": len(required_markers),
+                },
             )
         except Exception as e:
             return DiagnosticResult(
@@ -1162,8 +1196,8 @@ def run_diagnostics_and_show_result() -> DiagnosticsReport:
     Returns:
         The complete DiagnosticsReport.
     """
-    import os
     import datetime
+    import os
 
     _log_info("Starting diagnostics from UI command")
 
@@ -1198,6 +1232,7 @@ def run_diagnostics_and_show_result() -> DiagnosticsReport:
     # Show message box
     try:
         import adsk.core
+
         app = adsk.core.Application.get()
         if app and app.userInterface:
             icon_type = (

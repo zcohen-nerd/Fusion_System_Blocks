@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
-import pytest
-
 # Use shared adsk mocks registered by conftest.py
 import sys
+from unittest.mock import MagicMock, patch
+
 _adsk_core = sys.modules["adsk.core"]
 _adsk_fusion = sys.modules["adsk.fusion"]
 
-import fusion_addin.selection as sel_mod
+import fusion_addin.selection as sel_mod  # noqa: E402
+
 sel_mod._FUSION_AVAILABLE = True
 
-from fusion_addin.selection import SelectionHandler
-
+from fusion_addin.selection import SelectionHandler  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Helpers

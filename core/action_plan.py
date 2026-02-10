@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .models import Block, Graph
 
@@ -82,11 +82,11 @@ class ActionPlan:
     target_id: str
     target_type: str = "block"
     description: str = ""
-    params: Dict[str, Any] = field(default_factory=dict)
+    params: dict[str, Any] = field(default_factory=dict)
     priority: int = 100
-    depends_on: List[str] = field(default_factory=list)
+    depends_on: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert action to dictionary for serialization.
 
         Returns:
@@ -105,9 +105,9 @@ class ActionPlan:
 
 def build_action_plan(
     graph: Graph,
-    previous_graph: Optional[Graph] = None,
+    previous_graph: Graph | None = None,
     include_refresh: bool = True,
-) -> List[ActionPlan]:
+) -> list[ActionPlan]:
     """Build an ordered list of actions from a graph.
 
     Analyzes the graph (and optionally compares to a previous state) to
@@ -133,7 +133,7 @@ def build_action_plan(
         >>> for action in actions:
         ...     print(f"{action.action_type.value}: {action.description}")
     """
-    actions: List[ActionPlan] = []
+    actions: list[ActionPlan] = []
 
     if previous_graph is None:
         # Full creation mode - create everything
@@ -173,7 +173,7 @@ def build_action_plan(
     return actions
 
 
-def _build_create_actions(graph: Graph) -> List[ActionPlan]:
+def _build_create_actions(graph: Graph) -> list[ActionPlan]:
     """Generate actions to create all graph elements.
 
     Args:
@@ -182,7 +182,7 @@ def _build_create_actions(graph: Graph) -> List[ActionPlan]:
     Returns:
         List of creation actions.
     """
-    actions: List[ActionPlan] = []
+    actions: list[ActionPlan] = []
 
     # Create blocks first (priority 10)
     for block in graph.blocks:
@@ -256,7 +256,7 @@ def _build_create_actions(graph: Graph) -> List[ActionPlan]:
     return actions
 
 
-def _build_delta_actions(graph: Graph, previous: Graph) -> List[ActionPlan]:
+def _build_delta_actions(graph: Graph, previous: Graph) -> list[ActionPlan]:
     """Generate actions for differences between two graphs.
 
     Args:
@@ -266,7 +266,7 @@ def _build_delta_actions(graph: Graph, previous: Graph) -> List[ActionPlan]:
     Returns:
         List of delta actions (create/update/delete).
     """
-    actions: List[ActionPlan] = []
+    actions: list[ActionPlan] = []
 
     current_block_ids = {b.id for b in graph.blocks}
     previous_block_ids = {b.id for b in previous.blocks}
@@ -408,7 +408,7 @@ def _build_delta_actions(graph: Graph, previous: Graph) -> List[ActionPlan]:
     return actions
 
 
-def _get_block_changes(current: Block, previous: Block) -> Dict[str, Any]:
+def _get_block_changes(current: Block, previous: Block) -> dict[str, Any]:
     """Compute property changes between two block versions.
 
     Args:
@@ -418,7 +418,7 @@ def _get_block_changes(current: Block, previous: Block) -> Dict[str, Any]:
     Returns:
         Dictionary of changed properties with old and new values.
     """
-    changes: Dict[str, Any] = {}
+    changes: dict[str, Any] = {}
 
     if current.name != previous.name:
         changes["name"] = {"old": previous.name, "new": current.name}
@@ -438,7 +438,7 @@ def _get_block_changes(current: Block, previous: Block) -> Dict[str, Any]:
     return changes
 
 
-def _build_cad_sync_actions(graph: Graph) -> List[ActionPlan]:
+def _build_cad_sync_actions(graph: Graph) -> list[ActionPlan]:
     """Generate CAD synchronization actions for blocks with links.
 
     Args:
@@ -447,7 +447,7 @@ def _build_cad_sync_actions(graph: Graph) -> List[ActionPlan]:
     Returns:
         List of CAD sync actions.
     """
-    actions: List[ActionPlan] = []
+    actions: list[ActionPlan] = []
 
     for block in graph.blocks:
         cad_links = [link for link in block.links if link.get("target") == "cad"]
@@ -471,7 +471,7 @@ def _build_cad_sync_actions(graph: Graph) -> List[ActionPlan]:
     return actions
 
 
-def get_action_plan_summary(actions: List[ActionPlan]) -> str:
+def get_action_plan_summary(actions: list[ActionPlan]) -> str:
     """Generate a human-readable summary of the action plan.
 
     Args:
@@ -484,7 +484,7 @@ def get_action_plan_summary(actions: List[ActionPlan]) -> str:
         return "No actions to execute."
 
     # Group by action type
-    by_type: Dict[ActionType, int] = {}
+    by_type: dict[ActionType, int] = {}
     for action in actions:
         by_type[action.action_type] = by_type.get(action.action_type, 0) + 1
 

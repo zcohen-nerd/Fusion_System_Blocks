@@ -4,10 +4,10 @@ Provides support for hierarchical block diagrams where blocks can contain
 child diagrams, enabling multi-level system modeling.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Any, Optional
 
 
-def create_child_diagram(parent_block: Dict[str, Any]) -> Dict[str, Any]:
+def create_child_diagram(parent_block: dict[str, Any]) -> dict[str, Any]:
     """Create a child diagram for a parent block.
 
     Args:
@@ -23,7 +23,7 @@ def create_child_diagram(parent_block: Dict[str, Any]) -> Dict[str, Any]:
     return child_diagram
 
 
-def has_child_diagram(block: Dict[str, Any]) -> bool:
+def has_child_diagram(block: dict[str, Any]) -> bool:
     """Check if a block has a child diagram.
 
     Args:
@@ -35,7 +35,7 @@ def has_child_diagram(block: Dict[str, Any]) -> bool:
     return "childDiagram" in block and block["childDiagram"] is not None
 
 
-def get_child_diagram(block: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def get_child_diagram(block: dict[str, Any]) -> Optional[dict[str, Any]]:
     """Get the child diagram of a block.
 
     Args:
@@ -47,7 +47,7 @@ def get_child_diagram(block: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     return block.get("childDiagram")
 
 
-def compute_hierarchical_status(block: Dict[str, Any]) -> str:
+def compute_hierarchical_status(block: dict[str, Any]) -> str:
     """Compute status considering child diagram status.
 
     The parent block's status is limited by the worst status in its
@@ -85,12 +85,8 @@ def compute_hierarchical_status(block: Dict[str, Any]) -> str:
         "Verified": 4,
     }
 
-    child_statuses = [
-        compute_hierarchical_status(child) for child in child_blocks
-    ]
-    worst_child_status = min(
-        child_statuses, key=lambda s: status_priority.get(s, 0)
-    )
+    child_statuses = [compute_hierarchical_status(child) for child in child_blocks]
+    worst_child_status = min(child_statuses, key=lambda s: status_priority.get(s, 0))
 
     # Parent status is limited by worst child status
     parent_priority = status_priority.get(base_status, 0)
@@ -106,7 +102,7 @@ def compute_hierarchical_status(block: Dict[str, Any]) -> str:
     return "Placeholder"
 
 
-def get_all_blocks_recursive(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
+def get_all_blocks_recursive(diagram: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Get all blocks including those in child diagrams.
 
@@ -131,8 +127,8 @@ def get_all_blocks_recursive(diagram: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def find_block_path(
-    diagram: Dict[str, Any], target_block_id: str, path: List[str] = None
-) -> Optional[List[str]]:
+    diagram: dict[str, Any], target_block_id: str, path: list[str] = None
+) -> Optional[list[str]]:
     """
     Find the hierarchical path to a specific block.
 
@@ -158,14 +154,15 @@ def find_block_path(
         if has_child_diagram(block):
             child_diagram = get_child_diagram(block)
             child_path = find_block_path(
-                child_diagram, target_block_id, path + [block["id"]])
+                child_diagram, target_block_id, path + [block["id"]]
+            )
             if child_path:
                 return child_path
 
     return None
 
 
-def validate_hierarchy_interfaces(parent_block: Dict[str, Any]) -> tuple:
+def validate_hierarchy_interfaces(parent_block: dict[str, Any]) -> tuple:
     """
     Validate that parent block interfaces match child diagram interfaces.
 
@@ -180,7 +177,8 @@ def validate_hierarchy_interfaces(parent_block: Dict[str, Any]) -> tuple:
 
     errors = []
     parent_interfaces = {
-        intf["name"]: intf for intf in parent_block.get("interfaces", [])}
+        intf["name"]: intf for intf in parent_block.get("interfaces", [])
+    }
     child_diagram = get_child_diagram(parent_block)
 
     # Collect all interfaces from child blocks
@@ -218,6 +216,7 @@ def validate_hierarchy_interfaces(parent_block: Dict[str, Any]) -> tuple:
 
         if not compatible_child:
             errors.append(
-                f"Parent interface '{parent_intf_name}' has no corresponding interface")
+                f"Parent interface '{parent_intf_name}' has no corresponding interface"
+            )
 
     return len(errors) == 0, errors

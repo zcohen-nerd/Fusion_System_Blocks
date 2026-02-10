@@ -11,12 +11,13 @@ Classes:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 # Fusion 360 imports - only in this adapter layer
 try:
     import adsk.core
     import adsk.fusion
+
     _FUSION_AVAILABLE = True
 except ImportError:
     _FUSION_AVAILABLE = False
@@ -37,7 +38,7 @@ class SelectionHandler:
         ui: The Fusion 360 UserInterface object.
     """
 
-    def __init__(self, ui: "adsk.core.UserInterface") -> None:
+    def __init__(self, ui: adsk.core.UserInterface) -> None:
         """Initialize the SelectionHandler.
 
         Args:
@@ -48,7 +49,7 @@ class SelectionHandler:
     def select_occurrence(
         self,
         prompt: str = "Select a component",
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Prompt user to select an occurrence.
 
         Opens a selection dialog for the user to select a component
@@ -94,7 +95,7 @@ class SelectionHandler:
         self,
         prompt: str = "Select components",
         max_count: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Prompt user to select multiple occurrences.
 
         Opens a selection dialog for the user to select multiple
@@ -134,12 +135,14 @@ class SelectionHandler:
 
                 occurrence = adsk.fusion.Occurrence.cast(selection)
                 if occurrence:
-                    selections.append({
-                        "type": "CAD",
-                        "occToken": occurrence.entityToken,
-                        "name": occurrence.name,
-                        "docId": doc_id,
-                    })
+                    selections.append(
+                        {
+                            "type": "CAD",
+                            "occToken": occurrence.entityToken,
+                            "name": occurrence.name,
+                            "docId": doc_id,
+                        }
+                    )
 
         except Exception:
             pass
@@ -148,9 +151,9 @@ class SelectionHandler:
 
     def find_occurrence_by_token(
         self,
-        root_component: "adsk.fusion.Component",
+        root_component: adsk.fusion.Component,
         token: str,
-    ) -> Optional["adsk.fusion.Occurrence"]:
+    ) -> adsk.fusion.Occurrence | None:
         """Find an occurrence by its entity token.
 
         Searches the component hierarchy for an occurrence matching
@@ -178,8 +181,8 @@ class SelectionHandler:
 
     def get_occurrence_info(
         self,
-        occurrence: "adsk.fusion.Occurrence",
-    ) -> Dict[str, Any]:
+        occurrence: adsk.fusion.Occurrence,
+    ) -> dict[str, Any]:
         """Get detailed information about an occurrence.
 
         Extracts component properties, physical properties, and

@@ -29,14 +29,14 @@ import platform
 import sys
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 
 # Type variable for decorator
 F = TypeVar("F", bound=Callable[..., Any])
 
 # Module-level state
 _session_id: str = ""
-_log_file_path: Optional[Path] = None
+_log_file_path: Path | None = None
 _logging_initialized: bool = False
 
 # Add-in version - update this when releasing new versions
@@ -83,6 +83,7 @@ def get_log_directory() -> Path:
     except OSError:
         # Fallback to temp directory if home is not writable
         import tempfile
+
         log_dir = Path(tempfile.gettempdir()) / "FusionSystemBlocks" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -243,6 +244,7 @@ def log_environment_info(logger: logging.Logger) -> None:
     # Fusion 360 version (if available)
     try:
         import adsk.core
+
         app = adsk.core.Application.get()
         if app:
             logger.info(f"Fusion 360 Version: {app.version}")
@@ -272,12 +274,10 @@ def _show_error_message_box(title: str, message: str, log_path: str) -> None:
     """
     try:
         import adsk.core
+
         app = adsk.core.Application.get()
         if app and app.userInterface:
-            full_message = (
-                f"{message}\n\n"
-                f"For details, see the log file:\n{log_path}"
-            )
+            full_message = f"{message}\n\nFor details, see the log file:\n{log_path}"
             app.userInterface.messageBox(
                 full_message,
                 title,
@@ -313,6 +313,7 @@ def log_exceptions(
         def my_handler(args):
             ...
     """
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -320,9 +321,7 @@ def log_exceptions(
                 return func(*args, **kwargs)
             except Exception as e:
                 # Log the full exception with traceback
-                logger.exception(
-                    f"Uncaught exception in {func.__name__}: {e}"
-                )
+                logger.exception(f"Uncaught exception in {func.__name__}: {e}")
 
                 # Log additional context if available
                 if args:
@@ -345,6 +344,7 @@ def log_exceptions(
                 return None
 
         return wrapper  # type: ignore
+
     return decorator
 
 
@@ -363,6 +363,7 @@ def log_handler_entry(
     Returns:
         A decorator function.
     """
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -376,6 +377,7 @@ def log_handler_entry(
                 raise
 
         return wrapper  # type: ignore
+
     return decorator
 
 
@@ -398,9 +400,9 @@ class LoggedEventHandler:
                 ...
     """
 
-    _handler_logger: Optional[logging.Logger] = None
+    _handler_logger: logging.Logger | None = None
 
-    def __init__(self, logger_name: Optional[str] = None) -> None:
+    def __init__(self, logger_name: str | None = None) -> None:
         """Initialize with optional custom logger name.
 
         Args:
@@ -422,9 +424,7 @@ class LoggedEventHandler:
             self._do_notify(args)
             self._handler_logger.debug(f"{handler_name}.notify() completed")
         except Exception as e:
-            self._handler_logger.exception(
-                f"Exception in {handler_name}.notify(): {e}"
-            )
+            self._handler_logger.exception(f"Exception in {handler_name}.notify(): {e}")
             _show_error_message_box(
                 "System Blocks Error",
                 f"Error in {handler_name}:\n{str(e)[:200]}",

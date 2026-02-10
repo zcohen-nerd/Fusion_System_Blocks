@@ -6,14 +6,13 @@ import pytest
 
 from diagram_data import (
     compute_block_status,
-    update_block_statuses,
-    get_status_color,
     create_block,
+    get_status_color,
+    update_block_statuses,
 )
 
 
 class TestStatusTracking:
-
     def test_compute_block_status_placeholder(self):
         """Test that empty blocks get Placeholder status"""
         # Empty block
@@ -128,8 +127,7 @@ class TestStatusTracking:
         assert compute_block_status(block) == "Planned"
 
         # Add a CAD link - should become In-Work
-        block["links"] = [
-            {"target": "cad", "occToken": "token123", "docId": "doc456"}]
+        block["links"] = [{"target": "cad", "occToken": "token123", "docId": "doc456"}]
         assert compute_block_status(block) == "In-Work"
 
         # Add interfaces - should become Implemented
