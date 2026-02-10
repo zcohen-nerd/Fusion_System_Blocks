@@ -45,7 +45,7 @@ jobs:
           pip install mypy jsonschema
           pip install -e .
       - name: Run mypy
-        run: mypy core/ --ignore-missing-imports
+        run: mypy fsb_core/ --ignore-missing-imports
 
   # -------------------------------------------------------------------
   # Test: pytest on multiple Python versions with coverage
@@ -69,7 +69,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           pytest tests/ \
-            --cov=core \
+            --cov=fsb_core \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing \
             --junitxml=results.xml \

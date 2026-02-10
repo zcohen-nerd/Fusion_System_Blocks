@@ -46,7 +46,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["core*", "fusion_addin*"]
+include = ["fsb_core*", "fusion_addin*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -98,9 +98,10 @@ ignore = [
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]  # Allow unused imports in __init__.py
 "tests/*" = ["B011"]       # Allow assert in tests
+"Fusion_System_Blocks.py" = ["E402"]  # sys.path setup before imports
 
 [tool.coverage.run]
-source = ["core"]
+source = ["fsb_core"]
 omit = [
     "fusion_addin/*",  # Skip adapter layer
     "tests/*",
@@ -118,7 +119,7 @@ exclude_lines = [
 # Mutation testing (Phase 7)
 # ---------------------------------------------------------------------------
 [tool.mutmut]
-paths_to_mutate = "core/"
+paths_to_mutate = "fsb_core/"
 tests_dir = "tests/"
 runner = "python -m pytest -x -q"
 

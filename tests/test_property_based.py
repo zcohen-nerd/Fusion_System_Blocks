@@ -13,7 +13,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from core.models import (
+from fsb_core.models import (
     Block,
     BlockStatus,
     Connection,
@@ -22,13 +22,13 @@ from core.models import (
     PortDirection,
     PortKind,
 )
-from core.serialization import (
+from fsb_core.serialization import (
     deserialize_graph,
     dict_to_graph,
     graph_to_dict,
     serialize_graph,
 )
-from core.validation import validate_graph
+from fsb_core.validation import validate_graph
 
 pytestmark = pytest.mark.property_based
 

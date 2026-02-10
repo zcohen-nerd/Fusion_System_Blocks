@@ -26,10 +26,10 @@ except ImportError:
     _FUSION_AVAILABLE = False
 
 # Core library imports
-from core.action_plan import ActionPlan, ActionType, build_action_plan
-from core.models import Graph
-from core.serialization import dict_to_graph, graph_to_dict
-from core.validation import ValidationError, get_error_summary, validate_graph
+from fsb_core.action_plan import ActionPlan, ActionType, build_action_plan
+from fsb_core.models import Graph
+from fsb_core.serialization import dict_to_graph, graph_to_dict
+from fsb_core.validation import ValidationError, get_error_summary, validate_graph
 
 if TYPE_CHECKING:
     import adsk.core

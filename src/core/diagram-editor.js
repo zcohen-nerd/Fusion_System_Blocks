@@ -40,6 +40,10 @@ class DiagramEditorCore {
     // Performance optimization
     this.lastMouseMoveTime = 0;
     this.mouseMoveThreshold = 16; // ~60fps throttling
+
+    // Delta serialization — snapshot of the last-saved diagram state so
+    // we can compute minimal diffs for incremental bridge updates.
+    this._lastSavedSnapshot = null;
   }
 
   createEmptyDiagram() {
@@ -233,6 +237,44 @@ class DiagramEditorCore {
     return JSON.stringify(this.diagram, null, 2);
   }
 
+  // ---------------------------------------------------------------
+  // Delta serialization helpers
+  // ---------------------------------------------------------------
+
+  /**
+   * Take a snapshot of the current diagram as the "last-saved" baseline.
+   * Call this after a successful full save or load so that future
+   * calls to {@link getDelta} produce minimal diffs.
+   */
+  markSaved() {
+    this._lastSavedSnapshot = typeof DeltaUtils !== 'undefined'
+      ? DeltaUtils.deepClone(this.diagram)
+      : JSON.parse(JSON.stringify(this.diagram));
+  }
+
+  /**
+   * Compute a JSON-Patch array describing changes since the last
+   * {@link markSaved} call.  Returns ``null`` if DeltaUtils is not
+   * loaded (graceful degradation) or if no snapshot exists yet.
+   *
+   * @returns {Array|null} Patch operations, or null if delta is unavailable.
+   */
+  getDelta() {
+    if (typeof DeltaUtils === 'undefined' || !this._lastSavedSnapshot) {
+      return null;
+    }
+    return DeltaUtils.computePatch(this._lastSavedSnapshot, this.diagram);
+  }
+
+  /**
+   * Return ``true`` if the diagram has unsaved changes relative to
+   * the last snapshot.
+   */
+  hasUnsavedChanges() {
+    var delta = this.getDelta();
+    return delta !== null && delta.length > 0;
+  }
+
   importDiagram(jsonData) {
     try {
       const importedDiagram = JSON.parse(jsonData);
@@ -262,6 +304,7 @@ class DiagramEditorCore {
       this.diagram.metadata.modified = new Date().toISOString();
       this.clearSelection();
       this.updateBlockVisuals();
+      this.markSaved();  // Snapshot after import for delta tracking
       
       return true;
     } catch (error) {

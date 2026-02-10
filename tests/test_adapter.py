@@ -20,9 +20,9 @@ import fusion_addin.adapter as adapter_mod  # noqa: E402
 
 adapter_mod._FUSION_AVAILABLE = True
 
-from core.action_plan import ActionPlan, ActionType  # noqa: E402
-from core.models import Block, Graph  # noqa: E402
-from core.serialization import graph_to_dict  # noqa: E402
+from fsb_core.action_plan import ActionPlan, ActionType  # noqa: E402
+from fsb_core.models import Block, Graph  # noqa: E402
+from fsb_core.serialization import graph_to_dict  # noqa: E402
 from fusion_addin.adapter import ATTR_GROUP, ATTR_NAME, FusionAdapter  # noqa: E402
 
 # ---------------------------------------------------------------------------

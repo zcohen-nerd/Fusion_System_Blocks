@@ -313,11 +313,37 @@ class PythonInterface {
   saveDiagram(options = {}) {
     if (!window.diagramEditor) return Promise.reject('No diagram editor available');
     const silent = options.silent || false;
-    
+    const forceFull = options.forceFull || false;
+
+    // Try delta-save: send only the diff instead of the full diagram.
+    var delta = !forceFull ? window.diagramEditor.getDelta() : null;
+    if (delta !== null && delta.length > 0) {
+      return this.sendMessage(BridgeAction.APPLY_DELTA, { patch: delta }, true)
+        .then(response => {
+          if (response.success) {
+            window.diagramEditor.markSaved();
+            if (!silent) {
+              this.showNotification('Diagram saved (delta)', 'success');
+            }
+          } else {
+            // Delta failed — fall back to full save
+            logger.warn('Delta save failed, falling back to full save:', response.error);
+            return this.saveDiagram({ silent: silent, forceFull: true });
+          }
+          return response;
+        })
+        .catch(error => {
+          logger.warn('Delta save error, falling back to full save:', error);
+          return this.saveDiagram({ silent: silent, forceFull: true });
+        });
+    }
+
+    // Full save (initial save, or delta unavailable/forced)
     const diagramJson = window.diagramEditor.exportDiagram();
-    return this.sendMessage('save_diagram', { diagram: diagramJson }, true)
+    return this.sendMessage(BridgeAction.SAVE_DIAGRAM, { diagram: diagramJson }, true)
       .then(response => {
         if (response.success) {
+          window.diagramEditor.markSaved();
           if (!silent) {
             this.showNotification('Diagram saved successfully', 'success');
           }
@@ -335,7 +361,7 @@ class PythonInterface {
   }
 
   loadDiagram() {
-    return this.sendMessage('load_diagram', {}, true)
+    return this.sendMessage(BridgeAction.LOAD_DIAGRAM, {}, true)
       .then(response => {
         if (response.success === false) {
           throw new Error(response.error || 'Load failed');
@@ -357,7 +383,7 @@ class PythonInterface {
     if (!window.diagramEditor) return Promise.reject('No diagram editor available');
     
     const diagramJson = window.diagramEditor.exportDiagram();
-    return this.sendMessage('export_reports', { diagram: diagramJson }, true)
+    return this.sendMessage(BridgeAction.EXPORT_REPORTS, { diagram: diagramJson }, true)
       .then(response => {
         if (response.success) {
           // files may be a dict {format: path} or an array
@@ -380,7 +406,7 @@ class PythonInterface {
     if (!window.diagramEditor) return Promise.reject('No diagram editor available');
     
     const diagramJson = window.diagramEditor.exportDiagram();
-    return this.sendMessage('check_rules', { diagram: diagramJson }, true)
+    return this.sendMessage(BridgeAction.CHECK_RULES, { diagram: diagramJson }, true)
       .then(response => {
         if (response.success) {
           this.displayRuleResults(response.results);
@@ -399,7 +425,7 @@ class PythonInterface {
     if (!window.diagramEditor) return Promise.reject('No diagram editor available');
     
     const diagramJson = window.diagramEditor.exportDiagram();
-    return this.sendMessage('sync_components', { diagram: diagramJson }, true)
+    return this.sendMessage(BridgeAction.SYNC_COMPONENTS, { diagram: diagramJson }, true)
       .then(response => {
         this.displaySyncResults(response);
         return response;
@@ -413,7 +439,7 @@ class PythonInterface {
   // === NAMED DOCUMENT OPERATIONS ===
 
   listDocuments() {
-    return this.sendMessage('list_documents', {}, true)
+    return this.sendMessage(BridgeAction.LIST_DOCUMENTS, {}, true)
       .then(response => response.documents || [])
       .catch(() => []);
   }
@@ -421,7 +447,7 @@ class PythonInterface {
   saveNamedDiagram(label) {
     if (!window.diagramEditor) return Promise.reject('No diagram editor available');
     const diagramJson = window.diagramEditor.exportDiagram();
-    return this.sendMessage('save_named_diagram', { label, diagram: diagramJson }, true)
+    return this.sendMessage(BridgeAction.SAVE_NAMED_DIAGRAM, { label, diagram: diagramJson }, true)
       .then(response => {
         if (response.success) {
           this.showNotification('Saved as "' + label + '"', 'success');
@@ -437,7 +463,7 @@ class PythonInterface {
   }
 
   loadNamedDiagram(slug) {
-    return this.sendMessage('load_named_diagram', { slug }, true)
+    return this.sendMessage(BridgeAction.LOAD_NAMED_DIAGRAM, { slug }, true)
       .then(response => {
         if (response.success && response.diagram) {
           this.handleLoadDiagram(response.diagram);
@@ -453,7 +479,7 @@ class PythonInterface {
   }
 
   deleteNamedDiagram(slug) {
-    return this.sendMessage('delete_named_diagram', { slug }, true)
+    return this.sendMessage(BridgeAction.DELETE_NAMED_DIAGRAM, { slug }, true)
       .then(response => {
         if (response.success) {
           this.showNotification('Document deleted', 'info');

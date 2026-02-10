@@ -1,4 +1,4 @@
-"""Tests for core.models module.
+"""Tests for fsb_core.models module.
 
 Covers Graph query/mutation methods, Port/Block __post_init__ coercion,
 and data structure operations not exercised by other test modules.
@@ -6,7 +6,7 @@ and data structure operations not exercised by other test modules.
 
 import pytest
 
-from core.models import (
+from fsb_core.models import (
     Block,
     BlockStatus,
     Connection,

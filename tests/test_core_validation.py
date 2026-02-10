@@ -13,15 +13,15 @@ Test coverage:
     - Invalid port direction case
 """
 
-from core.graph_builder import GraphBuilder
-from core.models import (
+from fsb_core.graph_builder import GraphBuilder
+from fsb_core.models import (
     Block,
     Connection,
     Graph,
     Port,
     PortDirection,
 )
-from core.validation import (
+from fsb_core.validation import (
     ValidationError,
     ValidationErrorCode,
     filter_by_code,

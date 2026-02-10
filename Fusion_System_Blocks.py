@@ -18,19 +18,11 @@ repo_root = os.path.dirname(__file__)
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
-# Import the new core library for validation and action planning
-try:
-    from core.serialization import dict_to_graph
-    from core.validation import get_error_summary, validate_graph
-
-    CORE_AVAILABLE = True
-except ImportError as _core_err:
-    CORE_AVAILABLE = False
-    # Log so the failure is diagnosable; logger may not exist yet.
-    import traceback as _tb
-
-    print(f"[SystemBlocks] Core import failed: {_core_err}")
-    _tb.print_exc()
+# Import the core library for validation and action planning (hard dependency)
+from fsb_core.bridge_actions import BridgeAction, BridgeEvent
+from fsb_core.delta import apply_patch, is_trivial_patch
+from fsb_core.serialization import dict_to_graph
+from fsb_core.validation import get_error_summary, validate_graph
 
 # Import logging utilities
 try:
@@ -87,7 +79,7 @@ def send_palette_notification(message: str, level: str = "info") -> None:
             f"{json.dumps(level)});"
             "}"
         )
-        palette.sendInfoToHTML("notification", script)
+        palette.sendInfoToHTML(BridgeEvent.NOTIFICATION, script)
     else:
         UI.messageBox(message)
 
@@ -115,7 +107,7 @@ def _show_validation_errors_dialog(errors: list) -> None:
     in a Fusion 360 message box for user visibility.
 
     Args:
-        errors: List of ValidationError instances from core.validation.
+        errors: List of ValidationError instances from fsb_core.validation.
     """
     if not errors:
         return
@@ -158,9 +150,9 @@ def get_root_component() -> Optional[adsk.fusion.Component]:
 def save_diagram_json(json_data: str) -> bool:
     """Save diagram JSON to Fusion attributes.
 
-    Uses the core library for validation when available, with fallback
-    to legacy validation. Shows validation errors in a user-visible
-    message box.
+    Validates the diagram using the fsb_core library before saving.
+    Validation errors are advisory — they show warnings but do not
+    block the save to allow work-in-progress persistence.
 
     Args:
         json_data: The JSON string representation of the diagram.
@@ -172,32 +164,20 @@ def save_diagram_json(json_data: str) -> bool:
         # Parse the JSON data
         diagram = json.loads(json_data)
 
-        # Use core library validation if available (advisory — does not block save)
-        if CORE_AVAILABLE:
-            graph = dict_to_graph(diagram)
-            validation_errors = validate_graph(graph)
+        # Core library validation (advisory — does not block save)
+        graph = dict_to_graph(diagram)
+        validation_errors = validate_graph(graph)
 
-            if validation_errors:
-                error_summary = get_error_summary(validation_errors)
-                _show_validation_errors_dialog(validation_errors)
-                # Log warnings but do NOT block save — let the user persist
-                # their work-in-progress and fix issues later.
-                if LOGGING_AVAILABLE:
-                    _logger.warning(
-                        "Saving diagram despite validation warnings:\n%s",
-                        error_summary,
-                    )
-        else:
-            # Fallback to legacy validation — advisory only
-            is_valid, error = diagram_data.validate_diagram(diagram)
-            if not is_valid:
-                notify_error(f"Diagram saved with validation warnings: {error}")
-
-            # Check link validation specifically
-            links_valid, link_errors = diagram_data.validate_diagram_links(diagram)
-            if not links_valid:
-                error_msg = "Link warnings:\n" + "\n".join(link_errors)
-                notify_error(error_msg)
+        if validation_errors:
+            error_summary = get_error_summary(validation_errors)
+            _show_validation_errors_dialog(validation_errors)
+            # Log warnings but do NOT block save — let the user persist
+            # their work-in-progress and fix issues later.
+            if LOGGING_AVAILABLE:
+                _logger.warning(
+                    "Saving diagram despite validation warnings:\n%s",
+                    error_summary,
+                )
 
         root_comp = get_root_component()
         if not root_comp:
@@ -560,6 +540,16 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             if LOGGING_AVAILABLE:
                 _logger.debug(f"HTML event received: action='{action}'")
 
+            # Validate action against the shared enum to catch JS/Python mismatches early
+            try:
+                BridgeAction(action)
+            except ValueError:
+                if LOGGING_AVAILABLE:
+                    _logger.warning(
+                        f"Action '{action}' is not in BridgeAction enum — "
+                        "update fsb_core/bridge_actions.py and src/types/bridge-actions.js"
+                    )
+
             handler_name = f"_handle_{action}"
             if hasattr(self, handler_name):
                 handler = getattr(self, handler_name)
@@ -606,6 +596,43 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         else:
             diagram_dict = diagram_data.create_empty_diagram()
         return {"success": True, "diagram": diagram_dict}
+
+    def _handle_apply_delta(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Apply a JSON-Patch delta to the persisted diagram.
+
+        Expects ``data`` to contain a ``patch`` list of RFC 6902
+        operations.  The current diagram is loaded from Fusion
+        attributes, the patch is applied, and the result is saved back.
+
+        If the patch is trivial (empty), we skip I/O entirely and
+        return early.
+        """
+        patch = data.get("patch", [])
+        if is_trivial_patch(patch):
+            return {"success": True, "patched": False}
+
+        diagram_json = load_diagram_json()
+        if not diagram_json:
+            return {"success": False, "error": "No diagram to patch"}
+
+        try:
+            current = (
+                diagram_json
+                if isinstance(diagram_json, dict)
+                else json.loads(diagram_json)
+            )
+        except json.JSONDecodeError as exc:
+            return {"success": False, "error": f"Invalid stored diagram: {exc}"}
+
+        try:
+            updated = apply_patch(current, patch)
+        except Exception as exc:
+            return {"success": False, "error": f"Patch failed: {exc}"}
+
+        success = save_diagram_json(json.dumps(updated))
+        if success:
+            return {"success": True, "patched": True}
+        return {"success": False, "error": "Save after patching failed"}
 
     def _handle_export_reports(self, data: dict[str, Any]) -> dict[str, Any]:
         diagram_json = data.get("diagram", "{}")
@@ -1023,7 +1050,7 @@ class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
             f"window.receiveCADLinkFromPython({json.dumps(payload)});"
             "}"
         )
-        palette.sendInfoToHTML("cad-link", script)
+        palette.sendInfoToHTML(BridgeEvent.CAD_LINK, script)
 
     def notify(self, args):
         try:
@@ -1341,7 +1368,7 @@ def generate_live_thumbnail(block_id, view_angle, size):
                 f"editor.onThumbnailUpdated('{block_id}', '{thumbnail_data}');"
                 " }"
             )
-            palette.sendInfoToHTML("thumbnail-updated", script)
+            palette.sendInfoToHTML(BridgeEvent.THUMBNAIL_UPDATED, script)
 
     except Exception as e:
         notify_error(f"Live thumbnail error: {str(e)}")
@@ -1367,7 +1394,7 @@ def generate_assembly_sequence_from_diagram(diagram):
                 f"editor.displayAssemblySequence({sequence_payload});"
                 " }"
             )
-            palette.sendInfoToHTML("assembly-sequence", script)
+            palette.sendInfoToHTML(BridgeEvent.ASSEMBLY_SEQUENCE, script)
 
     except Exception as e:
         # Send error response
@@ -1388,7 +1415,7 @@ def generate_assembly_sequence_from_diagram(diagram):
                 "if (window.alert) { window.alert(message); }"
                 "})();"
             )
-            palette.sendInfoToHTML("assembly-error", script)
+            palette.sendInfoToHTML(BridgeEvent.ASSEMBLY_ERROR, script)
 
 
 def generate_living_bom_from_diagram(diagram):
@@ -1411,7 +1438,7 @@ def generate_living_bom_from_diagram(diagram):
                 f"editor.displayLivingBOM({bom_payload});"
                 " }"
             )
-            palette.sendInfoToHTML("living-bom", script)
+            palette.sendInfoToHTML(BridgeEvent.LIVING_BOM, script)
 
     except Exception as e:
         # Send error response
@@ -1432,7 +1459,7 @@ def generate_living_bom_from_diagram(diagram):
                 "if (window.alert) { window.alert(message); }"
                 "})();"
             )
-            palette.sendInfoToHTML("bom-error", script)
+            palette.sendInfoToHTML(BridgeEvent.BOM_ERROR, script)
 
 
 def generate_service_manual_for_block(block_id, diagram):
@@ -1476,7 +1503,7 @@ def generate_service_manual_for_block(block_id, diagram):
         if palette:
             payload = json.dumps(service_manual)
             script = f"if(editor) {{ editor.displayServiceManual({payload}); }}"
-            palette.sendInfoToHTML("service-manual", script)
+            palette.sendInfoToHTML(BridgeEvent.SERVICE_MANUAL, script)
 
     except Exception as e:
         notify_error(f"Service manual error: {str(e)}")
@@ -1505,7 +1532,7 @@ def analyze_change_impact_for_block(block_id, diagram):
                 f"editor.displayChangeImpact({impact_payload});"
                 " }"
             )
-            palette.sendInfoToHTML("change-impact", script)
+            palette.sendInfoToHTML(BridgeEvent.CHANGE_IMPACT, script)
 
     except Exception as e:
         notify_error(f"Change impact analysis error: {str(e)}")

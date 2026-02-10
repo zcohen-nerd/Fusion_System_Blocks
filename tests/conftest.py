@@ -52,7 +52,7 @@ def _schema_path() -> pathlib.Path:
 @pytest.fixture
 def sample_graph():
     """Minimal valid Graph with two blocks and one connection."""
-    from core.models import Block, Connection, Graph, Port, PortDirection
+    from fsb_core.models import Block, Connection, Graph, Port, PortDirection
 
     block_a = Block(
         id="block_a",
@@ -100,7 +100,7 @@ def sample_graph():
 @pytest.fixture
 def empty_graph():
     """Empty graph with no blocks or connections."""
-    from core.models import Graph
+    from fsb_core.models import Graph
 
     return Graph(id="empty_graph", name="Empty")
 

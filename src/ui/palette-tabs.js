@@ -123,7 +123,7 @@
         const data = { blockId, blockName: block.name };
         q('#linking-status').textContent = 'Selecting…';
         if (window.pythonInterface) {
-          window.pythonInterface.sendMessage('start_cad_selection', data, true)
+          window.pythonInterface.sendMessage(BridgeAction.START_CAD_SELECTION, data, true)
             .then(() => {
               q('#linking-status').textContent = 'Linked or cancelled';
               const aria = q('#linking-aria');

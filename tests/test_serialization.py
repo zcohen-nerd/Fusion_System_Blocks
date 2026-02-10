@@ -1,4 +1,4 @@
-"""Tests for core.serialization module.
+"""Tests for fsb_core.serialization module.
 
 Covers round-trip serialization, legacy format conversion, edge cases,
 and structured error handling for invalid inputs.
@@ -9,7 +9,7 @@ Markers:
 
 import pytest
 
-from core.models import (
+from fsb_core.models import (
     Block,
     BlockStatus,
     Connection,
@@ -18,7 +18,7 @@ from core.models import (
     PortDirection,
     PortKind,
 )
-from core.serialization import (
+from fsb_core.serialization import (
     deserialize_graph,
     dict_to_graph,
     export_to_legacy_format,
@@ -372,7 +372,7 @@ class TestConvenienceWrappers:
 
     def test_convert_legacy_diagram(self):
         """convert_legacy_diagram is an alias for dict_to_graph."""
-        from core.serialization import convert_legacy_diagram
+        from fsb_core.serialization import convert_legacy_diagram
 
         data = {"id": "g1", "blocks": [], "connections": []}
         graph = convert_legacy_diagram(data)

@@ -478,7 +478,7 @@ class ToolbarManager {
       const block = this.editor.diagram.blocks.find(b => b.id === this.editor.selectedBlock);
       if (block) {
         if (window.pythonInterface) {
-          window.pythonInterface.sendMessage('start_cad_selection', {
+          window.pythonInterface.sendMessage(BridgeAction.START_CAD_SELECTION, {
             blockId: block.id,
             blockName: block.name
           }, true).catch(error => {

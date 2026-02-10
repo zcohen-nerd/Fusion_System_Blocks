@@ -11,9 +11,9 @@ Modules:
     serialization: JSON serialization/deserialization
 
 Usage:
-    from core.models import Block, Port, Connection, Graph
-    from core.validation import validate_graph
-    from core.action_plan import build_action_plan
+    from fsb_core.models import Block, Port, Connection, Graph
+    from fsb_core.validation import validate_graph
+    from fsb_core.action_plan import build_action_plan
 
 Note:
     This module intentionally has NO imports from 'adsk' or any Fusion 360
@@ -24,6 +24,11 @@ from .action_plan import (
     ActionPlan,
     ActionType,
     build_action_plan,
+)
+from .delta import (
+    apply_patch,
+    compute_patch,
+    is_trivial_patch,
 )
 from .graph_builder import (
     GraphBuilder,
@@ -69,4 +74,8 @@ __all__ = [
     # Serialization
     "serialize_graph",
     "deserialize_graph",
+    # Delta
+    "compute_patch",
+    "apply_patch",
+    "is_trivial_patch",
 ]

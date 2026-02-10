@@ -354,9 +354,9 @@ class DiagnosticsRunner:
     def test_core_valid_graph_validation(self) -> DiagnosticResult:
         """Construct a valid in-memory graph and verify validation passes."""
         try:
-            # Try to import core library
-            from core.models import Block, Connection, Graph, Port, PortDirection
-            from core.validation import validate_graph
+            # Try to import fsb_core library
+            from fsb_core.models import Block, Connection, Graph, Port, PortDirection
+            from fsb_core.validation import validate_graph
 
             # Create a minimal valid graph: 2 blocks, 1 connection
             block_a = Block(
@@ -438,8 +438,8 @@ class DiagnosticsRunner:
     def test_core_invalid_graph_detection(self) -> DiagnosticResult:
         """Verify that validation detects errors in an invalid graph."""
         try:
-            from core.models import Block, Connection, Graph, Port, PortDirection
-            from core.validation import validate_graph
+            from fsb_core.models import Block, Connection, Graph, Port, PortDirection
+            from fsb_core.validation import validate_graph
 
             # Create an invalid graph: connection references non-existent block
             block_a = Block(
@@ -664,8 +664,8 @@ class DiagnosticsRunner:
     def test_core_serialization_roundtrip(self) -> DiagnosticResult:
         """Build a graph, serialize → deserialize, and verify equality."""
         try:
-            from core.models import Block, Graph, Port, PortDirection
-            from core.serialization import deserialize_graph, serialize_graph
+            from fsb_core.models import Block, Graph, Port, PortDirection
+            from fsb_core.serialization import deserialize_graph, serialize_graph
 
             block = Block(
                 id="diag_b1",
@@ -728,8 +728,8 @@ class DiagnosticsRunner:
     def test_core_action_plan_generation(self) -> DiagnosticResult:
         """Build a graph and verify action plan generation succeeds."""
         try:
-            from core.action_plan import ActionType, build_action_plan
-            from core.models import Block, Graph
+            from fsb_core.action_plan import ActionType, build_action_plan
+            from fsb_core.models import Block, Graph
 
             block = Block(id="ap_b1", name="PlanTestBlock")
             graph = Graph(id="ap_graph", blocks=[block])
@@ -913,7 +913,7 @@ class DiagnosticsRunner:
     def test_core_rule_engine(self) -> DiagnosticResult:
         """Verify rule checking engine runs on a valid graph without errors."""
         try:
-            from core.models import Block, Connection, Port, PortDirection
+            from fsb_core.models import Block, Connection, Port, PortDirection
             from src.diagram.rules import run_all_rule_checks
 
             Block(
@@ -1063,8 +1063,8 @@ class DiagnosticsRunner:
     def test_core_typed_connection_roundtrip(self) -> DiagnosticResult:
         """Verify typed connections survive serialization roundtrip."""
         try:
-            from core.models import Block, Connection, Graph, Port, PortDirection
-            from core.serialization import deserialize_graph, serialize_graph
+            from fsb_core.models import Block, Connection, Graph, Port, PortDirection
+            from fsb_core.serialization import deserialize_graph, serialize_graph
 
             block_a = Block(
                 id="tc_a",

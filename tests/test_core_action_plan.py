@@ -10,14 +10,14 @@ Test coverage:
     - CAD sync actions
 """
 
-from core.action_plan import (
+from fsb_core.action_plan import (
     ActionPlan,
     ActionType,
     build_action_plan,
     get_action_plan_summary,
 )
-from core.graph_builder import GraphBuilder
-from core.models import (
+from fsb_core.graph_builder import GraphBuilder
+from fsb_core.models import (
     Block,
     Connection,
     Graph,

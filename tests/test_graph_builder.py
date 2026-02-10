@@ -16,8 +16,8 @@ Test coverage:
 
 import pytest
 
-from core.graph_builder import GraphBuilder, create_simple_graph
-from core.models import (
+from fsb_core.graph_builder import GraphBuilder, create_simple_graph
+from fsb_core.models import (
     BlockStatus,
     Graph,
     PortDirection,
