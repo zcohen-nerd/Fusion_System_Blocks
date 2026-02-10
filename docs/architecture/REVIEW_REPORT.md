@@ -3,7 +3,7 @@
 **Reviewer:** SE: Architect Agent
 
 ## Executive Summary
-The Fusion System Blocks add-in demonstrates a solid, well-evolved architecture. The recent Milestone 16 refactoring introduced a two-layer Python architecture (`core/` + `fusion_addin/`) that significantly improves testability, maintainability, and observability while preserving the pragmatic monolithic entry point pattern.
+The Fusion System Blocks add-in demonstrates a solid, well-evolved architecture. The Milestone 16 refactoring introduced a two-layer Python architecture (`fsb_core/` + `fusion_addin/`) that significantly improves testability, maintainability, and observability while preserving the pragmatic monolithic entry point pattern.
 
 ## Key Findings
 
@@ -19,15 +19,16 @@ The Fusion System Blocks add-in demonstrates a solid, well-evolved architecture.
 - **No Secrets:** No credentials or API keys stored in code.
 
 ### 3. Testability & Maintainability ✅ (Improved)
-- **Two-Layer Architecture:** Pure Python `core/` library with NO Fusion dependencies enables pytest testing.
-- **207 Tests:** Comprehensive test suite runs in <0.2s outside of Fusion 360.
+- **Two-Layer Architecture:** Pure Python `fsb_core/` library with NO Fusion dependencies enables pytest testing.
+- **482 Tests:** Comprehensive test suite across 21 files runs in <1s outside of Fusion 360.
 - **Modular Structure:** Clear separation between core logic, Fusion adapter, and frontend.
 - **Type Hinting:** Python type hints throughout for static analysis and IDE support.
+- **CI Pipeline:** GitHub Actions runs ruff, mypy, and pytest on Python 3.9–3.12 on every push.
 
-### 4. Scalability & Performance ⚠️
+### 4. Scalability & Performance ✅ (Addressed)
 - **Data Persistence:** Storing diagram as single JSON blob may scale poorly with 100+ blocks.
     - *Risk:* Parsing/serialization latency on large diagrams.
-    - *Recommendation:* Monitor performance; consider chunking or diff-based saves if needed.
+    - *Mitigation (implemented):* Delta serialization (`fsb_core/delta.py`) sends only changed portions as JSON-Patch style diffs, reducing save overhead.
 - **Mitigation:** Action plan pattern defers Fusion operations until validation passes.
 
 ### 5. Observability ✅ (New)
@@ -38,10 +39,11 @@ The Fusion System Blocks add-in demonstrates a solid, well-evolved architecture.
 ## Recommendations
 
 1. ✅ **Performance Monitoring (Addressed):** Logging now captures operation durations.
-2. ✅ **Automated Testing (Addressed):** 207 pytest tests cover core logic outside Fusion.
+2. ✅ **Automated Testing (Addressed):** 482 pytest tests cover core logic outside Fusion.
 3. ✅ **Documentation (Addressed):** ADRs and folder structure documentation updated.
-4. **Future:** Consider integration tests with mocked Fusion API for adapter layer validation.
-5. **Future:** Add telemetry opt-in for production usage metrics (with user consent).
+4. ✅ **Diff-Based Saves (Addressed):** Delta serialization implemented in `fsb_core/delta.py` and `src/utils/delta-utils.js`.
+5. **Future:** Consider integration tests with mocked Fusion API for adapter layer validation.
+6. **Future:** Add telemetry opt-in for production usage metrics (with user consent).
 
 ## Conclusion
 The system is **Well-Architected** for its current scale and constraints. The Milestone 16 refactoring addressed prior concerns about testability and observability. Focus future efforts on:

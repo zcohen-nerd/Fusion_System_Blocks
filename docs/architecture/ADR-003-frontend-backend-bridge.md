@@ -25,9 +25,10 @@ We implement a **Command-Dispatch Bridge Pattern**.
 ### Positive
 - **Decoupling:** The frontend doesn't need to know *how* the backend implements a command, just the API contract.
 - **Debuggability:** All messages are JSON, making them easy to log and inspect.
+- **Shared Constants:** `BridgeAction` / `BridgeEvent` enums (`fsb_core/bridge_actions.py`) and their JavaScript mirror (`src/types/bridge-actions.js`) eliminate magic strings across both layers.
 
 ### Negative
-- **Serialization Cost:** All data must be serialized to JSON, which can be slow for very large datasets.
+- **Serialization Cost:** All data must be serialized to JSON, which can be slow for very large datasets. _Mitigation:_ delta serialization (`fsb_core/delta.py`, `src/utils/delta-utils.js`) sends only JSON-Patch style diffs for incremental saves, reducing payload size.
 - **Complexity:** Requires boilerplate code on both sides to marshal/unmarshal data.
 
 ## Compliance

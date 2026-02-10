@@ -14,21 +14,23 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
 - **Coordinator** (`main-coordinator.js`): System orchestration
 
 ### Backend (Python) - Two-Layer Architecture
-- **Core Library** (`core/`): Pure Python business logic with NO Fusion dependencies
+- **Core Library** (`fsb_core/`): Pure Python business logic with NO Fusion dependencies
   - `models.py`: Dataclasses for Block, Port, Connection, Graph
   - `validation.py`: Graph validation with structured error codes
   - `action_plan.py`: Deferred action planning for Fusion operations
   - `graph_builder.py`: Fluent API for graph construction
   - `serialization.py`: JSON serialization with legacy format support
+  - `bridge_actions.py`: BridgeAction / BridgeEvent enums (shared constants for Python and JS)
+  - `delta.py`: compute_patch / apply_patch / is_trivial_patch (JSON-Patch style delta serialization)
 - **Fusion Adapter** (`fusion_addin/`): Thin wrappers for Fusion 360 integration
   - `adapter.py`: FusionAdapter class for core ↔ Fusion translation
   - `selection.py`: SelectionHandler for Fusion selection workflows
   - `document.py`: DocumentManager for Fusion document operations
   - `logging_util.py`: Production logging with session IDs
   - `diagnostics.py`: DiagnosticsRunner with self-test suite
-- **Entry Point**: `Fusion_System_Blocks.py` orchestrates both layers
+- **Entry Point**: `Fusion_System_Blocks.py` orchestrates both layers (hard-fail imports, no fallback)
 - **Legacy Data Management**: `src/diagram_data.py` for backward compatibility
-- **Testing**: 207 pytest tests in `tests/` (runs outside Fusion 360)
+- **Testing**: 482 pytest tests in `tests/` across 21 files (runs outside Fusion 360)
 
 ## Development Standards
 
@@ -50,16 +52,18 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
 
 ## Testing Approach
 
-### Test Coverage (207 tests)
-- **Core Library Tests**: `test_core_validation.py`, `test_core_action_plan.py` (48 tests)
-- **Legacy Logic Tests**: `test_diagram_data.py`, `test_validation.py` (80 tests)
-- **Integration Tests**: Module interaction validation
+### Test Coverage (482 tests across 21 files)
+- **Core Library Tests**: `test_core_validation.py`, `test_core_action_plan.py`, `test_models.py`, `test_serialization.py`, `test_delta.py`
+- **Adapter Tests**: `test_adapter.py`, `test_selection.py`, `test_document.py`, `test_cad.py`
+- **Legacy Logic Tests**: `test_diagram_data.py`, `test_validation.py` 
+- **Integration Tests**: `test_integration.py`, `test_property_based.py`
+- **Feature Tests**: `test_export_reports.py`, `test_hierarchy.py`, `test_import.py`, `test_rule_checks.py`, `test_schema.py`, `test_status_tracking.py`, `test_graph_builder.py`, `test_logging_util.py`
 - **Diagnostics**: Built-in "Run Diagnostics" command for runtime self-testing
 
 ### Test Organization
-- **Quick Tests**: 30-minute practical validation checklist
-- **Comprehensive Tests**: Full milestone validation procedures
-- **Automated Tests**: CI/CD pipeline with pytest and flake8
+- **Quick Tests**: 30-minute practical validation checklist (FUSION_MANUAL_TEST_PLAN.md)
+- **Comprehensive Tests**: Full milestone validation procedures (DETAILED_TESTING_DOCUMENTATION.md)
+- **Automated Tests**: GitHub Actions CI with ruff, mypy, and pytest on Python 3.9–3.12
 
 ## Repository Management
 
@@ -114,10 +118,11 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
 - **Release Notes**: Clear changelog with features, fixes, and breaking changes
 
 ### CI/CD Pipeline
-1. **Testing**: Automated pytest and flake8 validation
-2. **Building**: Package creation with all required files
-3. **Release**: Automated GitHub release creation
-4. **Distribution**: Public repository asset publishing
+1. **Linting**: ruff check and ruff format on every push/PR
+2. **Type Checking**: mypy on `fsb_core/`
+3. **Testing**: pytest on Python 3.9–3.12 with coverage
+4. **Release**: Automated GitHub release creation
+5. **Distribution**: Public repository asset publishing
 
 ## Common Patterns
 

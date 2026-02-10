@@ -4,7 +4,7 @@
 **Generated:** December 22, 2025  
 **Project Type:** Python/JavaScript Hybrid (Fusion 360 Add-in)  
 **Architecture:** Two-Layer Backend (Core + Adapter) + Modular Frontend  
-**Last Structure Update:** February 5, 2026
+**Last Structure Update:** February 2026
 
 ---
 
@@ -18,14 +18,14 @@ This is a **Python-based Fusion 360 add-in** with a **JavaScript/HTML5 frontend*
 
 ### Organizational Principles
 1. **Separation by Technology Layer**: Python (backend) vs. JavaScript (frontend) kept distinct
-2. **Two-Layer Python Architecture**: Pure Python core library (`core/`) + Fusion adapter layer (`fusion_addin/`)
+2. **Two-Layer Python Architecture**: Pure Python core library (`fsb_core/`) + Fusion adapter layer (`fusion_addin/`)
 3. **Feature-Based Frontend Modules**: UI code organized by responsibility (core, ui, features, interface, utils)
 4. **Testable Core Logic**: Core library has NO Fusion dependencies, enabling pytest outside Fusion 360
 5. **Documentation Co-location**: Architecture decisions, UX research, and design notes live in `docs/`
-6. **Test Mirroring**: Test files mirror the structure of `src/` and `core/` with `test_*.py` naming
+6. **Test Mirroring**: Test files mirror the structure of `src/` and `fsb_core/` with `test_*.py` naming
 
 ### Architectural Approach
-- **Core Library (`core/`)**: Pure Python business logic with dataclasses, validation, and action planning. NO `adsk` imports—fully testable with pytest.
+- **Core Library (`fsb_core/`)**: Pure Python business logic with dataclasses, validation, and action planning. NO `adsk` imports—fully testable with pytest.
 - **Fusion Adapter (`fusion_addin/`)**: Thin wrappers that translate between core library and Fusion 360 API. Includes logging, diagnostics, selection, and document operations.
 - **Entry Point**: `Fusion_System_Blocks.py` acts as the Fusion 360 entry point, orchestrating core library and adapter modules.
 - **Frontend**: Modular JavaScript with clear boundaries (editor core, rendering, UI management, Python bridge, advanced features)
@@ -43,7 +43,8 @@ Fusion_System_Blocks/
 │   ├── agents/                    # AI coding agent definitions
 │   ├── instructions/              # Copilot custom instructions (code review, security, Python/Markdown)
 │   ├── prompts/                   # Reusable prompt templates (folder structure, refactoring, UX)
-│   └── workflows/                 # GitHub Actions CI/CD definitions (future)
+│   └── workflows/                 # GitHub Actions CI/CD definitions
+│       └── ci.yml                 # Lint (ruff), type-check (mypy), test (pytest 3.9–3.12)
 ├── .gitignore                     # Git ignore patterns (__pycache__, .venv, .pytest_cache, etc.)
 ├── .venv/                         # Python virtual environment (excluded from source control)
 ├── .vscode/                       # VS Code workspace settings
@@ -51,13 +52,15 @@ Fusion_System_Blocks/
 │   └── README.md                  # Asset organization guide
 ├── CHANGELOG.md                   # Version history and release notes
 ├── copilot-instructions.md        # High-level Copilot guidance for the project
-├── core/                          # Pure Python core library (NO Fusion dependencies)
+├── fsb_core/                      # Pure Python core library (NO Fusion dependencies)
 │   ├── __init__.py                # Package exports for all core modules
 │   ├── models.py                  # Dataclasses: Block, Port, Connection, Graph, enums
 │   ├── validation.py              # Graph validation with structured error codes
 │   ├── action_plan.py             # Action plan builder for deferred Fusion operations
 │   ├── graph_builder.py           # Fluent API for constructing graphs
-│   └── serialization.py           # JSON serialization with legacy format support
+│   ├── serialization.py           # JSON serialization with legacy format support
+│   ├── bridge_actions.py          # BridgeAction / BridgeEvent shared enums
+│   └── delta.py                   # compute_patch / apply_patch / is_trivial_patch
 ├── docs/                          # Project documentation
 │   ├── architecture/              # Architecture decision records (ADRs) and review reports
 │   ├── ux/                        # UX research (JTBD, journey maps, flows)
@@ -103,11 +106,13 @@ Fusion_System_Blocks/
 │   │   └── toolbar-manager.js     # Toolbar state management and button wiring
 │   ├── types/                     # Block type definitions (JavaScript)
 │   │   ├── block-templates.js     # Predefined system templates
+│   │   ├── bridge-actions.js      # JS mirror of Python BridgeAction/BridgeEvent constants
 │   │   ├── electrical-blocks.js   # Electrical component types
 │   │   ├── mechanical-blocks.js   # Mechanical component types
 │   │   └── software-blocks.js     # Software module types
 │   ├── utils/                     # Utilities (JavaScript)
-│   │   └── logger.js              # Logging framework for debugging
+│   │   ├── logger.js              # Logging framework for debugging
+│   │   └── delta-utils.js         # Delta utilities (computePatch, applyPatch, deepClone)
 │   ├── diagram_data.py            # Core business logic: validation, rule checks, exports (Python)
 │   ├── fusion-icons.css           # Icon styles for UI
 │   ├── fusion-ribbon.css          # Ribbon-style toolbar CSS
@@ -116,16 +121,27 @@ Fusion_System_Blocks/
 │   ├── palette.html               # Main HTML palette UI (entry point for frontend)
 │   └── palette.js                 # Palette initialization and legacy orchestration
 ├── tasks.md                       # Project task list and TODOs
-├── tests/                         # Automated tests (pytest) - 207 tests total
-│   ├── test_core_action_plan.py   # Tests for core/action_plan.py (24 tests)
-│   ├── test_core_validation.py    # Tests for core/validation.py (24 tests)
+├── tests/                         # Automated tests (pytest) - 482 tests across 21 files
+│   ├── test_adapter.py            # Tests for fusion_addin/adapter.py
+│   ├── test_cad.py                # Tests for CAD linking and component operations
+│   ├── test_core_action_plan.py   # Tests for fsb_core/action_plan.py
+│   ├── test_core_validation.py    # Tests for fsb_core/validation.py
+│   ├── test_delta.py              # Tests for fsb_core/delta.py (compute/apply patch)
 │   ├── test_diagram_data.py       # Tests for diagram_data.py core logic
-│   ├── test_export_reports.py    # Tests for export functionality
+│   ├── test_document.py           # Tests for fusion_addin/document.py
+│   ├── test_export_reports.py     # Tests for export functionality
+│   ├── test_graph_builder.py      # Tests for fsb_core/graph_builder.py
 │   ├── test_hierarchy.py          # Tests for hierarchical diagrams
 │   ├── test_import.py             # Tests for import operations
+│   ├── test_integration.py        # Cross-module integration tests
+│   ├── test_logging_util.py       # Tests for production logging
+│   ├── test_models.py             # Tests for fsb_core/models.py dataclasses
+│   ├── test_property_based.py     # Hypothesis property-based / fuzz tests
 │   ├── test_rule_checks.py        # Tests for validation rules
 │   ├── test_schema.py             # Tests for JSON schema validation
-│   ├── test_status_tracking.py   # Tests for block status tracking
+│   ├── test_selection.py          # Tests for fusion_addin/selection.py
+│   ├── test_serialization.py      # Tests for serialization round-trips
+│   ├── test_status_tracking.py    # Tests for block status tracking
 │   └── test_validation.py         # Tests for diagram validation
 └── __pycache__/                   # Python compiled bytecode (excluded from source control)
 ```
@@ -148,7 +164,7 @@ Fusion_System_Blocks/
 - **`agents/`**: AI agent definitions for specialized tasks (architecture review, UX design, code review)
 - **`instructions/`**: Copilot custom instructions enforcing coding standards (Python PEP 8/257, Markdown, security/OWASP)
 - **`prompts/`**: Reusable prompt templates for common development workflows (folder structure analysis, refactoring, UX design)
-- **`workflows/`**: Reserved for GitHub Actions CI/CD pipelines (future automation)
+- **`workflows/`**: GitHub Actions CI/CD pipelines (lint, type-check, test)
 
 ### `fusion_system_blocks/`: Distribution Package
 - **Purpose**: A clean, importable package structure for distribution that mirrors the root-level code
@@ -214,15 +230,29 @@ The source directory contains both Python business logic and JavaScript frontend
 - **`schema.json`**: JSON schema defining the structure of diagram data for validation
 
 ### `tests/`: Automated Test Suite
-- **Test Organization**: Tests mirror the structure of `src/` with `test_*.py` naming
+- **Test Organization**: Tests mirror the structure of `src/` and `fsb_core/` with `test_*.py` naming
 - **Framework**: pytest with fixtures for diagram creation and validation
+- **Count**: 482 tests across 21 files
 - **Coverage**:
+  - `test_adapter.py`: FusionAdapter translation layer
+  - `test_cad.py`: CAD linking and component operations
+  - `test_core_action_plan.py`: Action plan builder
+  - `test_core_validation.py`: Graph validation and error codes
+  - `test_delta.py`: Delta serialization (compute/apply/trivial patch)
   - `test_diagram_data.py`: Core diagram operations and validation
+  - `test_document.py`: DocumentManager operations
   - `test_export_reports.py`: JSON/CSV/HTML export functionality
+  - `test_graph_builder.py`: Fluent graph construction API
   - `test_hierarchy.py`: Multi-level diagram nesting and navigation
   - `test_import.py`: Import operations from external sources
+  - `test_integration.py`: Cross-module integration scenarios
+  - `test_logging_util.py`: Production logging and `@log_exceptions` decorator
+  - `test_models.py`: Dataclass models and enum coverage
+  - `test_property_based.py`: Hypothesis property-based / fuzz tests
   - `test_rule_checks.py`: Validation rules (power continuity, orphaned blocks, interface compatibility)
   - `test_schema.py`: JSON schema compliance
+  - `test_selection.py`: SelectionHandler workflows
+  - `test_serialization.py`: Serialization round-trips and format conversion
   - `test_status_tracking.py`: Block status lifecycle (Placeholder → Planned → In-Work → Implemented → Verified)
   - `test_validation.py`: Diagram-level validation (required fields, link integrity)
 

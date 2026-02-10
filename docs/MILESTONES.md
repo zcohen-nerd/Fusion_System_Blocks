@@ -1,6 +1,6 @@
 # Fusion System Blocks Milestones
 
-_Last updated: February 5, 2026_
+_Last updated: February 2026_
 
 This document summarizes the development milestones that guide Fusion System Blocks. Each milestone corresponds to a cohesive feature set. For implementation details and open tasks, see `tasks.md`.
 
@@ -25,10 +25,10 @@ This document summarizes the development milestones that guide Fusion System Blo
 | 10.5 | UI/UX Improvements | 🟠 | Responsive ribbon behaviors, accessibility enhancements |
 | 11 | Advanced Block Types & Templates | ✅ | Discipline-specific blocks, template library, metadata |
 | 12 | Enhanced CAD Linking | ✅ | Component health dashboard, property sync, thumbnail support |
-| 13 | 3D Visualization & Living Documentation | � | Viewport overlays, component highlighting, auto-generated sequences |
+| 13 | 3D Visualization & Living Documentation | 🔲 | Viewport overlays, component highlighting, auto-generated sequences |
 | 14 | Advanced Diagram Features | ✅ | Auto layout, alignment tools, annotations, grouping |
 | 15 | AI-Powered Design Assistant | 🔲 | Intelligent suggestions, rule insights, automation hooks |
-| 16 | Architecture Refactoring & Tooling | ✅ | Two-layer architecture, production logging, diagnostics system |
+| 16 | Architecture Refactoring & Tooling | ✅ | Two-layer architecture, production logging, diagnostics, delta serialization |
 | 17 | Analytics & Reporting | 🔲 | Component analysis, connection reports, PDF/CSV export |
 
 ## Notes on Active Milestones
@@ -37,7 +37,7 @@ This document summarizes the development milestones that guide Fusion System Blo
 - Responsive breakpoints for the ribbon and secondary toolbar are partially implemented.
 - Accessibility work (keyboard navigation, focus indicators, high-contrast options) is tracked in `tasks.md`.
 
-### Milestone 13 – 3D Visualization & Living Documentation (�)
+### Milestone 13 – 3D Visualization & Living Documentation (🔲)
 - Not started. Backend scaffolding for linking diagram entities to 3D occurrences is in place.
 - Next steps: viewport overlay rendering, change-impact visualizations, and documentation generation pipelines.
 
@@ -45,19 +45,21 @@ This document summarizes the development milestones that guide Fusion System Blo
 - Concept outlines live in `tasks.md` but implementation has not started.
 - Scope will include component recommendations, constraint checking, and automated workflows.
 
-### Milestone 16 – Architecture Refactoring & Tooling (✅ NEW)
+### Milestone 16 – Architecture Refactoring & Tooling (✅)
 Completed February 2026. Major architectural improvements:
 
 - **Two-Layer Architecture:**
-  - `core/` – Pure Python library with NO Fusion 360 dependencies (testable with pytest)
+  - `fsb_core/` – Pure Python library with NO Fusion 360 dependencies (testable with pytest)
   - `fusion_addin/` – Thin adapter layer that bridges core logic and Fusion 360 API
-- **Core Library Modules:**
+- **Core Library Modules (`fsb_core/`):**
   - `models.py` – Dataclasses for Block, Port, Connection, Graph
   - `validation.py` – Graph validation with structured error codes
   - `action_plan.py` – Action plan builder for deferred Fusion operations
   - `graph_builder.py` – Fluent API for constructing graphs
   - `serialization.py` – JSON serialization with legacy format support
-- **Fusion Adapter Modules:**
+  - `bridge_actions.py` – BridgeAction / BridgeEvent shared enums (Python + JS)
+  - `delta.py` – compute_patch / apply_patch / is_trivial_patch (JSON-Patch style)
+- **Fusion Adapter Modules (`fusion_addin/`):**
   - `adapter.py` – FusionAdapter class for core ↔ Fusion translation
   - `selection.py` – SelectionHandler for Fusion selection workflows
   - `document.py` – DocumentManager for Fusion document operations
@@ -66,7 +68,10 @@ Completed February 2026. Major architectural improvements:
 - **New Features:**
   - "Run Diagnostics" command in the Add-Ins panel for self-tests
   - Production logging to `~/FusionSystemBlocks/logs/`
-  - 48 new core library tests (total: 207 tests)
+  - Delta serialization for incremental saves (JS + Python)
+  - Shared bridge action constants eliminating magic strings
+  - GitHub Actions CI pipeline (ruff, mypy, pytest on Python 3.9–3.12)
+  - 482 automated tests across 21 files
 
 ---
 

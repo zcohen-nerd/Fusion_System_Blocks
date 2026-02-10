@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Shared Bridge Action Constants:**
+  - `fsb_core/bridge_actions.py` – `BridgeAction` and `BridgeEvent` enums replacing all magic strings
+  - `src/types/bridge-actions.js` – JavaScript mirror of Python bridge constants
+  - Python ↔ JavaScript bridge communication now uses a single source of truth
+- **Delta Serialization:**
+  - `fsb_core/delta.py` – `compute_patch`, `apply_patch`, `is_trivial_patch` (JSON-Patch style)
+  - `src/utils/delta-utils.js` – JS-side `DeltaUtils` (computePatch, applyPatch, deepClone)
+  - `src/core/diagram-editor.js` – `markSaved()`, `getDelta()`, `hasUnsavedChanges()` for change tracking
+  - `src/interface/python-bridge.js` – delta-first save with full-save fallback
+  - `Fusion_System_Blocks.py` – `_handle_apply_delta` handler for incremental persistence
+- **GitHub Actions CI Pipeline (`.github/workflows/ci.yml`):**
+  - ruff check and ruff format on every push/PR
+  - mypy type checking on `fsb_core/`
+  - pytest on Python 3.9, 3.10, 3.11, and 3.12 with coverage
+  - Codecov upload and test report integration
+- **New Tests (275 additional tests, total: 482 across 21 files):**
+  - `test_delta.py` – Delta serialization compute/apply/trivial-patch tests
+  - `test_adapter.py` – FusionAdapter translation layer
+  - `test_cad.py` – CAD linking and component operations
+  - `test_document.py` – DocumentManager operations
+  - `test_selection.py` – SelectionHandler workflows
+  - `test_integration.py` – Cross-module integration scenarios
+  - `test_models.py` – Dataclass models and enum coverage
+  - `test_property_based.py` – Hypothesis property-based / fuzz tests
+  - `test_serialization.py` – Serialization round-trip and format conversion
 - **Block Interaction Features:**
   - Double-click inline rename with foreignObject HTML input
   - Right-click context menu with Type/Status submenus, Connect to, Delete, Add Block
@@ -15,15 +40,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Connection port dots on block hover (input/output circles)
   - `addConnection()` / `removeConnection()` in diagram editor core
 - **Two-Layer Architecture (Milestone 16):**
-  - `core/` pure Python library with NO Fusion 360 dependencies
+  - `fsb_core/` pure Python library with NO Fusion 360 dependencies
   - `fusion_addin/` adapter layer for Fusion 360 integration
-- **Core Library Modules:**
+- **Core Library Modules (`fsb_core/`):**
   - `models.py` – Block, Port, Connection, Graph dataclasses with enums
   - `validation.py` – Graph validation with structured error codes (ValidationError)
   - `action_plan.py` – Action plan builder for deferred Fusion operations
   - `graph_builder.py` – Fluent API for constructing graphs
   - `serialization.py` – JSON serialization with legacy format support
-- **Fusion Adapter Modules:**
+  - `bridge_actions.py` – BridgeAction / BridgeEvent enums (shared constants)
+  - `delta.py` – compute_patch / apply_patch / is_trivial_patch
+- **Fusion Adapter Modules (`fusion_addin/`):**
   - `adapter.py` – FusionAdapter class for core ↔ Fusion translation
   - `selection.py` – SelectionHandler for Fusion selection workflows
   - `document.py` – DocumentManager for Fusion document operations
@@ -38,12 +65,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Session ID grouping for each add-in run
   - `@log_exceptions` decorator for event handlers
   - Environment info logging (Fusion version, OS, Python version)
-- **48 new tests** for core library validation and action planning (total: 207 tests)
 
 ### Changed
-- Updated repository structure to include `core/` and `fusion_addin/` directories
-- README and milestone documentation refreshed to reflect new architecture
+- **Renamed `core/` → `fsb_core/`** to avoid namespace collisions with Python built-ins
+- Hard-fail imports in `Fusion_System_Blocks.py` (removed `CORE_AVAILABLE` fallback pattern)
+- `pyproject.toml` updated: `setuptools.packages.find` includes `fsb_core*`, ruff/mypy/coverage targets updated
+- All CI tooling references updated for `fsb_core/` package name
+- README and milestone documentation refreshed to reflect current architecture
 - Deployment guide aligned with current two-layer architecture
+
+### Fixed
+- **Selection `.entity` unwrap:** `fusion_addin/selection.py` now correctly unwraps the `.entity` property from Fusion selection results
+- **JSON type coercion:** `Fusion_System_Blocks.py` bridge handler now accepts both `str` and `dict` for incoming JSON data
+- **Cycle detection path slicing:** `fsb_core/validation.py` fixed off-by-one in cycle path extraction for accurate error reporting
 
 ### Security
 - Clarified licensing terms for commercial deployments and protected usage boundaries
@@ -69,8 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Testing**: Automated testing with pytest and comprehensive validation
 
 ### Technical
-- Python 3.11+ backend
+- Python 3.9+ backend
 - Modern JavaScript frontend with modular architecture
 - Fusion 360 Add-in compatibility
-- Cross-platform support (Windows, macOS, Linux)
-- Git-based version control and CI/CD
+- Cross-platform support (Windows, macOS)

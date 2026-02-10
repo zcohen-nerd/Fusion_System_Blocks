@@ -28,15 +28,18 @@
 ## System Requirements
 - Fusion 360 (Latest version recommended)
 - Windows 10/11 or macOS
-- Python 3.8+ (included with Fusion 360)
+- Python 3.9+ (included with Fusion 360)
 
 ## Feature Availability
 - ✅ Diagram authoring, hierarchy navigation, import/export, rule checking
 - ✅ Enhanced CAD linking and status dashboards (milestone 12)
 - ✅ Advanced ribbon UI, annotations, and layout tooling (milestone 14)
 - ✅ Two-layer architecture with production logging (milestone 16)
+- ✅ Delta serialization for incremental saves (JSON-Patch style diffs)
+- ✅ Shared bridge action constants between Python and JavaScript
 - ✅ Built-in "Run Diagnostics" command for self-testing
-- 🚧 3D visualization and living documentation workflows (milestone 13, in progress)
+- ✅ GitHub Actions CI: ruff, mypy, pytest on Python 3.9–3.12 (482 tests)
+- 🚧 3D visualization and living documentation workflows (milestone 13, not started)
 
 ## Troubleshooting
 

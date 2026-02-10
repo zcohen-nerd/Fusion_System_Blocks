@@ -42,14 +42,15 @@ We have adopted a **Monolithic Backend with Modular Frontend** architecture.
 This ADR has been superseded by the **Two-Layer Architecture** introduced in Milestone 16:
 
 ### Two-Layer Python Architecture
-- **`core/`**: Pure Python library with NO Fusion dependencies — fully testable with pytest
+- **`fsb_core/`**: Pure Python library with NO Fusion dependencies — fully testable with pytest
 - **`fusion_addin/`**: Thin adapter layer for Fusion 360 integration
 
 ### Key Changes
-- Business logic moved to `core/` modules (models, validation, action_plan, serialization)
+- Business logic moved to `fsb_core/` modules (models, validation, action_plan, serialization, bridge_actions, delta)
 - Fusion-specific code isolated in `fusion_addin/` (adapter, selection, document, logging, diagnostics)
-- Entry point (`Fusion_System_Blocks.py`) orchestrates both layers
-- 207 pytest tests run outside of Fusion 360
+- Entry point (`Fusion_System_Blocks.py`) orchestrates both layers with hard-fail imports
+- 482 pytest tests across 21 files run outside of Fusion 360
+- GitHub Actions CI pipeline runs ruff, mypy, and pytest on Python 3.9–3.12
 
 ### Why This Doesn't Contradict ADR-001
 The monolithic *entry point* pattern remains — `Fusion_System_Blocks.py` is still the single file Fusion loads. The internal organization is now modular, but deployment and lifecycle management are unchanged.
