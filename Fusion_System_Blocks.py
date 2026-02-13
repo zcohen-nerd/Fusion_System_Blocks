@@ -662,7 +662,9 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         selected_formats = data.get("formats", None)
 
         files_created = diagram_data.export_report_files(
-            diagram, exports_path, profile=profile,
+            diagram,
+            exports_path,
+            profile=profile,
             selected_formats=selected_formats,
         )
         # Convert dict to list of file paths for consistent JS handling
