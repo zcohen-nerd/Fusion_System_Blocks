@@ -467,7 +467,8 @@ class TestSVGDiagram:
 
     def test_svg_contains_connections(self, sample_diagram):
         svg = diagram_data.generate_svg_diagram(sample_diagram)
-        assert 'class="conn"' in svg
+        # Connections now use inline stroke styles instead of CSS class
+        assert '<line ' in svg
 
     def test_svg_empty_diagram(self):
         svg = diagram_data.generate_svg_diagram({"blocks": [], "connections": []})
@@ -475,8 +476,8 @@ class TestSVGDiagram:
 
     def test_svg_status_colours(self, sample_diagram):
         svg = diagram_data.generate_svg_diagram(sample_diagram)
-        # Verified blocks should use the green stroke
-        assert "#2e7d32" in svg
+        # Verified blocks get a teal status-dot colour (#006064)
+        assert "#006064" in svg
 
 
 class TestExportProfiles:

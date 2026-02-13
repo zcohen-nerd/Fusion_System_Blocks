@@ -582,11 +582,11 @@ def generate_connection_matrix_csv(diagram: dict[str, Any]) -> str:
 
 
 def generate_svg_diagram(diagram: dict[str, Any]) -> str:
-    """Generate a basic SVG snapshot of the block diagram.
+    """Generate a detailed SVG snapshot of the block diagram.
 
-    The SVG uses block positions and connection data to render
-    a portable vector image suitable for embedding in documents
-    or printing.
+    Renders all 8 block shapes, type-based colours, status indicator
+    dots, and connection-type styling (colour, width, dash pattern) so
+    the exported SVG closely matches the browser canvas view.
 
     Args:
         diagram: The diagram to render.
@@ -604,19 +604,59 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
             'fill="#888">Empty diagram</text></svg>'
         )
 
+    # Block dimensions
+    default_w, default_h = 160, 80
+
     # Compute bounding box
-    block_w, block_h = 160, 60
     xs = [b.get("x", 0) for b in blocks]
     ys = [b.get("y", 0) for b in blocks]
-    padding = 40
+    ws = [b.get("width", default_w) for b in blocks]
+    hs = [b.get("height", default_h) for b in blocks]
+    padding = 50
     min_x = min(xs) - padding
     min_y = min(ys) - padding
-    max_x = max(xs) + block_w + padding
-    max_y = max(ys) + block_h + padding
+    max_x = max(x + w for x, w in zip(xs, ws)) + padding
+    max_y = max(y + h for y, h in zip(ys, hs)) + padding
     svg_w = max_x - min_x
     svg_h = max_y - min_y
 
     id_to_block = {b["id"]: b for b in blocks}
+
+    # --- Type-based colours (match diagram-renderer.js) ---
+    type_colours: dict[str, dict[str, str]] = {
+        "Electrical": {"fill": "#E8F4FD", "stroke": "#2196F3"},
+        "Mechanical": {"fill": "#FFF3E0", "stroke": "#FF9800"},
+        "Software": {"fill": "#F3E5F5", "stroke": "#9C27B0"},
+        "Generic": {"fill": "#F5F5F5", "stroke": "#757575"},
+    }
+
+    # --- Status dot colours (match diagram-renderer.js/fusion-theme.css) ---
+    status_dot_colours: dict[str, str] = {
+        "Placeholder": "#969696",
+        "Planned": "#87ceeb",
+        "In-Work": "#ffc107",
+        "Implemented": "#4caf50",
+        "Verified": "#006064",
+    }
+
+    # --- Status stroke-width tweaks ---
+    status_stroke_width: dict[str, float] = {
+        "Placeholder": 1.0,
+        "Planned": 1.5,
+        "In-Work": 2.0,
+        "Implemented": 3.0,
+        "Verified": 3.0,
+    }
+
+    # --- Connection styling (match diagram-renderer.js) ---
+    conn_styles: dict[str, dict[str, Any]] = {
+        "power": {"stroke": "#dc3545", "width": 3, "dash": None},
+        "data": {"stroke": "#007bff", "width": 2, "dash": "8,4"},
+        "electrical": {"stroke": "#28a745", "width": 2, "dash": "4,2"},
+        "mechanical": {"stroke": "#6c757d", "width": 2, "dash": "12,6"},
+    }
+    default_conn_style: dict[str, Any] = {"stroke": "#666", "width": 2, "dash": None}
+
     parts: list[str] = []
     parts.append(
         f'<svg xmlns="http://www.w3.org/2000/svg" '
@@ -625,63 +665,156 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
     )
     parts.append("<style>")
     parts.append(
-        "rect.block{fill:#f5f5f5;stroke:#555;stroke-width:1.5;rx:6}"
-        "text.block-name{font-family:sans-serif;font-size:12px;"
-        "fill:#222;text-anchor:middle;dominant-baseline:central}"
-        "text.block-type{font-family:sans-serif;font-size:9px;"
+        "text.block-name{font-family:Arial,sans-serif;font-size:12px;"
+        "font-weight:bold;fill:#333;text-anchor:middle;dominant-baseline:central}"
+        "text.block-type{font-family:Arial,sans-serif;font-size:9px;"
         "fill:#888;text-anchor:middle}"
-        "line.conn{stroke:#999;stroke-width:1.2}"
-        "polygon.arrow{fill:#999}"
     )
     parts.append("</style>")
 
-    # Colour map for status
-    status_colours = {
-        "Verified": "#2e7d32",
-        "Implemented": "#1565c0",
-        "In-Work": "#ef6c00",
-        "Planned": "#6a1b9a",
-        "Placeholder": "#888",
-    }
-
-    # Draw connections
+    # ---- Draw connections ----
     for conn in connections:
-        fb = id_to_block.get(conn["from"]["blockId"])
-        tb = id_to_block.get(conn["to"]["blockId"])
+        fb = id_to_block.get(conn.get("from", {}).get("blockId") or conn.get("fromBlock", ""))
+        tb = id_to_block.get(conn.get("to", {}).get("blockId") or conn.get("toBlock", ""))
         if not fb or not tb:
             continue
-        x1 = fb.get("x", 0) + block_w
-        y1 = fb.get("y", 0) + block_h // 2
+        fw = fb.get("width", default_w)
+        fh = fb.get("height", default_h)
+        tw = tb.get("width", default_w)
+        th = tb.get("height", default_h)
+        x1 = fb.get("x", 0) + fw
+        y1 = fb.get("y", 0) + fh // 2
         x2 = tb.get("x", 0)
-        y2 = tb.get("y", 0) + block_h // 2
-        parts.append(f'<line class="conn" x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}"/>')
-        # Arrowhead
+        y2 = tb.get("y", 0) + th // 2
+
+        conn_type = (conn.get("type") or "auto").lower()
+        style = conn_styles.get(conn_type, default_conn_style)
+
+        dash_attr = f' stroke-dasharray="{style["dash"]}"' if style["dash"] else ""
+        parts.append(
+            f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
+            f'stroke="{style["stroke"]}" stroke-width="{style["width"]}"{dash_attr}/>'
+        )
+        # Arrowhead in connection colour
         _add_arrowhead(parts, x1, y1, x2, y2)
 
-    # Draw blocks
+    # ---- Draw blocks ----
     for b in blocks:
         bx = b.get("x", 0)
         by = b.get("y", 0)
+        bw = b.get("width", default_w)
+        bh = b.get("height", default_h)
+        shape = b.get("shape", "rectangle")
+        btype = b.get("type", "Generic")
         status = b.get("status", "Placeholder")
-        stroke = status_colours.get(status, "#888")
+
+        colours = type_colours.get(btype, type_colours["Generic"])
+        fill = colours["fill"]
+        stroke = colours["stroke"]
+        sw = status_stroke_width.get(status, 1.0)
+
+        # Render shape
+        _render_block_shape(parts, shape, bx, by, bw, bh, fill, stroke, sw)
+
+        # Block name (centred)
         parts.append(
-            f'<rect class="block" x="{bx}" y="{by}" '
-            f'width="{block_w}" height="{block_h}" '
-            f'stroke="{stroke}"/>'
-        )
-        parts.append(
-            f'<text class="block-name" x="{bx + block_w // 2}" '
-            f'y="{by + block_h // 2 - 6}">'
+            f'<text class="block-name" x="{bx + bw // 2}" '
+            f'y="{by + bh // 2 - 6}">'
             f"{_esc(b.get('name', ''))}</text>"
         )
+        # Block type (centred, below name)
         parts.append(
-            f'<text class="block-type" x="{bx + block_w // 2}" '
-            f'y="{by + block_h // 2 + 10}">'
-            f"{_esc(b.get('type', ''))}</text>"
+            f'<text class="block-type" x="{bx + bw // 2}" '
+            f'y="{by + bh // 2 + 10}">'
+            f"{_esc(btype)}</text>"
+        )
+
+        # Status indicator dot (top-right corner)
+        dot_colour = status_dot_colours.get(status, "#969696")
+        dot_cx = bx + bw - 10
+        dot_cy = by + 10
+        parts.append(
+            f'<circle cx="{dot_cx}" cy="{dot_cy}" r="6" '
+            f'fill="{dot_colour}" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>'
         )
 
     parts.append("</svg>")
     return "\n".join(parts)
+
+
+def _render_block_shape(
+    parts: list[str],
+    shape: str,
+    x: float,
+    y: float,
+    w: float,
+    h: float,
+    fill: str,
+    stroke: str,
+    stroke_width: float,
+) -> None:
+    """Append SVG markup for a single block shape.
+
+    Supports: rectangle, rounded, circle (ellipse), diamond, hexagon,
+    parallelogram, cylinder, triangle.
+    """
+    common = f'fill="{fill}" stroke="{stroke}" stroke-width="{stroke_width}"'
+
+    if shape == "circle":
+        cx = x + w / 2
+        cy = y + h / 2
+        rx = w / 2
+        ry = h / 2
+        parts.append(f'<ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}" {common}/>')
+
+    elif shape == "diamond":
+        mx = x + w / 2
+        my = y + h / 2
+        pts = f"{mx},{y} {x + w},{my} {mx},{y + h} {x},{my}"
+        parts.append(f'<polygon points="{pts}" {common}/>')
+
+    elif shape == "hexagon":
+        off = w * 0.2
+        pts = (
+            f"{x + off},{y} {x + w - off},{y} {x + w},{y + h / 2} "
+            f"{x + w - off},{y + h} {x + off},{y + h} {x},{y + h / 2}"
+        )
+        parts.append(f'<polygon points="{pts}" {common}/>')
+
+    elif shape == "rounded":
+        r = min(w, h) * 0.3
+        parts.append(
+            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{r}" {common}/>'
+        )
+
+    elif shape == "parallelogram":
+        skew = w * 0.18
+        pts = (
+            f"{x + skew},{y} {x + w},{y} "
+            f"{x + w - skew},{y + h} {x},{y + h}"
+        )
+        parts.append(f'<polygon points="{pts}" {common}/>')
+
+    elif shape == "cylinder":
+        cap_ry = h * 0.12
+        d = (
+            f"M {x},{y + cap_ry}"
+            f" A {w / 2},{cap_ry} 0 0,1 {x + w},{y + cap_ry}"
+            f" L {x + w},{y + h - cap_ry}"
+            f" A {w / 2},{cap_ry} 0 0,1 {x},{y + h - cap_ry}"
+            " Z"
+        )
+        parts.append(f'<path d="{d}" {common}/>')
+
+    elif shape == "triangle":
+        pts = f"{x + w / 2},{y} {x + w},{y + h} {x},{y + h}"
+        parts.append(f'<polygon points="{pts}" {common}/>')
+
+    else:
+        # Default: rectangle with small corner radius
+        parts.append(
+            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="6" {common}/>'
+        )
 
 
 # ---------------------------------------------------------------------------
