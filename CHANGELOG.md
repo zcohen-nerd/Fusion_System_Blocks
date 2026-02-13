@@ -31,7 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - SVG diagram snapshot for design reviews and documentation
   - Configurable export profiles: `quick` (3 files), `standard` (9 files), `full` (10 files, default)
   - Entry-point handler accepts optional `profile` parameter from the bridge
-- **New Tests (311 additional tests, total: 518 across 21 files):****
+- **Requirements & Verification Engine (Milestone 18 – Tasks 1 & 2):**
+  - `fsb_core/models.py` – `ComparisonOperator` enum, `Requirement` dataclass with `check()` method, `Snapshot`, `ConnectionChange`, `DiffResult` dataclasses, `block_fingerprint()` helper
+  - `Graph` dataclass now includes `requirements: list[Requirement]` field
+  - `fsb_core/requirements.py` – `RequirementResult` dataclass, `aggregate_attribute()`, `validate_requirements()`
+  - `fsb_core/serialization.py` – Requirements round-trip via `_requirement_to_dict` / `_parse_requirement`
+- **New Tests (350 additional tests, total: 557 across 22 files):**
   - `test_delta.py` – Delta serialization compute/apply/trivial-patch tests
   - `test_adapter.py` – FusionAdapter translation layer
   - `test_cad.py` – CAD linking and component operations
@@ -41,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `test_models.py` – Dataclass models and enum coverage
   - `test_property_based.py` – Hypothesis property-based / fuzz tests
   - `test_serialization.py` – Serialization round-trip and format conversion
+  - `test_requirements.py` – Requirements engine: ComparisonOperator, Requirement, Snapshot, DiffResult, block_fingerprint, aggregate_attribute, validate_requirements, serialization round-trip (39 tests)
 - **Block Interaction Features:**
   - Double-click inline rename with foreignObject HTML input
   - Right-click context menu with Type/Status submenus, Connect to, Delete, Add Block
@@ -51,13 +57,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `fsb_core/` pure Python library with NO Fusion 360 dependencies
   - `fusion_addin/` adapter layer for Fusion 360 integration
 - **Core Library Modules (`fsb_core/`):**
-  - `models.py` – Block, Port, Connection, Graph dataclasses with enums
-  - `validation.py` – Graph validation with structured error codes (ValidationError)
+  - `models.py` – Block, Port, Connection, Graph dataclasses with enums; Requirement, Snapshot, DiffResult, block_fingerprint
+  - `validation.py` – Graph validation with structured error codes
   - `action_plan.py` – Action plan builder for deferred Fusion operations
   - `graph_builder.py` – Fluent API for constructing graphs
-  - `serialization.py` – JSON serialization with legacy format support
+  - `serialization.py` – JSON serialization with legacy format support and requirements round-trip
   - `bridge_actions.py` – BridgeAction / BridgeEvent enums (shared constants)
   - `delta.py` – compute_patch / apply_patch / is_trivial_patch
+  - `requirements.py` – Requirements validation engine (aggregate_attribute, validate_requirements)
 - **Fusion Adapter Modules (`fusion_addin/`):**
   - `adapter.py` – FusionAdapter class for core ↔ Fusion translation
   - `selection.py` – SelectionHandler for Fusion selection workflows

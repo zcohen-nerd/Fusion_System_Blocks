@@ -845,6 +845,7 @@ def export_report_files(
     diagram: dict[str, Any],
     output_dir: str | None = None,
     profile: str = "full",
+    selected_formats: list[str] | None = None,
 ) -> dict[str, str]:
     """Export report files for the diagram.
 
@@ -855,6 +856,8 @@ def export_report_files(
             ``"standard"`` (adds HTML, BOM, assembly, connection matrix),
             or ``"full"`` (everything including SVG).  Unknown values
             fall back to ``"full"``.
+        selected_formats: If provided, overrides the *profile* and exports
+            only the listed format keys (e.g. ``["markdown", "html"]``).
 
     Returns:
         Dictionary mapping file-type keys to written file paths.
@@ -866,7 +869,12 @@ def export_report_files(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    selected = EXPORT_PROFILES.get(profile, EXPORT_PROFILES["full"])
+    # Honour explicit format list from the export dialog if provided;
+    # otherwise fall back to the named profile.
+    if selected_formats:
+        selected = selected_formats
+    else:
+        selected = EXPORT_PROFILES.get(profile, EXPORT_PROFILES["full"])
     results: dict[str, str] = {}
 
     # Map of key -> (filename, generator)

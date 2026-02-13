@@ -31,6 +31,7 @@ class BridgeAction(str, Enum):
     SYNC_COMPONENTS = "sync_components"
     START_CAD_SELECTION = "start_cad_selection"
     RESPONSE = "response"
+    BROWSE_FOLDER = "browse_folder"
     LIST_DOCUMENTS = "list_documents"
     SAVE_NAMED_DIAGRAM = "save_named_diagram"
     LOAD_NAMED_DIAGRAM = "load_named_diagram"

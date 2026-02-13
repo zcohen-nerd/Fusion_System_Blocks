@@ -1,6 +1,6 @@
 # Fusion System Blocks Milestones
 
-_Last updated: February 2026_
+_Last updated: February 2026 (Milestone 18 in progress)_
 
 This document summarizes the development milestones that guide Fusion System Blocks. Each milestone corresponds to a cohesive feature set. For implementation details and open tasks, see `tasks.md`.
 
@@ -29,8 +29,7 @@ This document summarizes the development milestones that guide Fusion System Blo
 | 14 | Advanced Diagram Features | ✅ | Auto layout, alignment tools, annotations, grouping |
 | 15 | AI-Powered Design Assistant | 🔲 | Intelligent suggestions, rule insights, automation hooks |
 | 16 | Architecture Refactoring & Tooling | ✅ | Two-layer architecture, production logging, diagnostics, delta serialization |
-| 17 | Analytics & Reporting | � | 10-format export pipeline with profiles; advanced analytics pending |
-
+| 17 | Analytics & Reporting | � | 10-format export pipeline with profiles; advanced analytics pending || 18 | Requirements & Verification | 🟠 | Core models + requirements logic engine (Tasks 1–2 complete); version control, adapter, frontend pending |
 ## Notes on Active Milestones
 
 ### Milestone 10.5 – UI/UX Improvements (🟠)
@@ -40,6 +39,15 @@ This document summarizes the development milestones that guide Fusion System Blo
 ### Milestone 13 – 3D Visualization & Living Documentation (🔲)
 - Not started. Backend scaffolding for linking diagram entities to 3D occurrences is in place.
 - Next steps: viewport overlay rendering, change-impact visualizations, and documentation generation pipelines.
+
+### Milestone 18 – Requirements & Verification (🟠)
+- Tasks 1–2 **complete**: core models and requirements logic engine.
+- New dataclasses: `ComparisonOperator`, `Requirement`, `Snapshot`, `ConnectionChange`, `DiffResult`, `block_fingerprint()`.
+- `Graph` now carries a `requirements: list[Requirement]` field.
+- `fsb_core/requirements.py` provides `validate_requirements(graph)` and `aggregate_attribute(graph, key)`.
+- Requirements round-trip through `serialization.py`.
+- 39 new tests in `tests/test_requirements.py` (557 total across 22 files).
+- Remaining work: version control/diffing engine (Task 3), Fusion adapter integration (Task 4), frontend tabs (Task 5).
 
 ### Milestone 17 – Analytics & Reporting (🟠)
 - Export pipeline partially implemented with 10 output formats:
@@ -59,7 +67,7 @@ Completed February 2026. Major architectural improvements:
   - `fsb_core/` – Pure Python library with NO Fusion 360 dependencies (testable with pytest)
   - `fusion_addin/` – Thin adapter layer that bridges core logic and Fusion 360 API
 - **Core Library Modules (`fsb_core/`):**
-  - `models.py` – Dataclasses for Block, Port, Connection, Graph
+  - `models.py` – Dataclasses for Block, Port, Connection, Graph; Requirement, Snapshot, DiffResult, ComparisonOperator, block_fingerprint
   - `validation.py` – Graph validation with structured error codes
   - `action_plan.py` – Action plan builder for deferred Fusion operations
   - `graph_builder.py` – Fluent API for constructing graphs
@@ -78,7 +86,7 @@ Completed February 2026. Major architectural improvements:
   - Delta serialization for incremental saves (JS + Python)
   - Shared bridge action constants eliminating magic strings
   - GitHub Actions CI pipeline (ruff, mypy, pytest on Python 3.9–3.12)
-  - 518 automated tests across 21 files
+  - 557 automated tests across 22 files
 
 ---
 

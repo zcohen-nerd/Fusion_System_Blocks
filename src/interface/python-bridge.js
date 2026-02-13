@@ -379,18 +379,34 @@ class PythonInterface {
       });
   }
 
-  exportReports() {
+  exportReports(formats, outputPath) {
     if (!window.diagramEditor) return Promise.reject('No diagram editor available');
     
     const diagramJson = window.diagramEditor.exportDiagram();
-    return this.sendMessage(BridgeAction.EXPORT_REPORTS, { diagram: diagramJson }, true)
+    const payload = { diagram: diagramJson };
+
+    // Pass selected formats (array of keys) if provided
+    if (Array.isArray(formats) && formats.length > 0) {
+      payload.formats = formats;
+    }
+
+    // Pass custom output path if user chose one via Browse
+    if (outputPath) {
+      payload.outputPath = outputPath;
+    }
+
+    return this.sendMessage(BridgeAction.EXPORT_REPORTS, payload, true)
       .then(response => {
         if (response.success) {
           // files may be a dict {format: path} or an array
           const fileCount = Array.isArray(response.files)
             ? response.files.length
             : Object.keys(response.files || {}).length;
-          this.showNotification(`Reports exported: ${fileCount} files created`, 'success');
+          const path = response.path || '';
+          this.showNotification(
+            `Exported ${fileCount} file${fileCount !== 1 ? 's' : ''} to ${path}`,
+            'success'
+          );
         } else {
           throw new Error(response.error || 'Export failed');
         }

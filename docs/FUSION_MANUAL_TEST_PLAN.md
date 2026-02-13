@@ -86,16 +86,52 @@ Run this when you need to verify the add-in works correctly before releases.
 |------|--------|-----------------|------|
 | 7.1 | Create or open a Fusion document with components | Document has visible components | [ ] |
 | 7.2 | Select a block in diagram | Block selected | [ ] |
-| 7.3 | Click "Link to CAD" | Selection prompt appears | [ ] |
-| 7.4 | Select a component in viewport | Link created, block shows link indicator | [ ] |
-| 7.5 | Check block status | Status changes to In-Work or Implemented | [ ] |
+| 7.3 | Click "Link to CAD" | Palette hides, Fusion selection prompt appears in viewport | [ ] |
+| 7.4 | Select a component in viewport | Palette reappears; blue banner with component name shown on block | [ ] |
+| 7.5 | Check notification toast | Toast says "CAD component linked to {block name}" | [ ] |
+| 7.6 | Save and reload diagram | CAD link badge still visible after reload | [ ] |
 
-## Phase 8: Export (2 min)
+## Phase 8: Export (5 min)
 
 | Step | Action | Expected Result | Pass |
 |------|--------|-----------------|------|
-| 8.1 | Click "Export Report" | Export dialog/action triggers | [ ] |
-| 8.2 | Check `/exports/` folder | Report file created (Markdown or HTML) | [ ] |
+| 8.1 | Click "Export" in ribbon (or "Export…" in Reports tab) | Export options dialog appears with format checkboxes | [ ] |
+| 8.2 | Verify all 10 formats listed with checkboxes | Markdown, HTML, Pin Map CSV, C Header, BOM CSV, BOM JSON, Assembly MD, Assembly JSON, Connection Matrix, SVG | [ ] |
+| 8.3 | Click "Select None" then check only Markdown + HTML | Only 2 checkboxes checked | [ ] |
+| 8.4 | Click "Browse…" | Native folder picker dialog opens | [ ] |
+| 8.5 | Choose a folder (e.g. Desktop) and confirm | Folder path shown in destination field | [ ] |
+| 8.6 | Click "Export" | Toast says "Exported 2 files to {path}" | [ ] |
+| 8.7 | Open chosen folder | Only `system_blocks_report.md` and `.html` present | [ ] |
+| 8.8 | Click "Export…" again, "Select All", use default path, export | Toast reports 10 files; check `exports/` folder in add-in directory | [ ] |
+
+## Phase 9: Save/Load Regression — M18 Serialization (3 min)
+
+The requirements engine added a `"requirements"` key to the serialized JSON. These steps verify save/load still works and old diagrams load without error.
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 9.1 | Create diagram with 3+ blocks and connections | Diagram populated | [ ] |
+| 9.2 | Save diagram | Success notification, no errors in console/log | [ ] |
+| 9.3 | Clear diagram (New), then Load | Diagram restored with all blocks and connections intact | [ ] |
+| 9.4 | Open a document saved **before** M18 changes | Add-in loads without errors | [ ] |
+| 9.5 | Load the pre-M18 diagram | Diagram loads correctly (missing `requirements` key defaults to `[]`) | [ ] |
+| 9.6 | Save the pre-M18 diagram again | Save succeeds; JSON now includes `"requirements": []` | [ ] |
+| 9.7 | Load the re-saved diagram | All blocks, connections, and metadata intact | [ ] |
+
+**What to check in logs**: No `KeyError`, `TypeError`, or `ValueError` related to `requirements` parsing.
+
+## Phase 10: Export Pipeline Regression (3 min)
+
+The `src/diagram/export.py` file was modified (added `from __future__ import annotations`). Verify exports still work.
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 10.1 | Create a diagram with 4+ blocks, typed connections, and at least 1 linked CAD component | Diagram populated | [ ] |
+| 10.2 | Click "Export Report" (full profile) | Export completes without errors | [ ] |
+| 10.3 | Check `exports/` folder | 10 files produced (HTML, MD, CSV pin map, C header, BOM CSV, BOM JSON, assembly MD, assembly JSON, connection matrix CSV, SVG) | [ ] |
+| 10.4 | Open exported HTML report | Report renders, blocks and connections listed | [ ] |
+| 10.5 | Open exported BOM CSV | Columns present, data matches diagram | [ ] |
+| 10.6 | Open exported SVG | Diagram snapshot renders correctly | [ ] |
 
 ## Quick Smoke Test
 
@@ -126,9 +162,11 @@ Log filename format: `systemblocks_YYYYMMDD_HHMMSS_<session>.log`
 | 4. Connections | 6 | _ | _ |
 | 5. Ribbon UI | 4 | _ | _ |
 | 6. Save/Load | 5 | _ | _ |
-| 7. CAD Linking | 5 | _ | _ |
-| 8. Export | 2 | _ | _ |
-| **TOTAL** | **37** | _ | _ |
+| 7. CAD Linking | 6 | _ | _ |
+| 8. Export | 8 | _ | _ |
+| 9. M18 Save/Load Regression | 7 | _ | _ |
+| 10. Export Pipeline Regression | 6 | _ | _ |
+| **TOTAL** | **57** | _ | _ |
 
 **Tested By**: _________________ **Date**: _________________
 

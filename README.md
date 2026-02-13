@@ -5,7 +5,7 @@ Fusion System Blocks is a Fusion 360 add-in that embeds system block diagrams di
 [![License: Community](https://img.shields.io/badge/License-Community-blueviolet.svg)](LICENSE)
 [![Fusion 360](https://img.shields.io/badge/Platform-Fusion%20360-orange.svg)](https://www.autodesk.com/products/fusion-360)
 [![CI](https://github.com/zcohen-nerd/Fusion_System_Blocks/actions/workflows/ci.yml/badge.svg)](https://github.com/zcohen-nerd/Fusion_System_Blocks/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Tests-518%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-557%20passing-brightgreen.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.9%E2%80%933.12-blue.svg)]()
 
 ---
@@ -46,7 +46,8 @@ The repository contains the full code base, tests, documentation, and deployment
 | 14 | Advanced diagram features | Complete |
 | 15 | AI-powered assistant | Not started |
 | 16 | Architecture refactoring & tooling | Complete |
-| 17 | Analytics & reporting | Not started |
+| 17 | Analytics & reporting | Partially complete |
+| 18 | Requirements & verification | Partially complete |
 
 A detailed breakdown of remaining work lives in `tasks.md`.
 
@@ -77,6 +78,7 @@ A detailed breakdown of remaining work lives in `tasks.md`.
   - Block × block connection adjacency matrix (CSV).
   - SVG diagram snapshot for embedding in design reviews.
 - Rule-checking engine for orphan detection, interface compatibility, and system status.
+- **Requirements & verification engine** with system-level budgets (mass, cost, power) and pass/fail evaluation against aggregated block attributes.
 - Status dashboards with automatic progression based on linked data.
 
 ### Architecture & Reliability
@@ -84,7 +86,7 @@ A detailed breakdown of remaining work lives in `tasks.md`.
 - Shared bridge action constants between Python (`BridgeAction`/`BridgeEvent` enums) and JavaScript.
 - Production logging with session IDs, environment info, and `@log_exceptions` decorator.
 - Built-in "Run Diagnostics" command with 6 self-tests.
-- 518 automated tests across 21 test files; CI runs on Python 3.9–3.12.
+- 557 automated tests across 22 test files; CI runs on Python 3.9–3.12.
 
 ### User Experience
 - Fusion 360-style ribbon interface with responsive layout.
@@ -127,7 +129,7 @@ Fusion_System_Blocks/
 │   │   ├── logger.js
 │   │   └── delta-utils.js         #   JS delta utilities (computePatch, applyPatch)
 │   └── *.css                      #   Fusion theme, ribbon, and icon styles
-├── tests/                         # 518 pytest tests across 21 files
+├── tests/                         # 557 pytest tests across 22 files
 ├── docs/                          # Architecture decisions, test plans, milestones
 ├── scripts/                       # PowerShell build and deployment automation
 ├── fusion_system_blocks/          # Packaged add-in folder for distribution
@@ -236,7 +238,7 @@ All files are written to the `exports/` folder. The profile can be passed progra
 The test suite covers the core library, diagram data logic, adapter stubs, and property-based scenarios.
 
 ```bash
-# Run all 518 tests
+# Run all 557 tests
 pytest
 
 # Run with coverage report
@@ -246,7 +248,7 @@ pytest --cov=fsb_core --cov-report=term-missing
 pytest tests/test_delta.py -v
 ```
 
-**Test files (21 total):**
+**Test files (22 total):**
 
 | File | Scope |
 | --- | --- |
@@ -265,6 +267,7 @@ pytest tests/test_delta.py -v
 | `test_logging_util.py` | Production logging and decorators |
 | `test_models.py` | Dataclass models and enums |
 | `test_property_based.py` | Hypothesis property-based tests |
+| `test_requirements.py` | Requirements engine and verification |
 | `test_rule_checks.py` | Validation rules (orphans, power, interfaces) |
 | `test_schema.py` | JSON schema compliance |
 | `test_selection.py` | SelectionHandler workflows |

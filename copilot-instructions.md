@@ -15,13 +15,14 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
 
 ### Backend (Python) - Two-Layer Architecture
 - **Core Library** (`fsb_core/`): Pure Python business logic with NO Fusion dependencies
-  - `models.py`: Dataclasses for Block, Port, Connection, Graph
+  - `models.py`: Dataclasses for Block, Port, Connection, Graph; Requirement, Snapshot, DiffResult, ComparisonOperator, block_fingerprint
   - `validation.py`: Graph validation with structured error codes
   - `action_plan.py`: Deferred action planning for Fusion operations
   - `graph_builder.py`: Fluent API for graph construction
   - `serialization.py`: JSON serialization with legacy format support
   - `bridge_actions.py`: BridgeAction / BridgeEvent enums (shared constants for Python and JS)
   - `delta.py`: compute_patch / apply_patch / is_trivial_patch (JSON-Patch style delta serialization)
+  - `requirements.py`: Requirements validation engine (aggregate_attribute, validate_requirements)
 - **Fusion Adapter** (`fusion_addin/`): Thin wrappers for Fusion 360 integration
   - `adapter.py`: FusionAdapter class for core ↔ Fusion translation
   - `selection.py`: SelectionHandler for Fusion selection workflows
@@ -30,7 +31,7 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
   - `diagnostics.py`: DiagnosticsRunner with self-test suite
 - **Entry Point**: `Fusion_System_Blocks.py` orchestrates both layers (hard-fail imports, no fallback)
 - **Legacy Data Management**: `src/diagram_data.py` for backward compatibility
-- **Testing**: 518 pytest tests in `tests/` across 21 files (runs outside Fusion 360)
+- **Testing**: 557 pytest tests in `tests/` across 22 files (runs outside Fusion 360)
 
 ## Development Standards
 
@@ -52,8 +53,8 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
 
 ## Testing Approach
 
-### Test Coverage (518 tests across 21 files)
-- **Core Library Tests**: `test_core_validation.py`, `test_core_action_plan.py`, `test_models.py`, `test_serialization.py`, `test_delta.py`
+### Test Coverage (557 tests across 22 files)
+- **Core Library Tests**: `test_core_validation.py`, `test_core_action_plan.py`, `test_models.py`, `test_serialization.py`, `test_delta.py`, `test_requirements.py`
 - **Adapter Tests**: `test_adapter.py`, `test_selection.py`, `test_document.py`, `test_cad.py`
 - **Legacy Logic Tests**: `test_diagram_data.py`, `test_validation.py` 
 - **Integration Tests**: `test_integration.py`, `test_property_based.py`
@@ -81,13 +82,15 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
 
 ## Feature Development
 
-### Milestone System (17 total, 14 complete)
+### Milestone System (18 total, 15 complete)
 - **Foundation** (Milestones 1-3): Core block manipulation, persistence, status tracking
 - **Core Features** (Milestones 4-7): Hierarchy, import/export, rules, search
 - **Advanced Features** (Milestones 8-11): Undo/redo, connections, UI, templates
 - **Integration** (Milestones 12, 14): CAD linking, advanced diagram tools
 - **Tooling** (Milestone 16): Two-layer architecture, logging, diagnostics
-- **Not Started** (Milestones 13, 15, 17): 3D visualization, AI assistant, analytics
+- **Reporting** (Milestone 17): 10-format export pipeline with profiles (partially complete)
+- **Requirements** (Milestone 18): Requirements & verification engine (partially complete)
+- **Not Started** (Milestones 13, 15): 3D visualization, AI assistant
 
 ### Ribbon Interface
 - **File Group**: New, Open, Save, Export operations

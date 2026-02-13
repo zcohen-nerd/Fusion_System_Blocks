@@ -437,9 +437,108 @@ class ToolbarManager {
   }
 
   handleExport() {
+    this.showExportDialog();
+  }
+
+  /**
+   * Show the export options dialog. Lets the user pick which formats
+   * to export and optionally choose a destination folder.
+   */
+  showExportDialog() {
+    const overlay = document.getElementById('export-overlay');
+    if (!overlay) {
+      // Fallback if dialog HTML not present — direct export
+      this._executeExport();
+      return;
+    }
+
+    overlay.style.display = 'flex';
+
+    // Wire up select-all / select-none
+    const allBtn = document.getElementById('exp-select-all');
+    const noneBtn = document.getElementById('exp-select-none');
+    const checkboxes = overlay.querySelectorAll('input[type="checkbox"]');
+
+    const selectAll = () => checkboxes.forEach(cb => cb.checked = true);
+    const selectNone = () => checkboxes.forEach(cb => cb.checked = false);
+
+    if (allBtn) allBtn.onclick = selectAll;
+    if (noneBtn) noneBtn.onclick = selectNone;
+
+    // Browse folder button — asks Python for a folder dialog
+    const browseBtn = document.getElementById('exp-browse-folder');
+    const folderInput = document.getElementById('exp-folder-path');
+    if (browseBtn) {
+      browseBtn.onclick = () => {
+        if (window.pythonInterface) {
+          window.pythonInterface.sendMessage('browse_folder', {}, true)
+            .then(resp => {
+              if (resp && resp.path) {
+                folderInput.value = resp.path;
+                folderInput.dataset.customPath = resp.path;
+              }
+            })
+            .catch(() => {
+              // User cancelled or Python bridge unavailable — keep default
+            });
+        }
+      };
+    }
+
+    // Cancel
+    const cancelBtn = document.getElementById('exp-cancel');
+    if (cancelBtn) {
+      cancelBtn.onclick = () => { overlay.style.display = 'none'; };
+    }
+
+    // Confirm export
+    const confirmBtn = document.getElementById('exp-confirm');
+    if (confirmBtn) {
+      confirmBtn.onclick = () => {
+        // Gather selected format keys
+        const formatMap = {
+          'exp-markdown': 'markdown',
+          'exp-html': 'html',
+          'exp-csv': 'csv',
+          'exp-header': 'header',
+          'exp-bom-csv': 'bom_csv',
+          'exp-bom-json': 'bom_json',
+          'exp-assembly-md': 'assembly_md',
+          'exp-assembly-json': 'assembly_json',
+          'exp-connection-matrix': 'connection_matrix',
+          'exp-svg': 'svg'
+        };
+
+        const selected = [];
+        for (const [elemId, key] of Object.entries(formatMap)) {
+          const cb = document.getElementById(elemId);
+          if (cb && cb.checked) selected.push(key);
+        }
+
+        if (selected.length === 0) {
+          if (window.pythonInterface) {
+            window.pythonInterface.showNotification('Select at least one export format', 'warning');
+          }
+          return;
+        }
+
+        const customPath = folderInput && folderInput.dataset.customPath
+          ? folderInput.dataset.customPath
+          : null;
+
+        overlay.style.display = 'none';
+        this._executeExport(selected, customPath);
+      };
+    }
+  }
+
+  /**
+   * Run the actual export with optional format list and output path.
+   */
+  _executeExport(formats, outputPath) {
     try {
       if (window.pythonInterface) {
-        window.pythonInterface.exportReports()
+        window.pythonInterface.exportReports(formats, outputPath)
           .catch(error => {
             logger.error('Export failed:', error);
             window.pythonInterface.showNotification(

@@ -648,11 +648,22 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             diagram_json if isinstance(diagram_json, dict) else json.loads(diagram_json)
         )
         profile = data.get("profile", "full")
+
+        # Support custom output path from the export dialog
+        custom_path = data.get("outputPath", "")
         addin_path = os.path.dirname(__file__)
-        exports_path = os.path.join(addin_path, "exports")
+        if custom_path and os.path.isabs(custom_path):
+            exports_path = custom_path
+        else:
+            exports_path = os.path.join(addin_path, "exports")
         os.makedirs(exports_path, exist_ok=True)
+
+        # Support selective format list from the export dialog
+        selected_formats = data.get("formats", None)
+
         files_created = diagram_data.export_report_files(
-            diagram, exports_path, profile=profile
+            diagram, exports_path, profile=profile,
+            selected_formats=selected_formats,
         )
         # Convert dict to list of file paths for consistent JS handling
         if isinstance(files_created, dict):
@@ -691,6 +702,19 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         block_name = data.get("blockName", "Unknown Block")
         start_cad_selection(block_id, block_name)
         return {"success": True}
+
+    def _handle_browse_folder(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Open a native folder-picker dialog so the user can choose
+        an export destination."""
+        try:
+            folder_dlg = UI.createFolderDialog()
+            folder_dlg.title = "Select Export Destination"
+            result = folder_dlg.showDialog()
+            if result == adsk.core.DialogResults.DialogOK:
+                return {"success": True, "path": folder_dlg.folder}
+            return {"success": False, "error": "Cancelled"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def _handle_response(self, data: dict[str, Any]) -> dict[str, Any]:
         """Acknowledge response events from Fusion's palette bridge."""
@@ -991,8 +1015,18 @@ def get_all_component_statuses(diagram):
 
 
 def start_cad_selection(block_id, block_name):
-    """Start CAD component selection for linking to a block."""
+    """Start CAD component selection for linking to a block.
+
+    Minimises the palette so the user can easily click on a component
+    in the Fusion 360 viewport, then restores it after the command
+    completes (the execute handler re-shows the palette).
+    """
     try:
+        # Minimise the palette to expose the viewport for picking
+        palette = UI.palettes.itemById("SystemBlocksPalette")
+        if palette:
+            palette.isVisible = False
+
         # Delete any previous command definition to prevent handler
         # accumulation — each call needs exactly one handler with the
         # current block_id / block_name.
@@ -1062,6 +1096,13 @@ class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
         self.block_name = block_name
 
     def _send_cad_link_payload(self, palette, payload):
+        # Restore palette visibility BEFORE sending data so the
+        # webview is active and can execute the script.
+        try:
+            if not palette.isVisible:
+                palette.isVisible = True
+        except Exception:
+            pass
         script = (
             "if(window.receiveCADLinkFromPython){"
             f"window.receiveCADLinkFromPython({json.dumps(payload)});"
@@ -1134,6 +1175,14 @@ class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
                     },
                 )
             notify_error(f"CAD selection execution failed: {str(e)}")
+        finally:
+            # Always restore the palette after CAD selection completes
+            try:
+                palette = UI.palettes.itemById("SystemBlocksPalette")
+                if palette:
+                    palette.isVisible = True
+            except Exception:
+                pass  # palette restore is best-effort
 
 
 def start_enhanced_cad_selection(block_id, block_name):

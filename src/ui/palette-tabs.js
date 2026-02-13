@@ -158,7 +158,10 @@
 
     const bExport = q('#action-export');
     if (bExport) bExport.addEventListener('click', () => {
-      if (window.pythonInterface) {
+      // Delegate to the export dialog in toolbar-manager if available
+      if (window.toolbarManager && window.toolbarManager.showExportDialog) {
+        window.toolbarManager.showExportDialog();
+      } else if (window.pythonInterface) {
         window.pythonInterface.exportReports().then((resp) => {
           q('#export-status').textContent = 'Exported';
           renderExportResults(resp);

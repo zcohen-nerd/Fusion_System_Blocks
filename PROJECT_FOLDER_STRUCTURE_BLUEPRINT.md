@@ -54,13 +54,14 @@ Fusion_System_Blocks/
 ├── copilot-instructions.md        # High-level Copilot guidance for the project
 ├── fsb_core/                      # Pure Python core library (NO Fusion dependencies)
 │   ├── __init__.py                # Package exports for all core modules
-│   ├── models.py                  # Dataclasses: Block, Port, Connection, Graph, enums
+│   ├── models.py                  # Dataclasses: Block, Port, Connection, Graph, Requirement, Snapshot, DiffResult, enums
 │   ├── validation.py              # Graph validation with structured error codes
 │   ├── action_plan.py             # Action plan builder for deferred Fusion operations
 │   ├── graph_builder.py           # Fluent API for constructing graphs
-│   ├── serialization.py           # JSON serialization with legacy format support
+│   ├── serialization.py           # JSON serialization with legacy format support and requirements round-trip
 │   ├── bridge_actions.py          # BridgeAction / BridgeEvent shared enums
-│   └── delta.py                   # compute_patch / apply_patch / is_trivial_patch
+│   ├── delta.py                   # compute_patch / apply_patch / is_trivial_patch
+│   └── requirements.py            # Requirements validation engine (aggregate, validate)
 ├── docs/                          # Project documentation
 │   ├── architecture/              # Architecture decision records (ADRs) and review reports
 │   ├── ux/                        # UX research (JTBD, journey maps, flows)
@@ -121,7 +122,7 @@ Fusion_System_Blocks/
 │   ├── palette.html               # Main HTML palette UI (entry point for frontend)
 │   └── palette.js                 # Palette initialization and legacy orchestration
 ├── tasks.md                       # Project task list and TODOs
-├── tests/                         # Automated tests (pytest) - 518 tests across 21 files
+├── tests/                         # Automated tests (pytest) - 557 tests across 22 files
 │   ├── test_adapter.py            # Tests for fusion_addin/adapter.py
 │   ├── test_cad.py                # Tests for CAD linking and component operations
 │   ├── test_core_action_plan.py   # Tests for fsb_core/action_plan.py
@@ -137,6 +138,7 @@ Fusion_System_Blocks/
 │   ├── test_logging_util.py       # Tests for production logging
 │   ├── test_models.py             # Tests for fsb_core/models.py dataclasses
 │   ├── test_property_based.py     # Hypothesis property-based / fuzz tests
+│   ├── test_requirements.py       # Tests for fsb_core/requirements.py (requirements engine)
 │   ├── test_rule_checks.py        # Tests for validation rules
 │   ├── test_schema.py             # Tests for JSON schema validation
 │   ├── test_selection.py          # Tests for fusion_addin/selection.py
@@ -232,7 +234,7 @@ The source directory contains both Python business logic and JavaScript frontend
 ### `tests/`: Automated Test Suite
 - **Test Organization**: Tests mirror the structure of `src/` and `fsb_core/` with `test_*.py` naming
 - **Framework**: pytest with fixtures for diagram creation and validation
-- **Count**: 518 tests across 21 files
+- **Count**: 557 tests across 22 files
 - **Coverage**:
   - `test_adapter.py`: FusionAdapter translation layer
   - `test_cad.py`: CAD linking and component operations
@@ -249,6 +251,7 @@ The source directory contains both Python business logic and JavaScript frontend
   - `test_logging_util.py`: Production logging and `@log_exceptions` decorator
   - `test_models.py`: Dataclass models and enum coverage
   - `test_property_based.py`: Hypothesis property-based / fuzz tests
+  - `test_requirements.py`: Requirements engine (ComparisonOperator, Requirement, aggregate_attribute, validate_requirements, serialization round-trip)
   - `test_rule_checks.py`: Validation rules (power continuity, orphaned blocks, interface compatibility)
   - `test_schema.py`: JSON schema compliance
   - `test_selection.py`: SelectionHandler workflows

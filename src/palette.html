@@ -1652,56 +1652,56 @@
     <svg id="svg-canvas" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet">
       <defs>
         <!-- === Connection Arrow Markers (typed + directional) === -->
-        <!-- Reduced from 10x7 to 8x6 so arrows are proportional at all stroke widths -->
+        <!-- Fixed size markers (userSpaceOnUse) to prevent huge arrows on thick lines -->
         <!-- Generic (auto / default) — forward -->
-        <marker id="arrowhead" markerWidth="8" markerHeight="6"
-                refX="7" refY="3" orient="auto">
-          <polygon points="0 0, 8 3, 0 6" fill="#666" />
+        <marker id="arrowhead" markerWidth="10" markerHeight="7"
+                refX="10" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
         </marker>
         <!-- Generic reverse (for bidirectional start) -->
-        <marker id="arrowhead-reverse" markerWidth="8" markerHeight="6"
-                refX="1" refY="3" orient="auto">
-          <polygon points="8 0, 0 3, 8 6" fill="#666" />
+        <marker id="arrowhead-reverse" markerWidth="10" markerHeight="7"
+                refX="0" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+          <polygon points="10 0, 0 3.5, 10 7" fill="#666" />
         </marker>
 
         <!-- Power — forward & reverse -->
-        <marker id="arrowhead-power" markerWidth="8" markerHeight="6"
-                refX="7" refY="3" orient="auto">
-          <polygon points="0 0, 8 3, 0 6" fill="#dc3545" />
+        <marker id="arrowhead-power" markerWidth="10" markerHeight="7"
+                refX="10" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#dc3545" />
         </marker>
-        <marker id="arrowhead-power-reverse" markerWidth="8" markerHeight="6"
-                refX="1" refY="3" orient="auto">
-          <polygon points="8 0, 0 3, 8 6" fill="#dc3545" />
+        <marker id="arrowhead-power-reverse" markerWidth="10" markerHeight="7"
+                refX="0" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+          <polygon points="10 0, 0 3.5, 10 7" fill="#dc3545" />
         </marker>
 
         <!-- Data — forward & reverse -->
-        <marker id="arrowhead-data" markerWidth="8" markerHeight="6"
-                refX="7" refY="3" orient="auto">
-          <polygon points="0 0, 8 3, 0 6" fill="#007bff" />
+        <marker id="arrowhead-data" markerWidth="10" markerHeight="7"
+                refX="10" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#007bff" />
         </marker>
-        <marker id="arrowhead-data-reverse" markerWidth="8" markerHeight="6"
-                refX="1" refY="3" orient="auto">
-          <polygon points="8 0, 0 3, 8 6" fill="#007bff" />
+        <marker id="arrowhead-data-reverse" markerWidth="10" markerHeight="7"
+                refX="0" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+          <polygon points="10 0, 0 3.5, 10 7" fill="#007bff" />
         </marker>
 
         <!-- Electrical — forward & reverse -->
-        <marker id="arrowhead-electrical" markerWidth="8" markerHeight="6"
-                refX="7" refY="3" orient="auto">
-          <polygon points="0 0, 8 3, 0 6" fill="#28a745" />
+        <marker id="arrowhead-electrical" markerWidth="10" markerHeight="7"
+                refX="10" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#28a745" />
         </marker>
-        <marker id="arrowhead-electrical-reverse" markerWidth="8" markerHeight="6"
-                refX="1" refY="3" orient="auto">
-          <polygon points="8 0, 0 3, 8 6" fill="#28a745" />
+        <marker id="arrowhead-electrical-reverse" markerWidth="10" markerHeight="7"
+                refX="0" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+          <polygon points="10 0, 0 3.5, 10 7" fill="#28a745" />
         </marker>
 
         <!-- Mechanical — forward & reverse -->
-        <marker id="arrowhead-mechanical" markerWidth="8" markerHeight="6"
-                refX="7" refY="3" orient="auto">
-          <polygon points="0 0, 8 3, 0 6" fill="#6c757d" />
+        <marker id="arrowhead-mechanical" markerWidth="10" markerHeight="7"
+                refX="10" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#6c757d" />
         </marker>
-        <marker id="arrowhead-mechanical-reverse" markerWidth="8" markerHeight="6"
-                refX="1" refY="3" orient="auto">
-          <polygon points="8 0, 0 3, 8 6" fill="#6c757d" />
+        <marker id="arrowhead-mechanical-reverse" markerWidth="10" markerHeight="7"
+                refX="0" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+          <polygon points="10 0, 0 3.5, 10 7" fill="#6c757d" />
         </marker>
 
         <!-- ========== FUSION 360 PROFESSIONAL ICON DEFINITIONS - PHASE 3 ========== -->
@@ -2395,6 +2395,73 @@
       <div id="open-doc-list" style="max-height:220px;overflow-y:auto;margin:8px 0;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
         <button id="open-doc-cancel" class="fusion-button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== EXPORT OPTIONS DIALOG ========== -->
+  <div id="export-overlay" class="fusion-modal-overlay" style="display:none;">
+    <div class="fusion-modal" style="min-width:340px;max-width:460px;">
+      <h3>Export Reports</h3>
+      <p style="color:var(--fusion-text-secondary);font-size:12px;margin:0 0 12px 0;">
+        Select which reports to export and choose a destination folder.
+      </p>
+
+      <!-- Format checkboxes -->
+      <div style="max-height:200px;overflow-y:auto;margin-bottom:12px;">
+        <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="exp-markdown" checked> Markdown Report (.md)
+        </label>
+        <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="exp-html" checked> HTML Report (.html)
+        </label>
+        <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="exp-csv" checked> Pin Map CSV (.csv)
+        </label>
+        <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="exp-header" checked> Pin Map C Header (.h)
+        </label>
+        <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="exp-bom-csv" checked> BOM CSV (.csv)
+        </label>
+        <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="exp-bom-json"> BOM JSON (.json)
+        </label>
+        <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="exp-assembly-md"> Assembly Sequence (.md)
+        </label>
+        <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="exp-assembly-json"> Assembly Sequence (.json)
+        </label>
+        <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="exp-connection-matrix"> Connection Matrix (.csv)
+        </label>
+        <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="exp-svg"> SVG Diagram (.svg)
+        </label>
+      </div>
+
+      <!-- Quick-select buttons -->
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <button id="exp-select-all" class="fusion-button" style="font-size:11px;padding:3px 8px;">Select All</button>
+        <button id="exp-select-none" class="fusion-button" style="font-size:11px;padding:3px 8px;">Select None</button>
+      </div>
+
+      <!-- Output path display -->
+      <div style="margin-bottom:12px;">
+        <label class="fusion-label" style="font-size:12px;">Destination folder:</label>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
+          <input type="text" id="exp-folder-path" class="fusion-input" readonly
+                 style="flex:1;font-size:11px;"
+                 value="(default — exports/ in add-in folder)" />
+          <button id="exp-browse-folder" class="fusion-button" style="font-size:11px;padding:3px 8px;">Browse…</button>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+        <button id="exp-cancel" class="fusion-button">Cancel</button>
+        <button id="exp-confirm" class="fusion-button primary">Export</button>
       </div>
     </div>
   </div>
@@ -4204,14 +4271,18 @@
   <section id="panel-reports" class="sb-panel" role="tabpanel" aria-labelledby="tab-reports" aria-hidden="true">
     <div class="sb-section">
       <h3>Export Reports</h3>
+      <p style="color:var(--fusion-text-secondary);font-size:11px;margin:0 0 8px 0;">
+        Export your diagram as Markdown, HTML, CSV, BOM, and more.
+        Click <strong>Export…</strong> to choose formats and destination.
+      </p>
       <div class="sb-controls">
-        <button id="action-export" class="sb-tab">Export All</button>
+        <button id="action-export" class="sb-tab">Export…</button>
         <span id="export-status" class="pill">Not exported</span>
       </div>
     </div>
     <div class="sb-section">
-      <h4>Export Output</h4>
-      <div id="export-path" class="pill">Path: (awaiting export)</div>
+      <h4>Last Export Output</h4>
+      <div id="export-path" class="pill" style="word-break:break-all;">Path: (awaiting export)</div>
       <ul id="export-files" class="sb-list"></ul>
     </div>
   </section>

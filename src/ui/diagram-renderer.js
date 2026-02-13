@@ -91,9 +91,10 @@ class DiagramRenderer {
       arrowMarker.setAttribute('id', 'arrowhead');
       arrowMarker.setAttribute('markerWidth', '10');
       arrowMarker.setAttribute('markerHeight', '7');
-      arrowMarker.setAttribute('refX', '9');
+      arrowMarker.setAttribute('refX', '10');
       arrowMarker.setAttribute('refY', '3.5');
       arrowMarker.setAttribute('orient', 'auto');
+      arrowMarker.setAttribute('markerUnits', 'userSpaceOnUse');
       
       const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
       polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
@@ -368,30 +369,44 @@ class DiagramRenderer {
     
     blockGroup.appendChild(indicator);
 
-    // CAD link badge — small chain-link SVG icon at top-left if block is linked.
-    // Using SVG paths instead of emoji because Fusion 360's CEF may not
-    // render Unicode emoji characters reliably.
+    // CAD link badge — prominent banner at top of block when linked.
     if (block.links && block.links.some(l => l.target === 'cad')) {
-      const badge = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      badge.setAttribute('transform', 'translate(3, 3)');
-      badge.setAttribute('pointer-events', 'none');
-      // Blue circle background
-      const bg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      bg.setAttribute('cx', '6');
-      bg.setAttribute('cy', '6');
-      bg.setAttribute('r', '6');
-      bg.setAttribute('fill', '#2196F3');
-      bg.setAttribute('opacity', '0.85');
-      badge.appendChild(bg);
-      // Chain-link icon (two overlapping links)
-      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      icon.setAttribute('d', 'M4 5.5h2.5a1.5 1.5 0 0 1 0 3H4a1.5 1.5 0 0 1 0-3zM5.5 5h2.5a1.5 1.5 0 0 1 0 3H5.5');
-      icon.setAttribute('fill', 'none');
-      icon.setAttribute('stroke', '#fff');
-      icon.setAttribute('stroke-width', '1.2');
-      icon.setAttribute('stroke-linecap', 'round');
-      badge.appendChild(icon);
-      blockGroup.appendChild(badge);
+      const blockW = block.width || 120;
+      const cadLink = block.links.find(l => l.target === 'cad');
+      const compName = (block.attributes && block.attributes.linkedComponent) || 'Linked';
+
+      // Blue banner bar across the top of the block
+      const banner = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      banner.setAttribute('x', '0');
+      banner.setAttribute('y', '-16');
+      banner.setAttribute('width', String(blockW));
+      banner.setAttribute('height', '14');
+      banner.setAttribute('rx', '3');
+      banner.setAttribute('fill', '#2196F3');
+      banner.setAttribute('opacity', '0.9');
+      banner.setAttribute('pointer-events', 'none');
+      blockGroup.appendChild(banner);
+
+      // Chain-link icon + component name label
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', String(blockW / 2));
+      label.setAttribute('y', '-6');
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('fill', '#ffffff');
+      label.setAttribute('stroke', 'none');
+      label.setAttribute('font-size', '9');
+      label.setAttribute('font-family', 'Arial, sans-serif');
+      label.setAttribute('font-weight', 'bold');
+      label.setAttribute('pointer-events', 'none');
+      // Truncate long component names
+      const maxChars = Math.floor(blockW / 6);
+      const displayName = compName.length > maxChars
+        ? '\u{1F517} ' + compName.substring(0, maxChars - 3) + '\u2026'
+        : '\u{1F517} ' + compName;
+      label.textContent = displayName;
+      blockGroup.appendChild(label);
+
+      logger.debug('CAD link badge rendered for block', block.id, 'component:', compName);
     }
 
     // Child-diagram indicator — small nested-squares icon at bottom-left
@@ -594,9 +609,9 @@ class DiagramRenderer {
    * strokeWidth scales the arrow to match the SVG marker (markerUnits=strokeWidth).
    */
   _addManualStartArrow(group, fromX, fromY, toX, toY, fillColor, strokeWidth = 2) {
-    // SVG markers use markerWidth=8 in strokeWidth units, so actual
-    // size = 8 * strokeWidth. Match that for the manual polygon.
-    const size = 8 * strokeWidth;
+    // SVG markers now use fixed size (userSpaceOnUse) to prevent
+    // scaling issues with thick lines. Length=10px.
+    const size = 10;
     // Angle from start toward end (approximate — ignores bezier curvature)
     const dx = toX - fromX;
     const dy = toY - fromY;

@@ -356,7 +356,7 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ## 📊 Milestone 17: Analytics and Reporting
 
-**Priority: LOW** - Advanced project insights — **Partially started** (export pipeline)
+**Priority: LOW** - Advanced project insights — **Partially complete** (export pipeline)
 
 - [x] **10-Format Export Pipeline** (implemented in `src/diagram/export.py`)
   - [x] Self-contained HTML report (blocks, interfaces, connections, rules, BOM)
@@ -379,11 +379,47 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ---
 
+## ✅ Milestone 18: Requirements & Verification
+
+**Priority: HIGH** - System-level requirements tracking and verification — **Partially complete** (Tasks 1–2 done)
+
+- [x] **Task 1: Core Models**
+  - [x] `ComparisonOperator` enum (LE, GE, EQ) in `fsb_core/models.py`
+  - [x] `Requirement` dataclass with `check(actual_value) -> bool` method
+  - [x] `Graph.requirements: list[Requirement]` field
+  - [x] `block_fingerprint(block) -> str` SHA-256 helper
+  - [x] `Snapshot`, `ConnectionChange`, `DiffResult` dataclasses
+  - [x] All exports added to `fsb_core/__init__.py`
+
+- [x] **Task 2: Requirements Logic Engine**
+  - [x] `fsb_core/requirements.py` — new module
+  - [x] `RequirementResult` dataclass with `to_dict()` (camelCase for JS bridge)
+  - [x] `aggregate_attribute(graph, key)` — sums numeric attribute across blocks
+  - [x] `validate_requirements(graph)` — evaluates all requirements, returns results
+  - [x] Serialization round-trip for requirements in `fsb_core/serialization.py`
+  - [x] 39 new tests in `tests/test_requirements.py` (8 test classes)
+
+- [ ] **Task 3: Version Control & Diffing Engine**
+  - [ ] `fsb_core/version_control.py` — `create_snapshot()`, `diff_graphs()`, `restore_snapshot()`, `SnapshotStore`
+  - [ ] `tests/test_version_control.py` — 20+ tests
+
+- [ ] **Task 4: Fusion Adapter Integration**
+  - [ ] `BridgeAction.VALIDATE_REQUIREMENTS` and snapshot bridge actions
+  - [ ] Bridge handlers in `Fusion_System_Blocks.py`
+  - [ ] JS mirror in `src/types/bridge-actions.js`
+
+- [ ] **Task 5: Frontend (Requirements & History tabs)**
+  - [ ] Requirements tab in palette with pass/fail table
+  - [ ] History tab with snapshot list, create, compare
+  - [ ] Wire to bridge actions
+
+---
+
 ## Current Status
 
 **Completed:** M1–M12, M14, M16 (Architecture)
-**Partial:** M10.5 (ribbon done; responsive breakpoints and accessibility remaining)
-**Not Started:** M13 (Visual Integration), M15 (AI Assistant), M17 (Analytics — export pipeline done, remaining items pending)
+**Partial:** M10.5 (ribbon done; responsive breakpoints and accessibility remaining), M17 (export pipeline done; advanced analytics pending), M18 (Tasks 1–2 done; Tasks 3–5 remaining)
+**Not Started:** M13 (Visual Integration), M15 (AI Assistant)
 
 ---
 
@@ -401,13 +437,16 @@ Keep commits **small and incremental** (one feature or fix at a time).
 
 ## Progress Summary
 
-**Completed Milestones:** 14 (M1–M12, M14, M16-Arch)
-**Partial:** 1 (M10.5)
-**Not Started:** 3 (M13, M15, M17)
-**Test Coverage:** 518 passing tests across 21 test files
-**Current State:** Professional engineering block system with two-layer architecture, production logging, self-diagnostics, delta serialization, shared bridge constants, native Fusion 360 UI integration, and 10-format export pipeline with configurable profiles.
+**Completed Milestones:** 15 (M1–M12, M14, M16-Arch)
+**Partial:** 3 (M10.5, M17, M18)
+**Not Started:** 2 (M13, M15)
+**Test Coverage:** 557 passing tests across 22 test files
+**Current State:** Professional engineering block system with two-layer architecture, production logging, self-diagnostics, delta serialization, shared bridge constants, native Fusion 360 UI integration, 10-format export pipeline with configurable profiles, and requirements & verification engine (core models + logic engine complete).
 
 **Next Steps:**
+- Complete M18 Task 3 (version control & diffing engine)
+- Complete M18 Task 4 (Fusion adapter integration)
+- Complete M18 Task 5 (frontend Requirements & History tabs)
 - Complete M10.5 (responsive breakpoints, accessibility)
 - Begin M13 (3D overlays, component highlighting)
 - Manual testing in Fusion 360 (see `docs/FUSION_MANUAL_TEST_PLAN.md`)
