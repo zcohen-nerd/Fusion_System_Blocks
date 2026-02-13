@@ -176,6 +176,35 @@ class DiagramRenderer {
         mainShape.setAttribute('height', height);
         mainShape.setAttribute('rx', Math.min(width, height) * 0.3);
         break;
+
+      case 'parallelogram': {
+        mainShape = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        const skew = width * 0.18;
+        mainShape.setAttribute('points',
+          `${x + skew},${y} ${x + width},${y} ${x + width - skew},${y + height} ${x},${y + height}`);
+        break;
+      }
+
+      case 'cylinder': {
+        // Cylinder / database shape — rect body with elliptical caps
+        const capRy = height * 0.12;
+        mainShape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        // Top ellipse arc, right side, bottom ellipse arc, left side, close
+        mainShape.setAttribute('d',
+          `M ${x},${y + capRy}` +
+          ` A ${width / 2},${capRy} 0 0,1 ${x + width},${y + capRy}` +
+          ` L ${x + width},${y + height - capRy}` +
+          ` A ${width / 2},${capRy} 0 0,1 ${x},${y + height - capRy}` +
+          ` Z`);
+        break;
+      }
+
+      case 'triangle': {
+        mainShape = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        mainShape.setAttribute('points',
+          `${x + width / 2},${y} ${x + width},${y + height} ${x},${y + height}`);
+        break;
+      }
     }
     
     mainShape.setAttribute('stroke-width', strokeWidth);

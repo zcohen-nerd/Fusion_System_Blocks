@@ -705,6 +705,17 @@ class SystemBlocksMain {
         <option value="In Progress" ${block.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
         <option value="Completed"   ${block.status === 'Completed'   ? 'selected' : ''}>Completed</option>
       </select>
+      <label style="${labelStyle}">Shape</label>
+      <select id="prop-shape" style="${selectStyle}">
+        <option value="rectangle"     ${(block.shape || 'rectangle') === 'rectangle'     ? 'selected' : ''}>▭ Rectangle</option>
+        <option value="rounded"       ${block.shape === 'rounded'       ? 'selected' : ''}>▢ Rounded</option>
+        <option value="diamond"       ${block.shape === 'diamond'       ? 'selected' : ''}>◇ Diamond</option>
+        <option value="circle"        ${block.shape === 'circle'        ? 'selected' : ''}>○ Ellipse</option>
+        <option value="hexagon"       ${block.shape === 'hexagon'       ? 'selected' : ''}>⬡ Hexagon</option>
+        <option value="parallelogram" ${block.shape === 'parallelogram' ? 'selected' : ''}>▱ Parallelogram</option>
+        <option value="cylinder"      ${block.shape === 'cylinder'      ? 'selected' : ''}>⊙ Cylinder</option>
+        <option value="triangle"      ${block.shape === 'triangle'      ? 'selected' : ''}>△ Triangle</option>
+      </select>
       <label style="${labelStyle}">Attributes</label>
       <div id="prop-attrs" style="max-height:140px; overflow-y:auto;">
         ${attrKeys.map(k => `
@@ -766,6 +777,7 @@ class SystemBlocksMain {
         name: dialog.querySelector('#prop-name').value.trim() || block.name,
         type: dialog.querySelector('#prop-type').value,
         status: dialog.querySelector('#prop-status').value,
+        shape: dialog.querySelector('#prop-shape').value,
         attributes: newAttrs
       });
 
@@ -850,6 +862,18 @@ class SystemBlocksMain {
           const newStatus = item.getAttribute('data-set-status');
           core.updateBlock(block.id, { status: newStatus });
           renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+          this.hideContextMenu();
+        });
+      });
+
+      // Shape submenu
+      freshMenu.querySelectorAll('[data-set-shape]').forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const newShape = item.getAttribute('data-set-shape');
+          core.updateBlock(block.id, { shape: newShape });
+          renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+          if (window.advancedFeatures) window.advancedFeatures.saveState();
           this.hideContextMenu();
         });
       });
