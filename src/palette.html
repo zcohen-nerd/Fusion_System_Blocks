@@ -1348,13 +1348,13 @@
         <div class="ribbon-group" role="group" aria-label="File operations">
           <div class="ribbon-content">
             <div class="ribbon-mixed">
-              <button id="btn-new" class="ribbon-button-large" title="Create New Diagram (Ctrl+N)" aria-label="Create New Diagram">
+              <button id="btn-new" class="ribbon-button-large" title="New Diagram — Create a blank diagram (Ctrl+N)" aria-label="Create New Diagram">
                 <div class="ribbon-icon" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-new"/></svg></div>
                 <div class="ribbon-text">New</div>
                 <div class="ribbon-shortcut" aria-hidden="true">Ctrl+N</div>
               </button>
               <div class="ribbon-buttons-column">
-                <button id="btn-save" class="ribbon-button-small" title="Save Diagram (Ctrl+S)" aria-label="Save Diagram">
+                <button id="btn-save" class="ribbon-button-small" title="Save Diagram — Save to Fusion 360 document (Ctrl+S)" aria-label="Save Diagram">
                   <div class="ribbon-icon-small" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-save"/></svg></div>
                   <span>Save</span>
                 </button>
@@ -1362,7 +1362,7 @@
                   <div class="ribbon-icon-small" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-save"/></svg></div>
                   <span>Save As…</span>
                 </button>
-                <button id="btn-export-report" class="ribbon-button-small" title="Export Report" aria-label="Export Report">
+                <button id="btn-export-report" class="ribbon-button-small" title="Export Report — Generate HTML/JSON report of the diagram" aria-label="Export Report">
                   <div class="ribbon-icon-small" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-export"/></svg></div>
                   <span>Export</span>
                 </button>
@@ -1396,7 +1396,7 @@
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-redo"/></svg></div>
                   <span>Redo</span>
                 </button>
-                <button id="btn-import" class="ribbon-button-small" title="Import">
+                <button id="btn-import" class="ribbon-button-small" title="Import — Import diagram from Mermaid or CSV">
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-load"/></svg></div>
                   <span>Import</span>
                 </button>
@@ -1414,12 +1414,12 @@
         <div class="ribbon-group" role="group" aria-label="Create elements">
           <div class="ribbon-content">
             <div class="ribbon-mixed">
-              <button id="btn-add-block-ribbon" class="ribbon-button-large" title="Add Block" aria-label="Add Block">
+              <button id="btn-add-block-ribbon" class="ribbon-button-large" title="Add Block — Create a new system block (B)" aria-label="Add Block">
                 <div class="ribbon-icon" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-block"/></svg></div>
                 <div class="ribbon-text">Block</div>
               </button>
               <div class="ribbon-buttons-column">
-                <button id="btn-connect" class="ribbon-button-small" title="Draw Connection (C)">
+                <button id="btn-connect" class="ribbon-button-small" title="Connect — Draw a connection between two blocks (C)">
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-link"/></svg></div>
                   <span>Connect</span>
                 </button>
@@ -1488,7 +1488,7 @@
         <div class="ribbon-group" role="group" aria-label="Arrange">
           <div class="ribbon-content">
             <div class="ribbon-mixed">
-              <button id="btn-auto-layout" class="ribbon-button-large" title="Auto-arrange blocks with smart layout">
+              <button id="btn-auto-layout" class="ribbon-button-large" title="Auto Layout — Arrange all blocks with smart layout algorithm">
                 <div class="ribbon-icon"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-auto-layout"/></svg></div>
                 <div class="ribbon-text">Auto Layout</div>
               </button>
@@ -1608,8 +1608,7 @@
         <div class="connection-type-container">
           <label for="connection-type-select" class="fusion-label">Connection:</label>
           <select id="connection-type-select" class="connection-type-select" title="Choose connection type for new connections">
-            <option value="auto" selected>Auto</option>
-            <option value="electrical">Electrical</option>
+            <option value="electrical" selected>Electrical</option>
             <option value="power">Power</option>
             <option value="data">Data</option>
             <option value="mechanical">Mechanical</option>
@@ -4145,7 +4144,7 @@
       box-shadow: none;
     }
 
-    .sb-panel.show { display: block; opacity: 1; transform: translateY(0); }
+    .sb-panel.show { display: block; opacity: 1; transform: translateY(0); z-index: 200000; }
 
     .sb-section {
       margin-bottom: var(--fusion-spacing-lg);
@@ -4418,6 +4417,7 @@
         },
 
         'btn-snap-grid': function() {
+          if (window._systemBlocksInitialized) return;
           var btn = document.getElementById('btn-snap-grid');
           if (btn) btn.classList.toggle('active');
           if (window.diagramEditor) {
@@ -4427,6 +4427,7 @@
         },
 
         'btn-import': function() {
+          if (window._systemBlocksInitialized) return;
           showToast('Import: Coming soon', 'info');
         }
       };

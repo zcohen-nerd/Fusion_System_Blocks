@@ -119,6 +119,12 @@ class SystemBlocksMain {
     
     // Set up advanced features integration
     this.setupAdvancedFeaturesIntegration(core, renderer, features);
+
+    // Set up search / filter bar
+    this.setupSearchFilter(core, renderer);
+
+    // Set up import dialog wiring
+    this.setupImportDialog(core, renderer, features);
   }
 
   setupCanvasEventHandlers(core, renderer, features) {
@@ -401,6 +407,10 @@ class SystemBlocksMain {
         // End block drag — save state only if block actually moved
         if (dragMoved) {
           features.saveState();
+          // Prevent the debounced auto-save (from monkey-patched
+          // updateBlock) from pushing a duplicate undo state.
+          this._dragSaveJustFired = true;
+          setTimeout(() => { this._dragSaveJustFired = false; }, 350);
         }
         draggedBlock = null;
         dragOffset = { x: 0, y: 0 };
@@ -591,6 +601,11 @@ class SystemBlocksMain {
     // detection in mousedown and the native dblclick handler can fire)
     if (svg.querySelector('foreignObject')) return;
 
+    // Hide the original SVG text element so it doesn't overlap the input
+    const blockGroup = svg.querySelector(`g[data-block-id="${block.id}"]`);
+    const textEl = blockGroup ? blockGroup.querySelector('text') : null;
+    if (textEl) textEl.style.display = 'none';
+
     // Create a foreignObject to host an HTML input over the block
     const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
     const bw = block.width || 120;
@@ -623,13 +638,19 @@ class SystemBlocksMain {
       if (newName && newName !== block.name) {
         core.updateBlock(block.id, { name: newName });
         renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+      } else {
+        // Restore text visibility if no change
+        if (textEl) textEl.style.display = '';
       }
       if (fo.parentNode) fo.remove();
     };
 
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); commit(); }
-      if (e.key === 'Escape') { if (fo.parentNode) fo.remove(); }
+      if (e.key === 'Escape') {
+        if (textEl) textEl.style.display = '';
+        if (fo.parentNode) fo.remove();
+      }
       e.stopPropagation(); // prevent shortcuts from firing
     });
 
@@ -837,7 +858,22 @@ class SystemBlocksMain {
     // Canvas/empty-space actions
     this._ctxAction(freshMenu, 'ctx-add-block', () => {
       this.hideContextMenu();
-      if (window.toolbarManager) window.toolbarManager.handleCreateBlock();
+      // Convert context-menu screen coordinates to SVG coordinates
+      const svg = document.getElementById('svg-canvas');
+      if (svg && window.toolbarManager) {
+        const pt = svg.createSVGPoint();
+        pt.x = clientX;
+        pt.y = clientY;
+        const ctm = svg.getScreenCTM();
+        if (ctm) {
+          const svgPt = pt.matrixTransform(ctm.inverse());
+          window.toolbarManager.handleCreateBlockAtPosition(svgPt.x, svgPt.y);
+        } else {
+          window.toolbarManager.handleCreateBlock();
+        }
+      } else if (window.toolbarManager) {
+        window.toolbarManager.handleCreateBlock();
+      }
     });
 
     this._ctxAction(freshMenu, 'ctx-fit-view', () => {
@@ -969,13 +1005,256 @@ class SystemBlocksMain {
         saveTimer = setTimeout(() => {
           // Don't auto-save state right after an undo/redo — the restoreState
           // triggers updateBlock which would wipe the redo stack.
-          if (features.redoStack.length === 0) {
+          // Also skip if a drag-end explicit save just fired (prevents
+          // duplicate undo states for block moves).
+          if (features.redoStack.length === 0 && !this._dragSaveJustFired) {
             features.saveState();
           }
         }, 250);
       }
       return result;
     };
+  }
+
+  // =========================================================================
+  // SEARCH / FILTER BAR
+  // =========================================================================
+  setupSearchFilter(core, renderer) {
+    const searchInput = document.getElementById('search-input');
+    const filterAll = document.getElementById('filter-all');
+    const filterPlaceholder = document.getElementById('filter-placeholder');
+    const filterImplemented = document.getElementById('filter-implemented');
+
+    if (!searchInput) return;
+
+    // Current filter state
+    let activeFilter = 'all'; // 'all' | 'placeholder' | 'implemented'
+
+    const applyFilters = () => {
+      const query = searchInput.value.trim().toLowerCase();
+      const blocks = core.diagram ? core.diagram.blocks : [];
+      const svg = document.getElementById('svg-canvas');
+      if (!svg) return;
+
+      blocks.forEach(block => {
+        const group = svg.querySelector(`g[data-block-id="${block.id}"]`);
+        if (!group) return;
+
+        // Filter by status
+        let statusMatch = true;
+        if (activeFilter === 'placeholder') {
+          statusMatch = (block.status || 'placeholder') === 'placeholder';
+        } else if (activeFilter === 'implemented') {
+          statusMatch = block.status === 'implemented';
+        }
+
+        // Filter by search text (match name, type, or status)
+        let textMatch = true;
+        if (query) {
+          const name = (block.name || '').toLowerCase();
+          const type = (block.type || '').toLowerCase();
+          const status = (block.status || '').toLowerCase();
+          textMatch = name.includes(query) || type.includes(query) || status.includes(query);
+        }
+
+        // Apply visibility
+        const visible = statusMatch && textMatch;
+        group.style.opacity = visible ? '1' : '0.15';
+        group.style.pointerEvents = visible ? 'auto' : 'none';
+      });
+    };
+
+    searchInput.addEventListener('input', applyFilters);
+
+    // Filter button handlers
+    const setActiveFilter = (filter, btn) => {
+      activeFilter = filter;
+      [filterAll, filterPlaceholder, filterImplemented].forEach(b => {
+        if (b) b.classList.remove('active');
+      });
+      if (btn) btn.classList.add('active');
+      applyFilters();
+    };
+
+    if (filterAll) filterAll.addEventListener('click', () => setActiveFilter('all', filterAll));
+    if (filterPlaceholder) filterPlaceholder.addEventListener('click', () => setActiveFilter('placeholder', filterPlaceholder));
+    if (filterImplemented) filterImplemented.addEventListener('click', () => setActiveFilter('implemented', filterImplemented));
+  }
+
+  // =========================================================================
+  // IMPORT DIALOG
+  // =========================================================================
+  setupImportDialog(core, renderer, features) {
+    const dialog = document.getElementById('import-dialog');
+    const overlay = document.getElementById('dialog-overlay');
+    const btnOk = document.getElementById('btn-import-ok');
+    const btnCancel = document.getElementById('btn-import-cancel');
+    const mermaidSection = document.getElementById('mermaid-import');
+    const csvSection = document.getElementById('csv-import');
+    if (!dialog || !btnOk) return;
+
+    // Toggle import type sections
+    document.querySelectorAll('input[name="import-type"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        if (mermaidSection) mermaidSection.style.display = radio.value === 'mermaid' ? '' : 'none';
+        if (csvSection) csvSection.style.display = radio.value === 'csv' ? '' : 'none';
+      });
+    });
+
+    const hideDialog = () => {
+      if (dialog) dialog.style.display = 'none';
+      if (overlay) overlay.style.display = 'none';
+    };
+
+    if (btnCancel) btnCancel.addEventListener('click', hideDialog);
+    if (overlay) overlay.addEventListener('click', hideDialog);
+
+    btnOk.addEventListener('click', () => {
+      const importType = document.querySelector('input[name="import-type"]:checked');
+      const type = importType ? importType.value : 'mermaid';
+
+      if (type === 'mermaid') {
+        const text = (document.getElementById('mermaid-text')?.value || '').trim();
+        if (!text) { this._toast('Please enter Mermaid flowchart text.', 'warning'); return; }
+        this._importFromMermaid(text, core, renderer, features);
+      } else {
+        const blocksText = (document.getElementById('csv-blocks')?.value || '').trim();
+        if (!blocksText) { this._toast('Please enter blocks CSV data.', 'warning'); return; }
+        const connsText = (document.getElementById('csv-connections')?.value || '').trim();
+        this._importFromCSV(blocksText, connsText, core, renderer, features);
+      }
+
+      hideDialog();
+    });
+  }
+
+  /**
+   * Parse a simple Mermaid flowchart and create blocks/connections.
+   * Supports: A[Label], A --> B, A -->|label| B, A --- B
+   */
+  _importFromMermaid(text, core, renderer, features) {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    const nodeMap = new Map();   // id -> block
+    const connections = [];
+    let xPos = 100;
+    let yPos = 100;
+
+    // Regex for node definitions like A[Label] or A{Decision} or A(Rounded)
+    const nodeDef = /([A-Za-z0-9_]+)\s*[\[({]([^}\])]*)[\])}]/g;
+    // Regex for arrows: A -->|label| B  or  A --> B  or  A --- B
+    const arrowPattern = /([A-Za-z0-9_]+)\s*(-->|---|\.-+>|==>)(\|[^|]*\|)?\s*([A-Za-z0-9_]+)/g;
+
+    // First pass: extract all node definitions
+    for (const line of lines) {
+      let match;
+      nodeDef.lastIndex = 0;
+      while ((match = nodeDef.exec(line)) !== null) {
+        const [, id, label] = match;
+        if (!nodeMap.has(id)) {
+          nodeMap.set(id, { id, label: label || id });
+        }
+      }
+    }
+
+    // Second pass: extract connections (and implicitly defined nodes)
+    for (const line of lines) {
+      let match;
+      arrowPattern.lastIndex = 0;
+      while ((match = arrowPattern.exec(line)) !== null) {
+        const [, fromId, , , toId] = match;
+        if (!nodeMap.has(fromId)) nodeMap.set(fromId, { id: fromId, label: fromId });
+        if (!nodeMap.has(toId)) nodeMap.set(toId, { id: toId, label: toId });
+        connections.push({ from: fromId, to: toId });
+      }
+    }
+
+    // Create blocks
+    const blockIdMap = new Map();  // mermaid id -> real block id
+    for (const [mermaidId, node] of nodeMap) {
+      const block = core.addBlock({
+        name: node.label,
+        type: 'Generic',
+        x: xPos,
+        y: yPos,
+        status: 'placeholder'
+      });
+      if (block) {
+        renderer.renderBlock(block);
+        blockIdMap.set(mermaidId, block.id);
+      }
+      xPos += 160;
+      if (xPos > 700) { xPos = 100; yPos += 120; }
+    }
+
+    // Create connections
+    for (const conn of connections) {
+      const fromId = blockIdMap.get(conn.from);
+      const toId = blockIdMap.get(conn.to);
+      if (fromId && toId) {
+        const c = core.addConnection(fromId, toId, 'electrical');
+        if (c) renderer.renderConnection(c);
+      }
+    }
+
+    if (features) features.saveState();
+    this._toast(`Imported ${nodeMap.size} blocks and ${connections.length} connections`, 'success');
+  }
+
+  /**
+   * Parse CSV data and create blocks/connections.
+   */
+  _importFromCSV(blocksText, connsText, core, renderer, features) {
+    const blockLines = blocksText.split('\n').map(l => l.trim()).filter(l => l);
+    const nameToId = new Map();
+    let imported = 0;
+
+    for (const line of blockLines) {
+      // Skip header
+      if (line.toLowerCase().startsWith('name,')) continue;
+      const parts = line.split(',').map(p => p.trim());
+      if (parts.length < 1) continue;
+      const [name, type, xStr, yStr, status] = parts;
+      const block = core.addBlock({
+        name: name || 'Block',
+        type: type || 'Generic',
+        x: parseFloat(xStr) || 100 + imported * 160,
+        y: parseFloat(yStr) || 100,
+        status: (status || 'placeholder').toLowerCase()
+      });
+      if (block) {
+        renderer.renderBlock(block);
+        nameToId.set(name, block.id);
+        imported++;
+      }
+    }
+
+    let connCount = 0;
+    if (connsText) {
+      const connLines = connsText.split('\n').map(l => l.trim()).filter(l => l);
+      for (const line of connLines) {
+        if (line.toLowerCase().startsWith('from,')) continue;
+        const parts = line.split(',').map(p => p.trim());
+        if (parts.length < 2) continue;
+        const [from, to, kind] = parts;
+        const fromId = nameToId.get(from);
+        const toId = nameToId.get(to);
+        if (fromId && toId) {
+          const c = core.addConnection(fromId, toId, kind || 'electrical');
+          if (c) { renderer.renderConnection(c); connCount++; }
+        }
+      }
+    }
+
+    if (features) features.saveState();
+    this._toast(`Imported ${imported} blocks and ${connCount} connections`, 'success');
+  }
+
+  _toast(message, type) {
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, type);
+    } else {
+      logger.info(`[Toast] ${type}: ${message}`);
+    }
   }
 
   setupGlobalAPI() {

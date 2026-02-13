@@ -39,6 +39,9 @@
     if (!el || !window.pythonInterface) return;
     const { connected, queuedMessages, pendingRequests } = window.pythonInterface.getConnectionStatus();
     el.textContent = `Bridge: ${connected ? 'connected' : 'offline'} (q:${queuedMessages}, p:${pendingRequests})`;
+    // Toggle pill color to match bridge state
+    el.classList.remove('pill-success', 'pill-error', 'pill-warning', 'pill-info');
+    el.classList.add(connected ? 'pill-success' : 'pill-error');
   }
 
   function updateLastSaved() {

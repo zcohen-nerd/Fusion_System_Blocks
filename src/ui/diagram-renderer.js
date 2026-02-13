@@ -619,7 +619,7 @@ class DiagramRenderer {
     // Arrow points backward (opposite the path direction)
     const tipX = fromX;
     const tipY = fromY;
-    const halfSpread = 0.55; // ~31 degrees — wider for better visibility
+    const halfSpread = Math.atan2(3.5, 10); // ~19° — matches forward marker polygon (0 0, 10 3.5, 0 7)
     const baseX1 = fromX + Math.cos(angle + halfSpread) * size;
     const baseY1 = fromY + Math.sin(angle + halfSpread) * size;
     const baseX2 = fromX + Math.cos(angle - halfSpread) * size;

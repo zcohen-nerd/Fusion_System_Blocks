@@ -161,13 +161,13 @@ class ToolbarManager {
     }
 
     // Buttons enabled when diagram has content
-    const needsContent = ['save', 'save-as', 'export', 'select-all'];
+    const needsContent = ['save', 'save-as', 'export', 'select-all', 'auto-layout'];
     if (needsContent.includes(buttonId)) {
       return this.editor.diagram.blocks.length > 0;
     }
 
     // Buttons enabled when blocks are selected
-    const needsSelection = ['link-cad', 'link-ecad', 'clear-selection', 'auto-layout', 
+    const needsSelection = ['link-cad', 'link-ecad', 'clear-selection',
                            'align-left', 'align-center', 'align-right', 'create-group'];
     if (needsSelection.includes(buttonId)) {
       return this.editor.selectedBlock !== null;
@@ -190,6 +190,7 @@ class ToolbarManager {
     this.addButtonListener('redo', () => this.handleRedo());
     this.addButtonListener('link-cad', () => this.handleLinkCAD());
     this.addButtonListener('link-ecad', () => this.handleLinkECAD());
+    this.addButtonListener('import', () => this.handleImport());
 
     // Create operations
     this.addButtonListener('block', () => this.handleCreateBlock());
@@ -253,12 +254,27 @@ class ToolbarManager {
       'KeyO': { ctrl: true, handler: () => this.handleLoad() },
       'Shift+KeyO': { ctrl: true, shift: true, handler: () => this.handleOpenNamed() },
       'KeyZ': { ctrl: true, handler: () => this.handleUndo() },
+      'Shift+KeyZ': { ctrl: true, shift: true, handler: () => this.handleRedo() },
       'KeyY': { ctrl: true, handler: () => this.handleRedo() },
       'KeyA': { ctrl: true, handler: () => this.handleSelectAll() },
+      'KeyD': { ctrl: true, handler: () => this.handleDuplicate() },
+      'KeyF': { ctrl: true, handler: () => this.handleFocusSearch() },
+      'Equal': { ctrl: true, handler: () => this.handleZoomIn() },
+      'Minus': { ctrl: true, handler: () => this.handleZoomOut() },
+      'Digit0': { ctrl: true, handler: () => this.handleFitView() },
       'Escape': { handler: () => this.handleClearSelection() },
       'Delete': { handler: () => this.handleDeleteSelected() },
+      'Backspace': { handler: () => this.handleDeleteSelected() },
+      'Insert': { handler: () => this.handleCreateBlock() },
       'KeyB': { handler: () => this.handleCreateBlock() },
-      'KeyC': { handler: () => this.handleConnect() }
+      'KeyC': { handler: () => this.handleConnect() },
+      'Shift+KeyP': { shift: true, handler: () => this.handleSetConnectionType('power') },
+      'Shift+KeyD': { shift: true, handler: () => this.handleSetConnectionType('data') },
+      'Shift+KeyE': { shift: true, handler: () => this.handleSetConnectionType('electrical') },
+      'Shift+KeyM': { shift: true, handler: () => this.handleSetConnectionType('mechanical') },
+      'Shift+ArrowUp': { ctrl: true, shift: true, handler: () => this.handleNavigateUp() },
+      'Shift+ArrowDown': { ctrl: true, shift: true, handler: () => this.handleDrillDown() },
+      'Shift+KeyN': { ctrl: true, shift: true, handler: () => this.handleCreateChild() }
     };
 
     Object.entries(shortcuts).forEach(([code, config]) => {
@@ -415,7 +431,9 @@ class ToolbarManager {
         // Click to delete
         item.querySelector('.doc-delete-btn').addEventListener('click', (e) => {
           e.stopPropagation();
-          if (confirm('Delete "' + doc.label + '"?')) {
+          // Decode any HTML entities that may have been escaped by the backend
+          const decodedLabel = doc.label.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+          if (confirm('Delete "' + decodedLabel + '"?')) {
             window.pythonInterface.deleteNamedDiagram(doc.slug).then(() => {
               item.remove();
               if (listContainer.children.length === 0) {
@@ -817,12 +835,19 @@ class ToolbarManager {
       : [];
 
     if (multiIds.length > 0) {
+      // Clean up groups that contain deleted blocks
+      if (window.advancedFeatures) {
+        this._cleanupGroupsForDeletedBlocks(multiIds);
+      }
       multiIds.forEach(id => this.editor.removeBlock(id));
       if (window.advancedFeatures) window.advancedFeatures.clearSelection();
       this.renderer.updateAllBlocks(this.editor.diagram);
       this.editor.clearSelection();
       if (window.advancedFeatures) window.advancedFeatures.saveState();
     } else if (this.editor.selectedBlock) {
+      if (window.advancedFeatures) {
+        this._cleanupGroupsForDeletedBlocks([this.editor.selectedBlock]);
+      }
       this.editor.removeBlock(this.editor.selectedBlock);
       this.renderer.updateAllBlocks(this.editor.diagram);
       this.editor.clearSelection();
@@ -893,8 +918,68 @@ class ToolbarManager {
   }
 
   handleUngroup() {
-    // Would need to identify which group is selected
-    logger.debug('Ungroup: not yet implemented for selected group');
+    if (!window.advancedFeatures) return;
+    // Find groups that contain any of the currently-selected blocks
+    const selectedIds = window.advancedFeatures.hasSelection()
+      ? window.advancedFeatures.getSelectedBlocks()
+      : (this.editor.selectedBlock ? [this.editor.selectedBlock] : []);
+    if (selectedIds.length === 0) return;
+    const selectedSet = new Set(selectedIds);
+    const groupsToRemove = [];
+    window.advancedFeatures.groups.forEach((group, groupId) => {
+      if (groupId === 'default') return;
+      const blockSet = group.blocks instanceof Set ? group.blocks : new Set(group.blocks);
+      for (const id of selectedSet) {
+        if (blockSet.has(id)) { groupsToRemove.push(groupId); break; }
+      }
+    });
+    groupsToRemove.forEach(gid => window.advancedFeatures.ungroupBlocks(gid));
+  }
+
+  handleDuplicate() {
+    // Duplicate selected block(s)
+    const selectedIds = window.advancedFeatures && window.advancedFeatures.hasSelection()
+      ? window.advancedFeatures.getSelectedBlocks()
+      : (this.editor.selectedBlock ? [this.editor.selectedBlock] : []);
+    if (selectedIds.length === 0) return;
+    const step = this.editor.gridSize || 20;
+    selectedIds.forEach(id => {
+      const orig = this.editor.diagram.blocks.find(b => b.id === id);
+      if (!orig) return;
+      const clone = this.editor.addBlock({
+        name: orig.name + ' (copy)',
+        type: orig.type || 'Generic',
+        x: orig.x + step,
+        y: orig.y + step,
+        status: orig.status
+      });
+      this.renderer.renderBlock(clone);
+    });
+  }
+
+  handleFocusSearch() {
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.select();
+    }
+  }
+
+  handleSetConnectionType(type) {
+    const select = document.getElementById('connection-type-select');
+    if (select) {
+      select.value = type;
+      select.dispatchEvent(new Event('change'));
+    }
+  }
+
+  handleImport() {
+    const overlay = document.getElementById('import-dialog');
+    if (overlay) {
+      overlay.style.display = 'flex';
+    } else {
+      logger.warn('Import dialog element not found');
+    }
   }
 
   handleCheckRules() {
@@ -1135,6 +1220,50 @@ class ToolbarManager {
 
   getButtonState(buttonId) {
     return this.buttonStates.get(buttonId);
+  }
+
+  /**
+   * Remove groups whose blocks have all been deleted, and clean up the
+   * SVG group boundary for any affected group.
+   */
+  _cleanupGroupsForDeletedBlocks(deletedIds) {
+    if (!window.advancedFeatures) return;
+    const deletedSet = new Set(deletedIds);
+    const groupsToRemove = [];
+    window.advancedFeatures.groups.forEach((group, groupId) => {
+      if (groupId === 'default') return;
+      const blockSet = group.blocks instanceof Set ? group.blocks : new Set(group.blocks);
+      // Remove deleted blocks from the group
+      for (const id of deletedSet) { blockSet.delete(id); }
+      group.blocks = blockSet;
+      // If group is now empty, mark for removal
+      if (blockSet.size === 0) {
+        groupsToRemove.push(groupId);
+      } else {
+        // Recalculate bounds for remaining blocks
+        group.bounds = window.advancedFeatures.calculateGroupBounds(Array.from(blockSet));
+      }
+    });
+    groupsToRemove.forEach(gid => window.advancedFeatures.ungroupBlocks(gid));
+  }
+
+  /**
+   * Create a block at a specific SVG position (used by context menu "Add Block").
+   */
+  handleCreateBlockAtPosition(svgX, svgY) {
+    this.showBlockTypeDropdown((type) => {
+      const snapped = this.editor.snapToGrid(svgX - 60, svgY - 40);
+      const newBlock = this.editor.addBlock({
+        name: 'New ' + type + ' Block',
+        type: type,
+        x: snapped.x,
+        y: snapped.y
+      });
+      this.renderer.renderBlock(newBlock);
+      this.editor.selectBlock(newBlock.id);
+      const emptyState = document.getElementById('empty-canvas-state');
+      if (emptyState) emptyState.classList.add('hidden');
+    });
   }
 
   // Responsive toolbar handling
