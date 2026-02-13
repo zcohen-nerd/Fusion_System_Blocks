@@ -324,6 +324,31 @@
         },
         "additionalProperties": true
       }
+    },
+    "requirements": {
+      "type": "array",
+      "description": "System-level requirements with traceability to blocks and attributes (M18)",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "targetValue": { "type": "number" },
+          "operator": {
+            "type": "string",
+            "enum": ["<=", ">=", "=="]
+          },
+          "unit": { "type": "string" },
+          "linkedAttribute": {
+            "type": "string",
+            "description": "Dot-path to the block attribute this requirement traces to"
+          },
+          "tolerance": { "type": "number", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false
