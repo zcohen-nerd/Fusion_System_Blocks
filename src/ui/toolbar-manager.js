@@ -191,6 +191,8 @@ class ToolbarManager {
     this.addButtonListener('link-cad', () => this.handleLinkCAD());
     this.addButtonListener('link-ecad', () => this.handleLinkECAD());
     this.addButtonListener('import', () => this.handleImport());
+    this.addButtonListener('copy', () => this.handleCopy());
+    this.addButtonListener('paste', () => this.handlePaste());
 
     // Create operations
     this.addButtonListener('block', () => this.handleCreateBlock());
@@ -257,6 +259,8 @@ class ToolbarManager {
       'Shift+KeyZ': { ctrl: true, shift: true, handler: () => this.handleRedo() },
       'KeyY': { ctrl: true, handler: () => this.handleRedo() },
       'KeyA': { ctrl: true, handler: () => this.handleSelectAll() },
+      'KeyC': { ctrl: true, handler: () => this.handleCopy() },
+      'KeyV': { ctrl: true, handler: () => this.handlePaste() },
       'KeyD': { ctrl: true, handler: () => this.handleDuplicate() },
       'KeyF': { ctrl: true, handler: () => this.handleFocusSearch() },
       'Equal': { ctrl: true, handler: () => this.handleZoomIn() },
@@ -267,7 +271,7 @@ class ToolbarManager {
       'Backspace': { handler: () => this.handleDeleteSelected() },
       'Insert': { handler: () => this.handleCreateBlock() },
       'KeyB': { handler: () => this.handleCreateBlock() },
-      'KeyC': { handler: () => this.handleConnect() },
+      'KeyC': { handler: () => this.handleConnect() },  // bare C = connect mode
       'Shift+KeyP': { shift: true, handler: () => this.handleSetConnectionType('power') },
       'Shift+KeyD': { shift: true, handler: () => this.handleSetConnectionType('data') },
       'Shift+KeyE': { shift: true, handler: () => this.handleSetConnectionType('electrical') },
@@ -944,8 +948,83 @@ class ToolbarManager {
     groupsToRemove.forEach(gid => window.advancedFeatures.ungroupBlocks(gid));
   }
 
+  handleCopy() {
+    const selectedIds = window.advancedFeatures && window.advancedFeatures.hasSelection()
+      ? window.advancedFeatures.getSelectedBlocks()
+      : (this.editor.selectedBlock ? [this.editor.selectedBlock] : []);
+    if (selectedIds.length === 0) {
+      if (window.pythonInterface) {
+        window.pythonInterface.showNotification('Select block(s) to copy', 'warning');
+      }
+      return;
+    }
+    // Deep-copy selected blocks into internal clipboard
+    this._clipboard = selectedIds.map(id => {
+      const b = this.editor.diagram.blocks.find(bl => bl.id === id);
+      return b ? JSON.parse(JSON.stringify(b)) : null;
+    }).filter(Boolean);
+    // Also copy connections that exist entirely within the selection
+    const idSet = new Set(selectedIds);
+    this._clipboardConnections = this.editor.diagram.connections
+      .filter(c => idSet.has(c.fromBlock) && idSet.has(c.toBlock))
+      .map(c => JSON.parse(JSON.stringify(c)));
+    logger.debug(`Copied ${this._clipboard.length} block(s) and ${this._clipboardConnections.length} connection(s)`);
+    if (window.pythonInterface) {
+      window.pythonInterface.showNotification(
+        `Copied ${this._clipboard.length} block(s)`, 'success'
+      );
+    }
+  }
+
+  handlePaste() {
+    if (!this._clipboard || this._clipboard.length === 0) {
+      if (window.pythonInterface) {
+        window.pythonInterface.showNotification('Nothing to paste — copy blocks first', 'warning');
+      }
+      return;
+    }
+    const step = this.editor.gridSize || 20;
+    const idMap = new Map(); // old id → new id
+    // Paste blocks with offset
+    this._clipboard.forEach(orig => {
+      const clone = this.editor.addBlock({
+        name: orig.name + ' (copy)',
+        type: orig.type || 'Generic',
+        x: orig.x + step,
+        y: orig.y + step,
+        width: orig.width,
+        height: orig.height,
+        status: orig.status,
+        shape: orig.shape
+      });
+      idMap.set(orig.id, clone.id);
+      this.renderer.renderBlock(clone);
+    });
+    // Recreate connections between pasted blocks
+    if (this._clipboardConnections) {
+      this._clipboardConnections.forEach(conn => {
+        const newFrom = idMap.get(conn.fromBlock);
+        const newTo = idMap.get(conn.toBlock);
+        if (newFrom && newTo) {
+          const newConn = this.editor.addConnection(
+            newFrom, newTo, conn.type, conn.arrowDirection
+          );
+          if (newConn) {
+            this.renderer.renderConnection(newConn);
+          }
+        }
+      });
+    }
+    logger.debug(`Pasted ${this._clipboard.length} block(s)`);
+    if (window.pythonInterface) {
+      window.pythonInterface.showNotification(
+        `Pasted ${this._clipboard.length} block(s)`, 'success'
+      );
+    }
+  }
+
   handleDuplicate() {
-    // Duplicate selected block(s)
+    // Duplicate selected block(s) — shortcut Ctrl+D
     const selectedIds = window.advancedFeatures && window.advancedFeatures.hasSelection()
       ? window.advancedFeatures.getSelectedBlocks()
       : (this.editor.selectedBlock ? [this.editor.selectedBlock] : []);
@@ -959,7 +1038,8 @@ class ToolbarManager {
         type: orig.type || 'Generic',
         x: orig.x + step,
         y: orig.y + step,
-        status: orig.status
+        status: orig.status,
+        shape: orig.shape
       });
       this.renderer.renderBlock(clone);
     });
