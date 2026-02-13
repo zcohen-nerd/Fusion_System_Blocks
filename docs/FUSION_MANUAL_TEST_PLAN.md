@@ -40,7 +40,7 @@ palette HTML integrity.
 
 | Step | Action | Expected Result | Pass |
 |------|--------|-----------------|------|
-| 3.1 | Inspect ribbon groups | 9 groups visible: File, Edit, Create, Navigate, Select, Arrange, Annotate, View, Validate + CAD Links group | [ ] |
+| 3.1 | Inspect ribbon groups | 10 groups visible: File, Edit, Create, Navigate, Select, Arrange, Annotate, View, Validate, Links | [ ] |
 | 3.2 | Hover any ribbon button for ~0.5 s | Custom tooltip appears below button with description + shortcut | [ ] |
 | 3.3 | Move mouse away from button | Tooltip disappears | [ ] |
 | 3.4 | Check disabled buttons (Undo, Redo, Navigate group, alignment buttons) | Buttons appear dimmed, do not respond to click | [ ] |

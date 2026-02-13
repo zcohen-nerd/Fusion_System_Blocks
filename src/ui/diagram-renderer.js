@@ -363,9 +363,10 @@ class DiagramRenderer {
     const indicator = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     indicator.setAttribute('cx', (block.width || 120) - 10);
     indicator.setAttribute('cy', 10);
-    indicator.setAttribute('r', 4);
+    indicator.setAttribute('r', 6);
     indicator.setAttribute('fill', colors[status] || colors['Placeholder']);
-    indicator.setAttribute('stroke', 'none');  // prevent inherited outline
+    indicator.setAttribute('stroke', 'rgba(0,0,0,0.3)');
+    indicator.setAttribute('stroke-width', '1');
     
     blockGroup.appendChild(indicator);
 
