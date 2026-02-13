@@ -102,13 +102,26 @@
       autosaveToggle.addEventListener('change', (e) => {
         if (e.target.checked) {
           timer = setInterval(() => {
+            // Only save when there are actual unsaved changes
+            const editor = window.diagramEditor;
+            if (editor && typeof editor.hasUnsavedChanges === 'function' && !editor.hasUnsavedChanges()) {
+              return; // nothing to save
+            }
             if (window.pythonInterface) {
               window.pythonInterface.saveDiagram({ silent: true }).then(updateLastSaved).catch(() => {});
             }
           }, 5000);
-        } else if (timer) {
-          clearInterval(timer);
-          timer = null;
+          if (window.pythonInterface) {
+            window.pythonInterface.showNotification('Autosave enabled (every 5 s)', 'info');
+          }
+        } else {
+          if (timer) {
+            clearInterval(timer);
+            timer = null;
+          }
+          if (window.pythonInterface) {
+            window.pythonInterface.showNotification('Autosave disabled', 'info');
+          }
         }
       });
     }
