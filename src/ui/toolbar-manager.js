@@ -338,6 +338,12 @@ class ToolbarManager {
 
   handleLoad() {
     try {
+      // Warn about unsaved changes before loading a new diagram
+      if (this.editor && typeof this.editor.hasUnsavedChanges === 'function' && this.editor.hasUnsavedChanges()) {
+        if (!confirm('You have unsaved changes. Load a new diagram anyway?')) {
+          return;
+        }
+      }
       if (window.pythonInterface) {
         window.pythonInterface.loadDiagram();
       } else {

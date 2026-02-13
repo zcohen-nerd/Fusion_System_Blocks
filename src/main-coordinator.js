@@ -1376,6 +1376,17 @@ class SystemBlocksMain {
     };
     window.dispatchEvent(new CustomEvent('system-blocks:ready', { detail: readyDetail }));
 
+    // Warn before closing palette with unsaved changes
+    window.addEventListener('beforeunload', (e) => {
+      const editor = window.diagramEditor;
+      if (editor && typeof editor.hasUnsavedChanges === 'function' && editor.hasUnsavedChanges()) {
+        e.preventDefault();
+        // Standard: some browsers require returnValue to be set
+        e.returnValue = 'You have unsaved changes. Are you sure you want to close?';
+        return e.returnValue;
+      }
+    });
+
     // Show ready indicator
     this.showReadyIndicator();
   }
