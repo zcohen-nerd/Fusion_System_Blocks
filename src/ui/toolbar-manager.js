@@ -784,23 +784,31 @@ class ToolbarManager {
   }
 
   handleAddText() {
-    logger.debug('Add text annotation');
-    // Would open text creation dialog
+    logger.debug('Add text annotation — not yet implemented');
+    if (window.pythonInterface) {
+      window.pythonInterface.showNotification('Text annotations coming soon', 'info');
+    }
   }
 
   handleAddNote() {
-    logger.debug('Add sticky note');
-    // Would create sticky note at cursor
+    logger.debug('Add sticky note — not yet implemented');
+    if (window.pythonInterface) {
+      window.pythonInterface.showNotification('Sticky notes coming soon', 'info');
+    }
   }
 
   handleAddDimension() {
-    logger.debug('Add dimension line');
-    // Would start dimension creation mode
+    logger.debug('Add dimension line — not yet implemented');
+    if (window.pythonInterface) {
+      window.pythonInterface.showNotification('Dimension lines coming soon', 'info');
+    }
   }
 
   handleAddCallout() {
-    logger.debug('Add callout');
-    // Would start callout creation mode
+    logger.debug('Add callout — not yet implemented');
+    if (window.pythonInterface) {
+      window.pythonInterface.showNotification('Callouts coming soon', 'info');
+    }
   }
 
   handleSelectAll() {
