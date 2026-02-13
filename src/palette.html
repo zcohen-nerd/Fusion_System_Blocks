@@ -41,14 +41,13 @@
     header { 
       background: var(--fusion-gradient-secondary);
       border-bottom: 1px solid var(--fusion-border-primary);
-      padding: var(--fusion-spacing-sm) var(--fusion-spacing-md);
+      padding: 0;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
       box-shadow: var(--fusion-shadow-panel);
       backdrop-filter: blur(10px);
       position: relative;
-      overflow: hidden;
+      overflow: visible;
     }
     
     header::before {
@@ -63,12 +62,7 @@
     }
     
     .header-logo {
-      display: flex;
-      align-items: center;
-      gap: var(--fusion-spacing-sm);
-      font-weight: var(--fusion-font-weight-bold);
-      font-size: var(--fusion-font-size-large);
-      color: var(--fusion-text-primary);
+      display: none;
     }
     
     .header-logo::before {
