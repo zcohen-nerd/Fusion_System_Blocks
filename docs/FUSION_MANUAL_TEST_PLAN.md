@@ -25,7 +25,7 @@ Run this when you need to verify the add-in works correctly before releases.
 | Step | Action | Expected Result | Pass |
 |------|--------|-----------------|------|
 | 2.1 | Find "Run Diagnostics" button in Add-Ins panel | Button visible | [ ] |
-| 2.2 | Click "Run Diagnostics" | Message box shows 6/6 tests passed | [ ] |
+| 2.2 | Click "Run Diagnostics" | Message box shows 14/14 tests passed | [ ] |
 | 2.3 | Open log file (path shown in dialog) | Log contains diagnostic output with session ID | [ ] |
 
 **Expected Diagnostics**:
@@ -66,7 +66,7 @@ Run this when you need to verify the add-in works correctly before releases.
 | Step | Action | Expected Result | Pass |
 |------|--------|-----------------|------|
 | 5.1 | Inspect ribbon layout | Commands in logical groups (File, Edit, Create, etc.) | [ ] |
-| 5.2 | Hover ribbon buttons | Professional highlight and tooltip feedback | [ ] |
+| 5.2 | Hover ribbon buttons | Custom tooltip appears below button after brief delay | [ ] |
 | 5.3 | Check button states | Buttons enable/disable based on selection context | [ ] |
 | 5.4 | Resize palette panel | Ribbon adapts to width changes | [ ] |
 
@@ -138,7 +138,7 @@ The `src/diagram/export.py` file was modified (added `from __future__ import ann
 Minimal 3-step validation:
 
 1. [ ] Add-in loads without errors
-2. [ ] "Run Diagnostics" shows 6/6 passed
+2. [ ] "Run Diagnostics" shows 14/14 passed
 3. [ ] Can create, rename, connect, and save blocks
 
 ## Error Log Location

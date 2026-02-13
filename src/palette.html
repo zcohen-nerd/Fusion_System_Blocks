@@ -2824,6 +2824,44 @@
       // Debug logging disabled for clean interface
 
     }
+
+    // ── Custom Tooltip for Ribbon Buttons ─────────────────────────
+    // Fusion 360 CEF does not display native title-attribute tooltips.
+    // This creates a lightweight floating tooltip on hover.
+    (function initRibbonTooltips() {
+      const tip = document.createElement('div');
+      tip.className = 'ribbon-tooltip';
+      document.body.appendChild(tip);
+
+      let hideTimer = null;
+      const SHOW_DELAY = 400; // ms before tooltip appears
+      let showTimer = null;
+
+      function show(btn) {
+        const text = btn.getAttribute('title');
+        if (!text) return;
+        tip.textContent = text;
+        const rect = btn.getBoundingClientRect();
+        tip.style.left = Math.max(4, rect.left + rect.width / 2 - tip.offsetWidth / 2) + 'px';
+        tip.style.top  = (rect.bottom + 4) + 'px';
+        tip.style.display = 'block';
+      }
+
+      document.addEventListener('mouseover', (e) => {
+        const btn = e.target.closest('.ribbon-button-large, .ribbon-button-small');
+        if (!btn || !btn.getAttribute('title')) return;
+        clearTimeout(hideTimer);
+        clearTimeout(showTimer);
+        showTimer = setTimeout(() => show(btn), SHOW_DELAY);
+      });
+
+      document.addEventListener('mouseout', (e) => {
+        const btn = e.target.closest('.ribbon-button-large, .ribbon-button-small');
+        if (!btn) return;
+        clearTimeout(showTimer);
+        hideTimer = setTimeout(() => { tip.style.display = 'none'; }, 80);
+      });
+    })();
   </script>
   
   <!-- Add CSS for new animations -->

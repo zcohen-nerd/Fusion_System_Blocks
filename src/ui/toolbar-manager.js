@@ -540,14 +540,18 @@ class ToolbarManager {
       if (window.pythonInterface) {
         window.pythonInterface.exportReports(formats, outputPath)
           .catch(error => {
+            // exportReports already shows a notification with the
+            // actual error detail — no need to show a second one here.
             logger.error('Export failed:', error);
-            window.pythonInterface.showNotification(
-              'Export failed — ensure the Python bridge is connected',
-              'error'
-            );
           });
       } else {
         logger.error('Export failed: Python interface not available');
+        if (window.pythonInterface) {
+          window.pythonInterface.showNotification(
+            'Export failed — Python interface not available',
+            'error'
+          );
+        }
       }
     } catch (error) {
       logger.error('Export failed:', error);
@@ -580,7 +584,13 @@ class ToolbarManager {
           window.pythonInterface.sendMessage(BridgeAction.START_CAD_SELECTION, {
             blockId: block.id,
             blockName: block.name
-          }, true).catch(error => {
+          }, true).then(() => {
+            // The palette is hidden during CAD selection.  When it
+            // reappears the Python side pushes the link data via
+            // sendInfoToHTML, but the web-view may not be ready yet.
+            // Poll as a fallback to retrieve pending data.
+            this._pollForPendingCADLink();
+          }).catch(error => {
             logger.error('CAD link failed:', error);
           });
         }
@@ -590,6 +600,39 @@ class ToolbarManager {
         window.pythonInterface.showNotification('Select a block first to link CAD', 'warning');
       }
     }
+  }
+
+  /**
+   * Poll the Python backend for pending CAD link data that may have
+   * been missed when the palette was restored after CAD selection.
+   * Stops automatically after 30 seconds or when data arrives.
+   */
+  _pollForPendingCADLink() {
+    if (this._cadLinkPoll) clearInterval(this._cadLinkPoll);
+
+    const startTime = Date.now();
+    this._cadLinkPoll = setInterval(() => {
+      // Safety timeout — stop polling after 30 s
+      if (Date.now() - startTime > 30000) {
+        clearInterval(this._cadLinkPoll);
+        this._cadLinkPoll = null;
+        return;
+      }
+      if (!window.pythonInterface || !window.pythonInterface.isConnected) return;
+
+      window.pythonInterface
+        .sendMessage(BridgeAction.GET_PENDING_CAD_LINK, {}, true)
+        .then(resp => {
+          if (resp && resp.success && resp.linkData) {
+            clearInterval(this._cadLinkPoll);
+            this._cadLinkPoll = null;
+            window.pythonInterface.handleCADLinkPayload(resp.linkData);
+          }
+        })
+        .catch(() => {
+          // Ignore transient errors during polling
+        });
+    }, 800);
   }
 
   handleLinkECAD() {

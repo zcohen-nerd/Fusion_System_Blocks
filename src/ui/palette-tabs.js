@@ -128,6 +128,10 @@
               q('#linking-status').textContent = 'Linked or cancelled';
               const aria = q('#linking-aria');
               if (aria) aria.textContent = 'CAD selection finished.';
+              // Poll for pending link data (push may have been missed)
+              if (window.toolbarManager && window.toolbarManager._pollForPendingCADLink) {
+                window.toolbarManager._pollForPendingCADLink();
+              }
             })
             .catch(() => { q('#linking-status').textContent = 'Error'; });
         }

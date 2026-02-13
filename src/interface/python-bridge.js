@@ -47,10 +47,25 @@ class PythonInterface {
 
     // Handler for Python → JS async messages via palette.sendInfoToHTML().
     // With useNewWebBrowser=True, Fusion calls this instead of eval'ing scripts.
-    // The Python side sends executable JS snippets as the data parameter.
+    // Known events are routed directly by parsing JSON; unknown events fall
+    // back to executing the data as a JS snippet for backward-compatibility.
     window.fusionJavaScriptHandler = (action, data) => {
       try {
         logger.debug('fusionJavaScriptHandler received:', action);
+
+        // Route known events to their handlers directly with JSON data.
+        if (action === 'cad-link') {
+          try {
+            const payload = typeof data === 'string' ? JSON.parse(data) : data;
+            this.handleCADLinkPayload(payload);
+            return;
+          } catch (parseErr) {
+            // Fallback: data might be executable JS (older API path)
+            logger.warn('cad-link JSON parse failed, trying script exec:', parseErr);
+          }
+        }
+
+        // Default: execute data as JavaScript snippet
         new Function(data)();
       } catch (e) {
         logger.error('fusionJavaScriptHandler error for action ' + action + ':', e);
@@ -380,9 +395,13 @@ class PythonInterface {
   }
 
   exportReports(formats, outputPath) {
-    if (!window.diagramEditor) return Promise.reject('No diagram editor available');
+    if (!window.diagramEditor) return Promise.reject(new Error('No diagram editor available'));
     
     const diagramJson = window.diagramEditor.exportDiagram();
+    if (!diagramJson) {
+      return Promise.reject(new Error('Diagram data is empty'));
+    }
+
     const payload = { diagram: diagramJson };
 
     // Pass selected formats (array of keys) if provided
@@ -395,9 +414,13 @@ class PythonInterface {
       payload.outputPath = outputPath;
     }
 
+    logger.debug('Export payload keys:', Object.keys(payload),
+      'formats:', formats, 'outputPath:', outputPath);
+
     return this.sendMessage(BridgeAction.EXPORT_REPORTS, payload, true)
       .then(response => {
-        if (response.success) {
+        logger.debug('Export response:', response);
+        if (response && response.success) {
           // files may be a dict {format: path} or an array
           const fileCount = Array.isArray(response.files)
             ? response.files.length
@@ -407,13 +430,20 @@ class PythonInterface {
             `Exported ${fileCount} file${fileCount !== 1 ? 's' : ''} to ${path}`,
             'success'
           );
+        } else if (response && response.error) {
+          throw new Error(response.error);
         } else {
-          throw new Error(response.error || 'Export failed');
+          // Response was empty or malformed — likely a bridge issue
+          logger.error('Export: unexpected response shape:', response);
+          throw new Error(
+            'No response from Python — check the Fusion 360 Text Commands log'
+          );
         }
         return response;
       })
       .catch(error => {
-        this.showNotification('Failed to export reports: ' + error.message, 'error');
+        const msg = error && error.message ? error.message : String(error);
+        this.showNotification('Export failed: ' + msg, 'error');
         throw error;
       });
   }

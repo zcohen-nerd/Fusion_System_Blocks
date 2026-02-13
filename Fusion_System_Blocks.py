@@ -57,6 +57,10 @@ ATTR_GROUP = "systemBlocks"
 
 _handlers = []  # keep event handlers alive
 
+# Pending CAD link data — stored when sendInfoToHTML may arrive
+# before the palette web-view is ready after being restored.
+_pending_cad_link: Optional[dict] = None
+
 
 def send_palette_notification(message: str, level: str = "info") -> None:
     """Send a non-blocking notification to the HTML palette.
@@ -643,10 +647,20 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         return {"success": False, "error": "Save after patching failed"}
 
     def _handle_export_reports(self, data: dict[str, Any]) -> dict[str, Any]:
-        diagram_json = data.get("diagram", "{}")
-        diagram = (
-            diagram_json if isinstance(diagram_json, dict) else json.loads(diagram_json)
-        )
+        """Export diagram report files in selected formats."""
+        try:
+            diagram_json = data.get("diagram", "{}")
+            diagram = (
+                diagram_json
+                if isinstance(diagram_json, dict)
+                else json.loads(diagram_json)
+            )
+        except (json.JSONDecodeError, TypeError) as exc:
+            return {
+                "success": False,
+                "error": f"Invalid diagram data: {exc}",
+            }
+
         profile = data.get("profile", "full")
 
         # Support custom output path from the export dialog
@@ -656,17 +670,39 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             exports_path = custom_path
         else:
             exports_path = os.path.join(addin_path, "exports")
-        os.makedirs(exports_path, exist_ok=True)
+
+        try:
+            os.makedirs(exports_path, exist_ok=True)
+        except OSError as exc:
+            return {
+                "success": False,
+                "error": f"Cannot create export folder: {exc}",
+            }
 
         # Support selective format list from the export dialog
         selected_formats = data.get("formats", None)
 
-        files_created = diagram_data.export_report_files(
-            diagram,
-            exports_path,
-            profile=profile,
-            selected_formats=selected_formats,
-        )
+        if LOGGING_AVAILABLE:
+            _logger.debug(
+                f"Export: profile={profile}, formats={selected_formats}, "
+                f"path={exports_path}"
+            )
+
+        try:
+            files_created = diagram_data.export_report_files(
+                diagram,
+                exports_path,
+                profile=profile,
+                selected_formats=selected_formats,
+            )
+        except Exception as exc:
+            if LOGGING_AVAILABLE:
+                _logger.exception(f"export_report_files failed: {exc}")
+            return {
+                "success": False,
+                "error": f"Export generation failed: {exc}",
+            }
+
         # Convert dict to list of file paths for consistent JS handling
         if isinstance(files_created, dict):
             error = files_created.pop("error", None)
@@ -678,8 +714,16 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
                     "files": file_list,
                     "path": exports_path,
                 }
-            return {"success": True, "files": file_list, "path": exports_path}
-        return {"success": True, "files": files_created, "path": exports_path}
+            return {
+                "success": True,
+                "files": file_list,
+                "path": exports_path,
+            }
+        return {
+            "success": True,
+            "files": files_created,
+            "path": exports_path,
+        }
 
     def _handle_check_rules(self, data: dict[str, Any]) -> dict[str, Any]:
         diagram_json = data.get("diagram", "{}")
@@ -704,6 +748,20 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         block_name = data.get("blockName", "Unknown Block")
         start_cad_selection(block_id, block_name)
         return {"success": True}
+
+    def _handle_get_pending_cad_link(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Return and clear any pending CAD link data.
+
+        The JS side polls this after ``start_cad_selection`` to
+        retrieve the result if the push via ``sendInfoToHTML``
+        was missed due to web-view reload timing.
+        """
+        global _pending_cad_link
+        if _pending_cad_link is not None:
+            result = _pending_cad_link
+            _pending_cad_link = None
+            return {"success": True, "linkData": result}
+        return {"success": False, "pending": True}
 
     def _handle_browse_folder(self, data: dict[str, Any]) -> dict[str, Any]:
         """Open a native folder-picker dialog so the user can choose
@@ -1098,19 +1156,29 @@ class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
         self.block_name = block_name
 
     def _send_cad_link_payload(self, palette, payload):
-        # Restore palette visibility BEFORE sending data so the
-        # webview is active and can execute the script.
+        global _pending_cad_link
+        # Store data so JS can retrieve it via get_pending_cad_link
+        # if the push via sendInfoToHTML arrives before the web-view
+        # is fully ready after being restored.
+        _pending_cad_link = payload
+
+        # Restore palette visibility BEFORE sending data.
         try:
             if not palette.isVisible:
                 palette.isVisible = True
         except Exception:
             pass
-        script = (
-            "if(window.receiveCADLinkFromPython){"
-            f"window.receiveCADLinkFromPython({json.dumps(payload)});"
-            "}"
-        )
-        palette.sendInfoToHTML(BridgeEvent.CAD_LINK, script)
+
+        # Flush pending UI events so the web-view finishes loading
+        # before we dispatch the message.
+        try:
+            adsk.doEvents()
+        except Exception:
+            pass
+
+        # Send the JSON data directly — fusionJavaScriptHandler on
+        # the JS side now routes "cad-link" to handleCADLinkPayload.
+        palette.sendInfoToHTML(BridgeEvent.CAD_LINK, json.dumps(payload))
 
     def notify(self, args):
         try:

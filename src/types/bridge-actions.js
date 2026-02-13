@@ -22,6 +22,7 @@ const BridgeAction = Object.freeze({
   START_CAD_SELECTION: 'start_cad_selection',
   RESPONSE:            'response',
   BROWSE_FOLDER:       'browse_folder',
+  GET_PENDING_CAD_LINK:'get_pending_cad_link',
   LIST_DOCUMENTS:      'list_documents',
   SAVE_NAMED_DIAGRAM:  'save_named_diagram',
   LOAD_NAMED_DIAGRAM:  'load_named_diagram',

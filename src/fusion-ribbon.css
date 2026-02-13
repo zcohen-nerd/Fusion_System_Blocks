@@ -591,3 +591,23 @@
     width: 100px;
   }
 }
+
+/* === CUSTOM TOOLTIPS (Fusion CEF does not show native title tooltips) === */
+.ribbon-tooltip {
+  position: fixed;
+  display: none;
+  background: #1e1e1e;
+  color: #e0e0e0;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100000;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.12);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
