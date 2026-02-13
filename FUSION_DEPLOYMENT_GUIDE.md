@@ -38,7 +38,7 @@
 - ✅ Delta serialization for incremental saves (JSON-Patch style diffs)
 - ✅ Shared bridge action constants between Python and JavaScript
 - ✅ Built-in "Run Diagnostics" command for self-testing
-- ✅ GitHub Actions CI: ruff, mypy, pytest on Python 3.9–3.12 (482 tests)
+- ✅ GitHub Actions CI: ruff, mypy, pytest on Python 3.9–3.12 (557 tests)
 - 🚧 3D visualization and living documentation workflows (milestone 13, not started)
 
 ## Troubleshooting
