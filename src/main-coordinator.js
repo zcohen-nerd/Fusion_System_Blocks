@@ -1401,7 +1401,15 @@ class SystemBlocksMain {
         e.returnValue = 'You have unsaved changes. Are you sure you want to close?';
         return e.returnValue;
       }
+      // Normal close — clear recovery backup
+      this._clearRecoveryBackup();
     });
+
+    // Start periodic crash-recovery backup (every 30 s)
+    this._startRecoveryBackup();
+
+    // Check for leftover recovery backup from a crashed session
+    this._checkRecoveryBackup();
 
     // Show ready indicator
     this.showReadyIndicator();
@@ -1439,6 +1447,125 @@ class SystemBlocksMain {
         }
       }, 300);
     }, 3000);
+  }
+
+  // ---------------------------------------------------------------
+  // Crash Recovery via localStorage auto-backup
+  // ---------------------------------------------------------------
+
+  /** Key used in localStorage for the recovery backup. */
+  static get RECOVERY_KEY() { return 'fsb_recovery_backup'; }
+
+  /**
+   * Start a periodic timer that serializes the diagram to localStorage
+   * every 30 seconds, but only when there are unsaved changes.
+   */
+  _startRecoveryBackup() {
+    this._recoveryTimer = setInterval(() => {
+      try {
+        const editor = window.diagramEditor;
+        if (!editor || typeof editor.hasUnsavedChanges !== 'function') return;
+        if (!editor.hasUnsavedChanges()) return;
+
+        const json = editor.exportDiagram();
+        if (!json) return;
+
+        const payload = JSON.stringify({
+          diagram: json,
+          timestamp: new Date().toISOString()
+        });
+        localStorage.setItem(SystemBlocksMain.RECOVERY_KEY, payload);
+        logger.debug('Recovery backup saved to localStorage');
+      } catch (err) {
+        // localStorage may be full or unavailable — ignore silently
+        logger.warn('Recovery backup failed:', err);
+      }
+    }, 30000); // 30 seconds
+  }
+
+  /**
+   * Check for a recovery backup on startup. If one exists, show the
+   * recovery prompt so the user can choose to restore or discard.
+   */
+  _checkRecoveryBackup() {
+    try {
+      const raw = localStorage.getItem(SystemBlocksMain.RECOVERY_KEY);
+      if (!raw) return;
+
+      const data = JSON.parse(raw);
+      if (!data || !data.diagram) {
+        localStorage.removeItem(SystemBlocksMain.RECOVERY_KEY);
+        return;
+      }
+
+      // Populate timestamp in the modal
+      const tsEl = document.getElementById('recovery-timestamp');
+      if (tsEl && data.timestamp) {
+        var d = new Date(data.timestamp);
+        tsEl.textContent = 'Backup saved at: ' + d.toLocaleString();
+      }
+
+      const overlay = document.getElementById('recovery-overlay');
+      if (!overlay) {
+        logger.warn('Recovery overlay element not found');
+        return;
+      }
+
+      overlay.style.display = 'flex';
+
+      // Wire Recover button
+      var restoreBtn = document.getElementById('recovery-restore');
+      if (restoreBtn) {
+        restoreBtn.onclick = () => {
+          overlay.style.display = 'none';
+          try {
+            var editor = window.diagramEditor;
+            if (editor && typeof editor.importDiagram === 'function') {
+              editor.importDiagram(data.diagram);
+              var renderer = window.diagramRenderer;
+              if (renderer && typeof renderer.renderAll === 'function') {
+                renderer.renderAll();
+              }
+              if (window.pythonInterface) {
+                window.pythonInterface.showNotification('Diagram recovered from backup', 'success');
+              }
+            }
+          } catch (err) {
+            logger.error('Recovery restore failed:', err);
+            if (window.pythonInterface) {
+              window.pythonInterface.showNotification('Recovery failed: ' + err.message, 'error');
+            }
+          }
+          localStorage.removeItem(SystemBlocksMain.RECOVERY_KEY);
+        };
+      }
+
+      // Wire Discard button
+      var discardBtn = document.getElementById('recovery-discard');
+      if (discardBtn) {
+        discardBtn.onclick = () => {
+          overlay.style.display = 'none';
+          localStorage.removeItem(SystemBlocksMain.RECOVERY_KEY);
+          logger.info('Recovery backup discarded by user');
+        };
+      }
+
+    } catch (err) {
+      logger.warn('Recovery check failed:', err);
+      localStorage.removeItem(SystemBlocksMain.RECOVERY_KEY);
+    }
+  }
+
+  /**
+   * Remove the recovery backup from localStorage.
+   * Called after a successful save or a normal palette close.
+   */
+  _clearRecoveryBackup() {
+    try {
+      localStorage.removeItem(SystemBlocksMain.RECOVERY_KEY);
+    } catch (_) {
+      // Ignore
+    }
   }
 
   showErrorMessage(message) {

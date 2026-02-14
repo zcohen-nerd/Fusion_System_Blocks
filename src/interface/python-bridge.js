@@ -337,6 +337,7 @@ class PythonInterface {
         .then(response => {
           if (response.success) {
             window.diagramEditor.markSaved();
+            try { localStorage.removeItem('fsb_recovery_backup'); } catch (_) {}
             if (!silent) {
               this.showNotification('Diagram saved (delta)', 'success');
             }
@@ -359,6 +360,7 @@ class PythonInterface {
       .then(response => {
         if (response.success) {
           window.diagramEditor.markSaved();
+          try { localStorage.removeItem('fsb_recovery_backup'); } catch (_) {}
           if (!silent) {
             this.showNotification('Diagram saved successfully', 'success');
           }
