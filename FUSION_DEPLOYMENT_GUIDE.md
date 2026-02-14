@@ -38,7 +38,13 @@
 - ✅ Delta serialization for incremental saves (JSON-Patch style diffs)
 - ✅ Shared bridge action constants between Python and JavaScript
 - ✅ Built-in "Run Diagnostics" command for self-testing
-- ✅ GitHub Actions CI: ruff, mypy, pytest on Python 3.9–3.12 (557 tests)
+- ✅ GitHub Actions CI: ruff, mypy, pytest on Python 3.9–3.12 (605 tests)
+- ✅ 11-format export pipeline with PDF report support
+- ✅ Requirements & verification engine with version control
+- ✅ Orthogonal connection routing with obstacle avoidance
+- ✅ Canvas minimap, undo history panel, connection context menu
+- ✅ Crash recovery auto-backup, keyboard shortcut help, schema versioning
+- ✅ 10 professional block shapes with shape-aware rendering
 - 🚧 3D visualization and living documentation workflows (milestone 13, not started)
 
 ## Troubleshooting

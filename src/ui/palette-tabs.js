@@ -24,6 +24,12 @@
       panel.setAttribute('aria-hidden', active ? 'false' : 'true');
     });
 
+    // Show/hide canvas when switching between diagram and overlay tabs
+    const canvasContainer = q('#canvas-container');
+    if (canvasContainer) {
+      canvasContainer.style.display = tabId === 'diagram' ? '' : 'none';
+    }
+
     const status = q('#tab-status');
     if (status) {
       status.textContent = `${tabId.charAt(0).toUpperCase() + tabId.slice(1)} tab selected`;
@@ -34,6 +40,29 @@
     const id = (e.target.id || '').replace('tab-', '');
     if (!id) return;
     setActiveTab(id);
+  }
+
+  /** Arrow-key navigation between tabs (WAI-ARIA tabs pattern). */
+  function onKeydownTab(e) {
+    const tabEls = qa('.sb-tabbar .sb-tab');
+    const currentIdx = tabEls.indexOf(e.target);
+    if (currentIdx < 0) return;
+    let nextIdx = -1;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      nextIdx = (currentIdx + 1) % tabEls.length;
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      nextIdx = (currentIdx - 1 + tabEls.length) % tabEls.length;
+    } else if (e.key === 'Home') {
+      nextIdx = 0;
+    } else if (e.key === 'End') {
+      nextIdx = tabEls.length - 1;
+    }
+    if (nextIdx >= 0) {
+      e.preventDefault();
+      tabEls[nextIdx].focus();
+      const id = (tabEls[nextIdx].id || '').replace('tab-', '');
+      if (id) setActiveTab(id);
+    }
   }
 
   function updateConnectionStatus() {
@@ -72,7 +101,10 @@
   }
 
   function wireActions() {
-    qa('.sb-tabbar .sb-tab').forEach((b) => b.addEventListener('click', onClickTab));
+    qa('.sb-tabbar .sb-tab').forEach((b) => {
+      b.addEventListener('click', onClickTab);
+      b.addEventListener('keydown', onKeydownTab);
+    });
 
     const bNew = q('#action-new');
     if (bNew) bNew.addEventListener('click', () => {

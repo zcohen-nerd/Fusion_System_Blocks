@@ -61,7 +61,8 @@ Fusion_System_Blocks/
 │   ├── serialization.py           # JSON serialization with legacy format support and requirements round-trip
 │   ├── bridge_actions.py          # BridgeAction / BridgeEvent shared enums
 │   ├── delta.py                   # compute_patch / apply_patch / is_trivial_patch
-│   └── requirements.py            # Requirements validation engine (aggregate, validate)
+│   ├── requirements.py            # Requirements validation engine (aggregate, validate)
+│   └── version_control.py         # Snapshot creation, graph diffing, restore
 ├── docs/                          # Project documentation
 │   ├── architecture/              # Architecture decision records (ADRs) and review reports
 │   ├── ux/                        # UX research (JTBD, journey maps, flows)
@@ -90,14 +91,16 @@ Fusion_System_Blocks/
 │   └── update_public_readme.ps1   # Sync README to public version
 ├── src/                           # Source code (Python backend + JavaScript frontend)
 │   ├── core/                      # Core diagram editing logic (JavaScript)
-│   │   └── diagram-editor.js      # Diagram operations (add/remove blocks, pan, zoom, snap-to-grid)
+│   │   ├── diagram-editor.js      # Diagram operations (add/remove blocks, pan, zoom, snap-to-grid)
+│   │   └── orthogonal-router.js   # Orthogonal connection routing with obstacle avoidance
 │   ├── features/                  # Advanced features (JavaScript)
 │   │   └── advanced-features.js   # Block templates, type management, multi-block operations
 │   ├── interface/                 # Backend communication (JavaScript)
 │   │   └── python-bridge.js       # Python ↔ JavaScript bridge (sendMessage, handlers, notifications)
 │   ├── ui/                        # UI components (JavaScript)
 │   │   ├── diagram-renderer.js    # SVG rendering, visual updates, drag-and-drop
-│   │   ├── palette-tabs.js        # Tab controller for task-first UI (Home, Diagram, Linking, Validation, Reports)
+│   │   ├── minimap.js             # Canvas minimap / overview navigator
+│   │   ├── palette-tabs.js        # Tab controller for task-first UI (Home, Diagram, Linking, Validation, Reports, Requirements, History)
 │   │   └── toolbar-manager.js     # Toolbar state management and button wiring
 │   ├── types/                     # Block type definitions (JavaScript)
 │   │   ├── block-templates.js     # Predefined system templates
@@ -116,7 +119,7 @@ Fusion_System_Blocks/
 │   ├── palette.html               # Main HTML palette UI (entry point for frontend)
 │   └── palette.js                 # Palette initialization and legacy orchestration
 ├── tasks.md                       # Project task list and TODOs
-├── tests/                         # Automated tests (pytest) - 557 tests across 22 files
+├── tests/                         # Automated tests (pytest) - 605 tests across 23 files
 │   ├── test_adapter.py            # Tests for fusion_addin/adapter.py
 │   ├── test_cad.py                # Tests for CAD linking and component operations
 │   ├── test_core_action_plan.py   # Tests for fsb_core/action_plan.py
@@ -138,7 +141,8 @@ Fusion_System_Blocks/
 │   ├── test_selection.py          # Tests for fusion_addin/selection.py
 │   ├── test_serialization.py      # Tests for serialization round-trips
 │   ├── test_status_tracking.py    # Tests for block status tracking
-│   └── test_validation.py         # Tests for diagram validation
+│   ├── test_validation.py         # Tests for diagram validation
+│   └── test_version_control.py    # Tests for version control snapshots and diffing
 └── __pycache__/                   # Python compiled bytecode (excluded from source control)
 ```
 
@@ -222,7 +226,7 @@ The source directory contains both Python business logic and JavaScript frontend
 ### `tests/`: Automated Test Suite
 - **Test Organization**: Tests mirror the structure of `src/` and `fsb_core/` with `test_*.py` naming
 - **Framework**: pytest with fixtures for diagram creation and validation
-- **Count**: 557 tests across 22 files
+- **Count**: 605 tests across 23 files
 - **Coverage**:
   - `test_adapter.py`: FusionAdapter translation layer
   - `test_cad.py`: CAD linking and component operations
@@ -231,7 +235,7 @@ The source directory contains both Python business logic and JavaScript frontend
   - `test_delta.py`: Delta serialization (compute/apply/trivial patch)
   - `test_diagram_data.py`: Core diagram operations and validation
   - `test_document.py`: DocumentManager operations
-  - `test_export_reports.py`: 10-format export pipeline (HTML, BOM CSV/JSON, assembly sequence MD/JSON, connection matrix, SVG, profiles)
+  - `test_export_reports.py`: 11-format export pipeline (HTML, BOM CSV/JSON, assembly sequence MD/JSON, connection matrix, SVG, PDF, profiles)
   - `test_graph_builder.py`: Fluent graph construction API
   - `test_hierarchy.py`: Multi-level diagram nesting and navigation
   - `test_import.py`: Import operations from external sources
@@ -246,6 +250,7 @@ The source directory contains both Python business logic and JavaScript frontend
   - `test_serialization.py`: Serialization round-trips and format conversion
   - `test_status_tracking.py`: Block status lifecycle (Placeholder → Planned → In-Work → Implemented → Verified)
   - `test_validation.py`: Diagram-level validation (required fields, link integrity)
+  - `test_version_control.py`: Version control snapshots, graph diffing, restore, SnapshotStore
 
 ### `scripts/`: Build and Deployment Automation
 - **`create_beta_release.ps1`**: Packages beta releases with version tagging

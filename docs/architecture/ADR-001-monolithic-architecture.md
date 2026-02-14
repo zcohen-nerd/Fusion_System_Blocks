@@ -49,7 +49,7 @@ This ADR has been superseded by the **Two-Layer Architecture** introduced in Mil
 - Business logic moved to `fsb_core/` modules (models, validation, action_plan, serialization, bridge_actions, delta)
 - Fusion-specific code isolated in `fusion_addin/` (adapter, selection, document, logging, diagnostics)
 - Entry point (`Fusion_System_Blocks.py`) orchestrates both layers with hard-fail imports
-- 557 pytest tests across 22 files run outside of Fusion 360
+- 605 pytest tests across 23 files run outside of Fusion 360
 - GitHub Actions CI pipeline runs ruff, mypy, and pytest on Python 3.9–3.12
 
 ### Why This Doesn't Contradict ADR-001

@@ -335,7 +335,7 @@
     }
     
     #canvas-container { 
-      height: calc(100% - 60px); 
+      height: calc(100% - 94px); 
       position: relative;
       overflow: hidden;
       background: var(--fusion-bg-primary);
@@ -1410,10 +1410,9 @@
     .connection-mechanical { stroke: var(--fusion-connection-mechanical); fill: var(--fusion-connection-mechanical); }
     .connection-generic { stroke: var(--fusion-text-secondary); fill: var(--fusion-text-secondary); }
   </style>
-    <!-- Tabs + Status Bar styles - HIDDEN: use ribbon navigation instead -->
+    <!-- Tabs + Status Bar base styles -->
     <style>
-      /* Hidden: Tabs conflict with ribbon navigation pattern - ribbon is Fusion 360 native */
-      .sb-tabbar { display: none; }
+      /* Tab bar shown below ribbon; panels hidden by default (shown via .show class) */
       .sb-panel { display: none; }
       .sb-status { position: fixed; bottom: 0; left: 0; right: 0; height: 34px; display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-top: 1px solid var(--fusion-border-primary); background: var(--fusion-bg-secondary); z-index: var(--z-fixed, 500); }
       .sb-status .pill { border: 1px solid var(--fusion-border-primary); border-radius: 12px; padding: 4px 8px; font-size: 12px; }
@@ -1736,7 +1735,19 @@
       </div>
     </div>
   </header>
-  
+
+  <!-- Task-first Tabs Bar (below ribbon) -->
+  <nav class="sb-tabbar" role="tablist" aria-label="System Blocks Tabs">
+    <button id="tab-home" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-home">Home</button>
+    <button id="tab-diagram" class="sb-tab" role="tab" aria-selected="true" aria-controls="panel-diagram">Diagram</button>
+    <button id="tab-linking" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-linking">Linking</button>
+    <button id="tab-validation" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-validation">Validation</button>
+    <button id="tab-requirements" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-requirements">Reqs</button>
+    <button id="tab-history" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-history">History</button>
+    <button id="tab-reports" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-reports">Reports</button>
+    <span class="sr-only" id="tab-status" aria-live="polite"></span>
+  </nav>
+
   <div id="canvas-container">
     <!-- Empty canvas state indicator -->
     <div id="empty-canvas-state" class="empty-canvas-state">
@@ -2812,11 +2823,12 @@
     </div>
   </div>
 
-  <div id="import-dialog" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+  <div id="import-dialog" role="dialog" aria-modal="true" aria-labelledby="import-dialog-title"
+       style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
                                   background: var(--fusion-panel-bg, #2b2b2b); border: 2px solid var(--fusion-panel-border, #555); 
                                   padding: 20px; z-index: 10000; min-width: 500px; color: var(--fusion-text-primary, #ffffff); 
                                   border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
-    <h3 style="color: var(--fusion-text-primary, #ffffff); margin-top: 0;">Import Diagram</h3>
+    <h3 id="import-dialog-title" style="color: var(--fusion-text-primary, #ffffff); margin-top: 0;">Import Diagram</h3>
     
     <div style="margin-bottom: 15px;">
       <label>
@@ -4419,11 +4431,11 @@
     }
 
     .sb-panel {
-      position: absolute;
+      position: fixed;
       left: var(--fusion-spacing-sm);
       right: var(--fusion-spacing-sm);
-      top: 64px;
-      bottom: 56px;
+      top: 96px;
+      bottom: 42px;
       display: none;
       opacity: 0;
       transform: translateY(6px);
@@ -4539,18 +4551,6 @@
     .pill-error   { background: #5c0000; color: #ffebee; border-color: #f44336; }
     .pill-info    { background: #0d47a1; color: #e3f2fd; border-color: #2196f3; }
   </style>
-
-  <!-- Task-first Tabs Bar -->
-  <nav class="sb-tabbar" role="tablist" aria-label="System Blocks Tabs">
-    <button id="tab-home" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-home">Home</button>
-    <button id="tab-diagram" class="sb-tab" role="tab" aria-selected="true" aria-controls="panel-diagram">Diagram</button>
-    <button id="tab-linking" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-linking">Linking</button>
-    <button id="tab-validation" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-validation">Validation</button>
-    <button id="tab-requirements" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-requirements">Reqs</button>
-    <button id="tab-history" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-history">History</button>
-    <button id="tab-reports" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-reports">Reports</button>
-    <span class="sr-only" id="tab-status" aria-live="polite"></span>
-  </nav>
 
   <!-- Overlay Panels -->
   <section id="panel-home" class="sb-panel" role="tabpanel" aria-labelledby="tab-home" aria-hidden="true">

@@ -1187,6 +1187,1020 @@ class DiagnosticsRunner:
                 details={"error": str(e), "traceback": traceback.format_exc()},
             )
 
+    # =========================================================================
+    # DELTA SERIALIZATION
+    # =========================================================================
+
+    def test_core_delta_compute_apply(self) -> DiagnosticResult:
+        """Verify delta compute and apply produce correct roundtrip."""
+        try:
+            from fsb_core.delta import apply_patch, compute_patch, is_trivial_patch
+
+            old_doc = {
+                "blocks": [{"id": "b1", "name": "SensorA"}],
+                "connections": [],
+            }
+            new_doc = {
+                "blocks": [{"id": "b1", "name": "SensorB"}],
+                "connections": [{"id": "c1", "from": "b1", "to": "b2"}],
+            }
+
+            patch = compute_patch(old_doc, new_doc)
+
+            if is_trivial_patch(patch):
+                return DiagnosticResult(
+                    passed=False,
+                    message="Expected non-trivial patch but got trivial",
+                    details={"patch": patch},
+                )
+
+            # Apply patch to old_doc to get reconstructed
+            result = apply_patch(old_doc, patch)
+
+            # Verify name changed
+            name_match = result["blocks"][0]["name"] == "SensorB"
+            # Verify connection added
+            conn_added = len(result.get("connections", [])) == 1
+
+            if name_match and conn_added:
+                return DiagnosticResult(
+                    passed=True,
+                    message=f"Delta compute/apply roundtrip OK ({len(patch)} ops)",
+                    details={"patch_ops": len(patch)},
+                )
+            else:
+                return DiagnosticResult(
+                    passed=False,
+                    message="Delta apply produced incorrect result",
+                    details={
+                        "name_match": name_match,
+                        "conn_added": conn_added,
+                        "result": result,
+                    },
+                )
+        except ImportError as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Delta module not available: {e}",
+                details={"import_error": str(e)},
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Delta error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    def test_core_delta_trivial_patch(self) -> DiagnosticResult:
+        """Verify that identical documents produce a trivial (empty) patch."""
+        try:
+            from fsb_core.delta import compute_patch, is_trivial_patch
+
+            doc = {"blocks": [{"id": "b1", "name": "X"}], "connections": []}
+            patch = compute_patch(doc, doc)
+
+            if is_trivial_patch(patch):
+                return DiagnosticResult(
+                    passed=True,
+                    message="Identical documents correctly produce trivial patch",
+                    details={"patch_length": len(patch)},
+                )
+            else:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Expected trivial patch, got {len(patch)} ops",
+                    details={"patch": patch},
+                )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Delta trivial-patch error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # REQUIREMENTS ENGINE
+    # =========================================================================
+
+    def test_core_requirements_validation(self) -> DiagnosticResult:
+        """Build a graph with requirements and verify validation results."""
+        try:
+            from fsb_core.models import (
+                Block,
+                ComparisonOperator,
+                Graph,
+                Requirement,
+            )
+            from fsb_core.requirements import validate_requirements
+
+            block = Block(
+                id="req_b1",
+                name="Battery",
+                block_type="Electrical",
+                attributes={"mass": 2.5, "cost": 45.0},
+            )
+            # Requirement: total mass <= 5.0 kg  (should PASS with 1 block at 2.5)
+            passing_req = Requirement(
+                id="req_mass",
+                name="Max Mass",
+                target_value=5.0,
+                operator=ComparisonOperator.LE,
+                unit="kg",
+                linked_attribute="mass",
+            )
+            # Requirement: total cost <= 10.0  (should FAIL with 1 block at 45.0)
+            failing_req = Requirement(
+                id="req_cost",
+                name="Max Cost",
+                target_value=10.0,
+                operator=ComparisonOperator.LE,
+                unit="USD",
+                linked_attribute="cost",
+            )
+
+            graph = Graph(
+                id="req_graph",
+                blocks=[block],
+                requirements=[passing_req, failing_req],
+            )
+
+            results = validate_requirements(graph)
+
+            if len(results) != 2:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Expected 2 results, got {len(results)}",
+                    details={"count": len(results)},
+                )
+
+            # Check first passes, second fails
+            mass_result = next((r for r in results if r.requirement_id == "req_mass"), None)
+            cost_result = next((r for r in results if r.requirement_id == "req_cost"), None)
+
+            if mass_result is None or cost_result is None:
+                return DiagnosticResult(
+                    passed=False,
+                    message="Could not find expected requirement results by ID",
+                    details={"result_ids": [r.requirement_id for r in results]},
+                )
+
+            checks = {
+                "mass_passes": mass_result.passed is True,
+                "cost_fails": cost_result.passed is False,
+                "mass_actual": mass_result.actual_value == 2.5,
+                "cost_actual": cost_result.actual_value == 45.0,
+                "to_dict_works": isinstance(mass_result.to_dict(), dict),
+            }
+
+            if all(checks.values()):
+                return DiagnosticResult(
+                    passed=True,
+                    message="Requirements validation: pass/fail detection correct",
+                    details=checks,
+                )
+            else:
+                failed = [k for k, v in checks.items() if not v]
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Requirements checks failed: {failed}",
+                    details=checks,
+                )
+
+        except ImportError as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Requirements module not available: {e}",
+                details={"import_error": str(e)},
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Requirements error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    def test_core_requirements_aggregation(self) -> DiagnosticResult:
+        """Verify aggregate_attribute sums numeric attributes correctly."""
+        try:
+            from fsb_core.models import Block, Graph
+            from fsb_core.requirements import aggregate_attribute
+
+            blocks = [
+                Block(id="agg1", name="Part A", attributes={"weight": 3.0}),
+                Block(id="agg2", name="Part B", attributes={"weight": 7.5}),
+                Block(id="agg3", name="Part C", attributes={"weight": 1.5}),
+                Block(id="agg4", name="Part D", attributes={}),  # no weight
+            ]
+            graph = Graph(blocks=blocks)
+
+            total, contributors = aggregate_attribute(graph, "weight")
+
+            checks = {
+                "total_correct": total == 12.0,
+                "contributor_count": len(contributors) == 3,
+                "excludes_empty": "agg4" not in contributors,
+            }
+
+            if all(checks.values()):
+                return DiagnosticResult(
+                    passed=True,
+                    message=f"Aggregation correct: {total} from {len(contributors)} blocks",
+                    details={"total": total, **checks},
+                )
+            else:
+                failed = [k for k, v in checks.items() if not v]
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Aggregation checks failed: {failed}",
+                    details={"total": total, "contributors": contributors, **checks},
+                )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Aggregation error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    def test_core_requirements_serialization_roundtrip(self) -> DiagnosticResult:
+        """Verify requirements survive serialization roundtrip."""
+        try:
+            from fsb_core.models import (
+                Block,
+                ComparisonOperator,
+                Graph,
+                Requirement,
+            )
+            from fsb_core.serialization import deserialize_graph, serialize_graph
+
+            req = Requirement(
+                id="rrt_1",
+                name="Power Budget",
+                target_value=100.0,
+                operator=ComparisonOperator.LE,
+                unit="W",
+                linked_attribute="power",
+            )
+            graph = Graph(
+                id="rrt_graph",
+                blocks=[Block(id="rrt_b1", name="PSU")],
+                requirements=[req],
+            )
+
+            json_str = serialize_graph(graph)
+            restored = deserialize_graph(json_str)
+
+            if len(restored.requirements) != 1:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Expected 1 requirement, got {len(restored.requirements)}",
+                    details={},
+                )
+
+            r = restored.requirements[0]
+            checks = {
+                "id_match": r.id == "rrt_1",
+                "name_match": r.name == "Power Budget",
+                "target_match": r.target_value == 100.0,
+                "operator_match": r.operator == ComparisonOperator.LE,
+                "unit_match": r.unit == "W",
+                "attr_match": r.linked_attribute == "power",
+            }
+
+            if all(checks.values()):
+                return DiagnosticResult(
+                    passed=True,
+                    message="Requirements serialization roundtrip OK",
+                    details=checks,
+                )
+            else:
+                failed = [k for k, v in checks.items() if not v]
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Requirements roundtrip mismatches: {failed}",
+                    details=checks,
+                )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Requirements roundtrip error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # VERSION CONTROL & SNAPSHOT
+    # =========================================================================
+
+    def test_core_version_control_snapshot_cycle(self) -> DiagnosticResult:
+        """Create a snapshot, restore it, and verify graph integrity."""
+        try:
+            from fsb_core.models import Block, Graph
+            from fsb_core.version_control import create_snapshot, restore_snapshot
+
+            graph = Graph(
+                id="vc_graph",
+                name="VersionTest",
+                blocks=[
+                    Block(id="vc_b1", name="SensorA", block_type="Electrical"),
+                    Block(id="vc_b2", name="ControllerB", block_type="Software"),
+                ],
+            )
+
+            snapshot = create_snapshot(graph, author="diagnostics", description="test")
+            restored = restore_snapshot(snapshot)
+
+            checks = {
+                "id_match": restored.id == "vc_graph",
+                "name_match": restored.name == "VersionTest",
+                "block_count": len(restored.blocks) == 2,
+                "block_names": {b.name for b in restored.blocks} == {"SensorA", "ControllerB"},
+                "snapshot_author": snapshot.author == "diagnostics",
+                "snapshot_has_timestamp": len(snapshot.timestamp) > 0,
+            }
+
+            if all(checks.values()):
+                return DiagnosticResult(
+                    passed=True,
+                    message="Version control snapshot/restore cycle OK",
+                    details=checks,
+                )
+            else:
+                failed = [k for k, v in checks.items() if not v]
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Snapshot cycle checks failed: {failed}",
+                    details=checks,
+                )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Version control error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    def test_core_version_control_diff(self) -> DiagnosticResult:
+        """Verify diff_graphs detects changes between two graphs."""
+        try:
+            from fsb_core.models import Block, Connection, Graph, Port, PortDirection
+            from fsb_core.version_control import diff_graphs
+
+            old_graph = Graph(
+                id="diff_g",
+                blocks=[
+                    Block(id="d1", name="Alpha", block_type="Generic"),
+                    Block(id="d2", name="Beta", block_type="Generic"),
+                ],
+            )
+            new_graph = Graph(
+                id="diff_g",
+                blocks=[
+                    Block(id="d1", name="AlphaRenamed", block_type="Generic"),
+                    Block(id="d3", name="Gamma", block_type="Generic"),
+                ],
+            )
+
+            diff = diff_graphs(old_graph, new_graph)
+
+            checks = {
+                "has_added": len(diff.added_block_ids) > 0,
+                "has_removed": len(diff.removed_block_ids) > 0,
+                "has_modified": len(diff.modified_block_ids) > 0,
+            }
+
+            if all(checks.values()):
+                return DiagnosticResult(
+                    passed=True,
+                    message=f"Graph diff detected {len(diff.added_block_ids)} added, "
+                    f"{len(diff.removed_block_ids)} removed, {len(diff.modified_block_ids)} modified",
+                    details={
+                        "added": diff.added_block_ids,
+                        "removed": diff.removed_block_ids,
+                        "modified": diff.modified_block_ids,
+                    },
+                )
+            else:
+                failed = [k for k, v in checks.items() if not v]
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Diff checks failed: {failed}",
+                    details=checks,
+                )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Graph diff error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    def test_core_snapshot_store(self) -> DiagnosticResult:
+        """Verify SnapshotStore add/list/get/compare/clear operations."""
+        try:
+            from fsb_core.models import Block, Graph
+            from fsb_core.version_control import SnapshotStore
+
+            store = SnapshotStore(max_snapshots=10)
+            g1 = Graph(id="ss_g", blocks=[Block(id="ss1", name="V1")])
+            g2 = Graph(id="ss_g", blocks=[Block(id="ss1", name="V2"), Block(id="ss2", name="New")])
+
+            snap1 = store.add(g1, author="diag", description="first")
+            snap2 = store.add(g2, author="diag", description="second")
+
+            checks = {
+                "count_is_2": store.count == 2,
+                "list_length": len(store.list_snapshots()) == 2,
+                "get_by_id": store.get_by_id(snap1.id) is not None,
+                "get_missing_none": store.get_by_id("nonexistent") is None,
+            }
+
+            # Test compare
+            diff = store.compare(snap1.id, snap2.id)
+            checks["compare_has_added"] = len(diff.added_block_ids) > 0
+
+            # Test restore
+            restored = store.restore(snap1.id)
+            checks["restore_name"] = restored.blocks[0].name == "V1"
+
+            # Test clear
+            store.clear()
+            checks["clear_empties"] = store.count == 0
+
+            if all(checks.values()):
+                return DiagnosticResult(
+                    passed=True,
+                    message="SnapshotStore full lifecycle OK",
+                    details=checks,
+                )
+            else:
+                failed = [k for k, v in checks.items() if not v]
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"SnapshotStore checks failed: {failed}",
+                    details=checks,
+                )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"SnapshotStore error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # GRAPH BUILDER FLUENT API
+    # =========================================================================
+
+    def test_core_graph_builder_fluent(self) -> DiagnosticResult:
+        """Verify GraphBuilder fluent API produces a valid graph."""
+        try:
+            from fsb_core.graph_builder import GraphBuilder
+            from fsb_core.models import PortDirection
+            from fsb_core.validation import validate_graph
+
+            graph = (
+                GraphBuilder("DiagBuilder")
+                .add_block("Sensor", "Electrical")
+                .add_port("data_out", PortDirection.OUTPUT)
+                .add_block("Processor", "Software")
+                .add_port("data_in", PortDirection.INPUT)
+                .connect("Sensor", "Processor", kind="data",
+                         from_port_name="data_out", to_port_name="data_in")
+                .build()
+            )
+
+            errors = validate_graph(graph)
+
+            checks = {
+                "name_match": graph.name == "DiagBuilder",
+                "block_count": len(graph.blocks) == 2,
+                "connection_count": len(graph.connections) == 1,
+                "zero_errors": len(errors) == 0,
+                "block_names": {b.name for b in graph.blocks} == {"Sensor", "Processor"},
+            }
+
+            if all(checks.values()):
+                return DiagnosticResult(
+                    passed=True,
+                    message="GraphBuilder fluent chain produced valid graph",
+                    details=checks,
+                )
+            else:
+                failed = [k for k, v in checks.items() if not v]
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"GraphBuilder checks failed: {failed}",
+                    details={**checks, "errors": [str(e) for e in errors]},
+                )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"GraphBuilder error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # BRIDGE ACTION ENUM CONSISTENCY
+    # =========================================================================
+
+    def test_core_bridge_actions_enums(self) -> DiagnosticResult:
+        """Verify BridgeAction/BridgeEvent enums are importable and consistent."""
+        try:
+            from fsb_core.bridge_actions import BridgeAction, BridgeEvent
+
+            # Verify critical action names exist
+            required_actions = [
+                "SAVE_DIAGRAM", "LOAD_DIAGRAM", "EXPORT_REPORTS",
+                "CHECK_RULES", "APPLY_DELTA", "VALIDATE_REQUIREMENTS",
+                "CREATE_SNAPSHOT", "LIST_SNAPSHOTS", "RESTORE_SNAPSHOT",
+            ]
+            missing_actions = [a for a in required_actions if not hasattr(BridgeAction, a)]
+
+            required_events = ["NOTIFICATION", "CAD_LINK"]
+            missing_events = [e for e in required_events if not hasattr(BridgeEvent, e)]
+
+            if missing_actions or missing_events:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Missing enums: actions={missing_actions}, events={missing_events}",
+                    details={
+                        "missing_actions": missing_actions,
+                        "missing_events": missing_events,
+                    },
+                )
+
+            action_count = len(BridgeAction)
+            event_count = len(BridgeEvent)
+
+            return DiagnosticResult(
+                passed=True,
+                message=f"Bridge enums OK: {action_count} actions, {event_count} events",
+                details={
+                    "action_count": action_count,
+                    "event_count": event_count,
+                    "sample_action_value": BridgeAction.SAVE_DIAGRAM.value,
+                },
+            )
+        except ImportError as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Bridge actions not available: {e}",
+                details={"import_error": str(e)},
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Bridge actions error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    def test_core_bridge_actions_js_sync(self) -> DiagnosticResult:
+        """Verify bridge-actions.js exists and contains matching action values."""
+        try:
+            import os
+
+            from fsb_core.bridge_actions import BridgeAction
+
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            js_path = os.path.join(base_dir, "src", "types", "bridge-actions.js")
+
+            if not os.path.isfile(js_path):
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"bridge-actions.js not found at {js_path}",
+                    details={"path": js_path},
+                )
+
+            with open(js_path, encoding="utf-8") as f:
+                js_content = f.read()
+
+            # Check that critical Python action values appear in JS file
+            critical_values = [
+                BridgeAction.SAVE_DIAGRAM.value,
+                BridgeAction.LOAD_DIAGRAM.value,
+                BridgeAction.EXPORT_REPORTS.value,
+                BridgeAction.APPLY_DELTA.value,
+                BridgeAction.CHECK_RULES.value,
+            ]
+            missing = [v for v in critical_values if v not in js_content]
+
+            if missing:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"JS file missing {len(missing)} Python action values",
+                    details={"missing_values": missing},
+                )
+
+            return DiagnosticResult(
+                passed=True,
+                message="Python ↔ JS bridge actions synchronized",
+                details={"checked_values": len(critical_values)},
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Bridge sync check error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # EXPORT PIPELINE
+    # =========================================================================
+
+    def test_core_export_profiles(self) -> DiagnosticResult:
+        """Verify export profile definitions have expected format counts."""
+        try:
+            from src.diagram.export import EXPORT_PROFILES
+
+            expected = {"quick": 3, "standard": 9, "full": 11}
+            mismatches = {}
+
+            for profile, count in expected.items():
+                actual = len(EXPORT_PROFILES.get(profile, []))
+                if actual != count:
+                    mismatches[profile] = {"expected": count, "actual": actual}
+
+            if mismatches:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Export profile count mismatches: {mismatches}",
+                    details={"mismatches": mismatches},
+                )
+
+            return DiagnosticResult(
+                passed=True,
+                message=f"Export profiles OK: quick={expected['quick']}, standard={expected['standard']}, full={expected['full']}",
+                details={
+                    "profiles": {k: len(v) for k, v in EXPORT_PROFILES.items()},
+                },
+            )
+        except ImportError as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Export module not available: {e}",
+                details={"import_error": str(e)},
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Export profiles error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    def test_core_export_markdown_generation(self) -> DiagnosticResult:
+        """Verify markdown report generates non-empty output."""
+        try:
+            from src.diagram.export import generate_markdown_report
+
+            diagram = {
+                "blocks": [
+                    {"id": "ex_b1", "name": "TestBlock", "type": "Generic",
+                     "status": "Placeholder", "interfaces": []},
+                ],
+                "connections": [],
+            }
+
+            report = generate_markdown_report(diagram)
+
+            if not isinstance(report, str) or len(report) < 50:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Markdown report too short or wrong type: {type(report).__name__}, {len(report)} chars",
+                    details={"length": len(report) if isinstance(report, str) else 0},
+                )
+
+            has_header = "# " in report or "## " in report
+            has_block_ref = "TestBlock" in report
+
+            if has_header and has_block_ref:
+                return DiagnosticResult(
+                    passed=True,
+                    message=f"Markdown report generated ({len(report)} chars)",
+                    details={"length": len(report), "has_header": has_header},
+                )
+            else:
+                return DiagnosticResult(
+                    passed=False,
+                    message="Markdown report missing expected content",
+                    details={"has_header": has_header, "has_block_ref": has_block_ref},
+                )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Markdown export error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # SCHEMA VALIDATION
+    # =========================================================================
+
+    def test_core_schema_json_integrity(self) -> DiagnosticResult:
+        """Verify schema.json exists, is valid JSON, and has required keys."""
+        try:
+            import os
+
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            schema_path = os.path.join(base_dir, "docs", "schema.json")
+
+            if not os.path.isfile(schema_path):
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"schema.json not found at {schema_path}",
+                    details={"path": schema_path},
+                )
+
+            with open(schema_path, encoding="utf-8") as f:
+                schema = json.load(f)
+
+            # Check required top-level keys
+            required_keys = ["$schema", "title", "type", "required", "properties"]
+            missing = [k for k in required_keys if k not in schema]
+
+            if missing:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Schema missing keys: {missing}",
+                    details={"missing": missing},
+                )
+
+            # Check that blocks and connections are in required list
+            required_fields = schema.get("required", [])
+            has_blocks = "blocks" in required_fields
+            has_connections = "connections" in required_fields
+            has_blocks_prop = "blocks" in schema.get("properties", {})
+
+            checks = {
+                "has_blocks_required": has_blocks,
+                "has_connections_required": has_connections,
+                "has_blocks_property": has_blocks_prop,
+                "valid_json": True,
+            }
+
+            if all(checks.values()):
+                return DiagnosticResult(
+                    passed=True,
+                    message="Schema.json valid with required structure",
+                    details=checks,
+                )
+            else:
+                failed = [k for k, v in checks.items() if not v]
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Schema structure issues: {failed}",
+                    details=checks,
+                )
+        except json.JSONDecodeError as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"schema.json is not valid JSON: {e}",
+                details={"error": str(e)},
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Schema check error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # JAVASCRIPT MODULE INTEGRITY
+    # =========================================================================
+
+    def test_js_modules_integrity(self) -> DiagnosticResult:
+        """Verify all expected JavaScript modules exist on disk."""
+        try:
+            import os
+
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            src_dir = os.path.join(base_dir, "src")
+
+            expected_js = [
+                "main-coordinator.js",
+                "palette.js",
+                os.path.join("core", "diagram-editor.js"),
+                os.path.join("core", "orthogonal-router.js"),
+                os.path.join("ui", "diagram-renderer.js"),
+                os.path.join("ui", "minimap.js"),
+                os.path.join("ui", "palette-tabs.js"),
+                os.path.join("ui", "toolbar-manager.js"),
+                os.path.join("interface", "python-bridge.js"),
+                os.path.join("features", "advanced-features.js"),
+                os.path.join("types", "bridge-actions.js"),
+                os.path.join("types", "block-templates.js"),
+                os.path.join("types", "electrical-blocks.js"),
+                os.path.join("types", "mechanical-blocks.js"),
+                os.path.join("types", "software-blocks.js"),
+                os.path.join("utils", "logger.js"),
+                os.path.join("utils", "delta-utils.js"),
+            ]
+
+            missing = []
+            sizes = {}
+            for js_file in expected_js:
+                full_path = os.path.join(src_dir, js_file)
+                if os.path.isfile(full_path):
+                    sizes[js_file] = os.path.getsize(full_path)
+                else:
+                    missing.append(js_file)
+
+            if missing:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"{len(missing)} JS modules missing: {missing}",
+                    details={"missing": missing, "found": len(expected_js) - len(missing)},
+                )
+
+            total_size_kb = sum(sizes.values()) / 1024
+            return DiagnosticResult(
+                passed=True,
+                message=f"All {len(expected_js)} JS modules present ({total_size_kb:.0f} KB total)",
+                details={
+                    "module_count": len(expected_js),
+                    "total_size_kb": round(total_size_kb, 1),
+                },
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"JS integrity check error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # BLOCK SHAPES SERIALIZATION
+    # =========================================================================
+
+    def test_core_block_shape_roundtrip(self) -> DiagnosticResult:
+        """Verify block shapes survive serialization roundtrip."""
+        try:
+            from fsb_core.models import Block, Graph
+            from fsb_core.serialization import deserialize_graph, serialize_graph
+
+            shapes = ["rectangle", "circle", "diamond", "hexagon"]
+            blocks = [
+                Block(
+                    id=f"shape_{s}",
+                    name=f"Block_{s}",
+                    block_type="Generic",
+                    attributes={"shape": s},
+                )
+                for s in shapes
+            ]
+            graph = Graph(id="shape_graph", blocks=blocks)
+
+            json_str = serialize_graph(graph)
+            restored = deserialize_graph(json_str)
+
+            if len(restored.blocks) != len(shapes):
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Expected {len(shapes)} blocks, got {len(restored.blocks)}",
+                    details={},
+                )
+
+            restored_shapes = {
+                b.id: b.attributes.get("shape") for b in restored.blocks
+            }
+            mismatches = {
+                bid: s for bid, s in restored_shapes.items()
+                if s != bid.replace("shape_", "")
+            }
+
+            if not mismatches:
+                return DiagnosticResult(
+                    passed=True,
+                    message=f"All {len(shapes)} block shapes survived roundtrip",
+                    details={"shapes": list(restored_shapes.values())},
+                )
+            else:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"Shape mismatches: {mismatches}",
+                    details={"mismatches": mismatches},
+                )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Block shape roundtrip error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # CSS FILE INTEGRITY
+    # =========================================================================
+
+    def test_css_files_integrity(self) -> DiagnosticResult:
+        """Verify all CSS theme files exist and are non-empty."""
+        try:
+            import os
+
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            src_dir = os.path.join(base_dir, "src")
+
+            expected_css = [
+                "fusion-theme.css",
+                "fusion-ribbon.css",
+                "fusion-icons.css",
+            ]
+
+            missing = []
+            empty = []
+            for css_file in expected_css:
+                full_path = os.path.join(src_dir, css_file)
+                if not os.path.isfile(full_path):
+                    missing.append(css_file)
+                elif os.path.getsize(full_path) == 0:
+                    empty.append(css_file)
+
+            issues = missing + empty
+            if issues:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"CSS issues: missing={missing}, empty={empty}",
+                    details={"missing": missing, "empty": empty},
+                )
+
+            return DiagnosticResult(
+                passed=True,
+                message=f"All {len(expected_css)} CSS files present and non-empty",
+                details={"files": expected_css},
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"CSS check error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
+    # =========================================================================
+    # FSCORE PACKAGE COMPLETENESS
+    # =========================================================================
+
+    def test_core_package_imports(self) -> DiagnosticResult:
+        """Verify all fsb_core modules are importable and __init__ exports work."""
+        try:
+            modules = {}
+            expected = [
+                "fsb_core.models",
+                "fsb_core.validation",
+                "fsb_core.action_plan",
+                "fsb_core.graph_builder",
+                "fsb_core.serialization",
+                "fsb_core.bridge_actions",
+                "fsb_core.delta",
+                "fsb_core.requirements",
+                "fsb_core.version_control",
+            ]
+
+            import importlib
+
+            failed_imports = []
+            for mod_name in expected:
+                try:
+                    importlib.import_module(mod_name)
+                    modules[mod_name] = True
+                except ImportError as e:
+                    modules[mod_name] = False
+                    failed_imports.append(f"{mod_name}: {e}")
+
+            if failed_imports:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"{len(failed_imports)} module(s) failed to import",
+                    details={"failed": failed_imports, "modules": modules},
+                )
+
+            # Verify key __init__ exports
+            import fsb_core
+
+            init_exports = [
+                "Block", "Port", "Connection", "Graph",
+                "validate_graph", "serialize_graph", "deserialize_graph",
+                "GraphBuilder", "compute_patch", "apply_patch",
+                "create_snapshot", "SnapshotStore",
+                "validate_requirements", "RequirementResult",
+            ]
+            missing_exports = [e for e in init_exports if not hasattr(fsb_core, e)]
+
+            if missing_exports:
+                return DiagnosticResult(
+                    passed=False,
+                    message=f"fsb_core.__init__ missing exports: {missing_exports}",
+                    details={"missing": missing_exports},
+                )
+
+            return DiagnosticResult(
+                passed=True,
+                message=f"All {len(expected)} core modules importable, {len(init_exports)} __init__ exports OK",
+                details={
+                    "module_count": len(expected),
+                    "export_count": len(init_exports),
+                },
+            )
+        except Exception as e:
+            return DiagnosticResult(
+                passed=False,
+                message=f"Package import error: {e}",
+                details={"error": str(e), "traceback": traceback.format_exc()},
+            )
+
 
 def run_diagnostics_and_show_result() -> DiagnosticsReport:
     """Run all diagnostics and show result in a Fusion message box.
@@ -1215,9 +2229,6 @@ def run_diagnostics_and_show_result() -> DiagnosticsReport:
             _log_info(f"Diagnostics report written to {report_path}")
     except Exception as e:
         _log_error(f"Failed to write diagnostics JSON report: {e}")
-
-    runner = DiagnosticsRunner()
-    report = runner.run_all()
 
     # Build message box content
     summary = report.to_summary_string()

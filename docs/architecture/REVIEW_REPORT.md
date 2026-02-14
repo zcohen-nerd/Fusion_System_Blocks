@@ -10,7 +10,7 @@ The Fusion System Blocks add-in demonstrates a solid, well-evolved architecture.
 ### 1. Reliability & Stability ✅
 - **Exception Handling:** Robust global exception handling in event handlers with production logging.
 - **Data Integrity:** Schema validation before saving prevents corrupted state.
-- **Self-Diagnostics:** Built-in "Run Diagnostics" command validates add-in health with 6 automated tests.
+- **Self-Diagnostics:** Built-in "Run Diagnostics" command validates add-in health with 32 automated tests.
 - **Production Logging:** Session-based logging with full tracebacks to `~/FusionSystemBlocks/logs/`.
 
 ### 2. Security (Zero Trust) 🛡️
@@ -20,7 +20,7 @@ The Fusion System Blocks add-in demonstrates a solid, well-evolved architecture.
 
 ### 3. Testability & Maintainability ✅ (Improved)
 - **Two-Layer Architecture:** Pure Python `fsb_core/` library with NO Fusion dependencies enables pytest testing.
-- **557 Tests:** Comprehensive test suite across 22 files runs in <1s outside of Fusion 360.
+- **605 Tests:** Comprehensive test suite across 23 files runs in <1s outside of Fusion 360.
 - **Modular Structure:** Clear separation between core logic, Fusion adapter, and frontend.
 - **Type Hinting:** Python type hints throughout for static analysis and IDE support.
 - **CI Pipeline:** GitHub Actions runs ruff, mypy, and pytest on Python 3.9–3.12 on every push.
@@ -39,7 +39,7 @@ The Fusion System Blocks add-in demonstrates a solid, well-evolved architecture.
 ## Recommendations
 
 1. ✅ **Performance Monitoring (Addressed):** Logging now captures operation durations.
-2. ✅ **Automated Testing (Addressed):** 557 pytest tests cover core logic outside Fusion.
+2. ✅ **Automated Testing (Addressed):** 605 pytest tests cover core logic outside Fusion.
 3. ✅ **Documentation (Addressed):** ADRs and folder structure documentation updated.
 4. ✅ **Diff-Based Saves (Addressed):** Delta serialization implemented in `fsb_core/delta.py` and `src/utils/delta-utils.js`.
 5. **Future:** Consider integration tests with mocked Fusion API for adapter layer validation.

@@ -203,16 +203,23 @@ class DiagramRenderer {
       }
 
       case 'cylinder': {
-        // Cylinder / database shape — rect body with elliptical caps
+        // Cylinder / database shape — rect body with elliptical caps.
+        // The main path draws the body (front face) as a closed shape,
+        // then a subpath draws the back arc of the top ellipse so the
+        // "lid" of the cylinder is visible.  The subpath is open so it
+        // receives stroke but not fill.
         const capRy = height * 0.12;
         mainShape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        // Top ellipse arc, right side, bottom ellipse arc, left side, close
         mainShape.setAttribute('d',
+          // Body (closed)
           `M ${x},${y + capRy}` +
           ` A ${width / 2},${capRy} 0 0,1 ${x + width},${y + capRy}` +
           ` L ${x + width},${y + height - capRy}` +
           ` A ${width / 2},${capRy} 0 0,1 ${x},${y + height - capRy}` +
-          ` Z`);
+          ` Z` +
+          // Top cap — back arc (open subpath, stroke-only)
+          ` M ${x},${y + capRy}` +
+          ` A ${width / 2},${capRy} 0 0,0 ${x + width},${y + capRy}`);
         break;
       }
 
@@ -335,7 +342,10 @@ class DiagramRenderer {
 
     const lineHeight = fontSize * 1.3;
     const totalTextHeight = lines.length * lineHeight;
-    const startY = (blockH - totalTextHeight) / 2 + lineHeight * 0.75;
+    // For triangle shapes the usable text area is the lower 2/3 of the
+    // block (the top is a narrow point), so shift text downward.
+    const shapeOffset = (block.shape === 'triangle') ? blockH * 0.2 : 0;
+    const startY = (blockH - totalTextHeight) / 2 + lineHeight * 0.75 + shapeOffset;
 
     lines.forEach((line, i) => {
       const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
@@ -534,9 +544,11 @@ class DiagramRenderer {
 
     // --- Arrow direction ---
     const direction = (connection.arrowDirection || 'forward').toLowerCase();
-    const markerSuffix = connType === 'auto' ? '' : '-' + connType;
-    const fwdMarker = 'url(#arrowhead' + markerSuffix + ')';
-    const revMarker = 'url(#arrowhead' + markerSuffix + '-reverse)';
+    // Always use the base arrowhead marker — type-specific markers are
+    // not defined in the SVG defs (colour differentiation is handled by
+    // the connection path stroke).  This prevents broken url(#…)
+    // references for typed connections (power, data, etc.).
+    const fwdMarker = 'url(#arrowhead)';
 
     // --- Fan-in / fan-out port offsets ---
     // Count how many connections attach to the output side of fromBlock
@@ -931,6 +943,11 @@ class DiagramRenderer {
     this.connectionElements.forEach(element => element.remove());
     this.blockElements.clear();
     this.connectionElements.clear();
+    // Clear annotation elements
+    if (this._annotationElements) {
+      this._annotationElements.forEach(el => el.remove());
+      this._annotationElements.clear();
+    }
 
     // Batch render using documentFragment for fewer reflows
     const blocksTarget = this.blocksLayer || this.svg;
@@ -945,6 +962,175 @@ class DiagramRenderer {
     diagram.connections.forEach(connection => {
       this.renderConnection(connection);
     });
+
+    // Render all annotations
+    if (diagram.annotations) {
+      diagram.annotations.forEach(ann => this.renderAnnotation(ann));
+    }
+  }
+
+  // ---- Annotation rendering ----
+
+  /**
+   * Render a single annotation onto the SVG canvas.
+   * Supported types: text, note, dimension, callout.
+   */
+  renderAnnotation(annotation) {
+    if (!this._annotationElements) this._annotationElements = new Map();
+    // Remove previous render
+    const prev = this._annotationElements.get(annotation.id);
+    if (prev) prev.remove();
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const g = document.createElementNS(ns, 'g');
+    g.setAttribute('class', 'annotation annotation-' + annotation.type);
+    g.setAttribute('data-annotation-id', annotation.id);
+
+    const x = annotation.x || 0;
+    const y = annotation.y || 0;
+    const w = annotation.width || 120;
+    const h = annotation.height || 30;
+
+    switch (annotation.type) {
+      case 'text': {
+        const txt = document.createElementNS(ns, 'text');
+        txt.setAttribute('x', x);
+        txt.setAttribute('y', y + 14);
+        txt.setAttribute('font-size', '12');
+        txt.setAttribute('fill', '#ccc');
+        txt.setAttribute('font-family', 'Segoe UI, sans-serif');
+        txt.textContent = annotation.text;
+        g.appendChild(txt);
+        break;
+      }
+      case 'note': {
+        const rect = document.createElementNS(ns, 'rect');
+        rect.setAttribute('x', x);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', w);
+        rect.setAttribute('height', h);
+        rect.setAttribute('rx', '4');
+        rect.setAttribute('fill', '#fff8c4');
+        rect.setAttribute('stroke', '#e6d96c');
+        rect.setAttribute('stroke-width', '1');
+        rect.setAttribute('opacity', '0.9');
+        g.appendChild(rect);
+        const txt = document.createElementNS(ns, 'text');
+        txt.setAttribute('x', x + 8);
+        txt.setAttribute('y', y + 18);
+        txt.setAttribute('font-size', '11');
+        txt.setAttribute('fill', '#333');
+        txt.setAttribute('font-family', 'Segoe UI, sans-serif');
+        // Word-wrap approximation
+        const lines = annotation.text.match(/.{1,22}/g) || [annotation.text];
+        lines.forEach((line, i) => {
+          const tspan = document.createElementNS(ns, 'tspan');
+          tspan.setAttribute('x', x + 8);
+          tspan.setAttribute('dy', i === 0 ? '0' : '14');
+          tspan.textContent = line;
+          txt.appendChild(tspan);
+        });
+        g.appendChild(txt);
+        break;
+      }
+      case 'dimension': {
+        const blockA = this.editor && this.editor.diagram.blocks.find(b => b.id === annotation.refBlockA);
+        const blockB = this.editor && this.editor.diagram.blocks.find(b => b.id === annotation.refBlockB);
+        if (!blockA || !blockB) break;
+        const ax = blockA.x + (blockA.width || 120) / 2;
+        const ay = blockA.y + (blockA.height || 80) / 2;
+        const bx = blockB.x + (blockB.width || 120) / 2;
+        const by = blockB.y + (blockB.height || 80) / 2;
+        const dist = Math.round(Math.hypot(bx - ax, by - ay));
+        const label = annotation.text || `${dist}px`;
+        // Dimension line
+        const line = document.createElementNS(ns, 'line');
+        line.setAttribute('x1', ax);
+        line.setAttribute('y1', ay);
+        line.setAttribute('x2', bx);
+        line.setAttribute('y2', by);
+        line.setAttribute('stroke', '#4fc3f7');
+        line.setAttribute('stroke-width', '1');
+        line.setAttribute('stroke-dasharray', '5,3');
+        g.appendChild(line);
+        // End ticks
+        [{ cx: ax, cy: ay }, { cx: bx, cy: by }].forEach(({ cx, cy }) => {
+          const tick = document.createElementNS(ns, 'circle');
+          tick.setAttribute('cx', cx);
+          tick.setAttribute('cy', cy);
+          tick.setAttribute('r', '3');
+          tick.setAttribute('fill', '#4fc3f7');
+          g.appendChild(tick);
+        });
+        // Label at midpoint
+        const mx = (ax + bx) / 2;
+        const my = (ay + by) / 2;
+        const bg = document.createElementNS(ns, 'rect');
+        bg.setAttribute('x', mx - 20);
+        bg.setAttribute('y', my - 10);
+        bg.setAttribute('width', '40');
+        bg.setAttribute('height', '16');
+        bg.setAttribute('rx', '3');
+        bg.setAttribute('fill', '#263238');
+        bg.setAttribute('stroke', '#4fc3f7');
+        bg.setAttribute('stroke-width', '0.5');
+        g.appendChild(bg);
+        const txt = document.createElementNS(ns, 'text');
+        txt.setAttribute('x', mx);
+        txt.setAttribute('y', my + 3);
+        txt.setAttribute('text-anchor', 'middle');
+        txt.setAttribute('font-size', '10');
+        txt.setAttribute('fill', '#4fc3f7');
+        txt.setAttribute('font-family', 'Segoe UI, sans-serif');
+        txt.textContent = label;
+        g.appendChild(txt);
+        break;
+      }
+      case 'callout': {
+        // Callout box
+        const rect = document.createElementNS(ns, 'rect');
+        rect.setAttribute('x', x);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', w);
+        rect.setAttribute('height', h);
+        rect.setAttribute('rx', '6');
+        rect.setAttribute('fill', '#37474f');
+        rect.setAttribute('stroke', '#ff9800');
+        rect.setAttribute('stroke-width', '1.5');
+        g.appendChild(rect);
+        const txt = document.createElementNS(ns, 'text');
+        txt.setAttribute('x', x + w / 2);
+        txt.setAttribute('y', y + h / 2 + 4);
+        txt.setAttribute('text-anchor', 'middle');
+        txt.setAttribute('font-size', '11');
+        txt.setAttribute('fill', '#fff');
+        txt.setAttribute('font-family', 'Segoe UI, sans-serif');
+        txt.textContent = annotation.text;
+        g.appendChild(txt);
+        // Leader line to target block (if set)
+        if (annotation.targetBlockId && this.editor) {
+          const target = this.editor.diagram.blocks.find(b => b.id === annotation.targetBlockId);
+          if (target) {
+            const tx = target.x + (target.width || 120) / 2;
+            const ty = target.y;
+            const line = document.createElementNS(ns, 'line');
+            line.setAttribute('x1', x + w / 2);
+            line.setAttribute('y1', y + h);
+            line.setAttribute('x2', tx);
+            line.setAttribute('y2', ty);
+            line.setAttribute('stroke', '#ff9800');
+            line.setAttribute('stroke-width', '1');
+            line.setAttribute('stroke-dasharray', '4,2');
+            g.appendChild(line);
+          }
+        }
+        break;
+      }
+    }
+
+    const target = this.blocksLayer || this.svg;
+    target.appendChild(g);
+    this._annotationElements.set(annotation.id, g);
   }
 
   /**

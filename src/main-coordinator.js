@@ -133,6 +133,10 @@ class SystemBlocksMain {
 
     // Set up import dialog wiring
     this.setupImportDialog(core, renderer, features);
+
+    // Wire ribbon connection-type and arrow-direction dropdowns so that
+    // changing them while a connection is selected updates it in-place.
+    this.setupConnectionControlSync(core, renderer);
   }
 
   setupCanvasEventHandlers(core, renderer, features) {
@@ -379,10 +383,13 @@ class SystemBlocksMain {
 
         // Re-render connections attached to any moved block using batched
         // scheduling to avoid per-pixel re-renders during fast drags.
+        // In orthogonal mode, re-render ALL connections because any moved
+        // block may now be an obstacle for unrelated connections.
         const movedSet = new Set(movedIds);
         const affectedConns = [];
+        const rerouteAll = renderer.routingMode === 'orthogonal';
         core.diagram.connections.forEach(conn => {
-          if (movedSet.has(conn.fromBlock) || movedSet.has(conn.toBlock)) {
+          if (rerouteAll || movedSet.has(conn.fromBlock) || movedSet.has(conn.toBlock)) {
             affectedConns.push(conn.id);
           }
         });
@@ -391,7 +398,7 @@ class SystemBlocksMain {
         } else {
           // Fallback: immediate render
           core.diagram.connections.forEach(conn => {
-            if (movedSet.has(conn.fromBlock) || movedSet.has(conn.toBlock)) {
+            if (rerouteAll || movedSet.has(conn.fromBlock) || movedSet.has(conn.toBlock)) {
               renderer.renderConnection(conn);
             }
           });
@@ -634,6 +641,22 @@ class SystemBlocksMain {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this._connectionMode.active) {
         this.exitConnectionMode(svg);
+      }
+      // Escape closes open modal dialogs
+      if (e.key === 'Escape') {
+        const importDialog = document.getElementById('import-dialog');
+        const overlay = document.getElementById('dialog-overlay');
+        if (importDialog && importDialog.style.display !== 'none') {
+          importDialog.style.display = 'none';
+          if (overlay) overlay.style.display = 'none';
+          e.preventDefault();
+          return;
+        }
+        const historyPanel = document.getElementById('history-panel');
+        if (historyPanel && historyPanel.classList.contains('show')) {
+          historyPanel.classList.remove('show');
+          e.preventDefault();
+        }
       }
     });
   }
@@ -925,25 +948,46 @@ class SystemBlocksMain {
       });
     }
 
-    // Canvas/empty-space actions
+    // Canvas/empty-space actions — Add Block at the right-click position
     this._ctxAction(freshMenu, 'ctx-add-block', () => {
       this.hideContextMenu();
-      // Convert context-menu screen coordinates to SVG coordinates
       const svg = document.getElementById('svg-canvas');
-      if (svg && window.toolbarManager) {
+      if (!svg || !window.toolbarManager) {
+        if (window.toolbarManager) window.toolbarManager.handleCreateBlock();
+        return;
+      }
+      // Convert the original right-click screen coordinates to SVG space
+      const ctm = svg.getScreenCTM();
+      let svgX, svgY;
+      if (ctm) {
         const pt = svg.createSVGPoint();
         pt.x = clientX;
         pt.y = clientY;
-        const ctm = svg.getScreenCTM();
-        if (ctm) {
-          const svgPt = pt.matrixTransform(ctm.inverse());
-          window.toolbarManager.handleCreateBlockAtPosition(svgPt.x, svgPt.y);
-        } else {
-          window.toolbarManager.handleCreateBlock();
-        }
-      } else if (window.toolbarManager) {
-        window.toolbarManager.handleCreateBlock();
+        const svgPt = pt.matrixTransform(ctm.inverse());
+        svgX = svgPt.x;
+        svgY = svgPt.y;
+      } else {
+        svgX = clientX;
+        svgY = clientY;
       }
+      // Show the type dropdown positioned near the context-menu location
+      // so the user doesn't lose spatial context.
+      window.toolbarManager.showBlockTypeDropdownAt(clientX, clientY, (type) => {
+        const core = window.diagramEditor;
+        const renderer = window.diagramRenderer;
+        if (!core || !renderer) return;
+        const snapped = core.snapToGrid(svgX - 60, svgY - 40);
+        const newBlock = core.addBlock({
+          name: 'New ' + type + ' Block',
+          type: type,
+          x: snapped.x,
+          y: snapped.y
+        });
+        renderer.renderBlock(newBlock);
+        core.selectBlock(newBlock.id);
+        const emptyState = document.getElementById('empty-canvas-state');
+        if (emptyState) emptyState.classList.add('hidden');
+      });
     });
 
     this._ctxAction(freshMenu, 'ctx-fit-view', () => {
@@ -1157,6 +1201,9 @@ class SystemBlocksMain {
     // IMPORTANT: only save if the redo stack is empty, otherwise the
     // debounced save fires after an undo and clears the redo stack.
     let saveTimer = null;
+    // Capture a reference to the coordinator so the debounced callback
+    // can check _dragSaveJustFired on the correct object (not `core`).
+    const coordinator = this;
     const originalUpdateBlock = core.updateBlock.bind(core);
     core.updateBlock = function(blockId, updates) {
       const result = originalUpdateBlock(blockId, updates);
@@ -1167,7 +1214,7 @@ class SystemBlocksMain {
           // triggers updateBlock which would wipe the redo stack.
           // Also skip if a drag-end explicit save just fired (prevents
           // duplicate undo states for block moves).
-          if (features.redoStack.length === 0 && !this._dragSaveJustFired) {
+          if (features.redoStack.length === 0 && !coordinator._dragSaveJustFired) {
             features.saveState();
           }
         }, 250);
@@ -1200,12 +1247,11 @@ class SystemBlocksMain {
         const group = svg.querySelector(`g[data-block-id="${block.id}"]`);
         if (!group) return;
 
-        // Filter by status
+        // Filter by status — matches the 5 canonical statuses (case-insensitive)
         let statusMatch = true;
-        if (activeFilter === 'placeholder') {
-          statusMatch = (block.status || 'placeholder') === 'placeholder';
-        } else if (activeFilter === 'implemented') {
-          statusMatch = block.status === 'implemented';
+        if (activeFilter !== 'all') {
+          const blockStatus = (block.status || 'Placeholder').toLowerCase();
+          statusMatch = blockStatus === activeFilter.toLowerCase();
         }
 
         // Filter by search text (match name, type, or status)
@@ -1229,9 +1275,9 @@ class SystemBlocksMain {
     // Filter button handlers
     const setActiveFilter = (filter, btn) => {
       activeFilter = filter;
-      [filterAll, filterPlaceholder, filterImplemented].forEach(b => {
-        if (b) b.classList.remove('active');
-      });
+      // Deactivate all filter buttons, then activate the chosen one
+      const allFilterBtns = document.querySelectorAll('.filter-btn');
+      allFilterBtns.forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
       applyFilters();
     };
@@ -1239,6 +1285,56 @@ class SystemBlocksMain {
     if (filterAll) filterAll.addEventListener('click', () => setActiveFilter('all', filterAll));
     if (filterPlaceholder) filterPlaceholder.addEventListener('click', () => setActiveFilter('placeholder', filterPlaceholder));
     if (filterImplemented) filterImplemented.addEventListener('click', () => setActiveFilter('implemented', filterImplemented));
+
+    // Additional status filter buttons (#43) — wire any extra filter
+    // buttons that match [data-filter-status] in the HTML.
+    document.querySelectorAll('[data-filter-status]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const status = btn.getAttribute('data-filter-status');
+        setActiveFilter(status, btn);
+      });
+    });
+  }
+
+  // =========================================================================
+  // CONNECTION CONTROL SYNC
+  // =========================================================================
+  /**
+   * Wire the ribbon connection-type and arrow-direction <select> elements
+   * so that changing them while a connection is selected updates that
+   * connection in-place.
+   */
+  setupConnectionControlSync(core, renderer) {
+    const typeSelect = document.getElementById('connection-type-select');
+    const dirSelect = document.getElementById('arrow-direction-select');
+
+    if (typeSelect) {
+      typeSelect.addEventListener('change', () => {
+        const connId = this._selectedConnection;
+        if (!connId) return;
+        core.updateConnection(connId, { type: typeSelect.value });
+        const conn = core.diagram.connections.find(c => c.id === connId);
+        if (conn) {
+          renderer.renderConnection(conn);
+          renderer.highlightConnection(connId, true);
+        }
+        if (window.advancedFeatures) window.advancedFeatures.saveState();
+      });
+    }
+
+    if (dirSelect) {
+      dirSelect.addEventListener('change', () => {
+        const connId = this._selectedConnection;
+        if (!connId) return;
+        core.updateConnection(connId, { arrowDirection: dirSelect.value });
+        const conn = core.diagram.connections.find(c => c.id === connId);
+        if (conn) {
+          renderer.renderConnection(conn);
+          renderer.highlightConnection(connId, true);
+        }
+        if (window.advancedFeatures) window.advancedFeatures.saveState();
+      });
+    }
   }
 
   // =========================================================================

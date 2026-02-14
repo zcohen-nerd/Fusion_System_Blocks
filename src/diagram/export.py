@@ -30,6 +30,78 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 
+def _build_executive_summary(diagram: dict[str, Any]) -> dict[str, Any]:
+    """Compute high-level metrics for executive-style report sections.
+
+    Returns a dict with:
+        blocks, connections, status_counts, completion_pct,
+        cad_linked_count, cad_linked_pct, protocol_counts,
+        orphan_count, hierarchy_info, interface_count
+    """
+    blocks = diagram.get("blocks", [])
+    connections = diagram.get("connections", [])
+
+    # Status breakdown
+    status_counts: dict[str, int] = {}
+    for b in blocks:
+        s = b.get("status", "Placeholder")
+        status_counts[s] = status_counts.get(s, 0) + 1
+
+    # Completion %: verified + implemented are "done"
+    done_statuses = {"Verified", "Implemented"}
+    done = sum(c for s, c in status_counts.items() if s in done_statuses)
+    total = len(blocks)
+    completion_pct = (done / total * 100) if total else 0.0
+
+    # CAD link coverage
+    cad_linked = sum(1 for b in blocks if b.get("links"))
+    cad_pct = (cad_linked / total * 100) if total else 0.0
+
+    # Interface count
+    intf_count = sum(len(b.get("interfaces", [])) for b in blocks)
+
+    # Protocol / kind distribution on connections
+    protocol_counts: dict[str, int] = {}
+    for conn in connections:
+        p = conn.get("kind", conn.get("type", "data"))
+        protocol_counts[p] = protocol_counts.get(p, 0) + 1
+
+    # Orphan blocks (no connections at all)
+    connected_ids: set[str] = set()
+    for conn in connections:
+        fr = conn.get("from")
+        to = conn.get("to")
+        if isinstance(fr, dict):
+            connected_ids.add(fr.get("blockId", ""))
+        elif isinstance(conn.get("fromBlock"), str):
+            connected_ids.add(conn["fromBlock"])
+        if isinstance(to, dict):
+            connected_ids.add(to.get("blockId", ""))
+        elif isinstance(conn.get("toBlock"), str):
+            connected_ids.add(conn["toBlock"])
+    orphan_count = sum(1 for b in blocks if b.get("id") not in connected_ids)
+
+    # Hierarchy info
+    children = [b for b in blocks if b.get("childDiagram") or b.get("children")]
+    hierarchy_depth = 0
+    if diagram.get("parentId"):
+        hierarchy_depth = 1  # at least one level deep
+
+    return {
+        "block_count": total,
+        "connection_count": len(connections),
+        "interface_count": intf_count,
+        "status_counts": status_counts,
+        "completion_pct": completion_pct,
+        "cad_linked_count": cad_linked,
+        "cad_linked_pct": cad_pct,
+        "protocol_counts": protocol_counts,
+        "orphan_count": orphan_count,
+        "child_diagram_count": len(children),
+        "hierarchy_depth": hierarchy_depth,
+    }
+
+
 def _esc(text: str) -> str:
     """Escape HTML-special characters for safe embedding."""
     return (
@@ -85,6 +157,8 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
   .status-in-work {{color:#ef6c00;font-weight:600}}
   .status-planned {{color:#6a1b9a;font-weight:600}}
   .status-placeholder {{color:#888}}
+  .progress-bar {{display:inline-block;width:120px;height:14px;background:#eee;border-radius:7px;overflow:hidden;vertical-align:middle}}
+  .progress-fill {{display:block;height:100%;background:var(--accent);border-radius:7px}}
   ul {{list-style:none;padding-left:0}}
   ul li::before {{content:'\25cf  ';color:var(--accent)}}
   footer {{margin-top:3rem;font-size:.8rem;color:#999;border-top:1px solid var(--border);padding-top:.5rem}}
@@ -95,11 +169,18 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
 <h1>{title}</h1>
 <p>Generated: {timestamp}</p>
 
-<h2>Summary</h2>
+<h2>Executive Summary</h2>
 <table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>
 <tr><td>Total Blocks</td><td>{block_count}</td></tr>
 <tr><td>Total Connections</td><td>{connection_count}</td></tr>
+<tr><td>Total Interfaces</td><td>{interface_count}</td></tr>
+<tr><td>Completion</td><td><span class="progress-bar"><span class="progress-fill" style="width:{completion_pct:.0f}%"></span></span> {completion_pct:.0f}%</td></tr>
+<tr><td>CAD-Linked Blocks</td><td>{cad_linked_count} / {block_count} ({cad_linked_pct:.0f}%)</td></tr>
+<tr><td>Orphan Blocks</td><td>{orphan_count}</td></tr>
+<tr><td>Child Diagrams</td><td>{child_diagram_count}</td></tr>
 </tbody></table>
+
+{protocol_html}
 
 <h2>Status Breakdown</h2>
 <table><thead><tr><th>Status</th><th>Count</th></tr></thead><tbody>
@@ -142,22 +223,39 @@ def generate_markdown_report(diagram: dict[str, Any]) -> str:
     Returns:
         Markdown-formatted report string
     """
+    diagram = _normalize_connections(diagram)
     from .rules import find_block_by_id, run_all_rule_checks
 
     report = []
+    es = _build_executive_summary(diagram)
 
     # Header
     report.append("# System Blocks Report")
+    report.append(f"*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*")
     report.append("")
 
-    # Summary
+    # Executive summary
     blocks = diagram.get("blocks", [])
     connections = diagram.get("connections", [])
 
-    report.append("## Summary")
-    report.append(f"- **Total Blocks:** {len(blocks)}")
-    report.append(f"- **Total Connections:** {len(connections)}")
+    report.append("## Executive Summary")
     report.append("")
+    report.append("| Metric | Value |")
+    report.append("|--------|-------|")
+    report.append(f"| Total Blocks | {es['block_count']} |")
+    report.append(f"| Total Connections | {es['connection_count']} |")
+    report.append(f"| Total Interfaces | {es['interface_count']} |")
+    report.append(f"| Completion | {es['completion_pct']:.0f}% (Verified + Implemented) |")
+    report.append(f"| CAD-Linked Blocks | {es['cad_linked_count']} / {es['block_count']} ({es['cad_linked_pct']:.0f}%) |")
+    report.append(f"| Orphan Blocks | {es['orphan_count']} |")
+    report.append(f"| Child Diagrams | {es['child_diagram_count']} |")
+    report.append("")
+
+    if es["protocol_counts"]:
+        report.append("### Connection Protocols")
+        for proto, cnt in sorted(es["protocol_counts"].items()):
+            report.append(f"- **{proto}:** {cnt}")
+        report.append("")
 
     # Check for empty diagram
     if not blocks:
@@ -165,10 +263,7 @@ def generate_markdown_report(diagram: dict[str, Any]) -> str:
         report.append("")
 
     # Status breakdown
-    status_counts = {}
-    for block in blocks:
-        status = block.get("status", "Placeholder")
-        status_counts[status] = status_counts.get(status, 0) + 1
+    status_counts = es["status_counts"]
 
     if status_counts:
         report.append("### Status Breakdown")
@@ -308,12 +403,14 @@ def generate_html_report(diagram: dict[str, Any]) -> str:
     Returns:
         A complete HTML document as a string.
     """
+    diagram = _normalize_connections(diagram)
     from .cad import generate_living_bom
     from .rules import find_block_by_id, run_all_rule_checks
 
     blocks = diagram.get("blocks", [])
     connections = diagram.get("connections", [])
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    es = _build_executive_summary(diagram)
 
     # Status breakdown
     status_counts: dict[str, int] = {}
@@ -403,11 +500,26 @@ def generate_html_report(diagram: dict[str, Any]) -> str:
             f"</strong></td></tr></tfoot></table>"
         )
 
+    # Protocol distribution HTML
+    protocol_html = ""
+    if es["protocol_counts"]:
+        protocol_html = "<h3>Connection Protocols</h3><ul>"
+        for proto, cnt in sorted(es["protocol_counts"].items()):
+            protocol_html += f"<li><strong>{_esc(proto)}:</strong> {cnt}</li>"
+        protocol_html += "</ul>"
+
     html = _HTML_TEMPLATE.format(
         title="System Blocks Report",
         timestamp=timestamp,
         block_count=len(blocks),
         connection_count=len(connections),
+        interface_count=es["interface_count"],
+        completion_pct=es["completion_pct"],
+        cad_linked_count=es["cad_linked_count"],
+        cad_linked_pct=es["cad_linked_pct"],
+        orphan_count=es["orphan_count"],
+        child_diagram_count=es["child_diagram_count"],
+        protocol_html=protocol_html,
         status_rows=status_rows or "<tr><td colspan='2'>No blocks</td></tr>",
         block_rows=block_rows or "<tr><td colspan='6'>No blocks</td></tr>",
         intf_rows=intf_rows or "<tr><td colspan='4'>No interfaces</td></tr>",
@@ -559,6 +671,7 @@ def generate_connection_matrix_csv(diagram: dict[str, Any]) -> str:
     Returns:
         CSV-formatted string.
     """
+    diagram = _normalize_connections(diagram)
     blocks = diagram.get("blocks", [])
     connections = diagram.get("connections", [])
 
@@ -594,6 +707,7 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
     Returns:
         SVG markup string.
     """
+    diagram = _normalize_connections(diagram)
     blocks = diagram.get("blocks", [])
     connections = diagram.get("connections", [])
 
@@ -959,6 +1073,7 @@ def generate_pdf_report(
     Returns:
         Raw PDF bytes ready to write to a file.
     """
+    diagram = _normalize_connections(diagram)
     from .rules import find_block_by_id, run_all_rule_checks
 
     pw, ph = _PDF_PAGE_SIZES.get(page_size.lower(), _PDF_PAGE_SIZES["letter"])
@@ -1370,6 +1485,7 @@ def pin_map_csv(diagram: dict[str, Any]) -> str:
     Returns:
         CSV-formatted string
     """
+    diagram = _normalize_connections(diagram)
     from .core import find_block_by_id
 
     output = io.StringIO()
@@ -1485,6 +1601,42 @@ def generate_pin_map_header(diagram: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _normalize_connections(diagram: dict[str, Any]) -> dict[str, Any]:
+    """Normalise connection data so both JS and Python formats work.
+
+    The JavaScript editor stores connections as
+    ``{fromBlock, toBlock, type}`` while the Python generators expect
+    ``{from: {blockId}, to: {blockId}, kind}``.  This helper copies
+    the diagram and converts if necessary so every generator can rely
+    on the canonical ``from/to`` nested format.
+    """
+    conns = diagram.get("connections", [])
+    if not conns:
+        return diagram
+
+    # Fast check — if the first connection already has "from", skip
+    sample = conns[0]
+    if isinstance(sample.get("from"), dict):
+        return diagram
+
+    # Need to convert — work on a shallow copy of the diagram
+    normalised = {**diagram}
+    new_conns = []
+    for conn in conns:
+        c = dict(conn)
+        # Convert fromBlock/toBlock to from.blockId/to.blockId
+        if "fromBlock" in c and not isinstance(c.get("from"), dict):
+            c["from"] = {"blockId": c["fromBlock"]}
+        if "toBlock" in c and not isinstance(c.get("to"), dict):
+            c["to"] = {"blockId": c["toBlock"]}
+        # Map 'type' to 'kind' (JS uses 'type', Python uses 'kind')
+        if "kind" not in c and "type" in c:
+            c["kind"] = c["type"]
+        new_conns.append(c)
+    normalised["connections"] = new_conns
+    return normalised
+
+
 def export_report_files(
     diagram: dict[str, Any],
     output_dir: str | None = None,
@@ -1509,6 +1661,9 @@ def export_report_files(
     """
     if output_dir is None:
         output_dir = "exports"
+
+    # Normalise JS-style connections to the Python-expected format
+    diagram = _normalize_connections(diagram)
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)

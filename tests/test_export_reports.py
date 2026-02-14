@@ -93,7 +93,7 @@ class TestExportFunctions:
 
         # Check report structure
         assert "# System Blocks Report" in report
-        assert "## Summary" in report
+        assert "## Executive Summary" in report
         assert "## Block Details" in report
         assert "## Connection Details" in report
         assert "## Interface Details" in report
@@ -203,7 +203,7 @@ class TestExportFunctions:
         report = diagram_data.generate_markdown_report(sample_diagram)
 
         # Should include rule check results
-        assert "## Summary" in report
+        assert "## Executive Summary" in report
         # Should include the empty block
         assert "Empty Block" in report
 
@@ -214,7 +214,7 @@ class TestExportFunctions:
         # Check all major sections exist
         sections = [
             "# System Blocks Report",
-            "## Summary",
+            "## Executive Summary",
             "## Block Details",
             "## Connection Details",
             "## Interface Details",

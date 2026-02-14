@@ -23,20 +23,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - mypy type checking on `fsb_core/`
   - pytest on Python 3.9, 3.10, 3.11, and 3.12 with coverage
   - Codecov upload and test report integration
-- **10-Format Export Pipeline with Profiles:**
+- **11-Format Export Pipeline with Profiles:**
   - Self-contained HTML report with embedded CSS (printable, shareable)
   - BOM export in CSV and JSON with cost roll-ups and supplier data
   - Assembly sequence in Markdown and JSON with dependency-ordered steps
   - Block × block connection adjacency matrix (CSV)
   - SVG diagram snapshot for design reviews and documentation
-  - Configurable export profiles: `quick` (3 files), `standard` (9 files), `full` (10 files, default)
+  - **Configurable export profiles: `quick` (3 files), `standard` (9 files), `full` (11 files, default)**
   - Entry-point handler accepts optional `profile` parameter from the bridge
 - **Requirements & Verification Engine (Milestone 18 – Tasks 1 & 2):**
   - `fsb_core/models.py` – `ComparisonOperator` enum, `Requirement` dataclass with `check()` method, `Snapshot`, `ConnectionChange`, `DiffResult` dataclasses, `block_fingerprint()` helper
   - `Graph` dataclass now includes `requirements: list[Requirement]` field
   - `fsb_core/requirements.py` – `RequirementResult` dataclass, `aggregate_attribute()`, `validate_requirements()`
   - `fsb_core/serialization.py` – Requirements round-trip via `_requirement_to_dict` / `_parse_requirement`
-- **New Tests (350 additional tests, total: 557 across 22 files):**
+- **Version Control & Diffing Engine (Milestone 18 – Task 3):**
+  - `fsb_core/version_control.py` – `create_snapshot()`, `diff_graphs()`, `restore_snapshot()`, `SnapshotStore`
+  - `tests/test_version_control.py` – 31 tests for snapshot creation, diffing, and restore
+- **Fusion Adapter Integration (Milestone 18 – Task 4):**
+  - `BridgeAction.VALIDATE_REQUIREMENTS` and snapshot bridge actions
+  - Bridge handlers in `Fusion_System_Blocks.py`
+  - JS mirror in `src/types/bridge-actions.js`
+- **Frontend Requirements & History Tabs (Milestone 18 – Task 5):**
+  - Requirements tab in palette with pass/fail table
+  - History tab with snapshot list, create, and compare
+  - Wired to bridge actions
+- **Orthogonal Connection Routing (Issue #28):**
+  - `src/core/orthogonal-router.js` – route-finding with obstacle avoidance
+  - Manhattan-style orthogonal paths with waypoint editing
+  - User-draggable waypoints for manual route adjustment
+- **PDF Export (Issue #29):**
+  - `generate_pdf_report()` in `src/diagram/export.py`
+  - Block diagrams, connection tables, BOM summaries, and requirements results
+  - Added to `full` export profile (now 11 files)
+- **Canvas Minimap (Issue #27):**
+  - `src/ui/minimap.js` – overview navigator for large diagrams
+  - Real-time viewport indicator with click-to-navigate
+- **Undo History Panel (Issue #30):**
+  - Undo history panel with labeled operations
+  - Click any entry to jump to that state
+- **Connection Context Menu (Issue #32):**
+  - Right-click connection to change type, direction, or delete
+- **UI/UX Improvements (Issues #21–#26):**
+  - Keyboard shortcut help dialog (?) (#21)
+  - Block-to-block smart alignment snapping (#22)
+  - Loading spinner for async operations (#23)
+  - Crash recovery via periodic auto-backup (#24)
+  - Accessibility: keyboard nav, screen reader, high-contrast (#25)
+  - Schema versioning and migration (SCHEMA_VERSION = "1.0") (#26)
+- **Block Shapes (Milestone 11.5):**
+  - 10 professional shapes: rectangle, circle, diamond, hexagon, parallelogram, oval, trapezoid, cylinder, cloud, star
+  - Shape selector in block creation dialog and context menu
+  - Shape-aware status halos and SVG rendering
+- **New Tests (398 additional tests, total: 605 across 23 files):**
   - `test_delta.py` – Delta serialization compute/apply/trivial-patch tests
   - `test_adapter.py` – FusionAdapter translation layer
   - `test_cad.py` – CAD linking and component operations
@@ -47,6 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `test_property_based.py` – Hypothesis property-based / fuzz tests
   - `test_serialization.py` – Serialization round-trip and format conversion
   - `test_requirements.py` – Requirements engine: ComparisonOperator, Requirement, Snapshot, DiffResult, block_fingerprint, aggregate_attribute, validate_requirements, serialization round-trip (39 tests)
+  - `test_version_control.py` – Version control: snapshot creation, graph diffing, restore, SnapshotStore (31 tests)
 - **Block Interaction Features:**
   - Double-click inline rename with foreignObject HTML input
   - Right-click context menu with Type/Status submenus, Connect to, Delete, Add Block
@@ -65,12 +104,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `bridge_actions.py` – BridgeAction / BridgeEvent enums (shared constants)
   - `delta.py` – compute_patch / apply_patch / is_trivial_patch
   - `requirements.py` – Requirements validation engine (aggregate_attribute, validate_requirements)
+  - `version_control.py` – Snapshot creation, graph diffing, restore, SnapshotStore
 - **Fusion Adapter Modules (`fusion_addin/`):**
   - `adapter.py` – FusionAdapter class for core ↔ Fusion translation
   - `selection.py` – SelectionHandler for Fusion selection workflows
   - `document.py` – DocumentManager for Fusion document operations
   - `logging_util.py` – Production logging with session IDs and environment info
-  - `diagnostics.py` – DiagnosticsRunner with 6 self-test diagnostics
+  - `diagnostics.py` – DiagnosticsRunner with 32 self-test diagnostics
 - **"Run Diagnostics" Command:**
   - UI command in Add-Ins panel for self-testing
   - Tests environment, core library, and Fusion write access

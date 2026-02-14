@@ -70,6 +70,103 @@ class ToolbarManager {
 
     this.initializeToolbar();
     this.setupKeyboardShortcuts();
+    this._initTwoTierTooltips();
+  }
+
+  /**
+   * Two-tier tooltip descriptions for ribbon buttons.
+   * Key: button element ID, Value: { title, detail, shortcut }
+   */
+  static TOOLTIP_DATA = {
+    'btn-new':             { title: 'New Diagram', detail: 'Create a new empty system block diagram.', shortcut: 'Ctrl+N' },
+    'btn-save':            { title: 'Save', detail: 'Save the current diagram to the active Fusion 360 document.', shortcut: 'Ctrl+S' },
+    'btn-save-as':         { title: 'Save As', detail: 'Save a copy of the diagram with a new name.', shortcut: 'Ctrl+Shift+S' },
+    'btn-load':            { title: 'Open', detail: 'Open a previously saved diagram from the active document.', shortcut: 'Ctrl+O' },
+    'btn-open-named':      { title: 'Open Named', detail: 'Open a specific named diagram from the document.', shortcut: 'Ctrl+Shift+O' },
+    'btn-export-report':   { title: 'Export', detail: 'Export the diagram as reports (Markdown, HTML, PDF, CSV, SVG, BOM, etc.).' },
+    'btn-import':          { title: 'Import', detail: 'Import a diagram from Mermaid flowchart syntax or CSV data.' },
+    'btn-undo':            { title: 'Undo', detail: 'Undo the last action. View full history with the History button.', shortcut: 'Ctrl+Z' },
+    'btn-redo':            { title: 'Redo', detail: 'Redo the last undone action.', shortcut: 'Ctrl+Y' },
+    'btn-history':         { title: 'History', detail: 'Toggle the undo/redo history panel showing all changes with timestamps.' },
+    'btn-add-block-ribbon':{ title: 'Add Block', detail: 'Add a new system block to the diagram. Choose type from the dropdown.' },
+    'btn-connect':         { title: 'Connect', detail: 'Start connection mode: click a source block, then a target block to create a connection.' },
+    'btn-add-text':        { title: 'Add Text', detail: 'Add a free text annotation to the canvas.' },
+    'btn-add-note':        { title: 'Add Note', detail: 'Add a sticky note annotation with a coloured background.' },
+    'btn-add-dimension':   { title: 'Add Dimension', detail: 'Add a dimension line between two selected blocks showing distance.' },
+    'btn-add-callout':     { title: 'Add Callout', detail: 'Add a callout bubble with a leader line pointing to the selected block.' },
+    'btn-link-cad':        { title: 'Link to CAD', detail: 'Link the selected block to a Fusion 360 component for BOM and 3D integration.' },
+    'btn-check-rules':     { title: 'Check Rules', detail: 'Run validation rules to check for errors and warnings in the diagram.' },
+    'btn-select-all':      { title: 'Select All', detail: 'Select all blocks in the diagram for batch operations.', shortcut: 'Ctrl+A' },
+    'btn-select-none':     { title: 'Clear Selection', detail: 'Deselect all blocks.', shortcut: 'Esc' },
+    'btn-auto-layout':     { title: 'Auto Layout', detail: 'Automatically arrange blocks in a clean hierarchical layout.' },
+    'btn-snap-grid':       { title: 'Toggle Grid', detail: 'Enable or disable snapping blocks to the grid.' },
+    'btn-minimap':         { title: 'Minimap', detail: 'Toggle the minimap overview in the corner of the canvas.' },
+    'btn-fit-view':        { title: 'Fit View', detail: 'Zoom and pan to fit all blocks in the viewport.', shortcut: 'Ctrl+0' },
+    'btn-zoom-in':         { title: 'Zoom In', detail: 'Zoom into the canvas.', shortcut: 'Ctrl+=' },
+    'btn-zoom-out':        { title: 'Zoom Out', detail: 'Zoom out of the canvas.', shortcut: 'Ctrl+−' },
+    'btn-go-up':           { title: 'Navigate Up', detail: 'Return to the parent diagram from a child block diagram.' },
+    'btn-drill-down':      { title: 'Drill Down', detail: 'Open the child diagram of the selected block.' },
+    'btn-create-child':    { title: 'Create Child', detail: 'Create a new child diagram inside the selected block.' },
+  };
+
+  /**
+   * Initialise two-tier tooltips on all ribbon buttons.
+   * Tier 1 (0.5 s): brief title. Tier 2 (2 s): expanded description.
+   */
+  _initTwoTierTooltips() {
+    // Create the tooltip element once
+    let tip = document.getElementById('fusion-tooltip');
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.id = 'fusion-tooltip';
+      tip.className = 'fusion-tooltip';
+      tip.style.display = 'none';
+      document.body.appendChild(tip);
+    }
+    this._tooltip = tip;
+    this._tipTimers = { tier1: null, tier2: null };
+
+    const show = (el, data, e) => {
+      clearTimeout(this._tipTimers.tier1);
+      clearTimeout(this._tipTimers.tier2);
+
+      this._tipTimers.tier1 = setTimeout(() => {
+        tip.innerHTML = `<div class="tt-title">${data.title}</div>`;
+        if (data.shortcut) {
+          tip.innerHTML += `<div class="tt-shortcut">${data.shortcut}</div>`;
+        }
+        // Position below the button
+        const rect = el.getBoundingClientRect();
+        tip.style.left = `${rect.left}px`;
+        tip.style.top = `${rect.bottom + 6}px`;
+        tip.style.display = '';
+      }, 500);
+
+      this._tipTimers.tier2 = setTimeout(() => {
+        if (tip.style.display === 'none') return;
+        let html = `<div class="tt-title">${data.title}</div>`;
+        html += `<div class="tt-detail">${data.detail}</div>`;
+        if (data.shortcut) html += `<div class="tt-shortcut">${data.shortcut}</div>`;
+        tip.innerHTML = html;
+      }, 2000);
+    };
+
+    const hide = () => {
+      clearTimeout(this._tipTimers.tier1);
+      clearTimeout(this._tipTimers.tier2);
+      tip.style.display = 'none';
+    };
+
+    // Attach to all buttons that have tooltip data
+    Object.entries(ToolbarManager.TOOLTIP_DATA).forEach(([elId, data]) => {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      // Suppress native title tooltip
+      el.removeAttribute('title');
+      el.addEventListener('mouseenter', (e) => show(el, data, e));
+      el.addEventListener('mouseleave', hide);
+      el.addEventListener('mousedown', hide);
+    });
   }
 
   initializeToolbar() {
@@ -85,7 +182,7 @@ class ToolbarManager {
         order: 1
       },
       'Edit': {
-        buttons: ['undo', 'redo', 'link-cad', 'link-ecad'],
+        buttons: ['undo', 'redo', 'link-cad', 'link-ecad', 'import', 'copy', 'paste', 'history'],
         order: 2
       },
       'Create': {
@@ -128,7 +225,7 @@ class ToolbarManager {
 
   getDefaultButtonState(buttonId) {
     // Buttons that are always enabled
-    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'routing-mode', 'connect', 'history'];
+    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'routing-mode', 'connect', 'history', 'import', 'copy', 'paste', 'text', 'note', 'dimension', 'callout'];
     if (alwaysEnabled.includes(buttonId)) return true;
 
     // Undo/redo: enabled when there are states to restore
@@ -172,6 +269,25 @@ class ToolbarManager {
                            'align-left', 'align-center', 'align-right', 'create-group'];
     if (needsSelection.includes(buttonId)) {
       return this.editor.selectedBlock !== null;
+    }
+
+    // Ungroup: enabled when selected blocks belong to a non-default group
+    if (buttonId === 'ungroup') {
+      if (!window.advancedFeatures) return false;
+      const selectedIds = window.advancedFeatures.hasSelection()
+        ? window.advancedFeatures.getSelectedBlocks()
+        : (this.editor.selectedBlock ? [this.editor.selectedBlock] : []);
+      if (selectedIds.length === 0) return false;
+      const selectedSet = new Set(selectedIds);
+      let found = false;
+      window.advancedFeatures.groups.forEach((group, groupId) => {
+        if (groupId === 'default' || found) return;
+        const blockSet = group.blocks instanceof Set ? group.blocks : new Set(group.blocks);
+        for (const id of selectedSet) {
+          if (blockSet.has(id)) { found = true; break; }
+        }
+      });
+      return found;
     }
 
     return false;
@@ -842,6 +958,75 @@ class ToolbarManager {
     });
   }
 
+  /**
+   * Show block type dropdown positioned at arbitrary screen coordinates.
+   * Used by context menu "Add Block" so the dropdown appears near the
+   * right-click location rather than near the ribbon button.
+   */
+  showBlockTypeDropdownAt(screenX, screenY, callback) {
+    // Remove any existing dropdown
+    const existing = document.getElementById('block-type-dropdown');
+    if (existing) existing.remove();
+
+    const dropdown = document.createElement('div');
+    dropdown.id = 'block-type-dropdown';
+    dropdown.style.cssText = `
+      position: fixed; left: ${screenX}px; top: ${screenY}px;
+      background: var(--fusion-panel-bg, #2b2b2b);
+      border: 1px solid var(--fusion-panel-border, #555);
+      border-radius: 6px; padding: 4px 0; z-index: 100000;
+      min-width: 170px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      color: var(--fusion-text-primary, #fff);
+    `;
+
+    const types = [
+      { name: 'Generic',    icon: '\u2B1C' },
+      { name: 'Electrical', icon: '\u26A1' },
+      { name: 'Mechanical', icon: '\u2699\uFE0F' },
+      { name: 'Software',   icon: '\uD83D\uDCBB' }
+    ];
+
+    types.forEach(t => {
+      const item = document.createElement('div');
+      item.textContent = t.icon + '  ' + t.name;
+      item.style.cssText = 'padding: 8px 16px; cursor: pointer; font-size: 13px;';
+      item.addEventListener('mouseenter', () =>
+        item.style.background = 'var(--fusion-hover-bg, #3a3a3a)');
+      item.addEventListener('mouseleave', () =>
+        item.style.background = '');
+      item.addEventListener('click', () => {
+        dropdown.remove();
+        cleanupListener();
+        callback(t.name);
+      });
+      dropdown.appendChild(item);
+    });
+
+    document.body.appendChild(dropdown);
+
+    // Clamp to viewport
+    requestAnimationFrame(() => {
+      const rect = dropdown.getBoundingClientRect();
+      if (rect.right > window.innerWidth) {
+        dropdown.style.left = (screenX - rect.width) + 'px';
+      }
+      if (rect.bottom > window.innerHeight) {
+        dropdown.style.top = (screenY - rect.height) + 'px';
+      }
+    });
+
+    // Close on outside click
+    const cleanupListener = () =>
+      document.removeEventListener('mousedown', outsideClick);
+    const outsideClick = (e) => {
+      if (!dropdown.contains(e.target)) {
+        dropdown.remove();
+        cleanupListener();
+      }
+    };
+    setTimeout(() => document.addEventListener('mousedown', outsideClick), 0);
+  }
+
   showBlockTypeDropdown(callback) {
     // Remove any existing dropdown
     const existing = document.getElementById('block-type-dropdown');
@@ -924,41 +1109,97 @@ class ToolbarManager {
   }
 
   handleAddText() {
-    logger.debug('Add text annotation — not yet implemented');
-    if (window.pythonInterface) {
-      window.pythonInterface.showNotification('Text annotations coming soon', 'info');
-    }
+    const text = prompt('Enter text annotation:');
+    if (!text) return;
+    this._addAnnotation('text', text);
   }
 
   handleAddNote() {
-    logger.debug('Add sticky note — not yet implemented');
-    if (window.pythonInterface) {
-      window.pythonInterface.showNotification('Sticky notes coming soon', 'info');
-    }
+    const text = prompt('Enter note text:');
+    if (!text) return;
+    this._addAnnotation('note', text);
   }
 
   handleAddDimension() {
-    logger.debug('Add dimension line — not yet implemented');
-    if (window.pythonInterface) {
-      window.pythonInterface.showNotification('Dimension lines coming soon', 'info');
+    // Dimension annotation: show measurement between two selected blocks
+    if (!window.advancedFeatures || window.advancedFeatures.getSelectionCount() < 2) {
+      if (window.pythonInterface) {
+        window.pythonInterface.showNotification('Select exactly 2 blocks to add a dimension line', 'warning');
+      }
+      return;
     }
+    const ids = window.advancedFeatures.getSelectedBlocks().slice(0, 2);
+    const blockA = this.editor.diagram.blocks.find(b => b.id === ids[0]);
+    const blockB = this.editor.diagram.blocks.find(b => b.id === ids[1]);
+    if (!blockA || !blockB) return;
+    const label = prompt('Dimension label (leave blank for auto):', '');
+    this._addAnnotation('dimension', label || '', { refBlockA: ids[0], refBlockB: ids[1] });
   }
 
   handleAddCallout() {
-    logger.debug('Add callout — not yet implemented');
+    const text = prompt('Enter callout text:');
+    if (!text) return;
+    // If a block is selected, point the callout at it
+    const targetBlockId = this.editor.selectedBlock || null;
+    this._addAnnotation('callout', text, { targetBlockId });
+  }
+
+  /**
+   * Create an annotation and add it to the diagram.
+   * @param {'text'|'note'|'dimension'|'callout'} type
+   * @param {string} text
+   * @param {Object} [extra] Additional annotation-specific data.
+   */
+  _addAnnotation(type, text, extra = {}) {
+    if (!this.editor || !this.editor.diagram) return;
+    if (!this.editor.diagram.annotations) {
+      this.editor.diagram.annotations = [];
+    }
+    // Place near viewport center
+    const svg = document.getElementById('svg-canvas');
+    let cx = 300, cy = 200;
+    if (svg) {
+      const vb = svg.viewBox.baseVal;
+      cx = vb.x + vb.width / 2;
+      cy = vb.y + vb.height / 2;
+    }
+    const annotation = {
+      id: 'ann_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+      type,
+      text,
+      x: cx - 60,
+      y: cy - 20,
+      width: type === 'note' ? 140 : 120,
+      height: type === 'note' ? 80 : 30,
+      ...extra,
+    };
+    this.editor.diagram.annotations.push(annotation);
+    this.editor._markDirty();
+    // Render the new annotation
+    if (this.renderer && typeof this.renderer.renderAnnotation === 'function') {
+      this.renderer.renderAnnotation(annotation);
+    }
     if (window.pythonInterface) {
-      window.pythonInterface.showNotification('Callouts coming soon', 'info');
+      const labels = { text: 'Text', note: 'Note', dimension: 'Dimension', callout: 'Callout' };
+      window.pythonInterface.showNotification(`${labels[type] || 'Annotation'} added`, 'success');
     }
   }
 
   handleSelectAll() {
-    // Select all blocks
-    this.editor.diagram.blocks.forEach(block => {
-      if (window.advancedFeatures) {
+    // Select all blocks — add to multi-selection first, then re-render,
+    // then re-apply multi-selection highlights so they are not lost.
+    if (window.advancedFeatures) {
+      this.editor.diagram.blocks.forEach(block => {
         window.advancedFeatures.addToSelection(block.id);
-      }
-    });
+      });
+    }
     this.renderer.updateAllBlocks(this.editor.diagram);
+    // Re-apply highlights after the full re-render
+    if (window.advancedFeatures) {
+      window.advancedFeatures.selectedBlocks.forEach(blockId => {
+        this.renderer.highlightBlock(blockId, true);
+      });
+    }
   }
 
   handleClearSelection() {
@@ -1201,12 +1442,23 @@ class ToolbarManager {
       select.value = type;
       select.dispatchEvent(new Event('change'));
     }
+    // Also update the currently-selected connection in-place (#35)
+    if (window.SystemBlocksMain && window.SystemBlocksMain._selectedConnection) {
+      const connId = window.SystemBlocksMain._selectedConnection;
+      this.editor.updateConnection(connId, { type: type });
+      const conn = this.editor.diagram.connections.find(c => c.id === connId);
+      if (conn) this.renderer.renderConnection(conn);
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
+    }
   }
 
   handleImport() {
-    const overlay = document.getElementById('import-dialog');
-    if (overlay) {
-      overlay.style.display = 'flex';
+    const dialog = document.getElementById('import-dialog');
+    const overlay = document.getElementById('dialog-overlay');
+    if (dialog) {
+      dialog.style.display = 'block';
+      // Also show the backdrop overlay
+      if (overlay) overlay.style.display = 'block';
     } else {
       logger.warn('Import dialog element not found');
     }
@@ -1217,12 +1469,10 @@ class ToolbarManager {
       if (window.pythonInterface) {
         window.pythonInterface.checkRules()
           .catch(error => {
+            // checkRules() already shows a notification for the real error,
+            // so only log here to avoid overwriting it with a misleading
+            // "bridge not connected" message.
             logger.error('Check rules failed:', error);
-            // Show inline fallback so the user sees feedback
-            window.pythonInterface.showNotification(
-              'Check rules failed — ensure the Python bridge is connected',
-              'error'
-            );
           });
       } else {
         logger.error('Check rules failed: Python interface not available');
@@ -1241,12 +1491,26 @@ class ToolbarManager {
       return;
     }
     const entry = features._hierarchyStack.pop();
+
+    // Persist the current child diagram back into the parent block's
+    // childDiagram property so edits are not lost.
+    const parentDiagram = entry.diagram;
+    const childDiagram = JSON.parse(JSON.stringify(this.editor.diagram));
+    const parentBlockId = (childDiagram.metadata && childDiagram.metadata.parentBlockId) || null;
+    if (parentBlockId) {
+      const parentBlock = parentDiagram.blocks.find(b => b.id === parentBlockId);
+      if (parentBlock) {
+        parentBlock.childDiagram = childDiagram;
+      }
+    }
+
     // Restore parent diagram
-    this.editor.diagram = entry.diagram;
+    this.editor.diagram = parentDiagram;
     this.editor.clearSelection();
     this.renderer.updateAllBlocks(this.editor.diagram);
     this._updateBreadcrumb();
     this.updateButtonStates();
+    if (features) features.saveState();
     logger.info('Navigated up to', entry.name || 'Root');
   }
 
@@ -1404,6 +1668,15 @@ class ToolbarManager {
     const btn = document.getElementById('btn-snap-grid');
     if (btn) {
       btn.classList.toggle('active', this.editor.snapToGridEnabled);
+      btn.title = this.editor.snapToGridEnabled
+        ? 'Snap to Grid: ON (click to disable)'
+        : 'Snap to Grid: OFF (click to enable)';
+    }
+    if (window.pythonInterface) {
+      window.pythonInterface.showNotification(
+        'Snap to grid: ' + (this.editor.snapToGridEnabled ? 'ON' : 'OFF'),
+        'info'
+      );
     }
     logger.info('Snap to grid:', this.editor.snapToGridEnabled ? 'enabled' : 'disabled');
   }

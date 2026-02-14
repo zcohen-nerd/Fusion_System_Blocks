@@ -685,3 +685,35 @@
     border-color: #ffffff;
   }
 }
+
+/* === TWO-TIER TOOLTIP === */
+.fusion-tooltip {
+  position: fixed;
+  z-index: 20000;
+  pointer-events: none;
+  font-family: 'Segoe UI', sans-serif;
+  background: #3c3c3c;
+  border: 1px solid #555;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  padding: 6px 10px;
+  color: #f0f0f0;
+  font-size: 12px;
+  max-width: 260px;
+  transition: opacity 0.15s ease;
+}
+.fusion-tooltip .tt-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.fusion-tooltip .tt-detail {
+  font-size: 11px;
+  color: #bbb;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.fusion-tooltip .tt-shortcut {
+  font-size: 10px;
+  color: #90caf9;
+  margin-top: 3px;
+}

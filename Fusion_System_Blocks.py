@@ -1257,8 +1257,31 @@ class CADSelectionHandler(adsk.core.CommandCreatedEventHandler):
             cmd.execute.add(execute_handler)
             _handlers.append(execute_handler)
 
+            # Destroy handler fires on Cancel/Escape AND after Execute,
+            # guaranteeing palette is restored regardless of how the
+            # command ends.
+            destroy_handler = CADSelectionDestroyHandler()
+            cmd.destroy.add(destroy_handler)
+            _handlers.append(destroy_handler)
+
         except Exception as e:
             notify_error(f"CAD selection setup failed: {str(e)}")
+
+
+class CADSelectionDestroyHandler(adsk.core.CommandEventHandler):
+    """Restore the palette when the CAD selection command ends.
+
+    This fires on *every* termination path — Execute, Cancel (Escape),
+    and error — so the palette is never left hidden.
+    """
+
+    def notify(self, args):
+        try:
+            palette = UI.palettes.itemById("SystemBlocksPalette")
+            if palette and not palette.isVisible:
+                palette.isVisible = True
+        except Exception:
+            pass  # best-effort palette restore
 
 
 class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):

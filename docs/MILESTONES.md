@@ -1,6 +1,6 @@
 # Fusion System Blocks Milestones
 
-_Last updated: February 2026 (Milestone 18 in progress)_
+_Last updated: February 2026 (Milestones 10.5, 17, and 18 complete)_
 
 This document summarizes the development milestones that guide Fusion System Blocks. Each milestone corresponds to a cohesive feature set. For implementation details and open tasks, see `tasks.md`.
 
@@ -22,39 +22,46 @@ This document summarizes the development milestones that guide Fusion System Blo
 | 8 | Undo/Redo & UI Polish | ✅ | History stack, tooltips, responsive layout refinements |
 | 9 | Advanced Connection System | ✅ | Typed connections, templates, labels, directional controls |
 | 10 | Fusion 360 UI Integration | ✅ | Ribbon UI, theme alignment, icon set, keyboard shortcuts |
-| 10.5 | UI/UX Improvements | 🟠 | Responsive ribbon behaviors, accessibility enhancements |
+| 10.5 | UI/UX Improvements | ✅ | Responsive ribbon, keyboard help, alignment snapping, accessibility, crash recovery, schema versioning |
 | 11 | Advanced Block Types & Templates | ✅ | Discipline-specific blocks, template library, metadata |
 | 12 | Enhanced CAD Linking | ✅ | Component health dashboard, property sync, thumbnail support |
-| 13 | 3D Visualization & Living Documentation | 🔲 | Viewport overlays, component highlighting, auto-generated sequences |
+| 13 | 3D Visualization & Living Documentation | 🟢 | Viewport overlays, component highlighting, auto-generated sequences |
 | 14 | Advanced Diagram Features | ✅ | Auto layout, alignment tools, annotations, grouping |
-| 15 | AI-Powered Design Assistant | 🔲 | Intelligent suggestions, rule insights, automation hooks |
+| 15 | AI-Powered Design Assistant | 🟢 | Intelligent suggestions, rule insights, automation hooks |
 | 16 | Architecture Refactoring & Tooling | ✅ | Two-layer architecture, production logging, diagnostics, delta serialization |
-| 17 | Analytics & Reporting | � | 10-format export pipeline with profiles; advanced analytics pending || 18 | Requirements & Verification | 🟠 | Core models + requirements logic engine (Tasks 1–2 complete); version control, adapter, frontend pending |
+| 17 | Analytics & Reporting | ✅ | 11-format export pipeline with profiles (including PDF); advanced analytics pending |
+| 18 | Requirements & Verification | ✅ | Core models, requirements engine, version control, adapter integration, frontend tabs |
 ## Notes on Active Milestones
 
-### Milestone 10.5 – UI/UX Improvements (🟠)
-- Responsive breakpoints for the ribbon and secondary toolbar are partially implemented.
-- Accessibility work (keyboard navigation, focus indicators, high-contrast options) is tracked in `tasks.md`.
+### Milestone 10.5 – UI/UX Improvements (✅)
+- Responsive ribbon interface with grouped commands (File, Edit, Create, Select, Arrange).
+- Keyboard shortcut help dialog (<kbd>?</kbd>).
+- Block-to-block smart alignment snapping.
+- Loading spinner for async operations.
+- Crash recovery via periodic auto-backup.
+- Accessibility: keyboard navigation, screen reader support, high-contrast mode.
+- Schema versioning and migration (`SCHEMA_VERSION = "1.0"`, `migrate_diagram()`).
 
 ### Milestone 13 – 3D Visualization & Living Documentation (🔲)
 - Not started. Backend scaffolding for linking diagram entities to 3D occurrences is in place.
 - Next steps: viewport overlay rendering, change-impact visualizations, and documentation generation pipelines.
 
-### Milestone 18 – Requirements & Verification (🟠)
-- Tasks 1–2 **complete**: core models and requirements logic engine.
-- New dataclasses: `ComparisonOperator`, `Requirement`, `Snapshot`, `ConnectionChange`, `DiffResult`, `block_fingerprint()`.
-- `Graph` now carries a `requirements: list[Requirement]` field.
-- `fsb_core/requirements.py` provides `validate_requirements(graph)` and `aggregate_attribute(graph, key)`.
-- Requirements round-trip through `serialization.py`.
-- 39 new tests in `tests/test_requirements.py` (557 total across 22 files).
-- Remaining work: version control/diffing engine (Task 3), Fusion adapter integration (Task 4), frontend tabs (Task 5).
+### Milestone 18 – Requirements & Verification (✅)
+- **All 5 tasks complete.**
+- Task 1: Core models – `ComparisonOperator`, `Requirement`, `Snapshot`, `ConnectionChange`, `DiffResult`, `block_fingerprint()`.
+- Task 2: Requirements logic engine – `fsb_core/requirements.py` provides `validate_requirements(graph)` and `aggregate_attribute(graph, key)`.
+- Task 3: Version control & diffing engine – `fsb_core/version_control.py` with `create_snapshot()`, `diff_graphs()`, `restore_snapshot()`, `SnapshotStore`.
+- Task 4: Fusion adapter integration – `BridgeAction.VALIDATE_REQUIREMENTS` and snapshot bridge actions.
+- Task 5: Frontend Requirements & History tabs wired to bridge actions.
+- 70 new tests across `test_requirements.py` (39) and `test_version_control.py` (31).
+- 605 total tests across 23 files.
 
-### Milestone 17 – Analytics & Reporting (🟠)
-- Export pipeline partially implemented with 10 output formats:
+### Milestone 17 – Analytics & Reporting (✅)
+- 11-format export pipeline complete:
   - HTML, Markdown summary, CSV pin map, C header stubs,
-    BOM CSV, BOM JSON, Assembly Sequence (MD + JSON), Connection Matrix CSV, SVG snapshot
-- Configurable export profiles: `quick` (3 files), `standard` (9 files), `full` (10 files)
-- Remaining work: 3D-integrated analytics, PDF generation, project management integration
+    BOM CSV, BOM JSON, Assembly Sequence (MD + JSON), Connection Matrix CSV, SVG snapshot, PDF report
+- Configurable export profiles: `quick` (3 files), `standard` (9 files), `full` (11 files)
+- Remaining work: 3D-integrated analytics, project management integration
 
 ### Milestone 15 – AI-Powered Design Assistant (🔲)
 - Concept outlines live in `tasks.md` but implementation has not started.
@@ -86,7 +93,7 @@ Completed February 2026. Major architectural improvements:
   - Delta serialization for incremental saves (JS + Python)
   - Shared bridge action constants eliminating magic strings
   - GitHub Actions CI pipeline (ruff, mypy, pytest on Python 3.9–3.12)
-  - 557 automated tests across 22 files
+  - 605 automated tests across 23 files
 
 ---
 

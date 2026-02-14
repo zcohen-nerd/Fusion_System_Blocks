@@ -572,6 +572,12 @@
   pointer-events: none;
 }
 
+/* Prevent text selection while lasso-dragging or interacting with SVG */
+#svg-canvas {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Focus ring for blocks */
 .block:focus,
 .block-group:focus-within .block {
@@ -998,6 +1004,16 @@
   filter: drop-shadow(0 0 4px rgba(6, 150, 215, 0.4));
 }
 
+/* Multi-selection / lasso highlight for SVG block groups */
+.block.highlighted rect,
+.block.highlighted ellipse,
+.block.highlighted polygon,
+.block.highlighted path {
+  stroke: var(--fusion-accent-orange, #FF6B35);
+  stroke-width: 3;
+  filter: drop-shadow(0 0 4px rgba(255, 107, 53, 0.4));
+}
+
 .empty-canvas-state {
   position: absolute;
   top: 50%;
@@ -1037,4 +1053,59 @@
   display: inline-flex;
   align-items: center;
   gap: var(--fusion-spacing-xs);
+}
+
+/* === ACCESSIBILITY === */
+
+/* Screen-reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus-visible outlines for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--fusion-accent-blue, #007acc);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+.ribbon-button:focus-visible,
+.ribbon-button-small:focus-visible,
+.sb-tab:focus-visible {
+  outline: 2px solid var(--fusion-accent-blue, #007acc);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
+/* High-contrast mode support */
+@media (prefers-contrast: more) {
+  :root {
+    --fusion-bg-primary: #000000;
+    --fusion-bg-secondary: #1a1a1a;
+    --fusion-text-primary: #ffffff;
+    --fusion-text-secondary: #f0f0f0;
+    --fusion-border-primary: #ffffff;
+    --fusion-border-secondary: #cccccc;
+    --fusion-accent-blue: #3399ff;
+  }
+
+  .block rect, .block ellipse, .block polygon, .block path {
+    stroke-width: 2.5 !important;
+  }
+
+  .ribbon-button, .ribbon-button-small {
+    border: 1px solid #ccc !important;
+  }
+
+  .connection-line {
+    stroke-width: 2.5 !important;
+  }
 }

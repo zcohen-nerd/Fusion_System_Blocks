@@ -26,8 +26,8 @@ covered exactly once. Estimated total time: **75–95 min**.
 | Step | Action | Expected Result | Pass |
 |------|--------|-----------------|------|
 | 2.1 | Find "Run Diagnostics" in Add-Ins panel | Button visible | [ ] |
-| 2.2 | Click "Run Diagnostics" | Message box shows 14/14 tests passed | [ ] |
-| 2.3 | Open log file (path shown in dialog) | Log contains all 14 diagnostic results with session ID | [ ] |
+| 2.2 | Click "Run Diagnostics" | Message box shows 32/32 tests passed | [ ] |
+| 2.3 | Open log file (path shown in dialog) | Log contains all 32 diagnostic results with session ID | [ ] |
 
 **Diagnostic tests verified**:
 environment, active document, core validation (valid + invalid),
@@ -452,21 +452,27 @@ dedicated phases above.
 | 32.8 | Click **Delete** | Connection is removed from the canvas | [ ] |
 | 32.9 | Click away from the open context menu | Menu dismisses; connection highlight clears | [ ] |
 
-## Phase 33: Schema Versioning & Migration (2 min)
+## Phase 33: Schema Versioning & Migration (5 min)
+
+### Prerequisites
+
+- A diagram with at least two blocks and one connection already exists.
+
+### Steps
 
 | Step | Action | Expected Result | Pass |
 |------|--------|-----------------|------|
-| 33.1 | Save a diagram → inspect persisted data | `schemaVersion: "1.0"` field present in saved data | [ ] |
-| 33.2 | Load a version 1.0 diagram | Data loads unchanged; no migration occurs | [ ] |
-| 33.3 | Load a pre-versioned diagram (no `schemaVersion` field) | Diagram loads successfully and migrates silently (adds `requirements` arrays) | [ ] |
-| 33.4 | Run validation on a diagram with invalid `schemaVersion` | Appropriate validation error reported | [ ] |
+| 33.1 | **Inspect saved data for schema version.** (1) Save the current diagram with **Save** (Ctrl+S). (2) In the Fusion 360 Text Commands panel click **Scripts → Show API Messages**. (3) In the ribbon click **Open** (Ctrl+O) to reload the diagram — watch the Text Commands output for the JSON payload. (4) Inside the JSON look for the key `"schemaVersion"`. | The saved data contains `"schemaVersion": "1.0"` at the top level of the JSON object. | [ ] |
+| 33.2 | **Load a valid v1.0 diagram.** (1) Using the same saved diagram from 33.1, close the palette and re-open it. (2) Click **Open** and load the diagram. (3) Verify the block count and connections match what was saved. | Diagram loads without errors; block count and connections are preserved; no "migration" or "upgrade" notification appears. | [ ] |
+| 33.3 | **Load a pre-versioned diagram (no schemaVersion).** (1) Using the Import button, paste the following minimal JSON and click Import: `{"blocks":[{"id":"b1","name":"Test","type":"Generic","status":"Placeholder","x":100,"y":100,"width":120,"height":80,"interfaces":[]}],"connections":[]}` — note this JSON has no `schemaVersion` field. (2) After import, save the diagram. (3) Re-open it and inspect the JSON in Text Commands. | Diagram imports and loads successfully. After save, the persisted JSON now contains `"schemaVersion": "1.0"` and a `"requirements"` array (added by silent migration). | [ ] |
+| 33.4 | **Validation reports invalid schema version.** (1) Using the Import button, paste: `{"schemaVersion":"99.0","blocks":[],"connections":[]}` and click Import. (2) Click **Check Rules** in the ribbon. | The rule check results include a warning or error indicating the schema version is unrecognised or unsupported. | [ ] |
 
 ## Quick Smoke Test
 
 Minimal 3-step validation for quick checks:
 
 1. [ ] Add-in loads without errors
-2. [ ] "Run Diagnostics" shows 14/14 passed
+2. [ ] "Run Diagnostics" shows 32/32 passed
 3. [ ] Can create, rename, connect, save, and load blocks
 
 ## Error Log Location

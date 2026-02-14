@@ -5,7 +5,7 @@ Fusion System Blocks is a Fusion 360 add-in that embeds system block diagrams di
 [![License: Community](https://img.shields.io/badge/License-Community-blueviolet.svg)](LICENSE)
 [![Fusion 360](https://img.shields.io/badge/Platform-Fusion%20360-orange.svg)](https://www.autodesk.com/products/fusion-360)
 [![CI](https://github.com/zcohen-nerd/Fusion_System_Blocks/actions/workflows/ci.yml/badge.svg)](https://github.com/zcohen-nerd/Fusion_System_Blocks/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Tests-557%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-605%20passing-brightgreen.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.9%E2%80%933.12-blue.svg)]()
 
 ---
@@ -39,15 +39,16 @@ The repository contains the full code base, tests, documentation, and deployment
 | 8 | Undo/redo & UI polish | Complete |
 | 9 | Advanced connection system | Complete |
 | 10 | Fusion 360 UI integration | Complete |
-| 10.5 | UI/UX improvements | Partially complete |
+| 10.5 | UI/UX improvements | Complete |
 | 11 | Advanced block types & templates | Complete |
+| 11.5 | Advanced block shapes | Complete |
 | 12 | Enhanced CAD linking | Complete |
 | 13 | 3D visualization & living documentation | Not started |
 | 14 | Advanced diagram features | Complete |
 | 15 | AI-powered assistant | Not started |
 | 16 | Architecture refactoring & tooling | Complete |
-| 17 | Analytics & reporting | Partially complete |
-| 18 | Requirements & verification | Partially complete |
+| 17 | Analytics & reporting | Complete |
+| 18 | Requirements & verification | Complete |
 
 A detailed breakdown of remaining work lives in `tasks.md`.
 
@@ -69,7 +70,7 @@ A detailed breakdown of remaining work lives in `tasks.md`.
 ### Reporting & Validation
 - Save/load diagrams inside Fusion 360 document attributes.
 - Delta serialization for incremental saves (JSON-Patch style diffs).
-- **10-format export pipeline** with configurable profiles (quick / standard / full):
+- **11-format export pipeline** with configurable profiles (quick / standard / full):
   - Markdown system report with rule-check results and block tables.
   - Self-contained HTML report styled for printing and sharing.
   - CSV pin map, C header with pin definitions.
@@ -77,21 +78,28 @@ A detailed breakdown of remaining work lives in `tasks.md`.
   - Assembly sequence in Markdown and JSON with dependency ordering.
   - Block × block connection adjacency matrix (CSV).
   - SVG diagram snapshot for embedding in design reviews.
+  - PDF report with block diagrams, connection tables, and BOM summaries.
 - Rule-checking engine for orphan detection, interface compatibility, and system status.
 - **Requirements & verification engine** with system-level budgets (mass, cost, power) and pass/fail evaluation against aggregated block attributes.
+- **Version control** with snapshot creation, graph diffing, and history restore.
 - Status dashboards with automatic progression based on linked data.
 
 ### Architecture & Reliability
 - Two-layer Python architecture: pure `fsb_core/` library with no Fusion dependencies, plus a thin `fusion_addin/` adapter layer.
 - Shared bridge action constants between Python (`BridgeAction`/`BridgeEvent` enums) and JavaScript.
 - Production logging with session IDs, environment info, and `@log_exceptions` decorator.
-- Built-in "Run Diagnostics" command with 6 self-tests.
-- 557 automated tests across 22 test files; CI runs on Python 3.9–3.12.
+- Built-in "Run Diagnostics" command with 32 self-tests.
+- 605 automated tests across 23 test files; CI runs on Python 3.9–3.12.
 
 ### User Experience
 - Fusion 360-style ribbon interface with responsive layout.
 - Professional icon set and theming aligned with Fusion UI guidelines.
 - Notification system, tooltips, and accessibility improvements.
+- Orthogonal connection routing with obstacle avoidance and waypoint editing.
+- Canvas minimap for large diagram navigation.
+- Keyboard shortcut help dialog, smart alignment snapping, and loading spinners.
+- Undo history panel, connection context menu, and crash recovery auto-backup.
+- 10 professional block shapes (rectangle, circle, diamond, hexagon, and more).
 
 ---
 
@@ -108,19 +116,27 @@ Fusion_System_Blocks/
 │   ├── graph_builder.py           #   Fluent API for constructing graphs
 │   ├── serialization.py           #   JSON serialization with legacy format support
 │   ├── bridge_actions.py          #   BridgeAction / BridgeEvent shared enums
-│   └── delta.py                   #   compute_patch / apply_patch (JSON-Patch style)
+│   ├── delta.py                   #   compute_patch / apply_patch (JSON-Patch style)
+│   ├── requirements.py            #   Requirements validation engine
+│   └── version_control.py         #   Snapshot creation, graph diffing, restore
 ├── fusion_addin/                  # Fusion 360 adapter layer
 │   ├── adapter.py                 #   FusionAdapter (core ↔ Fusion translation)
 │   ├── selection.py               #   SelectionHandler for Fusion selection workflows
 │   ├── document.py                #   DocumentManager for Fusion document operations
 │   ├── logging_util.py            #   Production logging with session IDs
-│   └── diagnostics.py             #   DiagnosticsRunner with 6 self-tests
+│   └── diagnostics.py             #   DiagnosticsRunner with 32 self-tests
 ├── src/                           # JavaScript frontend + Python data layer
 │   ├── diagram_data.py            #   Validation, rule checks, export logic
 │   ├── palette.html               #   Main HTML palette UI
 │   ├── main-coordinator.js        #   Application bootstrap
-│   ├── core/diagram-editor.js     #   CRUD, canvas, delta tracking
-│   ├── ui/                        #   Renderer, toolbar, palette tabs
+│   ├── core/
+│   │   ├── diagram-editor.js      #   CRUD, canvas, delta tracking
+│   │   └── orthogonal-router.js   #   Orthogonal connection routing with obstacle avoidance
+│   ├── ui/
+│   │   ├── diagram-renderer.js    #   SVG rendering, drag-and-drop
+│   │   ├── minimap.js             #   Canvas minimap / overview navigator
+│   │   ├── palette-tabs.js        #   Tab controller (Home, Diagram, Requirements, History, …)
+│   │   └── toolbar-manager.js     #   Toolbar state management
 │   ├── interface/python-bridge.js #   Python ↔ JS bridge (uses shared constants)
 │   ├── features/advanced-features.js
 │   ├── types/                     #   Block type libraries + bridge-actions.js
@@ -129,7 +145,7 @@ Fusion_System_Blocks/
 │   │   ├── logger.js
 │   │   └── delta-utils.js         #   JS delta utilities (computePatch, applyPatch)
 │   └── *.css                      #   Fusion theme, ribbon, and icon styles
-├── tests/                         # 605 pytest tests across 12 files
+├── tests/                         # 605 pytest tests across 23 files
 ├── docs/                          # Architecture decisions, test plans, milestones
 ├── scripts/                       # PowerShell build and deployment automation
 └── exports/                       # Distribution ZIPs
@@ -208,8 +224,8 @@ See `FUSION_DEPLOYMENT_GUIDE.md` for packaging instructions and troubleshooting 
 | **Load diagram** | **File → Load** to restore a previously saved diagram. |
 | **Link to CAD** | Select a block, click **Link to CAD**, then select a component in the viewport. |
 | **Run rule checks** | Click **Check Rules** to validate orphan blocks, interface compatibility, and more. |
-| **Export report** | **File → Export Report** generates up to 10 files in the `exports/` folder (profile-dependent). |
-| **Run diagnostics** | In the Add-Ins panel, click **Run Diagnostics** to verify add-in health (6 self-tests). |
+| **Export report** | **File → Export Report** generates up to 11 files in the `exports/` folder (profile-dependent). |
+| **Run diagnostics** | In the Add-Ins panel, click **Run Diagnostics** to verify add-in health (32 self-tests). |
 | **Navigate hierarchy** | Use **Drill Down** / **Go Up** buttons to move through nested sub-diagrams. |
 
 ### Delta Saves
@@ -224,7 +240,7 @@ The **Export Report** command supports three output profiles:
 | --- | --- |
 | **quick** | Markdown report, CSV pin map, C header (3 files) |
 | **standard** | Quick + HTML report, BOM (CSV & JSON), assembly sequence (Markdown & JSON), connection matrix (9 files) |
-| **full** (default) | Standard + SVG diagram snapshot (10 files) |
+| **full** (default) | Standard + SVG diagram snapshot + PDF report (11 files) |
 
 All files are written to the `exports/` folder. The profile can be passed programmatically via the bridge; the ribbon button uses the **full** profile by default.
 
@@ -237,7 +253,7 @@ All files are written to the `exports/` folder. The profile can be passed progra
 The test suite covers the core library, diagram data logic, adapter stubs, and property-based scenarios.
 
 ```bash
-# Run all 557 tests
+# Run all 605 tests
 pytest
 
 # Run with coverage report
@@ -247,7 +263,7 @@ pytest --cov=fsb_core --cov-report=term-missing
 pytest tests/test_delta.py -v
 ```
 
-**Test files (22 total):**
+**Test files (23 total):**
 
 | File | Scope |
 | --- | --- |
@@ -273,6 +289,7 @@ pytest tests/test_delta.py -v
 | `test_serialization.py` | Serialization round-trips |
 | `test_status_tracking.py` | Block status lifecycle |
 | `test_validation.py` | Diagram-level validation |
+| `test_version_control.py` | Version control snapshots and diffing |
 
 ### Continuous Integration
 
@@ -284,7 +301,7 @@ GitHub Actions runs on every push and pull request against `main`:
 
 ### Manual Testing in Fusion 360
 
-Use `docs/FUSION_MANUAL_TEST_PLAN.md` for a 30-minute verification run inside Fusion 360 (37 manual test steps across 8 phases). For comprehensive step-by-step procedures, see `docs/DETAILED_TESTING_DOCUMENTATION.md`.
+Use `docs/FUSION_MANUAL_TEST_PLAN.md` for a 75–95 minute verification run inside Fusion 360 (273 manual test steps across 33 phases). For comprehensive step-by-step procedures, see `docs/DETAILED_TESTING_DOCUMENTATION.md`.
 
 ---
 

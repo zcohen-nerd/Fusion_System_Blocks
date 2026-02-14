@@ -75,6 +75,7 @@ class DiagramEditorCore {
     
     this.diagram.blocks.push(block);
     this.diagram.metadata.modified = new Date().toISOString();
+    this._markDirty();
     return block;
   }
 
@@ -88,6 +89,7 @@ class DiagramEditorCore {
     );
     
     this.diagram.metadata.modified = new Date().toISOString();
+    this._markDirty();
   }
 
   addConnection(fromBlockId, toBlockId, connectionType = 'auto', arrowDirection = 'forward') {
@@ -114,6 +116,7 @@ class DiagramEditorCore {
 
     this.diagram.connections.push(connection);
     this.diagram.metadata.modified = new Date().toISOString();
+    this._markDirty();
     return connection;
   }
 
@@ -137,6 +140,7 @@ class DiagramEditorCore {
     if (block) {
       Object.assign(block, updates);
       this.diagram.metadata.modified = new Date().toISOString();
+      this._markDirty();
       return block;
     }
     return null;
@@ -395,6 +399,15 @@ class DiagramEditorCore {
     this._lastSavedSnapshot = typeof DeltaUtils !== 'undefined'
       ? DeltaUtils.deepClone(this.diagram)
       : JSON.parse(JSON.stringify(this.diagram));
+    this._dirty = false;
+  }
+
+  /**
+   * Mark the diagram as modified.  Called automatically by addBlock,
+   * removeBlock, updateBlock, etc.
+   */
+  _markDirty() {
+    this._dirty = true;
   }
 
   /**
@@ -417,7 +430,16 @@ class DiagramEditorCore {
    */
   hasUnsavedChanges() {
     var delta = this.getDelta();
-    return delta !== null && delta.length > 0;
+    if (delta !== null) {
+      return delta.length > 0;
+    }
+    // Fallback when DeltaUtils is unavailable: use simple dirty flag +
+    // check whether the diagram has any content (blocks/connections).
+    if (this._dirty !== undefined) {
+      return this._dirty;
+    }
+    // No snapshot and no dirty flag — assume unsaved if diagram has content
+    return this.diagram.blocks.length > 0;
   }
 
   importDiagram(jsonData) {
