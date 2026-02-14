@@ -1111,11 +1111,11 @@ def generate_pdf_report(
         pdf.set_font(f_regular, size)
         pdf.set_color(0.13, 0.13, 0.13)
         pdf.draw_text(margin, y, text)
-        return y + size + 3
+        return y + size + 5
 
     def _table_header(y: float, cols: list[tuple[str, float]]) -> float:
         """Draw a table header row and return the new y."""
-        row_h = 16
+        row_h = 18
         # Header background
         pdf.set_color(0, 0.47, 0.83)
         pdf.draw_rect(margin, y, usable_w, row_h, fill=True)
@@ -1124,14 +1124,14 @@ def generate_pdf_report(
         pdf.set_color(1, 1, 1)
         cx = margin + 4
         for label, col_w in cols:
-            pdf.draw_text(cx, y + 4, label)
+            pdf.draw_text(cx, y + 5, label)
             cx += col_w
         return y + row_h
 
     def _table_row(
         y: float, values: list[str], col_widths: list[float], *, alt: bool = False
     ) -> float:
-        row_h = 14
+        row_h = 16
         if alt:
             pdf.set_color(0.96, 0.96, 0.96)
             pdf.draw_rect(margin, y, usable_w, row_h, fill=True)
@@ -1139,7 +1139,8 @@ def generate_pdf_report(
         pdf.set_color(0.13, 0.13, 0.13)
         cx = margin + 4
         for val, cw in zip(values, col_widths):
-            pdf.draw_text(cx, y + 3, _pdf_truncate(val, int(cw / 4)))
+            # Conservative truncation: ~5pt per char avoids column bleeding
+            pdf.draw_text(cx, y + 4, _pdf_truncate(val, int(cw / 5)))
             cx += cw
         return y + row_h
 
@@ -1358,13 +1359,21 @@ def generate_pdf_report(
             pdf.set_line_width(1.5)
             pdf.draw_rect(bx, by, bw, bh, fill=False)
 
-            # Block name centred
+            # Block name centred — clamp font to fit within block width
             name = bl.get("name", "")
-            font_size = max(6, min(9, bw / max(len(name), 1) * 1.2))
+            # Target font: fit name inside block with 4pt padding each side
+            usable_bw = max(bw - 8, 4)
+            ideal_size = usable_bw / max(len(name), 1) / 0.52
+            font_size = max(5, min(8, ideal_size))
             pdf.set_font(f_regular, font_size)
             pdf.set_color(0.13, 0.13, 0.13)
-            # Approximate centre — Helvetica avg char width ≈ 0.5 * font_size
-            text_w = len(name) * font_size * 0.5
+            # Approximate centre — Helvetica avg char width ≈ 0.52 * font_size
+            text_w = len(name) * font_size * 0.52
+            # Truncate name if still wider than the block
+            if text_w > usable_bw and len(name) > 3:
+                max_chars = int(usable_bw / (font_size * 0.52))
+                name = _pdf_truncate(name, max(3, max_chars))
+                text_w = len(name) * font_size * 0.52
             tx = bx + (bw - text_w) / 2
             ty = by + bh / 2 - font_size / 3
             pdf.draw_text(tx, ty, name)
