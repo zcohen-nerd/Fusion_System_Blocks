@@ -680,7 +680,6 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
             continue
         fw = fb.get("width", default_w)
         fh = fb.get("height", default_h)
-        tw = tb.get("width", default_w)
         th = tb.get("height", default_h)
         x1 = fb.get("x", 0) + fw
         y1 = fb.get("y", 0) + fh // 2
