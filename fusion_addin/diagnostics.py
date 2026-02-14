@@ -1540,7 +1540,7 @@ class DiagnosticsRunner:
     def test_core_version_control_diff(self) -> DiagnosticResult:
         """Verify diff_graphs detects changes between two graphs."""
         try:
-            from fsb_core.models import Block, Connection, Graph, Port, PortDirection
+            from fsb_core.models import Block, Graph
             from fsb_core.version_control import diff_graphs
 
             old_graph = Graph(
