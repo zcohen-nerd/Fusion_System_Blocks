@@ -4,6 +4,11 @@
   "type": "object",
   "required": ["blocks", "connections"],
   "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "description": "Schema version for migration support. Missing = '0.9' (pre-versioning).",
+      "enum": ["0.9", "1.0"]
+    },
     "schema": { "type": "string" },
     "units": {
       "type": "object",

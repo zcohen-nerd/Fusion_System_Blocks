@@ -9,6 +9,9 @@ import json
 import uuid
 from typing import Any, Optional
 
+# Current schema version — must match the JS-side constant.
+SCHEMA_VERSION = "1.0"
+
 
 def generate_id() -> str:
     """Generate a unique ID for blocks, interfaces, connections, etc."""
@@ -18,6 +21,7 @@ def generate_id() -> str:
 def create_empty_diagram() -> dict[str, Any]:
     """Create an empty diagram structure."""
     return {
+        "schemaVersion": SCHEMA_VERSION,
         "schema": "system-blocks-v1",
         "blocks": [],
         "connections": [],
@@ -183,3 +187,30 @@ def deserialize_diagram(json_str: str, validate: bool = False) -> dict[str, Any]
         return diagram
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON: {e}") from e
+
+
+def migrate_diagram(diagram: dict[str, Any]) -> dict[str, Any]:
+    """Apply forward-only schema migrations to a diagram.
+
+    Missing ``schemaVersion`` is treated as ``"0.9"`` (pre-versioning).
+
+    Args:
+        diagram: Parsed diagram dictionary (mutated in place).
+
+    Returns:
+        The migrated diagram.
+    """
+    version = diagram.get("schemaVersion", "0.9")
+
+    # 0.9 → 1.0: add requirements array to each block
+    if version == "0.9":
+        for block in diagram.get("blocks", []):
+            if "requirements" not in block:
+                block["requirements"] = []
+        diagram["schemaVersion"] = "1.0"
+        version = "1.0"
+
+    # Future migrations chain here:
+    # if version == "1.0": ...
+
+    return diagram

@@ -45,6 +45,7 @@ from .cad import (
     validate_enhanced_cad_link,
 )
 from .core import (
+    SCHEMA_VERSION,
     add_block_to_diagram,
     add_connection_to_diagram,
     create_block,
@@ -54,6 +55,7 @@ from .core import (
     deserialize_diagram,
     find_block_by_id,
     generate_id,
+    migrate_diagram,
     remove_block_from_diagram,
     serialize_diagram,
 )
@@ -114,6 +116,7 @@ from .validation import (
 
 __all__ = [
     # Core
+    "SCHEMA_VERSION",
     "generate_id",
     "create_empty_diagram",
     "create_block",
@@ -125,6 +128,7 @@ __all__ = [
     "remove_block_from_diagram",
     "serialize_diagram",
     "deserialize_diagram",
+    "migrate_diagram",
     # Validation
     "load_schema",
     "validate_diagram",

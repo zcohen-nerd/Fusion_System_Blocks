@@ -48,6 +48,7 @@ class DiagramEditorCore {
 
   createEmptyDiagram() {
     return {
+      schemaVersion: DiagramEditorCore.SCHEMA_VERSION,
       blocks: [],
       connections: [],
       metadata: {
@@ -359,6 +360,9 @@ class DiagramEditorCore {
 
   // Data export/import
   exportDiagram() {
+    // Ensure current schema version is always stamped
+    this.diagram.schemaVersion = DiagramEditorCore.SCHEMA_VERSION;
+
     // Sanitize: strip connections with missing/empty source or target.
     // This guards against corrupt data that slipped through earlier versions.
     this.diagram.connections = this.diagram.connections.filter(
@@ -422,6 +426,9 @@ class DiagramEditorCore {
         importedDiagram.metadata = { created: new Date().toISOString() };
       }
 
+      // Apply schema migrations (0.9 → 1.0, etc.)
+      DiagramEditorCore.migrateDiagram(importedDiagram);
+
       // Sanitize connections: remove those with missing source/target IDs,
       // or references to blocks not present in the imported diagram.
       const blockIds = new Set(importedDiagram.blocks.map(b => b.id));
@@ -442,7 +449,44 @@ class DiagramEditorCore {
       return false;
     }
   }
+
+  // ---------------------------------------------------------------
+  // Schema versioning & migration
+  // ---------------------------------------------------------------
+
+  /**
+   * Migrate a diagram object from its current schemaVersion to the
+   * latest version.  Migrations are applied sequentially.
+   *
+   * Missing schemaVersion is treated as "0.9" (pre-versioning).
+   *
+   * @param {object} diagram - Parsed diagram object (mutated in place).
+   * @returns {object} The migrated diagram.
+   */
+  static migrateDiagram(diagram) {
+    var version = diagram.schemaVersion || '0.9';
+
+    // 0.9 → 1.0: add requirements array, schemaVersion field
+    if (version === '0.9') {
+      (diagram.blocks || []).forEach(function (block) {
+        if (!block.requirements) {
+          block.requirements = [];
+        }
+      });
+      diagram.schemaVersion = '1.0';
+      version = '1.0';
+      logger.info('Migrated diagram from 0.9 → 1.0');
+    }
+
+    // Future migrations would chain here:
+    // if (version === '1.0') { ... version = '1.1'; }
+
+    return diagram;
+  }
 }
+
+/** Current schema version written to all new / saved diagrams. */
+DiagramEditorCore.SCHEMA_VERSION = '1.0';
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
