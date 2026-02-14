@@ -171,6 +171,136 @@ class DiagramEditorCore {
     return { x: snappedX, y: snappedY };
   }
 
+  /**
+   * Compute smart alignment snap guides for a block being dragged.
+   * Checks edges and centers against all other blocks.
+   *
+   * @param {string} blockId - ID of the block being dragged.
+   * @param {number} proposedX - Proposed x after grid snap.
+   * @param {number} proposedY - Proposed y after grid snap.
+   * @param {Set<string>} [excludeIds] - IDs to exclude (e.g. multi-selection).
+   * @param {number} [tolerance=5] - Pixel tolerance for alignment.
+   * @returns {{ x: number, y: number, guides: Array<{axis:'h'|'v', pos:number, from:number, to:number}> }}
+   */
+  snapToAlignmentGuides(blockId, proposedX, proposedY, excludeIds, tolerance = 5) {
+    const block = this.diagram.blocks.find(b => b.id === blockId);
+    if (!block) return { x: proposedX, y: proposedY, guides: [] };
+
+    const bw = block.width || 120;
+    const bh = block.height || 80;
+
+    // Edges and center of the dragged block at proposed position
+    const dragEdges = {
+      left: proposedX,
+      right: proposedX + bw,
+      cx: proposedX + bw / 2,
+      top: proposedY,
+      bottom: proposedY + bh,
+      cy: proposedY + bh / 2,
+    };
+
+    const guides = [];
+    let snapX = proposedX;
+    let snapY = proposedY;
+    let bestDx = tolerance + 1;
+    let bestDy = tolerance + 1;
+
+    const skip = excludeIds || new Set();
+    skip.add(blockId);
+
+    for (const other of this.diagram.blocks) {
+      if (skip.has(other.id)) continue;
+      const ow = other.width || 120;
+      const oh = other.height || 80;
+      const otherEdges = {
+        left: other.x,
+        right: other.x + ow,
+        cx: other.x + ow / 2,
+        top: other.y,
+        bottom: other.y + oh,
+        cy: other.y + oh / 2,
+      };
+
+      // Vertical guide checks (x-axis alignment)
+      const xPairs = [
+        [dragEdges.left, otherEdges.left],
+        [dragEdges.left, otherEdges.right],
+        [dragEdges.left, otherEdges.cx],
+        [dragEdges.right, otherEdges.left],
+        [dragEdges.right, otherEdges.right],
+        [dragEdges.right, otherEdges.cx],
+        [dragEdges.cx, otherEdges.left],
+        [dragEdges.cx, otherEdges.right],
+        [dragEdges.cx, otherEdges.cx],
+      ];
+      for (const [dragVal, otherVal] of xPairs) {
+        const d = Math.abs(dragVal - otherVal);
+        if (d < tolerance && d < bestDx) {
+          bestDx = d;
+          snapX = proposedX + (otherVal - dragVal);
+        }
+      }
+
+      // Horizontal guide checks (y-axis alignment)
+      const yPairs = [
+        [dragEdges.top, otherEdges.top],
+        [dragEdges.top, otherEdges.bottom],
+        [dragEdges.top, otherEdges.cy],
+        [dragEdges.bottom, otherEdges.top],
+        [dragEdges.bottom, otherEdges.bottom],
+        [dragEdges.bottom, otherEdges.cy],
+        [dragEdges.cy, otherEdges.top],
+        [dragEdges.cy, otherEdges.bottom],
+        [dragEdges.cy, otherEdges.cy],
+      ];
+      for (const [dragVal, otherVal] of yPairs) {
+        const d = Math.abs(dragVal - otherVal);
+        if (d < tolerance && d < bestDy) {
+          bestDy = d;
+          snapY = proposedY + (otherVal - dragVal);
+        }
+      }
+    }
+
+    // Build guide lines for all matches at snapped position
+    const snappedEdges = {
+      left: snapX, right: snapX + bw, cx: snapX + bw / 2,
+      top: snapY, bottom: snapY + bh, cy: snapY + bh / 2,
+    };
+    for (const other of this.diagram.blocks) {
+      if (skip.has(other.id)) continue;
+      const ow = other.width || 120;
+      const oh = other.height || 80;
+      const oEdges = {
+        left: other.x, right: other.x + ow, cx: other.x + ow / 2,
+        top: other.y, bottom: other.y + oh, cy: other.y + oh / 2,
+      };
+
+      // Vertical guides (x matches)
+      for (const xVal of [oEdges.left, oEdges.right, oEdges.cx]) {
+        for (const sxVal of [snappedEdges.left, snappedEdges.right, snappedEdges.cx]) {
+          if (Math.abs(sxVal - xVal) < 1) {
+            const minY = Math.min(snapY, other.y);
+            const maxY = Math.max(snapY + bh, other.y + oh);
+            guides.push({ axis: 'v', pos: xVal, from: minY - 10, to: maxY + 10 });
+          }
+        }
+      }
+      // Horizontal guides (y matches)
+      for (const yVal of [oEdges.top, oEdges.bottom, oEdges.cy]) {
+        for (const syVal of [snappedEdges.top, snappedEdges.bottom, snappedEdges.cy]) {
+          if (Math.abs(syVal - yVal) < 1) {
+            const minX = Math.min(snapX, other.x);
+            const maxX = Math.max(snapX + bw, other.x + ow);
+            guides.push({ axis: 'h', pos: yVal, from: minX - 10, to: maxX + 10 });
+          }
+        }
+      }
+    }
+
+    return { x: snapX, y: snapY, guides };
+  }
+
   // Utility functions
   generateId() {
     return 'block_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);

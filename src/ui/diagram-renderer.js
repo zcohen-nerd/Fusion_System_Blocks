@@ -56,6 +56,14 @@ class DiagramRenderer {
       this.svg.insertBefore(this.connectionsLayer, this.blocksLayer);
     }
 
+    // Get or create the snap-guides layer (above blocks)
+    this.guidesLayer = this.svg.querySelector('#guides-layer');
+    if (!this.guidesLayer) {
+      this.guidesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      this.guidesLayer.id = 'guides-layer';
+      this.svg.appendChild(this.guidesLayer);
+    }
+
     this.setupGrid();
     this.setupDefs();
   }
@@ -617,6 +625,52 @@ class DiagramRenderer {
       'mechanical': { stroke: '#6c757d', strokeWidth: 2, dashArray: '12,6' }
     };
     return styles[connType] || { stroke: '#666', strokeWidth: 2, dashArray: null };
+  }
+
+  // ---- Smart alignment snap guides ----
+
+  /**
+   * Render alignment guide lines onto the guides layer.
+   * @param {Array<{axis:'h'|'v', pos:number, from:number, to:number}>} guides
+   */
+  showSnapGuides(guides) {
+    this.clearSnapGuides();
+    if (!this.guidesLayer || !guides || guides.length === 0) return;
+
+    // De-duplicate guides that are very close to each other
+    const seen = new Set();
+    for (const g of guides) {
+      const key = g.axis + ':' + Math.round(g.pos);
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      if (g.axis === 'v') {
+        line.setAttribute('x1', g.pos);
+        line.setAttribute('y1', g.from);
+        line.setAttribute('x2', g.pos);
+        line.setAttribute('y2', g.to);
+      } else {
+        line.setAttribute('x1', g.from);
+        line.setAttribute('y1', g.pos);
+        line.setAttribute('x2', g.to);
+        line.setAttribute('y2', g.pos);
+      }
+      line.setAttribute('stroke', '#FF6B35');
+      line.setAttribute('stroke-width', '1');
+      line.setAttribute('stroke-dasharray', '4,3');
+      line.setAttribute('pointer-events', 'none');
+      this.guidesLayer.appendChild(line);
+    }
+  }
+
+  /** Remove all alignment guide lines. */
+  clearSnapGuides() {
+    if (this.guidesLayer) {
+      while (this.guidesLayer.firstChild) {
+        this.guidesLayer.removeChild(this.guidesLayer.firstChild);
+      }
+    }
   }
 
   /**

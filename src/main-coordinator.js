@@ -331,18 +331,31 @@ class SystemBlocksMain {
       
       if (draggedBlock) {
         // Drag block — if block is part of multi-selection, move ALL selected
-        const newPos = core.snapToGrid(x - dragOffset.x, y - dragOffset.y);
+        const gridPos = core.snapToGrid(x - dragOffset.x, y - dragOffset.y);
+
+        // Smart alignment snapping (snap to edges/centers of other blocks)
+        const movedIds = features.selectedBlocks.has(draggedBlock.id) && features.selectedBlocks.size > 1
+          ? Array.from(features.selectedBlocks)
+          : [draggedBlock.id];
+        const excludeSet = new Set(movedIds);
+        const snapResult = core.snapToAlignmentGuides(
+          draggedBlock.id, gridPos.x, gridPos.y, excludeSet
+        );
+        const newPos = { x: snapResult.x, y: snapResult.y };
+
+        // Show/clear alignment guide lines
+        if (snapResult.guides.length > 0) {
+          renderer.showSnapGuides(snapResult.guides);
+        } else {
+          renderer.clearSnapGuides();
+        }
+
         const dx = newPos.x - draggedBlock.x;
         const dy = newPos.y - draggedBlock.y;
 
         if (dx !== 0 || dy !== 0) {
           dragMoved = true;
         }
-
-        // Determine blocks to move: multi-selection or just the dragged one
-        const movedIds = features.selectedBlocks.has(draggedBlock.id) && features.selectedBlocks.size > 1
-          ? Array.from(features.selectedBlocks)
-          : [draggedBlock.id];
 
         movedIds.forEach(bid => {
           const b = core.diagram.blocks.find(bl => bl.id === bid);
@@ -403,6 +416,9 @@ class SystemBlocksMain {
     
     // Mouse up - end drag or selection, AND complete connections
     svg.addEventListener('mouseup', (e) => {
+      // Clear alignment snap guides on drag end
+      renderer.clearSnapGuides();
+
       if (draggedBlock) {
         // End block drag — save state only if block actually moved
         if (dragMoved) {
