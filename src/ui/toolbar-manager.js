@@ -278,7 +278,8 @@ class ToolbarManager {
       'Shift+KeyM': { shift: true, handler: () => this.handleSetConnectionType('mechanical') },
       'Shift+ArrowUp': { ctrl: true, shift: true, handler: () => this.handleNavigateUp() },
       'Shift+ArrowDown': { ctrl: true, shift: true, handler: () => this.handleDrillDown() },
-      'Shift+KeyN': { ctrl: true, shift: true, handler: () => this.handleCreateChild() }
+      'Shift+KeyN': { ctrl: true, shift: true, handler: () => this.handleCreateChild() },
+      'Shift+Slash': { shift: true, handler: () => this.handleShowShortcuts() }  // ? key
     };
 
     Object.entries(shortcuts).forEach(([code, config]) => {
@@ -308,6 +309,24 @@ class ToolbarManager {
       e.preventDefault();
       shortcut.handler();
       this.updateButtonStates();
+    }
+  }
+
+  // ---- Keyboard shortcuts help dialog ----
+  handleShowShortcuts() {
+    const overlay = document.getElementById('shortcuts-overlay');
+    if (!overlay) return;
+    const isOpen = overlay.style.display !== 'none';
+    overlay.style.display = isOpen ? 'none' : 'flex';
+    if (!overlay._wired) {
+      overlay._wired = true;
+      // Close on backdrop click
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.style.display = 'none';
+      });
+      // Close button
+      const closeBtn = document.getElementById('shortcuts-close');
+      if (closeBtn) closeBtn.addEventListener('click', () => overlay.style.display = 'none');
     }
   }
 
@@ -832,6 +851,12 @@ class ToolbarManager {
   }
 
   handleClearSelection() {
+    // Close the shortcuts help dialog if it's open
+    const shortcutsOverlay = document.getElementById('shortcuts-overlay');
+    if (shortcutsOverlay && shortcutsOverlay.style.display !== 'none') {
+      shortcutsOverlay.style.display = 'none';
+      return;
+    }
     this.editor.clearSelection();
     if (window.advancedFeatures) {
       window.advancedFeatures.clearSelection();

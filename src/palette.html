@@ -1149,6 +1149,16 @@
       margin: 0 0 12px 0;
       font-size: 16px;
     }
+    .fusion-modal kbd {
+      display: inline-block;
+      padding: 1px 6px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 11px;
+      background: var(--fusion-bg-dark, #1a1a1a);
+      border: 1px solid var(--fusion-panel-border, #444);
+      border-radius: 3px;
+      white-space: nowrap;
+    }
     .doc-list-item {
       display: flex;
       align-items: center;
@@ -2397,6 +2407,77 @@
   </div>
 
   <!-- ========== EXPORT OPTIONS DIALOG ========== -->
+
+  <!-- ========== KEYBOARD SHORTCUTS HELP ========== -->
+  <div id="shortcuts-overlay" class="fusion-modal-overlay" style="display:none;">
+    <div class="fusion-modal" style="min-width:420px;max-width:560px;max-height:80vh;overflow-y:auto;">
+      <h3 style="display:flex;align-items:center;justify-content:space-between;">
+        Keyboard Shortcuts
+        <button id="shortcuts-close" class="fusion-button" style="padding:2px 8px;font-size:14px;" title="Close">&times;</button>
+      </h3>
+
+      <div style="font-size:12px;line-height:1.8;">
+        <h4 style="margin:10px 0 4px;color:var(--fusion-accent);font-size:13px;">File</h4>
+        <table style="width:100%;border-collapse:collapse;"><tbody>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+N</kbd></td><td>New Diagram</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+S</kbd></td><td>Save</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+Shift+S</kbd></td><td>Save As</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+O</kbd></td><td>Open / Load</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+Shift+O</kbd></td><td>Open Named Document</td></tr>
+        </tbody></table>
+
+        <h4 style="margin:10px 0 4px;color:var(--fusion-accent);font-size:13px;">Edit</h4>
+        <table style="width:100%;border-collapse:collapse;"><tbody>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+Z</kbd></td><td>Undo</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+Y</kbd> / <kbd>Ctrl+Shift+Z</kbd></td><td>Redo</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+C</kbd></td><td>Copy</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+V</kbd></td><td>Paste</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+D</kbd></td><td>Duplicate</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Delete</kbd> / <kbd>Backspace</kbd></td><td>Delete Selected</td></tr>
+        </tbody></table>
+
+        <h4 style="margin:10px 0 4px;color:var(--fusion-accent);font-size:13px;">Create</h4>
+        <table style="width:100%;border-collapse:collapse;"><tbody>
+          <tr><td style="padding:2px 6px;"><kbd>B</kbd> / <kbd>Insert</kbd></td><td>Add Block</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>C</kbd></td><td>Connect Mode</td></tr>
+        </tbody></table>
+
+        <h4 style="margin:10px 0 4px;color:var(--fusion-accent);font-size:13px;">Navigate</h4>
+        <table style="width:100%;border-collapse:collapse;"><tbody>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+Shift+&uarr;</kbd></td><td>Go Up (parent diagram)</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+Shift+&darr;</kbd></td><td>Drill Down (child diagram)</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+Shift+N</kbd></td><td>Create Child Diagram</td></tr>
+        </tbody></table>
+
+        <h4 style="margin:10px 0 4px;color:var(--fusion-accent);font-size:13px;">View</h4>
+        <table style="width:100%;border-collapse:collapse;"><tbody>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+=</kbd></td><td>Zoom In</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+-</kbd></td><td>Zoom Out</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+0</kbd></td><td>Fit to View</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+F</kbd></td><td>Search / Filter</td></tr>
+        </tbody></table>
+
+        <h4 style="margin:10px 0 4px;color:var(--fusion-accent);font-size:13px;">Selection</h4>
+        <table style="width:100%;border-collapse:collapse;"><tbody>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+A</kbd></td><td>Select All</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Escape</kbd></td><td>Clear Selection</td></tr>
+        </tbody></table>
+
+        <h4 style="margin:10px 0 4px;color:var(--fusion-accent);font-size:13px;">Connection Types</h4>
+        <table style="width:100%;border-collapse:collapse;"><tbody>
+          <tr><td style="padding:2px 6px;"><kbd>Shift+P</kbd></td><td>Power</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Shift+D</kbd></td><td>Data</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Shift+E</kbd></td><td>Electrical</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Shift+M</kbd></td><td>Mechanical</td></tr>
+        </tbody></table>
+      </div>
+
+      <p style="margin:12px 0 0;font-size:11px;color:var(--fusion-text-secondary);text-align:center;">
+        Press <kbd>?</kbd> to toggle this dialog
+      </p>
+    </div>
+  </div>
+
   <div id="export-overlay" class="fusion-modal-overlay" style="display:none;">
     <div class="fusion-modal" style="min-width:340px;max-width:460px;">
       <h3>Export Reports</h3>
