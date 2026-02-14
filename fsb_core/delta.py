@@ -2,7 +2,7 @@
 
 Instead of sending the full diagram JSON for every update, this module
 computes minimal diffs (JSON-Patch–style operations) to reduce data
-transferred across the Fusion 360 Python ↔ JS bridge.
+transferred across the Fusion Python ↔ JS bridge.
 
 The implementation follows `RFC 6902 — JSON Patch
 <https://datatracker.ietf.org/doc/html/rfc6902>`_ semantics with a

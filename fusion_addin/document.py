@@ -1,9 +1,9 @@
-"""Document operations for Fusion 360.
+"""Document operations for Fusion.
 
-This module provides utilities for interacting with Fusion 360 documents,
+This module provides utilities for interacting with Fusion documents,
 including attribute storage, design access, and document metadata.
 
-BOUNDARY: This module ONLY contains Fusion 360 specific code.
+BOUNDARY: This module ONLY contains Fusion specific code.
 
 Classes:
     DocumentManager: Manages Fusion document interactions.
@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
-# Fusion 360 imports - only in this adapter layer
+# Fusion imports - only in this adapter layer
 try:
     import adsk.core
     import adsk.fusion
@@ -29,20 +29,20 @@ if TYPE_CHECKING:
 
 
 class DocumentManager:
-    """Manages Fusion 360 document interactions.
+    """Manages Fusion document interactions.
 
     Provides methods for reading and writing document attributes,
     accessing design structure, and managing document metadata.
 
     Attributes:
-        app: The Fusion 360 Application object.
+        app: The Fusion Application object.
     """
 
     def __init__(self, app: adsk.core.Application) -> None:
         """Initialize the DocumentManager.
 
         Args:
-            app: The Fusion 360 Application object.
+            app: The Fusion Application object.
         """
         self._app = app
 

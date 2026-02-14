@@ -20,7 +20,7 @@ The Fusion System Blocks add-in demonstrates a solid, well-evolved architecture.
 
 ### 3. Testability & Maintainability ✅ (Improved)
 - **Two-Layer Architecture:** Pure Python `fsb_core/` library with NO Fusion dependencies enables pytest testing.
-- **605 Tests:** Comprehensive test suite across 23 files runs in <1s outside of Fusion 360.
+- **605 Tests:** Comprehensive test suite across 23 files runs in <1s outside of Fusion.
 - **Modular Structure:** Clear separation between core logic, Fusion adapter, and frontend.
 - **Type Hinting:** Python type hints throughout for static analysis and IDE support.
 - **CI Pipeline:** GitHub Actions runs ruff, mypy, and pytest on Python 3.9–3.12 on every push.

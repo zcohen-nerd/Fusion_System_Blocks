@@ -164,7 +164,7 @@ class SystemBlocksMain {
     let connectionStartedThisClick = false;
 
     // --- Manual double-click detection state ---
-    // Fusion 360's CEF may not reliably fire 'dblclick' on SVG elements,
+    // Fusion's CEF may not reliably fire 'dblclick' on SVG elements,
     // so we detect double-clicks ourselves in the mousedown handler.
     let lastClickTime = 0;
     let lastClickBlockId = null;
@@ -193,7 +193,7 @@ class SystemBlocksMain {
     // --- Helper: find a connection port near the given SVG coordinates ---
     // Returns { block, portType } or null.
     // Used as a fallback when e.target.closest('.connection-port') fails
-    // (which can happen in Fusion 360's Chromium with opacity-0 SVG elements).
+    // (which can happen in Fusion's Chromium with opacity-0 SVG elements).
     const findPortAt = (svgX, svgY) => {
       const PORT_HIT_RADIUS = 10; // slightly larger than visual r=6
       for (let i = core.diagram.blocks.length - 1; i >= 0; i--) {
@@ -237,7 +237,7 @@ class SystemBlocksMain {
         : null;
 
       // Fallback: check getAttribute('class') directly — closest() may not
-      // work correctly on SVG elements in Fusion 360's Chromium
+      // work correctly on SVG elements in Fusion's Chromium
       if (!portEl && e.target.getAttribute &&
           e.target.getAttribute('class') &&
           e.target.getAttribute('class').indexOf('connection-port') !== -1) {
@@ -420,7 +420,7 @@ class SystemBlocksMain {
         // Update lasso selection
         features.updateLassoSelection(x, y);
       } else if (e.buttons === 4) {
-        // Middle-mouse-button pan (like Fusion 360 orbit/pan)
+        // Middle-mouse-button pan (like Fusion orbit/pan)
         if (this._connectionMode && this._connectionMode.active) return;
 
         const ctm = svg.getScreenCTM();
@@ -468,7 +468,7 @@ class SystemBlocksMain {
       }
 
       // --- Connection mode: complete connection on mouseup ---
-      // Fusion 360's Chromium may not synthesize a 'click' event
+      // Fusion's Chromium may not synthesize a 'click' event
       // from mousedown+mouseup on SVG elements, so we handle the
       // connection target selection here as the primary path.
       // HOWEVER, skip if the connection mode was JUST started in this

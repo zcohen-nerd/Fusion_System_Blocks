@@ -193,7 +193,7 @@ to multiple formats (PNG, SVG, JSON) with configurable quality settings.
 
 ## 1. Purpose & Scope
 
-Define requirements for diagram export feature supporting Fusion 360 add-in users...
+Define requirements for diagram export feature supporting Fusion add-in users...
 
 ## 3. Requirements, Constraints & Guidelines
 
@@ -214,7 +214,7 @@ Define requirements for diagram export feature supporting Fusion 360 add-in user
 **Enabled By**: create-technical-spike.prompt.md
 
 **How It Works**:
-1. Chat: "Use create-technical-spike prompt for evaluating Fusion 360 API performance"
+1. Chat: "Use create-technical-spike prompt for evaluating Fusion API performance"
 2. Copilot generates docs/spikes/performance-fusion-api-spike.md with:
    - Clear research question and success criteria
    - Investigation plan with specific tasks
@@ -226,7 +226,7 @@ Define requirements for diagram export feature supporting Fusion 360 add-in user
 **Example Use Case**:
 ```markdown
 ---
-title: "Fusion 360 API Performance for Large Diagrams"
+title: "Fusion API Performance for Large Diagrams"
 category: "Performance"
 status: "🔴 Not Started"
 priority: "High"
@@ -236,12 +236,12 @@ owner: "Architecture Team"
 tags: ["technical-spike", "performance", "research"]
 ---
 
-# Fusion 360 API Performance for Large Diagrams
+# Fusion API Performance for Large Diagrams
 
 ## Summary
 
 **Spike Objective:**
-Determine if Fusion 360 API can handle diagram rendering with 1000+ blocks without UI freezing
+Determine if Fusion API can handle diagram rendering with 1000+ blocks without UI freezing
 
 **Why This Matters:**
 Critical performance requirement for enterprise customers with complex system diagrams
@@ -250,7 +250,7 @@ Critical performance requirement for enterprise customers with complex system di
 
 ## Research Question(s)
 
-**Primary Question:** What is the maximum number of diagram blocks the Fusion 360 API can render smoothly (60fps)?
+**Primary Question:** What is the maximum number of diagram blocks the Fusion API can render smoothly (60fps)?
 
 **Secondary Questions:**
 - What rendering optimizations are available (batching, caching)?
@@ -261,7 +261,7 @@ Critical performance requirement for enterprise customers with complex system di
 
 ### Research Tasks
 - [ ] Create test diagrams with 500, 1000, 2000, 5000 blocks
-- [ ] Measure rendering time and frame rates using Fusion 360 profiler
+- [ ] Measure rendering time and frame rates using Fusion profiler
 - [ ] Test API batching strategies
 - [ ] Document findings with performance graphs
 - [ ] Recommend approach based on results
@@ -361,11 +361,11 @@ pytest --cov --cov-report=annotate:cov_annotate
 
 ```mermaid src="./diagrams/diagram_data_flow.mmd" alt="Diagram data flow from UI to Python backend"```
 
-[Mermaid diagram showing: UI → Diagram Editor → Python Bridge → diagram_data.py → Fusion 360 API]
+[Mermaid diagram showing: UI → Diagram Editor → Python Bridge → diagram_data.py → Fusion API]
 
 ## Information Requested
 - TBD: What is the maximum payload size for diagram_data messages?
-- TBD: Are there retry policies for failed Fusion 360 API calls?
+- TBD: Are there retry policies for failed Fusion API calls?
 - TBD: What authentication mechanism is used for Python-JavaScript IPC?
 
 ---
@@ -491,7 +491,7 @@ Verify in VS Code:
 While files are copied verbatim, you can add project-specific supplements:
 
 1. **Create fusion-system-blocks.instructions.md**:
-   - Add Fusion 360 API-specific patterns
+   - Add Fusion API-specific patterns
    - Document project-specific naming conventions
    - Define custom error handling standards
 
@@ -501,7 +501,7 @@ While files are copied verbatim, you can add project-specific supplements:
    - Follow existing prompt format patterns
 
 3. **Create Domain Agents**:
-   - fusion-360-expert.agent.md for Fusion 360 API assistance
+   - fusion-expert.agent.md for Fusion API assistance
    - systems-engineering-expert.agent.md for systems engineering diagram best practices
 
 ---
@@ -565,7 +565,7 @@ Testing instructions ensure:
    - Review a code sample with code-review-generic instructions active
 
 3. **Customize**:
-   - Add Fusion 360-specific instructions
+   - Add Fusion-specific instructions
    - Create domain-specific prompts
    - Develop specialized agents for your workflow
 
@@ -590,4 +590,4 @@ Testing instructions ensure:
 **Document Generated**: 2024-01-15  
 **awesome-copilot Version**: Latest from main branch (20.2k stars, 2.3k forks)  
 **Installation Method**: Verbatim copy without modification  
-**Project**: Fusion System Blocks - Python-based Fusion 360 Add-in for Systems Engineering Diagrams
+**Project**: Fusion System Blocks - Python-based Fusion Add-in for Systems Engineering Diagrams

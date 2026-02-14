@@ -21,7 +21,7 @@ This document summarizes the development milestones that guide Fusion System Blo
 | 7 | Search & Navigation | ✅ | Global search, filtering, quick navigation cues |
 | 8 | Undo/Redo & UI Polish | ✅ | History stack, tooltips, responsive layout refinements |
 | 9 | Advanced Connection System | ✅ | Typed connections, templates, labels, directional controls |
-| 10 | Fusion 360 UI Integration | ✅ | Ribbon UI, theme alignment, icon set, keyboard shortcuts |
+| 10 | Fusion UI Integration | ✅ | Ribbon UI, theme alignment, icon set, keyboard shortcuts |
 | 10.5 | UI/UX Improvements | ✅ | Responsive ribbon, keyboard help, alignment snapping, accessibility, crash recovery, schema versioning |
 | 11 | Advanced Block Types & Templates | ✅ | Discipline-specific blocks, template library, metadata |
 | 12 | Enhanced CAD Linking | ✅ | Component health dashboard, property sync, thumbnail support |
@@ -71,8 +71,8 @@ This document summarizes the development milestones that guide Fusion System Blo
 Completed February 2026. Major architectural improvements:
 
 - **Two-Layer Architecture:**
-  - `fsb_core/` – Pure Python library with NO Fusion 360 dependencies (testable with pytest)
-  - `fusion_addin/` – Thin adapter layer that bridges core logic and Fusion 360 API
+  - `fsb_core/` – Pure Python library with NO Fusion dependencies (testable with pytest)
+  - `fusion_addin/` – Thin adapter layer that bridges core logic and Fusion API
 - **Core Library Modules (`fsb_core/`):**
   - `models.py` – Dataclasses for Block, Port, Connection, Graph; Requirement, Snapshot, DiffResult, ComparisonOperator, block_fingerprint
   - `validation.py` – Graph validation with structured error codes

@@ -3,7 +3,7 @@
 This module generates ordered lists of actions that the Fusion adapter
 layer should execute to synchronize the Fusion document with the graph state.
 
-BOUNDARY: This module contains NO Fusion 360 dependencies. It produces
+BOUNDARY: This module contains NO Fusion dependencies. It produces
 abstract action descriptions that the Fusion adapter interprets and executes.
 
 Functions:

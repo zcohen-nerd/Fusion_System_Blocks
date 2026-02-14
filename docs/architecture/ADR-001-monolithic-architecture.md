@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-Fusion System Blocks is a Fusion 360 add-in that requires tight integration with the Fusion 360 API (Python) while delivering a rich, interactive user interface (HTML/JavaScript). The Fusion 360 add-in environment imposes specific constraints:
+Fusion System Blocks is a Fusion add-in that requires tight integration with the Fusion API (Python) while delivering a rich, interactive user interface (HTML/JavaScript). The Fusion add-in environment imposes specific constraints:
 - Single process execution for the Python backend.
 - `adsk.core` and `adsk.fusion` libraries are only available within this process.
 - UI must be rendered via `UI.palettes` which uses a web view.
@@ -43,13 +43,13 @@ This ADR has been superseded by the **Two-Layer Architecture** introduced in Mil
 
 ### Two-Layer Python Architecture
 - **`fsb_core/`**: Pure Python library with NO Fusion dependencies — fully testable with pytest
-- **`fusion_addin/`**: Thin adapter layer for Fusion 360 integration
+- **`fusion_addin/`**: Thin adapter layer for Fusion integration
 
 ### Key Changes
 - Business logic moved to `fsb_core/` modules (models, validation, action_plan, serialization, bridge_actions, delta)
 - Fusion-specific code isolated in `fusion_addin/` (adapter, selection, document, logging, diagnostics)
 - Entry point (`Fusion_System_Blocks.py`) orchestrates both layers with hard-fail imports
-- 605 pytest tests across 23 files run outside of Fusion 360
+- 605 pytest tests across 23 files run outside of Fusion
 - GitHub Actions CI pipeline runs ruff, mypy, and pytest on Python 3.9–3.12
 
 ### Why This Doesn't Contradict ADR-001

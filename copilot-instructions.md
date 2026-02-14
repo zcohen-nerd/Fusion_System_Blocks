@@ -1,7 +1,7 @@
 # Copilot Instructions for Fusion System Blocks
 
 ## Project Overview
-Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-based system design capabilities with a professional ribbon interface. The project is split into public (documentation/releases) and private (source code) repositories.
+Fusion System Blocks is a sophisticated Fusion add-in that provides block-based system design capabilities with a professional ribbon interface. The project is split into public (documentation/releases) and private (source code) repositories.
 
 ## Architecture Guidelines
 
@@ -24,7 +24,7 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
   - `delta.py`: compute_patch / apply_patch / is_trivial_patch (JSON-Patch style delta serialization)
   - `requirements.py`: Requirements validation engine (aggregate_attribute, validate_requirements)
   - `version_control.py`: Snapshot creation, graph diffing, restore, SnapshotStore
-- **Fusion Adapter** (`fusion_addin/`): Thin wrappers for Fusion 360 integration
+- **Fusion Adapter** (`fusion_addin/`): Thin wrappers for Fusion integration
   - `adapter.py`: FusionAdapter class for core ↔ Fusion translation
   - `selection.py`: SelectionHandler for Fusion selection workflows
   - `document.py`: DocumentManager for Fusion document operations
@@ -32,14 +32,14 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
   - `diagnostics.py`: DiagnosticsRunner with self-test suite
 - **Entry Point**: `Fusion_System_Blocks.py` orchestrates both layers (hard-fail imports, no fallback)
 - **Legacy Data Management**: `src/diagram_data.py` for backward compatibility
-- **Testing**: 605 pytest tests in `tests/` across 23 files (runs outside Fusion 360)
+- **Testing**: 605 pytest tests in `tests/` across 23 files (runs outside Fusion)
 
 ## Development Standards
 
 ### Code Style
 - **JavaScript**: Use ES6+ features, clear class structures, comprehensive comments
 - **Python**: Follow PEP 8, use type hints where appropriate, maintain docstrings
-- **CSS**: Fusion 360-style theming, organized component-based styles
+- **CSS**: Fusion-style theming, organized component-based styles
 
 ### Naming Conventions
 - **Classes**: PascalCase (e.g., `DiagramEditorCore`, `ToolbarManager`)
@@ -103,8 +103,8 @@ Fusion System Blocks is a sophisticated Fusion 360 add-in that provides block-ba
 
 ## Integration Guidelines
 
-### Fusion 360 API
-- **Native Integration**: Use official Fusion 360 Python API
+### Fusion API
+- **Native Integration**: Use official Fusion Python API
 - **Event Handling**: Proper event registration and cleanup
 - **Error Handling**: Graceful failure with user feedback
 - **Performance**: Minimize API calls, batch operations when possible
@@ -184,7 +184,7 @@ class ModuleBase {
 
 ### Common Issues
 - **Module Loading**: Check script order in HTML
-- **Python Bridge**: Verify Fusion 360 API availability
+- **Python Bridge**: Verify Fusion API availability
 - **Performance**: Profile operations, optimize data structures
 - **UI Responsiveness**: Use async operations, avoid blocking
 

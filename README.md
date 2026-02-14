@@ -5,14 +5,14 @@
 <h1 align="center">Fusion System Blocks</h1>
 
 <p align="center">
-  A Fusion 360 add-in that embeds system block diagrams directly inside a CAD assembly.<br>
-  Diagrams, CAD components, and documentation stay in sync so designers can plan architecture, link components, and capture engineering intent without leaving Fusion 360.
+  A Fusion add-in that embeds system block diagrams directly inside a CAD assembly.<br>
+  Diagrams, CAD components, and documentation stay in sync so designers can plan architecture, link components, and capture engineering intent without leaving Fusion.
 </p>
 
 <p align="center">
 
 [![License: Community](https://img.shields.io/badge/License-Community-blueviolet.svg)](LICENSE)
-[![Fusion 360](https://img.shields.io/badge/Platform-Fusion%20360-orange.svg)](https://www.autodesk.com/products/fusion-360)
+[![Fusion](https://img.shields.io/badge/Platform-Fusion-orange.svg)](https://www.autodesk.com/products/fusion)
 [![CI](https://github.com/zcohen-nerd/Fusion_System_Blocks/actions/workflows/ci.yml/badge.svg)](https://github.com/zcohen-nerd/Fusion_System_Blocks/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/Tests-605%20passing-brightgreen.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.9%E2%80%933.12-blue.svg)]()
@@ -23,10 +23,10 @@
 
 ## Overview
 
-The add-in delivers a full diagramming environment inside Fusion 360:
+The add-in delivers a full diagramming environment inside Fusion:
 
 - Create electrical, mechanical, and software blocks with typed connections.
-- Link blocks to Fusion 360 components and track status automatically.
+- Link blocks to Fusion components and track status automatically.
 - Maintain multi-level system hierarchies with drill-down navigation.
 - Generate reports such as bills of materials and connection matrices.
 - Save incremental diagram changes with delta serialization for fast persistence.
@@ -49,7 +49,7 @@ The repository contains the full code base, tests, documentation, and deployment
 | 7 | Search & navigation | Complete |
 | 8 | Undo/redo & UI polish | Complete |
 | 9 | Advanced connection system | Complete |
-| 10 | Fusion 360 UI integration | Complete |
+| 10 | Fusion UI integration | Complete |
 | 10.5 | UI/UX improvements | Complete |
 | 11 | Advanced block types & templates | Complete |
 | 11.5 | Advanced block shapes | Complete |
@@ -74,12 +74,12 @@ A detailed breakdown of remaining work lives in `tasks.md`.
 - Multi-selection, grouping, alignment, and automated layout tools.
 
 ### CAD Integration
-- Link blocks to Fusion 360 occurrences with health monitoring.
+- Link blocks to Fusion occurrences with health monitoring.
 - Synchronize component properties and track change history.
 - Component health dashboards and thumbnail support.
 
 ### Reporting & Validation
-- Save/load diagrams inside Fusion 360 document attributes.
+- Save/load diagrams inside Fusion document attributes.
 - Delta serialization for incremental saves (JSON-Patch style diffs).
 - **11-format export pipeline** with configurable profiles (quick / standard / full):
   - Markdown system report with rule-check results and block tables.
@@ -103,7 +103,7 @@ A detailed breakdown of remaining work lives in `tasks.md`.
 - 605 automated tests across 23 test files; CI runs on Python 3.9–3.12.
 
 ### User Experience
-- Fusion 360-style ribbon interface with responsive layout.
+- Fusion-style ribbon interface with responsive layout.
 - Professional icon set and theming aligned with Fusion UI guidelines.
 - Notification system, tooltips, and accessibility improvements.
 - Orthogonal connection routing with obstacle avoidance and waypoint editing.
@@ -118,7 +118,7 @@ A detailed breakdown of remaining work lives in `tasks.md`.
 
 ```text
 Fusion_System_Blocks/
-├── Fusion_System_Blocks.py        # Fusion 360 entry point and command definitions
+├── Fusion_System_Blocks.py        # Fusion entry point and command definitions
 ├── Fusion_System_Blocks.manifest  # Add-in manifest (version, author, ID)
 ├── fsb_core/                      # Pure Python core library (NO Fusion dependencies)
 │   ├── models.py                  #   Block, Port, Connection, Graph dataclasses
@@ -130,7 +130,7 @@ Fusion_System_Blocks/
 │   ├── delta.py                   #   compute_patch / apply_patch (JSON-Patch style)
 │   ├── requirements.py            #   Requirements validation engine
 │   └── version_control.py         #   Snapshot creation, graph diffing, restore
-├── fusion_addin/                  # Fusion 360 adapter layer
+├── fusion_addin/                  # Fusion adapter layer
 │   ├── adapter.py                 #   FusionAdapter (core ↔ Fusion translation)
 │   ├── selection.py               #   SelectionHandler for Fusion selection workflows
 │   ├── document.py                #   DocumentManager for Fusion document operations
@@ -168,15 +168,15 @@ Fusion_System_Blocks/
 
 ### Prerequisites
 
-- **Fusion 360** (latest version recommended) on Windows 10/11 or macOS.
-- **Python 3.9+** is bundled with Fusion 360; no separate install is required for running the add-in.
+- **Fusion** (latest version recommended) on Windows 10/11 or macOS.
+- **Python 3.9+** is bundled with Fusion; no separate install is required for running the add-in.
 - For local development and testing, install Python 3.9–3.12 and create a virtual environment.
 
 ### Quick Install (End User)
 
 1. Download the latest release ZIP from the [Releases page](https://github.com/zcohen-nerd/Fusion_System_Blocks/releases).
 2. Extract the ZIP to your Downloads folder.
-3. In Fusion 360, go to **Utilities → ADD-INS** (or press <kbd>Shift</kbd>+<kbd>S</kbd>).
+3. In Fusion, go to **Utilities → ADD-INS** (or press <kbd>Shift</kbd>+<kbd>S</kbd>).
 4. In the **Add-Ins** tab, click the **+** button and browse to the extracted folder.
 5. Select **Fusion System Blocks** and click **Run**, or check **Run on Startup**.
 
@@ -188,14 +188,14 @@ Fusion_System_Blocks/
    git clone https://github.com/zcohen-nerd/Fusion_System_Blocks.git
    ```
 
-2. Copy (or symlink) the folder into your Fusion 360 Add-ins directory:
+2. Copy (or symlink) the folder into your Fusion Add-ins directory:
 
    ```text
-   Windows: %APPDATA%\Autodesk\Autodesk Fusion 360\API\AddIns\
-   macOS:   ~/Library/Application Support/Autodesk/Autodesk Fusion 360/API/AddIns/
+   Windows: %APPDATA%\Autodesk\Autodesk Fusion\API\AddIns\
+   macOS:   ~/Library/Application Support/Autodesk/Autodesk Fusion/API/AddIns/
    ```
 
-3. Launch Fusion 360, open **Utilities → Add-Ins**, select the add-in, and click **Run**.
+3. Launch Fusion, open **Utilities → Add-Ins**, select the add-in, and click **Run**.
 
 ### Development Environment
 
@@ -221,7 +221,7 @@ See `FUSION_DEPLOYMENT_GUIDE.md` for packaging instructions and troubleshooting 
 
 ### Getting Started
 
-1. Open Fusion 360 and activate the Fusion System Blocks add-in.
+1. Open Fusion and activate the Fusion System Blocks add-in.
 2. The block diagram palette appears in the right panel with a ribbon interface.
 3. Use the **Create** ribbon group to add blocks (electrical, mechanical, or software).
 4. Connect blocks by selecting a source block and pressing <kbd>C</kbd>, then clicking the target.
@@ -310,9 +310,9 @@ GitHub Actions runs on every push and pull request against `main`:
 - **Type check:** `mypy fsb_core/`
 - **Tests:** `pytest` on Python 3.9, 3.10, 3.11, and 3.12 with coverage
 
-### Manual Testing in Fusion 360
+### Manual Testing in Fusion
 
-Use `docs/FUSION_MANUAL_TEST_PLAN.md` for a 45–55 minute verification run inside Fusion 360 (185 manual test steps across 20 phases). For comprehensive step-by-step procedures, see `docs/DETAILED_TESTING_DOCUMENTATION.md`.
+Use `docs/FUSION_MANUAL_TEST_PLAN.md` for a 45–55 minute verification run inside Fusion (185 manual test steps across 20 phases). For comprehensive step-by-step procedures, see `docs/DETAILED_TESTING_DOCUMENTATION.md`.
 
 ---
 
@@ -347,4 +347,4 @@ Contributors focused on documentation can help expand user guides, add screensho
 
 ## Acknowledgements
 
-Fusion System Blocks builds on Autodesk Fusion 360’s API and the work of contributors who validated each milestone. Feedback and testing from educators and engineers helped shape the current feature set.
+Fusion System Blocks builds on Autodesk Fusion’s API and the work of contributors who validated each milestone. Feedback and testing from educators and engineers helped shape the current feature set.

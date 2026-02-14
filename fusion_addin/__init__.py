@@ -1,10 +1,10 @@
 """Fusion Adapter Layer for System Blocks.
 
-This module provides thin wrappers that translate between Fusion 360
+This module provides thin wrappers that translate between Fusion
 selections/parameters and the core library. It handles all Fusion-specific
 IO and side effects.
 
-BOUNDARY: This module is the ONLY place where Fusion 360 API (adsk.*) should
+BOUNDARY: This module is the ONLY place where Fusion API (adsk.*) should
 be imported. All business logic should be delegated to the core library.
 
 Modules:

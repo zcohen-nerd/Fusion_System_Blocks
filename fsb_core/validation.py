@@ -3,7 +3,7 @@
 This module provides comprehensive validation for System Blocks graphs,
 detecting structural issues, invalid references, and design rule violations.
 
-BOUNDARY: This module contains NO Fusion 360 dependencies. All validation
+BOUNDARY: This module contains NO Fusion dependencies. All validation
 logic operates on pure Python data structures and can be tested independently.
 
 Functions:

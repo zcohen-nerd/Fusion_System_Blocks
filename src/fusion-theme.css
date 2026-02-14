@@ -1,9 +1,9 @@
-/* Fusion 360 Theme CSS
- * Authentic Fusion 360 color scheme and styling patterns.
+/* Fusion Theme CSS
+ * Authentic Fusion color scheme and styling patterns.
  * Consolidated and deduplicated for maintainability.
  */
 
-/* === FUSION 360 COLOR PALETTE === */
+/* === Fusion COLOR PALETTE === */
 :root {
   /* Primary Colors */
   --fusion-bg-primary: #2d2d30;
@@ -968,7 +968,7 @@
   transition: all 0.3s ease;
 }
 
-/* Grid pattern - matching Fusion 360's design grid */
+/* Grid pattern - matching Fusion's design grid */
 .fusion-grid-pattern {
   background-image: 
     radial-gradient(circle, var(--fusion-border-primary) 1px, transparent 1px);

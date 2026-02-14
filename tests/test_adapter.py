@@ -1,6 +1,6 @@
-"""Tests for fusion_addin/adapter.py using mock Fusion 360 objects.
+"""Tests for fusion_addin/adapter.py using mock Fusion objects.
 
-Since the real adsk module is only available inside Fusion 360, every
+Since the real adsk module is only available inside Fusion, every
 Fusion-specific touchpoint is replaced with unittest.mock objects.
 """
 

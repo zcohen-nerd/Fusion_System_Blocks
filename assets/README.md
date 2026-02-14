@@ -13,4 +13,4 @@ This directory contains media assets for documentation and public presentation (
 
 - Use PNG for UI screenshots, GIF/MP4 for demos, SVG for scalable graphics.
 - Optimize file sizes for web viewing.
-- Follow Fusion 360 color scheme and styling for consistency.
+- Follow Fusion color scheme and styling for consistency.

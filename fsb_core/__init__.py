@@ -1,7 +1,7 @@
 """Core library for System Blocks.
 
-This module contains pure Python business logic with NO Fusion 360 dependencies.
-All code here is testable with pytest outside of Fusion 360.
+This module contains pure Python business logic with NO Fusion dependencies.
+All code here is testable with pytest outside of Fusion.
 
 Modules:
     models: Dataclasses for Block, Port, Connection, Graph
@@ -16,7 +16,7 @@ Usage:
     from fsb_core.action_plan import build_action_plan
 
 Note:
-    This module intentionally has NO imports from 'adsk' or any Fusion 360
+    This module intentionally has NO imports from 'adsk' or any Fusion
     libraries. All Fusion-specific code belongs in the fusion_addin layer.
 """
 

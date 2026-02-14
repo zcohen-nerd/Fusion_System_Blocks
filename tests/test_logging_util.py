@@ -1,7 +1,7 @@
 """Tests for the fusion_addin logging utilities.
 
 This module tests the logging utilities that can be tested independently
-of Fusion 360. The module is designed with pure Python logic that can
+of Fusion. The module is designed with pure Python logic that can
 be unit tested, with Fusion-specific UI functions isolated.
 
 Test coverage:

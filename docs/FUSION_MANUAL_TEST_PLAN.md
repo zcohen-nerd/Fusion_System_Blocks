@@ -6,10 +6,10 @@ Estimated total time: **45–55 min**.
 
 ## Prerequisites
 
-- [ ] Fusion 360 installed and running
+- [ ] Fusion installed and running
 - [ ] Add-in deployed to
-  `%APPDATA%\Autodesk\Autodesk Fusion 360\API\AddIns\`
-- [ ] Fusion 360 restarted after deployment
+  `%APPDATA%\Autodesk\Autodesk Fusion\API\AddIns\`
+- [ ] Fusion restarted after deployment
 - [ ] A Fusion document with at least 3 components is open
 
 ## Phases Removed (Passed Previously)
@@ -378,7 +378,7 @@ Shortcuts Help, Crash Recovery, Connection Context Menu.
 
 | Step | Action | Expected Result | Pass |
 |------|--------|-----------------|------|
-| 20.1 | **Inspect saved data for schema version.** (1) Save the current diagram with **Save** (Ctrl+S). (2) In the Fusion 360 Text Commands panel click **Scripts → Show API Messages**. (3) In the ribbon click **Open** (Ctrl+O) to reload the diagram — watch the Text Commands output for the JSON payload. (4) Inside the JSON look for the key `"schemaVersion"`. | The saved data contains `"schemaVersion": "1.0"` at the top level of the JSON object. | [ ] |
+| 20.1 | **Inspect saved data for schema version.** (1) Save the current diagram with **Save** (Ctrl+S). (2) In the Fusion Text Commands panel click **Scripts → Show API Messages**. (3) In the ribbon click **Open** (Ctrl+O) to reload the diagram — watch the Text Commands output for the JSON payload. (4) Inside the JSON look for the key `"schemaVersion"`. | The saved data contains `"schemaVersion": "1.0"` at the top level of the JSON object. | [ ] |
 | 20.2 | **Load a valid v1.0 diagram.** (1) Using the same saved diagram from 20.1, close the palette and re-open it. (2) Click **Open** and load the diagram. (3) Verify the block count and connections match what was saved. | Diagram loads without errors; block count and connections are preserved; no "migration" or "upgrade" notification appears. | [ ] |
 | 20.3 | **Load a pre-versioned diagram (no schemaVersion).** (1) Using the Import button, paste the following minimal JSON and click Import: `{"blocks":[{"id":"b1","name":"Test","type":"Generic","status":"Placeholder","x":100,"y":100,"width":120,"height":80,"interfaces":[]}],"connections":[]}` — note this JSON has no `schemaVersion` field. (2) After import, save the diagram. (3) Re-open it and inspect the JSON in Text Commands. | Diagram imports and loads successfully. After save, the persisted JSON now contains `"schemaVersion": "1.0"` and a `"requirements"` array (added by silent migration). | [ ] |
 | 20.4 | **Validation reports invalid schema version.** (1) Using the Import button, paste: `{"schemaVersion":"99.0","blocks":[],"connections":[]}` and click Import. (2) Click **Check Rules** in the ribbon. | The rule check results include a warning or error indicating the schema version is unrecognised or unsupported. | [ ] |
@@ -431,7 +431,7 @@ Log filename format:
 
 **Tested By**: _________________ **Date**: _________________
 
-**Fusion 360 Version**: _________________
+**Fusion Version**: _________________
 
 **OS**: _________________
 

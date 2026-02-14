@@ -1,10 +1,10 @@
-"""Core adapter for translating between Fusion 360 and the core library.
+"""Core adapter for translating between Fusion and the core library.
 
-This module provides the primary interface for converting Fusion 360
+This module provides the primary interface for converting Fusion
 selections and document state into core library inputs, and applying
 core library outputs back to the Fusion document.
 
-BOUNDARY: This module ONLY contains Fusion 360 specific code. All business
+BOUNDARY: This module ONLY contains Fusion specific code. All business
 logic is delegated to the core library.
 
 Classes:
@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-# Fusion 360 imports - only in this adapter layer
+# Fusion imports - only in this adapter layer
 try:
     import adsk.core
     import adsk.fusion
@@ -41,7 +41,7 @@ ATTR_NAME = "diagramJson"
 
 
 class FusionAdapter:
-    """Adapter for translating between Fusion 360 and the core library.
+    """Adapter for translating between Fusion and the core library.
 
     This class provides methods to:
     - Load graph data from Fusion document attributes
@@ -54,8 +54,8 @@ class FusionAdapter:
     the core library while handling Fusion-specific IO operations.
 
     Attributes:
-        app: The Fusion 360 Application object.
-        ui: The Fusion 360 UserInterface object.
+        app: The Fusion Application object.
+        ui: The Fusion UserInterface object.
     """
 
     def __init__(
@@ -66,20 +66,20 @@ class FusionAdapter:
         """Initialize the FusionAdapter.
 
         Args:
-            app: The Fusion 360 Application object.
-            ui: The Fusion 360 UserInterface object.
+            app: The Fusion Application object.
+            ui: The Fusion UserInterface object.
         """
         self._app = app
         self._ui = ui
 
     @property
     def app(self) -> adsk.core.Application:
-        """Get the Fusion 360 Application object."""
+        """Get the Fusion Application object."""
         return self._app
 
     @property
     def ui(self) -> adsk.core.UserInterface:
-        """Get the Fusion 360 UserInterface object."""
+        """Get the Fusion UserInterface object."""
         return self._ui
 
     def get_root_component(self) -> adsk.fusion.Component | None:

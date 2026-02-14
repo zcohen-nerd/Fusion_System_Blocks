@@ -508,7 +508,7 @@ class DiagramRenderer {
       port.setAttribute('data-port-type', portType);
       port.setAttribute('opacity', '0');
       // Ensure the port is always hittable even at opacity 0.
-      // Without this, some Chromium builds (including Fusion 360's CEF)
+      // Without this, some Chromium builds (including Fusion's CEF)
       // skip opacity-0 elements during hit testing.
       port.setAttribute('pointer-events', 'all');
       port.style.cursor = 'crosshair';
@@ -626,7 +626,7 @@ class DiagramRenderer {
     // on top of the connection line (correct SVG stacking order).
     group.appendChild(path);
 
-    // CEF workaround: marker-start is unreliable in Fusion 360's
+    // CEF workaround: marker-start is unreliable in Fusion's
     // Chromium, so render a manual reverse arrow polygon instead.
     // Appended after the path so the arrow sits visually on top.
     if (direction === 'bidirectional' || direction === 'backward') {
@@ -836,7 +836,7 @@ class DiagramRenderer {
 
   /**
    * CEF workaround — render a small reverse-arrow triangle at the start
-   * of a connection path. Fusion 360's Chromium does not reliably render
+   * of a connection path. Fusion's Chromium does not reliably render
    * SVG marker-start, so we draw a manual polygon instead.
    * strokeWidth scales the arrow to match the SVG marker (markerUnits=strokeWidth).
    */

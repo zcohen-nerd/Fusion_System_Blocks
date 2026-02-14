@@ -1,8 +1,8 @@
 # Project Folder Structure Blueprint
-**Fusion System Blocks - Fusion 360 Add-in**
+**Fusion System Blocks - Fusion Add-in**
 
 **Generated:** December 22, 2025  
-**Project Type:** Python/JavaScript Hybrid (Fusion 360 Add-in)  
+**Project Type:** Python/JavaScript Hybrid (Fusion Add-in)  
 **Architecture:** Two-Layer Backend (Core + Adapter) + Modular Frontend  
 **Last Structure Update:** February 2026
 
@@ -11,8 +11,8 @@
 ## 1. Structural Overview
 
 ### Project Identity
-This is a **Python-based Fusion 360 add-in** with a **JavaScript/HTML5 frontend** embedded as a palette UI. The project follows a **hybrid architecture**:
-- Python backend handles Fusion 360 API integration, persistence, validation, and business logic
+This is a **Python-based Fusion add-in** with a **JavaScript/HTML5 frontend** embedded as a palette UI. The project follows a **hybrid architecture**:
+- Python backend handles Fusion API integration, persistence, validation, and business logic
 - Modular JavaScript frontend provides interactive diagram editing with a tabbed, task-oriented UI
 - Communication via an HTMLEvent bridge between Python and JavaScript
 
@@ -20,16 +20,16 @@ This is a **Python-based Fusion 360 add-in** with a **JavaScript/HTML5 frontend*
 1. **Separation by Technology Layer**: Python (backend) vs. JavaScript (frontend) kept distinct
 2. **Two-Layer Python Architecture**: Pure Python core library (`fsb_core/`) + Fusion adapter layer (`fusion_addin/`)
 3. **Feature-Based Frontend Modules**: UI code organized by responsibility (core, ui, features, interface, utils)
-4. **Testable Core Logic**: Core library has NO Fusion dependencies, enabling pytest outside Fusion 360
+4. **Testable Core Logic**: Core library has NO Fusion dependencies, enabling pytest outside Fusion
 5. **Documentation Co-location**: Architecture decisions, UX research, and design notes live in `docs/`
 6. **Test Mirroring**: Test files mirror the structure of `src/` and `fsb_core/` with `test_*.py` naming
 
 ### Architectural Approach
 - **Core Library (`fsb_core/`)**: Pure Python business logic with dataclasses, validation, and action planning. NO `adsk` imports—fully testable with pytest.
-- **Fusion Adapter (`fusion_addin/`)**: Thin wrappers that translate between core library and Fusion 360 API. Includes logging, diagnostics, selection, and document operations.
-- **Entry Point**: `Fusion_System_Blocks.py` acts as the Fusion 360 entry point, orchestrating core library and adapter modules.
+- **Fusion Adapter (`fusion_addin/`)**: Thin wrappers that translate between core library and Fusion API. Includes logging, diagnostics, selection, and document operations.
+- **Entry Point**: `Fusion_System_Blocks.py` acts as the Fusion entry point, orchestrating core library and adapter modules.
 - **Frontend**: Modular JavaScript with clear boundaries (editor core, rendering, UI management, Python bridge, advanced features)
-- **Persistence**: Diagram data stored as JSON in Fusion 360 document attributes; no external database
+- **Persistence**: Diagram data stored as JSON in Fusion document attributes; no external database
 - **Bridge Pattern**: Python ↔ JavaScript communication via `adsk.fusionSendData()` and global window functions
 
 ---
@@ -72,22 +72,22 @@ Fusion_System_Blocks/
 │   └── schema.json                # JSON schema for diagram data validation
 ├── exports/                       # Build artifacts (distribution ZIPs)
 │   └── Fusion_System_Blocks_v1.0_Beta.zip
-├── fusion_addin/                  # Fusion 360 adapter layer (bridges core and Fusion API)
+├── fusion_addin/                  # Fusion adapter layer (bridges core and Fusion API)
 │   ├── __init__.py                # Package exports with lazy imports
 │   ├── adapter.py                 # FusionAdapter class for core ↔ Fusion translation
 │   ├── selection.py               # SelectionHandler for Fusion selection workflows
 │   ├── document.py                # DocumentManager for Fusion document operations
 │   ├── logging_util.py            # Production logging with session IDs, decorators
 │   └── diagnostics.py             # DiagnosticsRunner with self-test suite
-├── FUSION_DEPLOYMENT_GUIDE.md     # Deployment instructions for Fusion 360
-├── Fusion_System_Blocks.manifest  # Fusion 360 add-in manifest (JSON)
-├── Fusion_System_Blocks.py        # Primary Python entry point for Fusion 360
+├── FUSION_DEPLOYMENT_GUIDE.md     # Deployment instructions for Fusion
+├── Fusion_System_Blocks.manifest  # Fusion add-in manifest (JSON)
+├── Fusion_System_Blocks.py        # Primary Python entry point for Fusion
 ├── LICENSE                        # Software license (Community/Commercial dual-license)
 ├── README.md                      # Project overview and quickstart
 ├── scripts/                       # Build and deployment scripts
 │   ├── create_beta_release.ps1    # Package beta releases
-│   ├── create_distribution_package.ps1 # Create distribution ZIP for Fusion 360
-│   ├── deploy_simple.ps1          # Deploy to local Fusion 360 for testing
+│   ├── create_distribution_package.ps1 # Create distribution ZIP for Fusion
+│   ├── deploy_simple.ps1          # Deploy to local Fusion for testing
 │   └── update_public_readme.ps1   # Sync README to public version
 ├── src/                           # Source code (Python backend + JavaScript frontend)
 │   ├── core/                      # Core diagram editing logic (JavaScript)
@@ -114,7 +114,7 @@ Fusion_System_Blocks/
 │   ├── diagram_data.py            # Core business logic: validation, rule checks, exports (Python)
 │   ├── fusion-icons.css           # Icon styles for UI
 │   ├── fusion-ribbon.css          # Ribbon-style toolbar CSS
-│   ├── fusion-theme.css           # Fusion 360-themed CSS variables
+│   ├── fusion-theme.css           # Fusion-themed CSS variables
 │   ├── main-coordinator.js        # Application bootstrap and module coordination
 │   ├── palette.html               # Main HTML palette UI (entry point for frontend)
 │   └── palette.js                 # Palette initialization and legacy orchestration
@@ -150,13 +150,13 @@ Fusion_System_Blocks/
 
 ## 3. Key Directory Analysis
 
-### Root Level: Fusion 360 Entry Point
-- **`Fusion_System_Blocks.py`**: The primary Python file Fusion 360 loads when the add-in starts. Contains:
+### Root Level: Fusion Entry Point
+- **`Fusion_System_Blocks.py`**: The primary Python file Fusion loads when the add-in starts. Contains:
   - Event handlers (`CommandExecuteHandler`, `PaletteHTMLEventHandler`)
   - Palette creation and registration
   - Python ↔ JavaScript bridge handlers
   - Delegates business logic to `src/diagram_data.py`
-- **`Fusion_System_Blocks.manifest`**: Fusion 360 add-in metadata (ID, version, author, description)
+- **`Fusion_System_Blocks.manifest`**: Fusion add-in metadata (ID, version, author, description)
 - **`LICENSE`**: Dual-license (Community for non-commercial, Commercial for business use)
 - **`README.md`**: Project overview, installation, and usage instructions
 
@@ -192,12 +192,12 @@ The source directory contains both Python business logic and JavaScript frontend
   - `logger.js`: Centralized logging for debugging and error tracking
 
 #### Frontend Entry Point and Coordination
-- **`palette.html`**: Main HTML file loaded by Fusion 360 palette; includes all CSS/JS modules and defines the tabbed UI structure
+- **`palette.html`**: Main HTML file loaded by Fusion palette; includes all CSS/JS modules and defines the tabbed UI structure
 - **`palette.js`**: Legacy orchestration script (being phased out; functionality moved to modular files)
 - **`main-coordinator.js`**: Application bootstrap that initializes modules and wires event handlers
 
 #### Styles
-- **`fusion-theme.css`**: CSS variables matching Fusion 360's dark theme (colors, spacing, shadows, transitions)
+- **`fusion-theme.css`**: CSS variables matching Fusion's dark theme (colors, spacing, shadows, transitions)
 - **`fusion-ribbon.css`**: Ribbon-style toolbar layout and button styles
 - **`fusion-icons.css`**: Icon definitions for UI elements
 
@@ -219,7 +219,7 @@ The source directory contains both Python business logic and JavaScript frontend
   - `palette-ux-journey.md`: User journey maps
   - `palette-ux-flow.md`: Task flows and accessibility checklist
 - **`DETAILED_TESTING_DOCUMENTATION.md`**: Comprehensive testing guide
-- **`FUSION_MANUAL_TEST_PLAN.md`**: Quick manual test checklist for Fusion 360 validation
+- **`FUSION_MANUAL_TEST_PLAN.md`**: Quick manual test checklist for Fusion validation
 - **`MILESTONES.md`**: Development milestone tracking
 - **`schema.json`**: JSON schema defining the structure of diagram data for validation
 
@@ -254,8 +254,8 @@ The source directory contains both Python business logic and JavaScript frontend
 
 ### `scripts/`: Build and Deployment Automation
 - **`create_beta_release.ps1`**: Packages beta releases with version tagging
-- **`create_distribution_package.ps1`**: Creates ZIP distribution for Fusion 360 installation
-- **`deploy_simple.ps1`**: Copies add-in to local Fusion 360 add-ins directory for testing
+- **`create_distribution_package.ps1`**: Creates ZIP distribution for Fusion installation
+- **`deploy_simple.ps1`**: Copies add-in to local Fusion add-ins directory for testing
 - **`update_public_readme.ps1`**: Syncs README to a public-facing version (strips internal notes)
 
 ### Build Artifacts
@@ -268,14 +268,14 @@ The source directory contains both Python business logic and JavaScript frontend
 ## 4. File Placement Patterns
 
 ### Configuration Files
-- **Fusion 360 Manifest**: `Fusion_System_Blocks.manifest` (root level, required by Fusion 360)
+- **Fusion Manifest**: `Fusion_System_Blocks.manifest` (root level, required by Fusion)
 - **JSON Schema**: `docs/schema.json` (co-located with documentation)
 - **Git Configuration**: `.gitignore` (root level, standard location)
 - **VS Code Settings**: `.vscode/` (root level, workspace-specific configuration)
 - **Python Environment**: `.venv/` (root level, isolated dependency management)
 
 ### Python Code
-- **Entry Point**: `Fusion_System_Blocks.py` (root level, loaded by Fusion 360)
+- **Entry Point**: `Fusion_System_Blocks.py` (root level, loaded by Fusion)
 - **Business Logic**: `src/diagram_data.py` (shared module for validation, exports, rule checks)
 - **Package Wrappers**: `fusion_system_blocks/main.py` and `fusion_system_blocks/core/diagram_data.py` (delegation to root and src)
 
@@ -286,7 +286,7 @@ The source directory contains both Python business logic and JavaScript frontend
   - `interface/` for backend communication
   - `features/` for advanced functionality
   - `utils/` for shared utilities
-- **Entry Point**: `src/palette.html` (loaded by Fusion 360 palette)
+- **Entry Point**: `src/palette.html` (loaded by Fusion palette)
 - **Coordination**: `src/main-coordinator.js` (module initialization and orchestration)
 
 ### CSS Styles
@@ -393,7 +393,7 @@ The source directory contains both Python business logic and JavaScript frontend
 3. **Architecture**: `docs/architecture/REVIEW_REPORT.md`
 
 #### For Configuration
-1. **Fusion 360 Manifest**: `Fusion_System_Blocks.manifest`
+1. **Fusion Manifest**: `Fusion_System_Blocks.manifest`
 2. **Diagram Schema**: `docs/schema.json`
 3. **VS Code Settings**: `.vscode/settings.json`
 
@@ -424,7 +424,7 @@ The source directory contains both Python business logic and JavaScript frontend
 4. Run with `python -m pytest tests/test_{module}.py`
 
 #### Updating Configuration
-- **Fusion 360 Manifest**: Edit `Fusion_System_Blocks.manifest` (version, description)
+- **Fusion Manifest**: Edit `Fusion_System_Blocks.manifest` (version, description)
 - **Schema**: Edit `docs/schema.json` (diagram data structure)
 - **Python Dependencies**: Update `.venv/` with `pip install {package}`
 
@@ -473,12 +473,12 @@ The source directory contains both Python business logic and JavaScript frontend
   3. Create distribution package
   4. Tag Git commit with version
 
-#### Deployment to Fusion 360
+#### Deployment to Fusion
 - **Script**: `deploy_simple.ps1`
 - **Process**:
-  1. Detect Fusion 360 add-ins directory (Windows/Mac)
+  1. Detect Fusion add-ins directory (Windows/Mac)
   2. Copy `Fusion_System_Blocks.py`, `Fusion_System_Blocks.manifest`, `src/`, `fsb_core/`, and `fusion_addin/` to add-ins folder
-  3. Restart Fusion 360 to load updated add-in
+  3. Restart Fusion to load updated add-in
 
 ### Output Structure
 
@@ -497,7 +497,7 @@ Fusion_System_Blocks_v1.0_Beta.zip
 │   ├── graph_builder.py
 │   ├── action_plan.py
 │   └── version_control.py
-├── fusion_addin/                  # Fusion 360 adapter package
+├── fusion_addin/                  # Fusion adapter package
 │   ├── __init__.py
 │   ├── adapter.py
 │   ├── diagnostics.py
@@ -516,9 +516,9 @@ Fusion_System_Blocks_v1.0_Beta.zip
     └── diagram_data.py
 ```
 
-#### Fusion 360 Installation Location
-- **Windows**: `%APPDATA%\Autodesk\Autodesk Fusion 360\API\AddIns\Fusion_System_Blocks\`
-- **Mac**: `~/Library/Application Support/Autodesk/Autodesk Fusion 360/API/AddIns/Fusion_System_Blocks/`
+#### Fusion Installation Location
+- **Windows**: `%APPDATA%\Autodesk\Autodesk Fusion\API\AddIns\Fusion_System_Blocks\`
+- **Mac**: `~/Library/Application Support/Autodesk/Autodesk Fusion/API/AddIns/Fusion_System_Blocks/`
 
 ### Environment-Specific Builds
 - **Development**: Direct execution from source directory with `.venv` and `__pycache__`
@@ -533,9 +533,9 @@ Fusion_System_Blocks_v1.0_Beta.zip
 
 #### Package Hierarchy
 - **Core Library**: `fsb_core/` (pure Python core logic)
-- **Fusion Adapter**: `fusion_addin/` (Fusion 360 integration layer)
+- **Fusion Adapter**: `fusion_addin/` (Fusion integration layer)
 - **Business Logic**: `src/diagram_data.py` (re-exports from `src/diagram/`)
-- **Entry Point**: `Fusion_System_Blocks.py` (root level, loaded by Fusion 360)
+- **Entry Point**: `Fusion_System_Blocks.py` (root level, loaded by Fusion)
 
 #### Module Import Strategy
 - **Development**: Add `src/` to `sys.path`, import `diagram_data` directly
@@ -549,9 +549,9 @@ Fusion_System_Blocks_v1.0_Beta.zip
 - **Docstrings**: Google-style (PEP 257)
 
 #### Resource Organization
-- **HTML/CSS/JS**: Embedded in `src/` directory, loaded by Fusion 360 palette
+- **HTML/CSS/JS**: Embedded in `src/` directory, loaded by Fusion palette
 - **JSON Schema**: `docs/schema.json` (not embedded, used for validation)
-- **Manifest**: `Fusion_System_Blocks.manifest` (JSON, required by Fusion 360)
+- **Manifest**: `Fusion_System_Blocks.manifest` (JSON, required by Fusion)
 
 #### Dependency Management
 - **Virtual Environment**: `.venv/` at root level
@@ -774,7 +774,7 @@ def test_{function_name}_failure():
 
 #### Build Checks
 - **Distribution Package**: `create_distribution_package.ps1` validates required files exist
-- **Manifest Validation**: Check `Fusion_System_Blocks.manifest` against Fusion 360 schema
+- **Manifest Validation**: Check `Fusion_System_Blocks.manifest` against Fusion schema
 - **Schema Validation**: Validate diagram JSON against `docs/schema.json`
 
 #### Linting Rules

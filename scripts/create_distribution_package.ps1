@@ -1,12 +1,12 @@
 # Create Release Package for Distribution
-# This script packages your Fusion 360 add-in for end-user distribution
+# This script packages your Fusion add-in for end-user distribution
 
 param(
     [string]$Version = "v0.0.1-beta",
     [string]$OutputDir = ".\exports"
 )
 
-Write-Host "📦 Creating Fusion 360 Add-in Release Package: $Version" -ForegroundColor Green
+Write-Host "📦 Creating Fusion Add-in Release Package: $Version" -ForegroundColor Green
 Write-Host ""
 
 # Create output directory
@@ -18,7 +18,7 @@ New-Item -ItemType Directory -Path $PackageDir -Force | Out-Null
 
 Write-Host "📋 Copying core files..." -ForegroundColor Cyan
 
-# Copy essential files for Fusion 360 add-in
+# Copy essential files for Fusion add-in
 Copy-Item "Fusion_System_Blocks.py" $PackageDir
 Copy-Item "Fusion_System_Blocks.manifest" $PackageDir
 Copy-Item "README.md" $PackageDir

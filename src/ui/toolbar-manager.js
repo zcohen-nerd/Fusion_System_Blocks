@@ -79,7 +79,7 @@ class ToolbarManager {
    */
   static TOOLTIP_DATA = {
     'btn-new':             { title: 'New Diagram', detail: 'Create a new empty system block diagram.', shortcut: 'Ctrl+N' },
-    'btn-save':            { title: 'Save', detail: 'Save the current diagram to the active Fusion 360 document.', shortcut: 'Ctrl+S' },
+    'btn-save':            { title: 'Save', detail: 'Save the current diagram to the active Fusion document.', shortcut: 'Ctrl+S' },
     'btn-save-as':         { title: 'Save As', detail: 'Save a copy of the diagram with a new name.', shortcut: 'Ctrl+Shift+S' },
     'btn-load':            { title: 'Open', detail: 'Open a previously saved diagram from the active document.', shortcut: 'Ctrl+O' },
     'btn-open-named':      { title: 'Open Named', detail: 'Open a specific named diagram from the document.', shortcut: 'Ctrl+Shift+O' },
@@ -94,7 +94,7 @@ class ToolbarManager {
     'btn-add-note':        { title: 'Add Note', detail: 'Add a sticky note annotation with a coloured background.' },
     'btn-add-dimension':   { title: 'Add Dimension', detail: 'Add a dimension line between two selected blocks showing distance.' },
     'btn-add-callout':     { title: 'Add Callout', detail: 'Add a callout bubble with a leader line pointing to the selected block.' },
-    'btn-link-cad':        { title: 'Link to CAD', detail: 'Link the selected block to a Fusion 360 component for BOM and 3D integration.' },
+    'btn-link-cad':        { title: 'Link to CAD', detail: 'Link the selected block to a Fusion component for BOM and 3D integration.' },
     'btn-check-rules':     { title: 'Check Rules', detail: 'Run validation rules to check for errors and warnings in the diagram.' },
     'btn-select-all':      { title: 'Select All', detail: 'Select all blocks in the diagram for batch operations.', shortcut: 'Ctrl+A' },
     'btn-select-none':     { title: 'Clear Selection', detail: 'Deselect all blocks.', shortcut: 'Esc' },
@@ -1619,7 +1619,7 @@ class ToolbarManager {
       }
     }
 
-    // Extra safety margin — compensates for Fusion 360's CEF webview
+    // Extra safety margin — compensates for Fusion's CEF webview
     // where getBoundingClientRect can under-report height, especially
     // near the bottom edge occupied by the ribbon/toolbar/status bar.
     // Use 15% horizontal + 20% vertical (ribbon steals vertical space).

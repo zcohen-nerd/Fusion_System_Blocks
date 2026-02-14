@@ -4,7 +4,7 @@ This module provides JSON serialization and deserialization for graphs,
 with support for both the new dataclass-based models and backward
 compatibility with the legacy dictionary format.
 
-BOUNDARY: This module contains NO Fusion 360 dependencies.
+BOUNDARY: This module contains NO Fusion dependencies.
 """
 
 from __future__ import annotations

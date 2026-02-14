@@ -6,7 +6,7 @@ block attribute (e.g. ``"mass"``) and defines a threshold + comparison
 operator.  The engine aggregates values across all blocks and produces
 a pass/fail result for every requirement.
 
-BOUNDARY: This module contains NO Fusion 360 dependencies.
+BOUNDARY: This module contains NO Fusion dependencies.
 
 Functions:
     validate_requirements: Evaluate all requirements on a graph.

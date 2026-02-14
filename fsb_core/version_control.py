@@ -4,7 +4,7 @@ Provides snapshot-based version control with diff/compare support.
 Snapshots capture the complete serialized state of a Graph at a point
 in time, enabling history browsing, comparison, and rollback.
 
-BOUNDARY: This module contains NO Fusion 360 dependencies.
+BOUNDARY: This module contains NO Fusion dependencies.
 
 Classes:
     SnapshotStore: In-memory history of graph snapshots.

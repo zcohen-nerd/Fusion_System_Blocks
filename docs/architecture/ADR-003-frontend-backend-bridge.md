@@ -5,7 +5,7 @@ Accepted
 
 ## Context
 The add-in's UI runs in a web context (Chromium-based palette), while the logic runs in a Python context. They cannot share memory. We need a reliable mechanism for them to communicate.
-Fusion 360 provides `palette.sendInfoToHTML` (Python -> JS) and `adsk.core.HTMLEventHandler` (JS -> Python).
+Fusion provides `palette.sendInfoToHTML` (Python -> JS) and `adsk.core.HTMLEventHandler` (JS -> Python).
 
 ## Decision
 We implement a **Command-Dispatch Bridge Pattern**.

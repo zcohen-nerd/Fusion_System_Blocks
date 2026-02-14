@@ -1,7 +1,7 @@
 """
 CAD linking, 3D visualization, and living documentation functions.
 
-Provides advanced integration between block diagrams and Fusion 360 CAD models,
+Provides advanced integration between block diagrams and Fusion CAD models,
 including component tracking, 3D visualization, assembly sequences, and living documentation.
 """
 
@@ -28,7 +28,7 @@ def create_enhanced_cad_link(
     Create an enhanced CAD link with component properties and sync status.
 
     Args:
-        doc_id: Fusion 360 document ID
+        doc_id: Fusion document ID
         occ_token: Occurrence token for the component
         component_name: Name of the component
         material: Material name
@@ -126,7 +126,7 @@ def mark_component_as_missing(
     link: dict[str, Any], error_message: str = ""
 ) -> dict[str, Any]:
     """
-    Mark a component as missing (not found in Fusion 360).
+    Mark a component as missing (not found in Fusion).
 
     Args:
         link: The CAD link to mark as missing
@@ -326,7 +326,7 @@ def get_component_health_status(block: dict[str, Any]) -> dict[str, Any]:
 
         # Check for issues
         if sync_status == "missing":
-            issues.append(f"Component {i + 1}: Not found in Fusion 360")
+            issues.append(f"Component {i + 1}: Not found in Fusion")
             recommendations.append(f"Check if component {i + 1} was deleted or moved")
         elif sync_status == "error":
             errors = link.get("syncStatus", {}).get("syncErrors", [])
@@ -434,7 +434,7 @@ def generate_component_thumbnail_data(
 
 def sync_all_components_in_diagram(diagram: dict[str, Any]) -> dict[str, Any]:
     """
-    Sync all CAD components in a diagram (placeholder for Fusion 360 integration).
+    Sync all CAD components in a diagram (placeholder for Fusion integration).
 
     Args:
         diagram: The diagram to sync
@@ -462,7 +462,7 @@ def sync_all_components_in_diagram(diagram: dict[str, Any]) -> dict[str, Any]:
 
             for link in cad_links:
                 # Placeholder sync logic - in real implementation, this would
-                # call Fusion 360 API to check component status
+                # call Fusion API to check component status
                 try:
                     # Simulate sync operation
                     if "syncStatus" not in link:

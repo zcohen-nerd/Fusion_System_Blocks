@@ -93,8 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Connection port dots on block hover (input/output circles)
   - `addConnection()` / `removeConnection()` in diagram editor core
 - **Two-Layer Architecture (Milestone 16):**
-  - `fsb_core/` pure Python library with NO Fusion 360 dependencies
-  - `fusion_addin/` adapter layer for Fusion 360 integration
+  - `fsb_core/` pure Python library with NO Fusion dependencies
+  - `fusion_addin/` adapter layer for Fusion integration
 - **Core Library Modules (`fsb_core/`):**
   - `models.py` – Block, Port, Connection, Graph dataclasses with enums; Requirement, Snapshot, DiffResult, block_fingerprint
   - `validation.py` – Graph validation with structured error codes
@@ -141,7 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial release of Fusion System Blocks
-- Fusion 360-style ribbon interface
+- Fusion-style ribbon interface
 - Block-based system design capabilities
 - Multi-selection and grouping features
 - CAD integration and 3D visualization
@@ -151,7 +151,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 - **Core Editing**: Block creation, deletion, and modification
-- **Visual Rendering**: Professional diagram display with Fusion 360 styling
+- **Visual Rendering**: Professional diagram display with Fusion styling
 - **Toolbar Management**: Ribbon interface with File/Edit/Create/Select/Arrange groups
 - **Advanced Features**: Multi-block selection, group operations, complex manipulations
 - **Backend Integration**: Seamless Python-JavaScript communication
@@ -160,5 +160,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Technical
 - Python 3.9+ backend
 - Modern JavaScript frontend with modular architecture
-- Fusion 360 Add-in compatibility
+- Fusion Add-in compatibility
 - Cross-platform support (Windows, macOS)

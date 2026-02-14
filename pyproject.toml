@@ -1,7 +1,7 @@
 [project]
 name = "fusion-system-blocks"
 version = "0.1.0"
-description = "Fusion 360 add-in for system block diagrams with pure Python core library"
+description = "Fusion add-in for system block diagrams with pure Python core library"
 authors = [
     { name = "Fusion System Blocks Contributors" }
 ]

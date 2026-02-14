@@ -174,7 +174,7 @@ class PythonInterface {
           }
         };
 
-        // Fusion 360 CEF: fusionSendData may return a Promise OR the
+        // Fusion CEF: fusionSendData may return a Promise OR the
         // response string synchronously, depending on the API version.
         if (result && typeof result.then === 'function') {
           result.then(resolvePending).catch(rejectPending);
@@ -448,7 +448,7 @@ class PythonInterface {
           // Response was empty or malformed — likely a bridge issue
           logger.error('Export: unexpected response shape:', response);
           throw new Error(
-            'No response from Python — check the Fusion 360 Text Commands log'
+            'No response from Python — check the Fusion Text Commands log'
           );
         }
         return response;

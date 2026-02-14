@@ -1,4 +1,4 @@
-"""Production-grade logging utilities for the Fusion 360 System Blocks add-in.
+"""Production-grade logging utilities for the Fusion System Blocks add-in.
 
 This module provides centralized, configurable logging with:
 - Automatic log file creation in a user-writable location
@@ -6,7 +6,7 @@ This module provides centralized, configurable logging with:
 - Exception handling decorators for Fusion event handlers
 - Environment information logging (Fusion version, OS, Python version)
 
-BOUNDARY: This module handles Fusion 360 API calls for UI notifications only.
+BOUNDARY: This module handles Fusion API calls for UI notifications only.
 All logging logic is pure Python and can be tested independently.
 
 Usage:
@@ -241,21 +241,21 @@ def log_environment_info(logger: logging.Logger) -> None:
     logger.info(f"OS: {platform.system()} {platform.release()} ({platform.machine()})")
     logger.info(f"Platform: {platform.platform()}")
 
-    # Fusion 360 version (if available)
+    # Fusion version (if available)
     try:
         import adsk.core
 
         app = adsk.core.Application.get()
         if app:
-            logger.info(f"Fusion 360 Version: {app.version}")
+            logger.info(f"Fusion Version: {app.version}")
             if app.activeDocument:
                 logger.info(f"Active Document: {app.activeDocument.name}")
             else:
                 logger.info("Active Document: None")
         else:
-            logger.info("Fusion 360: Application not available")
+            logger.info("Fusion: Application not available")
     except Exception as e:
-        logger.info(f"Fusion 360: Could not get version ({e})")
+        logger.info(f"Fusion: Could not get version ({e})")
 
     # Log file location
     logger.info(f"Log File: {get_log_file_path()}")
@@ -263,7 +263,7 @@ def log_environment_info(logger: logging.Logger) -> None:
 
 
 def _show_error_message_box(title: str, message: str, log_path: str) -> None:
-    """Show an error message box in Fusion 360 UI.
+    """Show an error message box in Fusion UI.
 
     Includes the log file path so users can find detailed information.
 

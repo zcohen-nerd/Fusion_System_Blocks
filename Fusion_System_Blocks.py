@@ -113,7 +113,7 @@ def _show_validation_errors_dialog(errors: list) -> None:
     """Display validation errors in a message box.
 
     Shows a formatted list of validation errors from the core library
-    in a Fusion 360 message box for user visibility.
+    in a Fusion message box for user visibility.
 
     Args:
         errors: List of ValidationError instances from fsb_core.validation.
@@ -966,13 +966,13 @@ def _create_palette() -> Optional[adsk.core.Palette]:
 
 
 # ============================================================================
-# MILESTONE 12: ENHANCED CAD LINKING SYSTEM - FUSION 360 INTEGRATION
+# MILESTONE 12: ENHANCED CAD LINKING SYSTEM - Fusion INTEGRATION
 # ============================================================================
 
 
 def sync_all_components_in_fusion(diagram):
     """
-    Sync all CAD components in the diagram with Fusion 360.
+    Sync all CAD components in the diagram with Fusion.
 
     Args:
         diagram: The diagram dictionary containing blocks with CAD links
@@ -989,7 +989,7 @@ def sync_all_components_in_fusion(diagram):
                 "total_components": 0,
                 "sync_successful": 0,
                 "sync_failed": 0,
-                "errors": ["No active Fusion 360 design found"],
+                "errors": ["No active Fusion design found"],
             }
 
         results = {
@@ -1012,7 +1012,7 @@ def sync_all_components_in_fusion(diagram):
 
                 for link in cad_links:
                     try:
-                        # Get component from Fusion 360
+                        # Get component from Fusion
                         component_info = get_component_info_from_fusion(
                             link.get("docId", ""), link.get("occToken", "")
                         )
@@ -1047,7 +1047,7 @@ def sync_all_components_in_fusion(diagram):
                             # Component not found - mark as missing
                             link = diagram_data.mark_component_as_missing(
                                 link,
-                                "Component not found in active Fusion 360 design",
+                                "Component not found in active Fusion design",
                             )
                             results["sync_failed"] += 1
 
@@ -1070,7 +1070,7 @@ def sync_all_components_in_fusion(diagram):
 
 def get_component_info_from_fusion(doc_id, occ_token):
     """
-    Get component information from Fusion 360.
+    Get component information from Fusion.
 
     Args:
         doc_id: Document ID
@@ -1192,7 +1192,7 @@ def start_cad_selection(block_id, block_name):
     """Start CAD component selection for linking to a block.
 
     Minimises the palette so the user can easily click on a component
-    in the Fusion 360 viewport, then restores it after the command
+    in the Fusion viewport, then restores it after the command
     completes (the execute handler re-shows the palette).
     """
     try:
@@ -1410,13 +1410,13 @@ def start_enhanced_cad_selection(block_id, block_name):
 
 
 # ============================================================================
-# MILESTONE 13: VISUAL INTEGRATION & LIVING DOCUMENTATION - FUSION 360 API
+# MILESTONE 13: VISUAL INTEGRATION & LIVING DOCUMENTATION - Fusion API
 # ============================================================================
 
 
 def enable_3d_overlay_mode(diagram, view_box):
     """
-    Enable 3D overlay mode in Fusion 360 viewport.
+    Enable 3D overlay mode in Fusion viewport.
 
     Args:
         diagram: The block diagram data
@@ -1425,7 +1425,7 @@ def enable_3d_overlay_mode(diagram, view_box):
     try:
         design = adsk.fusion.Design.cast(APP.activeProduct)
         if not design:
-            notify_error("No active Fusion 360 design found")
+            notify_error("No active Fusion design found")
             return
 
         # For now, show a message that overlay mode is enabled
@@ -1443,7 +1443,7 @@ def enable_3d_overlay_mode(diagram, view_box):
 
 def disable_3d_overlay_mode():
     """
-    Disable 3D overlay mode in Fusion 360 viewport.
+    Disable 3D overlay mode in Fusion viewport.
     """
     try:
         # Clear any 3D overlays

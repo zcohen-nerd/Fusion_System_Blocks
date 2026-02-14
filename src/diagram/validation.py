@@ -8,7 +8,7 @@ import json
 import os
 from typing import Any, Optional
 
-# jsonschema is optional - not available in Fusion 360's Python environment
+# jsonschema is optional - not available in Fusion's Python environment
 try:
     import jsonschema
 

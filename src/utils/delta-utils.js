@@ -4,7 +4,7 @@
  * Computes JSON-Patch–style diffs between diagram snapshots and applies
  * patches received from the Python backend. This eliminates the need to
  * send the entire diagram JSON for every incremental update across the
- * Fusion 360 palette bridge.
+ * Fusion palette bridge.
  *
  * The patch format mirrors fsb_core/delta.py and uses RFC 6902 semantics:
  *   { op: "add"|"remove"|"replace", path: "/blocks/0/x", value: 20 }

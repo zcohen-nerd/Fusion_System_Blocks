@@ -3,7 +3,7 @@
 This module provides a fluent API for building graphs programmatically,
 making it easier to create complex diagrams with proper structure.
 
-BOUNDARY: This module contains NO Fusion 360 dependencies.
+BOUNDARY: This module contains NO Fusion dependencies.
 """
 
 from __future__ import annotations

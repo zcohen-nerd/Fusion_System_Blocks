@@ -1,4 +1,4 @@
-"""Tests for fusion_addin/selection.py using mock Fusion 360 objects."""
+"""Tests for fusion_addin/selection.py using mock Fusion objects."""
 
 from __future__ import annotations
 

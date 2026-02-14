@@ -1,7 +1,7 @@
 # Jobs-to-be-Done: Fusion System Blocks Palette UX
 
 ## Users & Context
-- **Primary users:** Mechanical/Electrical engineers and CAD designers working inside Fusion 360.
+- **Primary users:** Mechanical/Electrical engineers and CAD designers working inside Fusion.
 - **Skill level:** Intermediate–advanced CAD users; beginner–intermediate with system diagrams.
 - **Device:** Desktop, mouse + keyboard; high-resolution monitors.
 - **Accessibility needs:** Keyboard-first navigation, readable contrasts, screen-reader friendly notifications.
@@ -10,7 +10,7 @@
 - **Consequences of failure:** Lost alignment between diagram and CAD; rework; missed dependencies.
 
 ## Job Statements
-When I am designing or updating a CAD assembly, I want to document and validate the system architecture directly in Fusion 360, so I can keep diagrams, components, and status in sync without juggling external tools.
+When I am designing or updating a CAD assembly, I want to document and validate the system architecture directly in Fusion, so I can keep diagrams, components, and status in sync without juggling external tools.
 
 When I link blocks to CAD occurrences, I want clear feedback and health indicators, so I can trust that traceability and status are accurate.
 

@@ -25,7 +25,7 @@ if str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))
 
 # ---------------------------------------------------------------------------
-# Mock adsk package for testing fusion_addin modules outside Fusion 360
+# Mock adsk package for testing fusion_addin modules outside Fusion
 # ---------------------------------------------------------------------------
 _adsk_core_mock = MagicMock(name="adsk.core")
 _adsk_fusion_mock = MagicMock(name="adsk.fusion")

@@ -4,7 +4,7 @@ This module defines the fundamental data structures used throughout the
 System Blocks application. All models are implemented as dataclasses with
 full type hints for clarity and IDE support.
 
-BOUNDARY: This module contains NO Fusion 360 dependencies. All models are
+BOUNDARY: This module contains NO Fusion dependencies. All models are
 pure Python data structures that can be serialized, validated, and tested
 independently of any CAD system.
 

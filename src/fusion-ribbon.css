@@ -1,4 +1,4 @@
-/* Fusion 360 Style Ribbon Interface
+/* Fusion Style Ribbon Interface
  * Authentic ribbon UI with proper grouping, scaling, and responsive behavior
  */
 
@@ -285,7 +285,7 @@
 }
 
 /* === RESPONSIVE BEHAVIOR === */
-/* Fusion 360 palette widths: 340-600px */
+/* Fusion palette widths: 340-600px */
 
 @media (max-width: 600px) {
   .ribbon-group {
@@ -564,7 +564,7 @@
 }
 
 /* Responsive behavior for secondary ribbon */
-/* Fusion 360 palette widths: 340-600px */
+/* Fusion palette widths: 340-600px */
 
 @media (max-width: 500px) {
   .ribbon-secondary {

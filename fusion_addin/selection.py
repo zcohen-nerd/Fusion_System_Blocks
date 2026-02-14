@@ -1,9 +1,9 @@
-"""Selection handling for Fusion 360.
+"""Selection handling for Fusion.
 
-This module provides utilities for handling user selections in Fusion 360,
+This module provides utilities for handling user selections in Fusion,
 translating them into core library inputs.
 
-BOUNDARY: This module ONLY contains Fusion 360 specific code.
+BOUNDARY: This module ONLY contains Fusion specific code.
 
 Classes:
     SelectionHandler: Handles user selection workflows.
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-# Fusion 360 imports - only in this adapter layer
+# Fusion imports - only in this adapter layer
 try:
     import adsk.core
     import adsk.fusion
@@ -28,21 +28,21 @@ if TYPE_CHECKING:
 
 
 class SelectionHandler:
-    """Handles user selection workflows in Fusion 360.
+    """Handles user selection workflows in Fusion.
 
     Provides methods for prompting users to select components,
     occurrences, and other Fusion entities, then translating
     those selections into core library compatible formats.
 
     Attributes:
-        ui: The Fusion 360 UserInterface object.
+        ui: The Fusion UserInterface object.
     """
 
     def __init__(self, ui: adsk.core.UserInterface) -> None:
         """Initialize the SelectionHandler.
 
         Args:
-            ui: The Fusion 360 UserInterface object.
+            ui: The Fusion UserInterface object.
         """
         self._ui = ui
 
