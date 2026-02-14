@@ -5,346 +5,109 @@
 <h1 align="center">Fusion System Blocks</h1>
 
 <p align="center">
-  A Fusion add-in that embeds system block diagrams directly inside a CAD assembly.<br>
-  Diagrams, CAD components, and documentation stay in sync so designers can plan architecture, link components, and capture engineering intent without leaving Fusion.
+  A block-diagram editor that lives inside Autodesk Fusion.<br>
+  Plan your system architecture without leaving your CAD environment.
 </p>
 
 <p align="center">
 
 [![License: Community](https://img.shields.io/badge/License-Community-blueviolet.svg)](LICENSE)
-[![Fusion](https://img.shields.io/badge/Platform-Fusion-orange.svg)](https://www.autodesk.com/products/fusion)
-[![CI](https://github.com/zcohen-nerd/Fusion_System_Blocks/actions/workflows/ci.yml/badge.svg)](https://github.com/zcohen-nerd/Fusion_System_Blocks/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Tests-605%20passing-brightgreen.svg)]()
-[![Python](https://img.shields.io/badge/Python-3.9%E2%80%933.12-blue.svg)]()
+[![Platform: Fusion](https://img.shields.io/badge/Platform-Fusion-orange.svg)](https://www.autodesk.com/products/fusion)
 
 </p>
 
 ---
 
-## Overview
+## What This Tool Does
 
-The add-in delivers a full diagramming environment inside Fusion:
+Fusion System Blocks adds a **system block diagram palette** directly inside Fusion. You draw blocks that represent the subsystems in your product — sensors, motors, PCBs, housings, software modules — and wire them together with typed connections. The diagram saves inside your Fusion document, right next to the 3D model.
 
-- Create electrical, mechanical, and software blocks with typed connections.
-- Link blocks to Fusion components and track status automatically.
-- Maintain multi-level system hierarchies with drill-down navigation.
-- Generate reports such as bills of materials and connection matrices.
-- Save incremental diagram changes with delta serialization for fast persistence.
-- Communicate between Python and JavaScript through shared bridge action constants.
+**Key capabilities:**
 
-The repository contains the full code base, tests, documentation, and deployment scripts. Source code is public for personal, academic, and non-commercial research use; commercial deployments require a paid license (see [Licensing](#licensing)).
+- Drag-and-drop blocks from electrical, mechanical, and software libraries.
+- Connect blocks with typed wires (power, data, mechanical, etc.).
+- Link any block to an actual Fusion component so the diagram and the CAD model stay in sync.
+- Run rule checks to catch orphan blocks, interface mismatches, and power budget violations.
+- Export reports: BOM, connection matrix, pin map, PDF, SVG, and more.
+
+---
+
+## Why This Exists
+
+Most engineering teams document their system architecture in separate tools — Visio, Draw.io, PowerPoint — that immediately fall out of sync with the CAD model. Fusion System Blocks keeps the diagram **inside the assembly file** so there is one source of truth. When you rename a component in the 3D model, the linked block updates automatically. When a newcomer opens the Fusion document, they see both the physical design and the logical architecture in one place.
 
 ---
 
 ## Current Status
 
-| Milestone | Scope | Status |
-| --- | --- | --- |
-| 1 | Diagram core & persistence | Complete |
-| 2 | CAD/ECAD linking | Complete |
-| 3 | Status tracking | Complete |
-| 4 | Hierarchical navigation | Complete |
-| 5 | Import/export | Complete |
-| 6 | Rule checking engine | Complete |
-| 7 | Search & navigation | Complete |
-| 8 | Undo/redo & UI polish | Complete |
-| 9 | Advanced connection system | Complete |
-| 10 | Fusion UI integration | Complete |
-| 10.5 | UI/UX improvements | Complete |
-| 11 | Advanced block types & templates | Complete |
-| 11.5 | Advanced block shapes | Complete |
-| 12 | Enhanced CAD linking | Complete |
-| 13 | 3D visualization & living documentation | Not started |
-| 14 | Advanced diagram features | Complete |
-| 15 | AI-powered assistant | Not started |
-| 16 | Architecture refactoring & tooling | Complete |
-| 17 | Analytics & reporting | Complete |
-| 18 | Requirements & verification | Complete |
-
-A detailed breakdown of remaining work lives in `tasks.md`.
-
----
-
-## Feature Summary
-
-### Diagramming
-- Canvas with pan, zoom, and snap-to-grid controls.
-- Block library spanning electrical, mechanical, and software domains.
-- Typed connections with customizable arrow styles and annotations.
-- Multi-selection, grouping, alignment, and automated layout tools.
-
-### CAD Integration
-- Link blocks to Fusion occurrences with health monitoring.
-- Synchronize component properties and track change history.
-- Component health dashboards and thumbnail support.
-
-### Reporting & Validation
-- Save/load diagrams inside Fusion document attributes.
-- Delta serialization for incremental saves (JSON-Patch style diffs).
-- **11-format export pipeline** with configurable profiles (quick / standard / full):
-  - Markdown system report with rule-check results and block tables.
-  - Self-contained HTML report styled for printing and sharing.
-  - CSV pin map, C header with pin definitions.
-  - BOM (Bill of Materials) in CSV and JSON with cost roll-ups.
-  - Assembly sequence in Markdown and JSON with dependency ordering.
-  - Block × block connection adjacency matrix (CSV).
-  - SVG diagram snapshot for embedding in design reviews.
-  - PDF report with block diagrams, connection tables, and BOM summaries.
-- Rule-checking engine for orphan detection, interface compatibility, and system status.
-- **Requirements & verification engine** with system-level budgets (mass, cost, power) and pass/fail evaluation against aggregated block attributes.
-- **Version control** with snapshot creation, graph diffing, and history restore.
-- Status dashboards with automatic progression based on linked data.
-
-### Architecture & Reliability
-- Two-layer Python architecture: pure `fsb_core/` library with no Fusion dependencies, plus a thin `fusion_addin/` adapter layer.
-- Shared bridge action constants between Python (`BridgeAction`/`BridgeEvent` enums) and JavaScript.
-- Production logging with session IDs, environment info, and `@log_exceptions` decorator.
-- Built-in "Run Diagnostics" command with 32 self-tests.
-- 605 automated tests across 23 test files; CI runs on Python 3.9–3.12.
-
-### User Experience
-- Fusion-style ribbon interface with responsive layout.
-- Professional icon set and theming aligned with Fusion UI guidelines.
-- Notification system, tooltips, and accessibility improvements.
-- Orthogonal connection routing with obstacle avoidance and waypoint editing.
-- Canvas minimap for large diagram navigation.
-- Keyboard shortcut help dialog, smart alignment snapping, and loading spinners.
-- Undo history panel, connection context menu, and crash recovery auto-backup.
-- 10 professional block shapes (rectangle, circle, diamond, hexagon, and more).
-
----
-
-## Repository Structure
-
-```text
-Fusion_System_Blocks/
-├── Fusion_System_Blocks.py        # Fusion entry point and command definitions
-├── Fusion_System_Blocks.manifest  # Add-in manifest (version, author, ID)
-├── fsb_core/                      # Pure Python core library (NO Fusion dependencies)
-│   ├── models.py                  #   Block, Port, Connection, Graph dataclasses
-│   ├── validation.py              #   Graph validation with structured error codes
-│   ├── action_plan.py             #   Action plan builder for deferred operations
-│   ├── graph_builder.py           #   Fluent API for constructing graphs
-│   ├── serialization.py           #   JSON serialization with legacy format support
-│   ├── bridge_actions.py          #   BridgeAction / BridgeEvent shared enums
-│   ├── delta.py                   #   compute_patch / apply_patch (JSON-Patch style)
-│   ├── requirements.py            #   Requirements validation engine
-│   └── version_control.py         #   Snapshot creation, graph diffing, restore
-├── fusion_addin/                  # Fusion adapter layer
-│   ├── adapter.py                 #   FusionAdapter (core ↔ Fusion translation)
-│   ├── selection.py               #   SelectionHandler for Fusion selection workflows
-│   ├── document.py                #   DocumentManager for Fusion document operations
-│   ├── logging_util.py            #   Production logging with session IDs
-│   └── diagnostics.py             #   DiagnosticsRunner with 32 self-tests
-├── src/                           # JavaScript frontend + Python data layer
-│   ├── diagram_data.py            #   Validation, rule checks, export logic
-│   ├── palette.html               #   Main HTML palette UI
-│   ├── main-coordinator.js        #   Application bootstrap
-│   ├── core/
-│   │   ├── diagram-editor.js      #   CRUD, canvas, delta tracking
-│   │   └── orthogonal-router.js   #   Orthogonal connection routing with obstacle avoidance
-│   ├── ui/
-│   │   ├── diagram-renderer.js    #   SVG rendering, drag-and-drop
-│   │   ├── minimap.js             #   Canvas minimap / overview navigator
-│   │   ├── palette-tabs.js        #   Tab controller (Home, Diagram, Requirements, History, …)
-│   │   └── toolbar-manager.js     #   Toolbar state management
-│   ├── interface/python-bridge.js #   Python ↔ JS bridge (uses shared constants)
-│   ├── features/advanced-features.js
-│   ├── types/                     #   Block type libraries + bridge-actions.js
-│   │   └── bridge-actions.js      #   JS mirror of Python bridge constants
-│   ├── utils/
-│   │   ├── logger.js
-│   │   └── delta-utils.js         #   JS delta utilities (computePatch, applyPatch)
-│   └── *.css                      #   Fusion theme, ribbon, and icon styles
-├── tests/                         # 605 pytest tests across 23 files
-├── docs/                          # Architecture decisions, test plans, milestones
-├── scripts/                       # PowerShell build and deployment automation
-└── exports/                       # Distribution ZIPs
-```
+> **Experimental — v0.1.0**
+>
+> Core diagramming, CAD linking, and export features are implemented and tested (600+ automated tests). The add-in is usable for personal and academic projects. APIs and file formats may change before v1.0.
 
 ---
 
 ## Installation
 
-### Prerequisites
+### Requirements
 
-- **Fusion** (latest version recommended) on Windows 10/11 or macOS.
-- **Python 3.9+** is bundled with Fusion; no separate install is required for running the add-in.
-- For local development and testing, install Python 3.9–3.12 and create a virtual environment.
+- **Autodesk Fusion** (latest version) on Windows 10/11 or macOS.
+- No other dependencies — Fusion bundles its own Python runtime.
 
-### Quick Install (End User)
+### Step-by-Step
 
-1. Download the latest release ZIP from the [Releases page](https://github.com/zcohen-nerd/Fusion_System_Blocks/releases).
-2. Extract the ZIP to your Downloads folder.
-3. In Fusion, go to **Utilities → ADD-INS** (or press <kbd>Shift</kbd>+<kbd>S</kbd>).
-4. In the **Add-Ins** tab, click the **+** button and browse to the extracted folder.
-5. Select **Fusion System Blocks** and click **Run**, or check **Run on Startup**.
+1. **Download** the latest release ZIP from the [Releases page](https://github.com/zcohen-nerd/Fusion_System_Blocks/releases).
 
-### Manual Install (Developer)
+2. **Unzip** it. You will get a single folder called `Fusion_System_Blocks`.
 
-1. Clone the repository:
+3. **Move** that folder into your Fusion Add-Ins directory:
 
-   ```bash
-   git clone https://github.com/zcohen-nerd/Fusion_System_Blocks.git
-   ```
+   | OS | Path |
+   |---|---|
+   | **Windows** | `%APPDATA%\Autodesk\ApplicationPlugins\` |
+   | **macOS** | `~/Library/Application Support/Autodesk/ApplicationPlugins/` |
 
-2. Copy (or symlink) the folder into your Fusion Add-ins directory:
+4. **Open Fusion** (or restart it if it was already running).
 
-   ```text
-   Windows: %APPDATA%\Autodesk\Autodesk Fusion\API\AddIns\
-   macOS:   ~/Library/Application Support/Autodesk/Autodesk Fusion/API/AddIns/
-   ```
+5. Go to **Utilities → Add-Ins** (or press <kbd>Shift</kbd>+<kbd>S</kbd>).
 
-3. Launch Fusion, open **Utilities → Add-Ins**, select the add-in, and click **Run**.
+6. Find **Fusion System Blocks** in the list, select it, and click **Run**.
 
-### Development Environment
+   > Optionally check **Run on Startup** so it loads every time you open Fusion.
 
-```bash
-# Create a virtual environment
-python -m venv .venv
-
-# Activate it
-# Windows PowerShell:
-.venv\Scripts\Activate.ps1
-# macOS / Linux:
-source .venv/bin/activate
-
-# Install in editable mode with dev dependencies
-pip install -e ".[dev]"
-```
-
-See `FUSION_DEPLOYMENT_GUIDE.md` for packaging instructions and troubleshooting tips.
+That's it — a "System Blocks" button appears in the toolbar. Click it to open the diagram palette.
 
 ---
 
 ## Usage
 
-### Getting Started
+### What Is a System Block?
 
-1. Open Fusion and activate the Fusion System Blocks add-in.
-2. The block diagram palette appears in the right panel with a ribbon interface.
-3. Use the **Create** ribbon group to add blocks (electrical, mechanical, or software).
-4. Connect blocks by selecting a source block and pressing <kbd>C</kbd>, then clicking the target.
-5. Double-click any block to rename it inline.
+A **system block** is a rectangle (or other shape) on the diagram that represents one piece of your product — a motor controller, a chassis, a sensor module, a firmware process, etc. Each block has **ports** (connection points) and can carry metadata like status, cost, and mass.
 
-### Core Workflows
+### Creating Your First Diagram
 
-| Workflow | How |
-| --- | --- |
-| **Save diagram** | **File → Save** in the ribbon. Data persists inside the Fusion document as attributes. |
-| **Load diagram** | **File → Load** to restore a previously saved diagram. |
-| **Link to CAD** | Select a block, click **Link to CAD**, then select a component in the viewport. |
-| **Run rule checks** | Click **Check Rules** to validate orphan blocks, interface compatibility, and more. |
-| **Export report** | **File → Export Report** generates up to 11 files in the `exports/` folder (profile-dependent). |
-| **Run diagnostics** | In the Add-Ins panel, click **Run Diagnostics** to verify add-in health (32 self-tests). |
-| **Navigate hierarchy** | Use **Drill Down** / **Go Up** buttons to move through nested sub-diagrams. |
+1. Click the **System Blocks** button in the Fusion toolbar to open the palette.
+2. In the ribbon, choose a block type from the **Create** group (Electrical, Mechanical, or Software).
+3. The block appears on the canvas. Double-click it to rename it.
+4. Add a second block the same way.
+5. Select the first block and press <kbd>C</kbd> to enter connection mode, then click the second block. A wire appears between them.
+6. Press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save the diagram inside the Fusion document.
 
-### Delta Saves
+### Typical Workflow
 
-The add-in tracks diagram changes in memory. When you save, only the changed portions (a JSON-Patch style delta) are sent to the backend, reducing serialization overhead. If the delta path fails, a full save is used as a fallback automatically.
-
-### Export Profiles
-
-The **Export Report** command supports three output profiles:
-
-| Profile | Files produced |
-| --- | --- |
-| **quick** | Markdown report, CSV pin map, C header (3 files) |
-| **standard** | Quick + HTML report, BOM (CSV & JSON), assembly sequence (Markdown & JSON), connection matrix (9 files) |
-| **full** (default) | Standard + SVG diagram snapshot + PDF report (11 files) |
-
-All files are written to the `exports/` folder. The profile can be passed programmatically via the bridge; the ribbon button uses the **full** profile by default.
-
----
-
-## Testing
-
-### Automated Tests (pytest)
-
-The test suite covers the core library, diagram data logic, adapter stubs, and property-based scenarios.
-
-```bash
-# Run all 605 tests
-pytest
-
-# Run with coverage report
-pytest --cov=fsb_core --cov-report=term-missing
-
-# Run a specific test file
-pytest tests/test_delta.py -v
+```
+Open Fusion document
+  → Open System Blocks palette
+    → Add blocks for each subsystem
+      → Wire them together
+        → Link blocks to CAD components (optional)
+          → Run Check Rules to validate
+            → Export a report (PDF, BOM, etc.)
+              → Save — diagram persists inside the .f3d file
 ```
 
-**Test files (23 total):**
-
-| File | Scope |
-| --- | --- |
-| `test_adapter.py` | FusionAdapter translation layer |
-| `test_cad.py` | CAD linking and component operations |
-| `test_core_action_plan.py` | Action plan builder |
-| `test_core_validation.py` | Graph validation and error codes |
-| `test_delta.py` | Delta serialization (compute/apply patch) |
-| `test_diagram_data.py` | Core diagram operations |
-| `test_document.py` | DocumentManager operations |
-| `test_export_reports.py` | JSON/CSV/HTML export |
-| `test_graph_builder.py` | Fluent graph construction API |
-| `test_hierarchy.py` | Multi-level diagram nesting |
-| `test_import.py` | Import and conflict resolution |
-| `test_integration.py` | Cross-module integration |
-| `test_logging_util.py` | Production logging and decorators |
-| `test_models.py` | Dataclass models and enums |
-| `test_property_based.py` | Hypothesis property-based tests |
-| `test_requirements.py` | Requirements engine and verification |
-| `test_rule_checks.py` | Validation rules (orphans, power, interfaces) |
-| `test_schema.py` | JSON schema compliance |
-| `test_selection.py` | SelectionHandler workflows |
-| `test_serialization.py` | Serialization round-trips |
-| `test_status_tracking.py` | Block status lifecycle |
-| `test_validation.py` | Diagram-level validation |
-| `test_version_control.py` | Version control snapshots and diffing |
-
-### Continuous Integration
-
-GitHub Actions runs on every push and pull request against `main`:
-
-- **Lint:** `ruff check` and `ruff format --check`
-- **Type check:** `mypy fsb_core/`
-- **Tests:** `pytest` on Python 3.9, 3.10, 3.11, and 3.12 with coverage
-
-### Manual Testing in Fusion
-
-Use `docs/FUSION_MANUAL_TEST_PLAN.md` for a 45–55 minute verification run inside Fusion (185 manual test steps across 20 phases). For comprehensive step-by-step procedures, see `docs/DETAILED_TESTING_DOCUMENTATION.md`.
-
 ---
 
-## Licensing
+## License
 
-- Source code and assets are available for **personal, academic, and non-commercial research use** under the Fusion System Blocks Community License (see `LICENSE`).
-- **Commercial use** requires a paid license. Open an issue in this repository to discuss pricing and terms.
-
----
-
-## Contributing
-
-1. Review open items in `tasks.md` and existing issues.
-2. Fork the repository and create a feature branch.
-3. Add or update tests where applicable.
-4. Run `ruff check .` and `pytest` before submitting.
-5. Submit a pull request with a clear description of changes and test evidence.
-
-Contributors focused on documentation can help expand user guides, add screenshots, or improve deployment instructions.
-
----
-
-## Additional Resources
-
-- `docs/MILESTONES.md` – Snapshot of milestone progress and outstanding work.
-- `docs/ux/` – UX research artifacts: JTBD, journey map, and proposed palette redesign flow.
-- `docs/architecture/` – Architecture Decision Records (ADRs) and review report.
-- `FUSION_DEPLOYMENT_GUIDE.md` – Deployment and packaging instructions.
-- `PROJECT_FOLDER_STRUCTURE_BLUEPRINT.md` – Detailed directory analysis and conventions.
-
----
-
-## Acknowledgements
-
-Fusion System Blocks builds on Autodesk Fusion’s API and the work of contributors who validated each milestone. Feedback and testing from educators and engineers helped shape the current feature set.
+Source code is available under the [Fusion System Blocks Community License](LICENSE) for personal, academic, and non-commercial use. Commercial use requires a paid license — open an issue to discuss.
