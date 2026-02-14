@@ -468,7 +468,7 @@ class TestSVGDiagram:
     def test_svg_contains_connections(self, sample_diagram):
         svg = diagram_data.generate_svg_diagram(sample_diagram)
         # Connections now use inline stroke styles instead of CSS class
-        assert '<line ' in svg
+        assert "<line " in svg
 
     def test_svg_empty_diagram(self):
         svg = diagram_data.generate_svg_diagram({"blocks": [], "connections": []})

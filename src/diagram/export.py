@@ -674,8 +674,12 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
 
     # ---- Draw connections ----
     for conn in connections:
-        fb = id_to_block.get(conn.get("from", {}).get("blockId") or conn.get("fromBlock", ""))
-        tb = id_to_block.get(conn.get("to", {}).get("blockId") or conn.get("toBlock", ""))
+        fb = id_to_block.get(
+            conn.get("from", {}).get("blockId") or conn.get("fromBlock", "")
+        )
+        tb = id_to_block.get(
+            conn.get("to", {}).get("blockId") or conn.get("toBlock", "")
+        )
         if not fb or not tb:
             continue
         fw = fb.get("width", default_w)
@@ -788,10 +792,7 @@ def _render_block_shape(
 
     elif shape == "parallelogram":
         skew = w * 0.18
-        pts = (
-            f"{x + skew},{y} {x + w},{y} "
-            f"{x + w - skew},{y + h} {x},{y + h}"
-        )
+        pts = f"{x + skew},{y} {x + w},{y} {x + w - skew},{y + h} {x},{y + h}"
         parts.append(f'<polygon points="{pts}" {common}/>')
 
     elif shape == "cylinder":
