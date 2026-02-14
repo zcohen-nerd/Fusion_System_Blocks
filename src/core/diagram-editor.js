@@ -99,9 +99,11 @@ class DiagramEditorCore {
     // Prevent self-connections
     if (fromBlockId === toBlockId) return null;
 
-    // Prevent duplicate connections
+    // Prevent duplicate connections of the same type between the same blocks.
+    // Different types (e.g. power AND data) between the same pair are allowed.
     const exists = this.diagram.connections.some(
       c => c.fromBlock === fromBlockId && c.toBlock === toBlockId
+           && c.type === connectionType
     );
     if (exists) return null;
 

@@ -264,11 +264,18 @@ class ToolbarManager {
       return this.editor.diagram.blocks.length > 0;
     }
 
-    // Buttons enabled when blocks are selected
+    // Buttons enabled when blocks are selected (single or multi)
     const needsSelection = ['link-cad', 'link-ecad', 'clear-selection',
-                           'align-left', 'align-center', 'align-right', 'create-group'];
+                           'align-left', 'align-center', 'align-right'];
     if (needsSelection.includes(buttonId)) {
-      return this.editor.selectedBlock !== null;
+      return this.editor.selectedBlock !== null ||
+        (window.advancedFeatures && window.advancedFeatures.hasSelection());
+    }
+
+    // Create group: needs at least 2 blocks selected (single + multi-selection)
+    if (buttonId === 'create-group') {
+      const multiCount = window.advancedFeatures ? window.advancedFeatures.getSelectionCount() : 0;
+      return multiCount >= 2;
     }
 
     // Ungroup: enabled when selected blocks belong to a non-default group
@@ -949,6 +956,17 @@ class ToolbarManager {
       if (emptyState) {
         emptyState.classList.add('hidden');
       }
+
+      // Auto-start inline rename so the user can immediately name the block
+      const svg = document.getElementById('svg-canvas');
+      if (svg && window.SystemBlocksMain) {
+        // Use a short delay to ensure the block is fully rendered in the DOM
+        setTimeout(() => {
+          window.SystemBlocksMain.startInlineEdit(
+            newBlock, svg, this.editor, this.renderer
+          );
+        }, 50);
+      }
     });
   }
 
@@ -1303,7 +1321,8 @@ class ToolbarManager {
     if (!window.advancedFeatures || !window.advancedFeatures.hasSelection()) return;
     const ids = window.advancedFeatures.getSelectedBlocks();
     if (ids.length < 2) return;
-    window.advancedFeatures.createGroup(ids, 'Group');
+    const name = prompt('Group name:', 'Group') || 'Group';
+    window.advancedFeatures.createGroup(ids, name);
   }
 
   handleUngroup() {
@@ -1558,6 +1577,9 @@ class ToolbarManager {
     this.updateButtonStates();
     if (window.advancedFeatures) window.advancedFeatures.saveState();
     logger.info('Created child diagram for', block.name || block.id);
+
+    // Auto-navigate into the newly created child diagram
+    this.handleDrillDown();
   }
 
   _updateBreadcrumb() {
@@ -1797,6 +1819,16 @@ class ToolbarManager {
       this.editor.selectBlock(newBlock.id);
       const emptyState = document.getElementById('empty-canvas-state');
       if (emptyState) emptyState.classList.add('hidden');
+
+      // Auto-start inline rename so the user can immediately name the block
+      const svg = document.getElementById('svg-canvas');
+      if (svg && window.SystemBlocksMain) {
+        setTimeout(() => {
+          window.SystemBlocksMain.startInlineEdit(
+            newBlock, svg, this.editor, this.renderer
+          );
+        }, 50);
+      }
     });
   }
 

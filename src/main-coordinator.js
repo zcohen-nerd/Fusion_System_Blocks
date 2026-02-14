@@ -196,24 +196,28 @@ class SystemBlocksMain {
     // (which can happen in Fusion's Chromium with opacity-0 SVG elements).
     const findPortAt = (svgX, svgY) => {
       const PORT_HIT_RADIUS = 10; // slightly larger than visual r=6
+      let bestHit = null;
+      let bestDist = Infinity;
       for (let i = core.diagram.blocks.length - 1; i >= 0; i--) {
         const block = core.diagram.blocks[i];
         const w = block.width || 120;
         const h = block.height || 80;
-        // Output port (right center)
-        const outX = block.x + w;
-        const outY = block.y + h / 2;
-        if (Math.hypot(svgX - outX, svgY - outY) <= PORT_HIT_RADIUS) {
-          return { block, portType: 'output' };
-        }
-        // Input port (left center)
-        const inX = block.x;
-        const inY = block.y + h / 2;
-        if (Math.hypot(svgX - inX, svgY - inY) <= PORT_HIT_RADIUS) {
-          return { block, portType: 'input' };
+        // All four ports
+        const ports = [
+          { x: block.x + w,     y: block.y + h / 2, type: 'output' },
+          { x: block.x,         y: block.y + h / 2, type: 'input' },
+          { x: block.x + w / 2, y: block.y,         type: 'top' },
+          { x: block.x + w / 2, y: block.y + h,     type: 'bottom' },
+        ];
+        for (const p of ports) {
+          const dist = Math.hypot(svgX - p.x, svgY - p.y);
+          if (dist <= PORT_HIT_RADIUS && dist < bestDist) {
+            bestDist = dist;
+            bestHit = { block, portType: p.type };
+          }
         }
       }
-      return null;
+      return bestHit;
     };
 
     // Mouse down - start drag or selection
@@ -246,12 +250,13 @@ class SystemBlocksMain {
 
       if (portEl && portEl.getAttribute('data-block-id')) {
         const blockId = portEl.getAttribute('data-block-id');
+        const portType = portEl.getAttribute('data-port-type') || 'output';
         const block = core.diagram.blocks.find(b => b.id === blockId);
         if (block) {
           e.preventDefault();
           e.stopPropagation();
           connectionStartedThisClick = true;
-          this.enterConnectionMode(block, core, renderer);
+          this.enterConnectionMode(block, core, renderer, portType);
           return;
         }
       }
@@ -262,7 +267,7 @@ class SystemBlocksMain {
         e.preventDefault();
         e.stopPropagation();
         connectionStartedThisClick = true;
-        this.enterConnectionMode(portHit.block, core, renderer);
+        this.enterConnectionMode(portHit.block, core, renderer, portHit.portType);
         return;
       }
 
@@ -488,8 +493,31 @@ class SystemBlocksMain {
           const direction = arrowDir ? arrowDir.value : 'forward';
           const sourceId = this._connectionMode.sourceBlock
             ? this._connectionMode.sourceBlock.id : null;
+
+          // Determine which port the connection originates from and
+          // find the closest target port for the drop position.
+          const sourcePort = this._connectionMode.sourcePort || 'output';
+          const tw = targetBlock.width || 120;
+          const th = targetBlock.height || 80;
+          const targetPorts = [
+            { x: targetBlock.x,          y: targetBlock.y + th / 2, type: 'input' },
+            { x: targetBlock.x + tw,     y: targetBlock.y + th / 2, type: 'output' },
+            { x: targetBlock.x + tw / 2, y: targetBlock.y,          type: 'top' },
+            { x: targetBlock.x + tw / 2, y: targetBlock.y + th,     type: 'bottom' },
+          ];
+          let bestPort = 'input';
+          let bestDist = Infinity;
+          for (const p of targetPorts) {
+            const d = Math.hypot(x - p.x, y - p.y);
+            if (d < bestDist) { bestDist = d; bestPort = p.type; }
+          }
+
           const conn = core.addConnection(sourceId, targetBlock.id, type, direction);
           if (conn) {
+            // Store port sides on the connection for rendering
+            conn.fromPort = sourcePort;
+            conn.toPort = bestPort;
+
             // Re-render ALL connections touching these blocks so fan
             // offsets recalculate correctly (not just the new one).
             core.diagram.connections.forEach(c => {
@@ -500,7 +528,9 @@ class SystemBlocksMain {
             });
             logger.info('Connection created:', conn.id,
               'from', this._connectionMode.sourceBlock.name || sourceId,
-              'to', targetBlock.name || targetBlock.id);
+              '(' + sourcePort + ')',
+              'to', targetBlock.name || targetBlock.id,
+              '(' + bestPort + ')');
             if (window.advancedFeatures) window.advancedFeatures.saveState();
           }
         }
@@ -1128,21 +1158,32 @@ class SystemBlocksMain {
   // =========================================================================
   // CONNECTION DRAWING MODE
   // =========================================================================
-  enterConnectionMode(sourceBlock, core, renderer) {
+  enterConnectionMode(sourceBlock, core, renderer, sourcePortType = 'output') {
     const svg = document.getElementById('svg-canvas');
     if (!svg) return;
 
     this._connectionMode.active = true;
     this._connectionMode.sourceBlock = sourceBlock;
+    this._connectionMode.sourcePort = sourcePortType;
     this._connectionModeEntryTime = performance.now();
 
     // Highlight source block
     renderer.highlightBlock(sourceBlock.id, true);
 
-    // Create temporary line from source block center-right edge
+    // Compute temp line start based on which port was clicked
+    const w = sourceBlock.width || 120;
+    const h = sourceBlock.height || 80;
+    let fromX, fromY;
+    switch (sourcePortType) {
+      case 'input':  fromX = sourceBlock.x;         fromY = sourceBlock.y + h / 2; break;
+      case 'top':    fromX = sourceBlock.x + w / 2;  fromY = sourceBlock.y;         break;
+      case 'bottom': fromX = sourceBlock.x + w / 2;  fromY = sourceBlock.y + h;     break;
+      case 'output':
+      default:       fromX = sourceBlock.x + w;       fromY = sourceBlock.y + h / 2; break;
+    }
+
+    // Create temporary line from the clicked port
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    const fromX = sourceBlock.x + (sourceBlock.width || 120);
-    const fromY = sourceBlock.y + (sourceBlock.height || 80) / 2;
     line.setAttribute('x1', fromX);
     line.setAttribute('y1', fromY);
     line.setAttribute('x2', fromX);

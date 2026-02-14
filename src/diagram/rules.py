@@ -25,6 +25,45 @@ def find_block_by_id(diagram: dict[str, Any], block_id: str) -> dict[str, Any]:
     return core_find(diagram, block_id)
 
 
+def _get_connection_block_ids(
+    connection: dict[str, Any],
+) -> tuple[str | None, str | None]:
+    """Extract source and target block IDs from a connection dict.
+
+    Handles both the Python data-model format
+    (``{"from": {"blockId": "..."}, "to": {"blockId": "..."}}``)
+    and the JavaScript front-end format
+    (``{"fromBlock": "...", "toBlock": "..."}``).
+
+    Returns:
+        Tuple of ``(from_block_id, to_block_id)``.
+    """
+    if "from" in connection and isinstance(connection["from"], dict):
+        from_id = connection["from"].get("blockId")
+    else:
+        from_id = connection.get("fromBlock")
+
+    if "to" in connection and isinstance(connection["to"], dict):
+        to_id = connection["to"].get("blockId")
+    else:
+        to_id = connection.get("toBlock")
+
+    return from_id, to_id
+
+
+def _get_connection_interface_ids(
+    connection: dict[str, Any],
+) -> tuple[str | None, str | None]:
+    """Extract interface IDs from a connection, handling both formats."""
+    from_iface = None
+    to_iface = None
+    if "from" in connection and isinstance(connection["from"], dict):
+        from_iface = connection["from"].get("interfaceId")
+    if "to" in connection and isinstance(connection["to"], dict):
+        to_iface = connection["to"].get("interfaceId")
+    return from_iface, to_iface
+
+
 def check_logic_level_compatibility_bulk(
     diagram: dict[str, Any],
 ) -> list[dict[str, Any]]:
@@ -40,8 +79,11 @@ def check_logic_level_compatibility_bulk(
     violations = []
 
     for connection in diagram.get("connections", []):
-        from_block = find_block_by_id(diagram, connection["from"]["blockId"])
-        to_block = find_block_by_id(diagram, connection["to"]["blockId"])
+        from_id, to_id = _get_connection_block_ids(connection)
+        if not from_id or not to_id:
+            continue
+        from_block = find_block_by_id(diagram, from_id)
+        to_block = find_block_by_id(diagram, to_id)
 
         if not from_block or not to_block:
             continue
@@ -244,8 +286,9 @@ def check_logic_level_compatibility(
     Returns:
         Dictionary with check results
     """
-    from_block = find_block_by_id(diagram, connection["from"]["blockId"])
-    to_block = find_block_by_id(diagram, connection["to"]["blockId"])
+    from_id, to_id = _get_connection_block_ids(connection)
+    from_block = find_block_by_id(diagram, from_id) if from_id else None
+    to_block = find_block_by_id(diagram, to_id) if to_id else None
 
     if not from_block or not to_block:
         return {
@@ -255,8 +298,7 @@ def check_logic_level_compatibility(
         }
 
     # Find interfaces to get voltage parameters
-    from_interface_id = connection.get("from", {}).get("interfaceId")
-    to_interface_id = connection.get("to", {}).get("interfaceId")
+    from_interface_id, to_interface_id = _get_connection_interface_ids(connection)
 
     from_voltage = ""
     to_voltage = ""

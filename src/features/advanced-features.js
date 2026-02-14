@@ -245,8 +245,12 @@ class AdvancedFeatures {
     // Remove stale boundary first (idempotent re-render)
     this.removeGroupBoundary(group.id);
 
-    const boundary = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    boundary.setAttribute('id', `group-boundary-${group.id}`);
+    const ns = 'http://www.w3.org/2000/svg';
+    // Create a group element to hold the boundary rect and label
+    const gEl = document.createElementNS(ns, 'g');
+    gEl.setAttribute('id', `group-boundary-${group.id}`);
+
+    const boundary = document.createElementNS(ns, 'rect');
     boundary.setAttribute('x', group.bounds.x);
     boundary.setAttribute('y', group.bounds.y);
     boundary.setAttribute('width', group.bounds.width);
@@ -256,9 +260,36 @@ class AdvancedFeatures {
     boundary.setAttribute('stroke-width', '2');
     boundary.setAttribute('stroke-dasharray', '8,4');
     boundary.setAttribute('rx', '8');
+    gEl.appendChild(boundary);
+
+    // Render group label above the boundary
+    if (group.name && group.name !== 'default') {
+      const label = document.createElementNS(ns, 'text');
+      label.setAttribute('x', String(group.bounds.x + 8));
+      label.setAttribute('y', String(group.bounds.y - 6));
+      label.setAttribute('fill', group.color);
+      label.setAttribute('stroke', 'none');
+      label.setAttribute('font-size', '12');
+      label.setAttribute('font-weight', 'bold');
+      label.setAttribute('font-family', 'Segoe UI, Arial, sans-serif');
+      label.setAttribute('pointer-events', 'none');
+      label.textContent = group.name;
+      gEl.appendChild(label);
+    }
+
+    // Double-click on the boundary group to rename
+    gEl.style.cursor = 'pointer';
+    gEl.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      const newName = prompt('Rename group:', group.name || '');
+      if (newName !== null) {
+        group.name = newName;
+        this.renderGroupBoundary(group);
+      }
+    });
     
     // Insert behind blocks
-    this.renderer.svg.insertBefore(boundary, this.renderer.svg.firstChild);
+    this.renderer.svg.insertBefore(gEl, this.renderer.svg.firstChild);
   }
 
   /**

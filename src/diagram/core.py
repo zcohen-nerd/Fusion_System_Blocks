@@ -125,10 +125,24 @@ def remove_block_from_diagram(diagram: dict[str, Any], block_id: str) -> bool:
     block_removed = len(diagram["blocks"]) < original_count
 
     # Remove connections involving this block
+    def _conn_involves_block(c: dict[str, Any], bid: str) -> bool:
+        """Check if a connection involves a given block ID (both formats)."""
+        if "from" in c and isinstance(c["from"], dict):
+            if c["from"].get("blockId") == bid:
+                return True
+        elif c.get("fromBlock") == bid:
+            return True
+        if "to" in c and isinstance(c["to"], dict):
+            if c["to"].get("blockId") == bid:
+                return True
+        elif c.get("toBlock") == bid:
+            return True
+        return False
+
     diagram["connections"] = [
         c
         for c in diagram["connections"]
-        if c["from"]["blockId"] != block_id and c["to"]["blockId"] != block_id
+        if not _conn_involves_block(c, block_id)
     ]
 
     return block_removed

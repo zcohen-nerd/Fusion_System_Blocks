@@ -100,25 +100,35 @@ class DiagramRenderer {
   setupDefs() {
     const defs = this.svg.querySelector('defs') || this.svg.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'defs'));
     
-    // Only create arrowhead marker if one doesn't already exist in the HTML.
-    // palette.html ships its own <marker id="arrowhead">; creating a duplicate
-    // produces undefined url(#arrowhead) behaviour in some Chromium builds.
-    if (!defs.querySelector('#arrowhead')) {
-      const arrowMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-      arrowMarker.setAttribute('id', 'arrowhead');
-      arrowMarker.setAttribute('markerWidth', '10');
-      arrowMarker.setAttribute('markerHeight', '7');
-      arrowMarker.setAttribute('refX', '10');
-      arrowMarker.setAttribute('refY', '3.5');
-      arrowMarker.setAttribute('orient', 'auto');
-      arrowMarker.setAttribute('markerUnits', 'userSpaceOnUse');
-      
-      const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
-      polygon.setAttribute('fill', '#666');
-      
-      arrowMarker.appendChild(polygon);
-      defs.appendChild(arrowMarker);
+    // Create arrowhead markers for each connection color.
+    // SVG markers don't inherit stroke from the referencing path,
+    // so we need a separate marker per colour.
+    const arrowColors = {
+      'arrowhead':            '#666',     // default
+      'arrowhead-power':      '#dc3545',  // power → red
+      'arrowhead-data':       '#007bff',  // data → blue
+      'arrowhead-electrical': '#28a745',  // electrical → green
+      'arrowhead-mechanical': '#6c757d',  // mechanical → gray
+    };
+
+    for (const [markerId, color] of Object.entries(arrowColors)) {
+      if (!defs.querySelector('#' + markerId)) {
+        const arrowMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+        arrowMarker.setAttribute('id', markerId);
+        arrowMarker.setAttribute('markerWidth', '10');
+        arrowMarker.setAttribute('markerHeight', '7');
+        arrowMarker.setAttribute('refX', '10');
+        arrowMarker.setAttribute('refY', '3.5');
+        arrowMarker.setAttribute('orient', 'auto');
+        arrowMarker.setAttribute('markerUnits', 'userSpaceOnUse');
+        
+        const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+        polygon.setAttribute('fill', color);
+        
+        arrowMarker.appendChild(polygon);
+        defs.appendChild(arrowMarker);
+      }
     }
 
     // Only create drop shadow filter if one doesn't already exist
@@ -520,6 +530,12 @@ class DiagramRenderer {
 
     // Output port (right center)
     createPort(w, h / 2, 'output');
+
+    // Top-center port
+    createPort(w / 2, 0, 'top');
+
+    // Bottom-center port
+    createPort(w / 2, h, 'bottom');
   }
 
   renderConnection(connection) {
@@ -544,33 +560,71 @@ class DiagramRenderer {
 
     // --- Arrow direction ---
     const direction = (connection.arrowDirection || 'forward').toLowerCase();
-    // Always use the base arrowhead marker — type-specific markers are
-    // not defined in the SVG defs (colour differentiation is handled by
-    // the connection path stroke).  This prevents broken url(#…)
-    // references for typed connections (power, data, etc.).
-    const fwdMarker = 'url(#arrowhead)';
+    // Use a type-specific arrowhead marker so the arrowhead colour
+    // matches the connection line colour.
+    const markerSuffix = ['power', 'data', 'electrical', 'mechanical'].includes(connType)
+      ? '-' + connType : '';
+    const fwdMarker = `url(#arrowhead${markerSuffix})`;
 
-    // --- Fan-in / fan-out port offsets ---
-    // Count how many connections attach to the output side of fromBlock
-    // and the input side of toBlock so we can distribute vertically.
+    // --- Resolve port-aware endpoints ---
+    const fromPort = connection.fromPort || 'output';
+    const toPort   = connection.toPort   || 'input';
+    const fromW = fromBlock.width  || 120;
+    const fromH = fromBlock.height || 80;
+    const toW   = toBlock.width    || 120;
+    const toH   = toBlock.height   || 80;
+
+    // Fan offset: distribute connections sharing the same port side
     const outConns = this.editor.diagram.connections.filter(
-      c => c.fromBlock === connection.fromBlock
+      c => c.fromBlock === connection.fromBlock && (c.fromPort || 'output') === fromPort
     );
     const inConns = this.editor.diagram.connections.filter(
-      c => c.toBlock === connection.toBlock
+      c => c.toBlock === connection.toBlock && (c.toPort || 'input') === toPort
     );
     const outIdx = outConns.indexOf(connection);
-    const inIdx = inConns.indexOf(connection);
-    const fromH = fromBlock.height || 80;
-    const toH = toBlock.height || 80;
-    const fromYOffset = this._fanOffset(outIdx, outConns.length, fromH);
-    const toYOffset = this._fanOffset(inIdx, inConns.length, toH);
+    const inIdx  = inConns.indexOf(connection);
 
-    // Calculate connection points with fan offsets
-    const fromX = fromBlock.x + (fromBlock.width || 120);
-    const fromY = fromBlock.y + fromYOffset;
-    const toX = toBlock.x;
-    const toY = toBlock.y + toYOffset;
+    let fromX, fromY, toX, toY;
+
+    // Source endpoint
+    switch (fromPort) {
+      case 'input':
+        fromX = fromBlock.x;
+        fromY = fromBlock.y + this._fanOffset(outIdx, outConns.length, fromH);
+        break;
+      case 'top':
+        fromX = fromBlock.x + this._fanOffset(outIdx, outConns.length, fromW);
+        fromY = fromBlock.y;
+        break;
+      case 'bottom':
+        fromX = fromBlock.x + this._fanOffset(outIdx, outConns.length, fromW);
+        fromY = fromBlock.y + fromH;
+        break;
+      default: // 'output'
+        fromX = fromBlock.x + fromW;
+        fromY = fromBlock.y + this._fanOffset(outIdx, outConns.length, fromH);
+        break;
+    }
+
+    // Target endpoint
+    switch (toPort) {
+      case 'output':
+        toX = toBlock.x + toW;
+        toY = toBlock.y + this._fanOffset(inIdx, inConns.length, toH);
+        break;
+      case 'top':
+        toX = toBlock.x + this._fanOffset(inIdx, inConns.length, toW);
+        toY = toBlock.y;
+        break;
+      case 'bottom':
+        toX = toBlock.x + this._fanOffset(inIdx, inConns.length, toW);
+        toY = toBlock.y + toH;
+        break;
+      default: // 'input'
+        toX = toBlock.x;
+        toY = toBlock.y + this._fanOffset(inIdx, inConns.length, toH);
+        break;
+    }
 
     // Choose path based on routing mode
     let d;
@@ -843,22 +897,28 @@ class DiagramRenderer {
   _addManualStartArrow(group, fromX, fromY, toX, toY, fillColor, strokeWidth = 2) {
     // Arrow size matches the SVG <marker> (10×7, userSpaceOnUse).
     const size = 10;
-    // Angle from start toward end (approximate — ignores bezier curvature)
+    // Angle from start toward end — the arrow tip should point
+    // BACKWARD (away from the target, toward the source block).
     const dx = toX - fromX;
     const dy = toY - fromY;
-    const angle = Math.atan2(dy, dx);
+    // Angle pointing from source toward target
+    const angleToTarget = Math.atan2(dy, dx);
+    // Reverse it — the backward arrow points away from the target
+    const angle = angleToTarget + Math.PI;
 
-    // Offset the arrow tip 1px outward (toward the source block) so it
-    // sits flush with the block edge without being partially hidden.
-    const tipX = fromX - Math.cos(angle) * 1;
-    const tipY = fromY - Math.sin(angle) * 1;
+    // Arrow tip sits at the connection start point
+    const tipX = fromX;
+    const tipY = fromY;
 
     // Base of the arrowhead extends along the path toward the target.
     const halfSpread = Math.atan2(3.5, 10); // ~19° — matches forward marker polygon (0 0, 10 3.5, 0 7)
-    const baseX1 = tipX + Math.cos(angle + halfSpread) * size;
-    const baseY1 = tipY + Math.sin(angle + halfSpread) * size;
-    const baseX2 = tipX + Math.cos(angle - halfSpread) * size;
-    const baseY2 = tipY + Math.sin(angle - halfSpread) * size;
+    // Base points extend in the direction opposite to the arrow tip
+    // (i.e. toward the target), fanning out symmetrically.
+    const baseAngle = angleToTarget; // toward target = away from tip
+    const baseX1 = tipX + Math.cos(baseAngle + halfSpread) * size;
+    const baseY1 = tipY + Math.sin(baseAngle + halfSpread) * size;
+    const baseX2 = tipX + Math.cos(baseAngle - halfSpread) * size;
+    const baseY2 = tipY + Math.sin(baseAngle - halfSpread) * size;
 
     const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     arrow.setAttribute('points',
@@ -1142,6 +1202,141 @@ class DiagramRenderer {
     const target = this.blocksLayer || this.svg;
     target.appendChild(g);
     this._annotationElements.set(annotation.id, g);
+
+    // --- Annotation interactivity: select, drag, edit, delete ---
+    this._setupAnnotationInteractivity(g, annotation);
+  }
+
+  /**
+   * Wire up selection, drag, double-click-to-edit, and Delete-key
+   * removal for an annotation SVG group element.
+   * @private
+   */
+  _setupAnnotationInteractivity(g, annotation) {
+    g.style.cursor = 'move';
+    g.setAttribute('pointer-events', 'all');
+
+    // Add a transparent hit rect so clicks register everywhere in the group
+    const ns = 'http://www.w3.org/2000/svg';
+    const hitRect = document.createElementNS(ns, 'rect');
+    const x = annotation.x || 0;
+    const y = annotation.y || 0;
+    const w = annotation.width || 120;
+    const h = annotation.height || 30;
+    hitRect.setAttribute('x', x);
+    hitRect.setAttribute('y', y);
+    hitRect.setAttribute('width', w);
+    hitRect.setAttribute('height', h);
+    hitRect.setAttribute('fill', 'transparent');
+    hitRect.setAttribute('stroke', 'none');
+    g.insertBefore(hitRect, g.firstChild);
+
+    let isDraggingAnn = false;
+    let dragStartX = 0, dragStartY = 0;
+    let annStartX = 0, annStartY = 0;
+
+    // --- SELECT on click ---
+    g.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+
+      // Deselect other annotations
+      if (this._annotationElements) {
+        this._annotationElements.forEach(el => el.classList.remove('annotation-selected'));
+      }
+      g.classList.add('annotation-selected');
+      this._selectedAnnotation = annotation;
+
+      // Show selection outline
+      g.querySelectorAll('.ann-select-outline').forEach(el => el.remove());
+      const outline = document.createElementNS(ns, 'rect');
+      outline.setAttribute('x', (annotation.x || 0) - 3);
+      outline.setAttribute('y', (annotation.y || 0) - 3);
+      outline.setAttribute('width', (annotation.width || 120) + 6);
+      outline.setAttribute('height', (annotation.height || 30) + 6);
+      outline.setAttribute('fill', 'none');
+      outline.setAttribute('stroke', '#FF6B35');
+      outline.setAttribute('stroke-width', '2');
+      outline.setAttribute('stroke-dasharray', '4,3');
+      outline.setAttribute('class', 'ann-select-outline');
+      outline.setAttribute('pointer-events', 'none');
+      g.insertBefore(outline, g.firstChild);
+
+      // Drag initialisation
+      isDraggingAnn = true;
+      const svgPt = this._clientToSVG(e.clientX, e.clientY);
+      if (svgPt) {
+        dragStartX = svgPt.x;
+        dragStartY = svgPt.y;
+      }
+      annStartX = annotation.x || 0;
+      annStartY = annotation.y || 0;
+    });
+
+    // --- DRAG on mousemove ---
+    const onMouseMove = (e) => {
+      if (!isDraggingAnn) return;
+      const svgPt = this._clientToSVG(e.clientX, e.clientY);
+      if (!svgPt) return;
+      const dx = svgPt.x - dragStartX;
+      const dy = svgPt.y - dragStartY;
+      annotation.x = annStartX + dx;
+      annotation.y = annStartY + dy;
+      // Re-render to reflect new position
+      this.renderAnnotation(annotation);
+    };
+    const onMouseUp = () => {
+      if (isDraggingAnn) {
+        isDraggingAnn = false;
+        if (this.editor) this.editor._markDirty();
+      }
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    g.addEventListener('mousedown', () => {
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+    // --- DOUBLE-CLICK to edit text ---
+    g.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      if (annotation.type === 'dimension') return; // dimensions auto-compute text
+      const newText = prompt('Edit annotation:', annotation.text || '');
+      if (newText !== null) {
+        annotation.text = newText;
+        this.renderAnnotation(annotation);
+        if (this.editor) this.editor._markDirty();
+      }
+    });
+
+    // --- DELETE key ---
+    // We use a global keydown listener scoped to this annotation's
+    // selected state via _selectedAnnotation.
+    if (!this._annotationDeleteListenerInstalled) {
+      this._annotationDeleteListenerInstalled = true;
+      document.addEventListener('keydown', (e) => {
+        if ((e.key === 'Delete' || e.key === 'Backspace') && this._selectedAnnotation) {
+          // Don't delete if an input / textarea is focused
+          const active = document.activeElement;
+          if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+          e.preventDefault();
+          const annId = this._selectedAnnotation.id;
+          // Remove from data model
+          if (this.editor && this.editor.diagram && this.editor.diagram.annotations) {
+            this.editor.diagram.annotations = this.editor.diagram.annotations.filter(
+              a => a.id !== annId
+            );
+            this.editor._markDirty();
+          }
+          // Remove from DOM
+          const el = this._annotationElements.get(annId);
+          if (el) el.remove();
+          this._annotationElements.delete(annId);
+          this._selectedAnnotation = null;
+        }
+      });
+    }
   }
 
   /**
