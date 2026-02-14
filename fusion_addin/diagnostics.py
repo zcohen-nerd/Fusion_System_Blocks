@@ -1334,8 +1334,12 @@ class DiagnosticsRunner:
                 )
 
             # Check first passes, second fails
-            mass_result = next((r for r in results if r.requirement_id == "req_mass"), None)
-            cost_result = next((r for r in results if r.requirement_id == "req_cost"), None)
+            mass_result = next(
+                (r for r in results if r.requirement_id == "req_mass"), None
+            )
+            cost_result = next(
+                (r for r in results if r.requirement_id == "req_cost"), None
+            )
 
             if mass_result is None or cost_result is None:
                 return DiagnosticResult(
@@ -1512,7 +1516,8 @@ class DiagnosticsRunner:
                 "id_match": restored.id == "vc_graph",
                 "name_match": restored.name == "VersionTest",
                 "block_count": len(restored.blocks) == 2,
-                "block_names": {b.name for b in restored.blocks} == {"SensorA", "ControllerB"},
+                "block_names": {b.name for b in restored.blocks}
+                == {"SensorA", "ControllerB"},
                 "snapshot_author": snapshot.author == "diagnostics",
                 "snapshot_has_timestamp": len(snapshot.timestamp) > 0,
             }
@@ -1599,7 +1604,10 @@ class DiagnosticsRunner:
 
             store = SnapshotStore(max_snapshots=10)
             g1 = Graph(id="ss_g", blocks=[Block(id="ss1", name="V1")])
-            g2 = Graph(id="ss_g", blocks=[Block(id="ss1", name="V2"), Block(id="ss2", name="New")])
+            g2 = Graph(
+                id="ss_g",
+                blocks=[Block(id="ss1", name="V2"), Block(id="ss2", name="New")],
+            )
 
             snap1 = store.add(g1, author="diag", description="first")
             snap2 = store.add(g2, author="diag", description="second")
@@ -1660,8 +1668,13 @@ class DiagnosticsRunner:
                 .add_port("data_out", PortDirection.OUTPUT)
                 .add_block("Processor", "Software")
                 .add_port("data_in", PortDirection.INPUT)
-                .connect("Sensor", "Processor", kind="data",
-                         from_port_name="data_out", to_port_name="data_in")
+                .connect(
+                    "Sensor",
+                    "Processor",
+                    kind="data",
+                    from_port_name="data_out",
+                    to_port_name="data_in",
+                )
                 .build()
             )
 
@@ -1672,7 +1685,8 @@ class DiagnosticsRunner:
                 "block_count": len(graph.blocks) == 2,
                 "connection_count": len(graph.connections) == 1,
                 "zero_errors": len(errors) == 0,
-                "block_names": {b.name for b in graph.blocks} == {"Sensor", "Processor"},
+                "block_names": {b.name for b in graph.blocks}
+                == {"Sensor", "Processor"},
             }
 
             if all(checks.values()):
@@ -1706,11 +1720,19 @@ class DiagnosticsRunner:
 
             # Verify critical action names exist
             required_actions = [
-                "SAVE_DIAGRAM", "LOAD_DIAGRAM", "EXPORT_REPORTS",
-                "CHECK_RULES", "APPLY_DELTA", "VALIDATE_REQUIREMENTS",
-                "CREATE_SNAPSHOT", "LIST_SNAPSHOTS", "RESTORE_SNAPSHOT",
+                "SAVE_DIAGRAM",
+                "LOAD_DIAGRAM",
+                "EXPORT_REPORTS",
+                "CHECK_RULES",
+                "APPLY_DELTA",
+                "VALIDATE_REQUIREMENTS",
+                "CREATE_SNAPSHOT",
+                "LIST_SNAPSHOTS",
+                "RESTORE_SNAPSHOT",
             ]
-            missing_actions = [a for a in required_actions if not hasattr(BridgeAction, a)]
+            missing_actions = [
+                a for a in required_actions if not hasattr(BridgeAction, a)
+            ]
 
             required_events = ["NOTIFICATION", "CAD_LINK"]
             missing_events = [e for e in required_events if not hasattr(BridgeEvent, e)]
@@ -1850,8 +1872,13 @@ class DiagnosticsRunner:
 
             diagram = {
                 "blocks": [
-                    {"id": "ex_b1", "name": "TestBlock", "type": "Generic",
-                     "status": "Placeholder", "interfaces": []},
+                    {
+                        "id": "ex_b1",
+                        "name": "TestBlock",
+                        "type": "Generic",
+                        "status": "Placeholder",
+                        "interfaces": [],
+                    },
                 ],
                 "connections": [],
             }
@@ -2004,7 +2031,10 @@ class DiagnosticsRunner:
                 return DiagnosticResult(
                     passed=False,
                     message=f"{len(missing)} JS modules missing: {missing}",
-                    details={"missing": missing, "found": len(expected_js) - len(missing)},
+                    details={
+                        "missing": missing,
+                        "found": len(expected_js) - len(missing),
+                    },
                 )
 
             total_size_kb = sum(sizes.values()) / 1024
@@ -2055,11 +2085,10 @@ class DiagnosticsRunner:
                     details={},
                 )
 
-            restored_shapes = {
-                b.id: b.attributes.get("shape") for b in restored.blocks
-            }
+            restored_shapes = {b.id: b.attributes.get("shape") for b in restored.blocks}
             mismatches = {
-                bid: s for bid, s in restored_shapes.items()
+                bid: s
+                for bid, s in restored_shapes.items()
                 if s != bid.replace("shape_", "")
             }
 
@@ -2171,11 +2200,20 @@ class DiagnosticsRunner:
             import fsb_core
 
             init_exports = [
-                "Block", "Port", "Connection", "Graph",
-                "validate_graph", "serialize_graph", "deserialize_graph",
-                "GraphBuilder", "compute_patch", "apply_patch",
-                "create_snapshot", "SnapshotStore",
-                "validate_requirements", "RequirementResult",
+                "Block",
+                "Port",
+                "Connection",
+                "Graph",
+                "validate_graph",
+                "serialize_graph",
+                "deserialize_graph",
+                "GraphBuilder",
+                "compute_patch",
+                "apply_patch",
+                "create_snapshot",
+                "SnapshotStore",
+                "validate_requirements",
+                "RequirementResult",
             ]
             missing_exports = [e for e in init_exports if not hasattr(fsb_core, e)]
 

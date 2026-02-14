@@ -245,8 +245,12 @@ def generate_markdown_report(diagram: dict[str, Any]) -> str:
     report.append(f"| Total Blocks | {es['block_count']} |")
     report.append(f"| Total Connections | {es['connection_count']} |")
     report.append(f"| Total Interfaces | {es['interface_count']} |")
-    report.append(f"| Completion | {es['completion_pct']:.0f}% (Verified + Implemented) |")
-    report.append(f"| CAD-Linked Blocks | {es['cad_linked_count']} / {es['block_count']} ({es['cad_linked_pct']:.0f}%) |")
+    report.append(
+        f"| Completion | {es['completion_pct']:.0f}% (Verified + Implemented) |"
+    )
+    report.append(
+        f"| CAD-Linked Blocks | {es['cad_linked_count']} / {es['block_count']} ({es['cad_linked_pct']:.0f}%) |"
+    )
     report.append(f"| Orphan Blocks | {es['orphan_count']} |")
     report.append(f"| Child Diagrams | {es['child_diagram_count']} |")
     report.append("")
