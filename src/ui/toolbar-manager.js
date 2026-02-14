@@ -108,7 +108,7 @@ class ToolbarManager {
         order: 7
       },
       'View': {
-        buttons: ['fit-view', 'zoom-in', 'zoom-out', 'snap-grid'],
+        buttons: ['fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap'],
         order: 7
       }
     };
@@ -127,7 +127,7 @@ class ToolbarManager {
 
   getDefaultButtonState(buttonId) {
     // Buttons that are always enabled
-    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'connect'];
+    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'connect'];
     if (alwaysEnabled.includes(buttonId)) return true;
 
     // Undo/redo: enabled when there are states to restore
@@ -229,6 +229,7 @@ class ToolbarManager {
     this.addButtonListener('zoom-in', () => this.handleZoomIn());
     this.addButtonListener('zoom-out', () => this.handleZoomOut());
     this.addButtonListener('snap-grid', () => this.handleToggleSnapGrid());
+    this.addButtonListener('minimap', () => this.handleToggleMinimap());
   }
 
   addButtonListener(buttonId, handler) {
@@ -279,7 +280,8 @@ class ToolbarManager {
       'Shift+ArrowUp': { ctrl: true, shift: true, handler: () => this.handleNavigateUp() },
       'Shift+ArrowDown': { ctrl: true, shift: true, handler: () => this.handleDrillDown() },
       'Shift+KeyN': { ctrl: true, shift: true, handler: () => this.handleCreateChild() },
-      'Shift+Slash': { shift: true, handler: () => this.handleShowShortcuts() }  // ? key
+      'Shift+Slash': { shift: true, handler: () => this.handleShowShortcuts() },  // ? key
+      'KeyM': { handler: () => this.handleToggleMinimap() }
     };
 
     Object.entries(shortcuts).forEach(([code, config]) => {
@@ -1298,6 +1300,21 @@ class ToolbarManager {
       btn.classList.toggle('active', this.editor.snapToGridEnabled);
     }
     logger.info('Snap to grid:', this.editor.snapToGridEnabled ? 'enabled' : 'disabled');
+  }
+
+  handleToggleMinimap() {
+    if (window.Minimap && window.minimapInstance) {
+      window.minimapInstance.toggle();
+    } else {
+      // Fallback: toggle container directly
+      const container = document.getElementById('minimap-container');
+      if (container) {
+        const hidden = container.style.display === 'none';
+        container.style.display = hidden ? '' : 'none';
+        const btn = document.getElementById('btn-minimap');
+        if (btn) btn.classList.toggle('active', hidden);
+      }
+    }
   }
 
   // State management

@@ -92,7 +92,15 @@ class SystemBlocksMain {
     
     // Python interface is already initialized globally
     this.modules.set('python', window.pythonInterface);
-    
+
+    // Initialize minimap (overview navigator)
+    if (typeof Minimap !== 'undefined') {
+      logger.debug('Initializing minimap...');
+      const minimapInst = new Minimap(this.modules.get('core'));
+      this.modules.set('minimap', minimapInst);
+      window.minimapInstance = minimapInst;
+    }
+
   logger.info('All modules initialized successfully');
   }
 
@@ -409,6 +417,7 @@ class SystemBlocksMain {
         const deltaY = (e.clientY - lastMousePos.y) / scaleY;
         
         core.panBy(deltaX, deltaY);
+        this._updateMinimap();
         
         lastMousePos = { x: e.clientX, y: e.clientY };
       }
@@ -423,6 +432,7 @@ class SystemBlocksMain {
         // End block drag — save state only if block actually moved
         if (dragMoved) {
           features.saveState();
+          this._updateMinimap();
           // Prevent the debounced auto-save (from monkey-patched
           // updateBlock) from pushing a duplicate undo state.
           this._dragSaveJustFired = true;
@@ -489,6 +499,7 @@ class SystemBlocksMain {
       
       const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
       core.zoomAt(zoomFactor, centerX, centerY);
+      this._updateMinimap();
     });
 
     // =========================================================================
@@ -848,6 +859,7 @@ class SystemBlocksMain {
         this.hideContextMenu();
         core.removeBlock(block.id);
         renderer.updateAllBlocks(core.diagram);
+        this._updateMinimap();
         core.clearSelection();
         if (window.advancedFeatures) {
           window.advancedFeatures.removeFromSelection(block.id);
@@ -1304,12 +1316,14 @@ class SystemBlocksMain {
       createBlock: (blockData) => {
         const block = this.modules.get('core').addBlock(blockData);
         this.modules.get('renderer').renderBlock(block);
+        this._updateMinimap();
         return block;
       },
       
       deleteBlock: (blockId) => {
         this.modules.get('core').removeBlock(blockId);
         this.modules.get('renderer').updateAllBlocks(this.modules.get('core').diagram);
+        this._updateMinimap();
       },
       
       connectBlocks: (fromBlockId, toBlockId, type) => {
@@ -1336,6 +1350,7 @@ class SystemBlocksMain {
         const success = this.modules.get('core').importDiagram(jsonData);
         if (success) {
           this.modules.get('renderer').updateAllBlocks(this.modules.get('core').diagram);
+          this._updateMinimap();
         }
         return success;
       },
@@ -1452,6 +1467,12 @@ class SystemBlocksMain {
   // ---------------------------------------------------------------
   // Crash Recovery via localStorage auto-backup
   // ---------------------------------------------------------------
+
+  /** Schedule a minimap re-render (safe no-op if minimap is absent). */
+  _updateMinimap() {
+    const minimap = this.modules.get('minimap');
+    if (minimap) minimap.scheduleRender();
+  }
 
   /** Key used in localStorage for the recovery backup. */
   static get RECOVERY_KEY() { return 'fsb_recovery_backup'; }
