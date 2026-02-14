@@ -242,6 +242,9 @@ class AdvancedFeatures {
   }
 
   renderGroupBoundary(group) {
+    // Remove stale boundary first (idempotent re-render)
+    this.removeGroupBoundary(group.id);
+
     const boundary = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     boundary.setAttribute('id', `group-boundary-${group.id}`);
     boundary.setAttribute('x', group.bounds.x);
@@ -256,6 +259,22 @@ class AdvancedFeatures {
     
     // Insert behind blocks
     this.renderer.svg.insertBefore(boundary, this.renderer.svg.firstChild);
+  }
+
+  /**
+   * Recalculate and re-render boundaries for every non-default group
+   * whose member blocks may have moved.
+   */
+  updateGroupBoundaries() {
+    this.groups.forEach((group, groupId) => {
+      if (groupId === 'default') return;
+      const blockIds = group.blocks instanceof Set
+        ? Array.from(group.blocks)
+        : group.blocks;
+      if (!blockIds || blockIds.length === 0) return;
+      group.bounds = this.calculateGroupBounds(blockIds);
+      this.renderGroupBoundary(group);
+    });
   }
 
   removeGroupBoundary(groupId) {

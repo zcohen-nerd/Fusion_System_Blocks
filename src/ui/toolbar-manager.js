@@ -139,7 +139,7 @@ class ToolbarManager {
         const rect = el.getBoundingClientRect();
         tip.style.left = `${rect.left}px`;
         tip.style.top = `${rect.bottom + 6}px`;
-        tip.style.display = '';
+        tip.style.display = 'block';
       }, 500);
 
       this._tipTimers.tier2 = setTimeout(() => {
@@ -154,7 +154,7 @@ class ToolbarManager {
     const hide = () => {
       clearTimeout(this._tipTimers.tier1);
       clearTimeout(this._tipTimers.tier2);
-      tip.style.display = 'none';
+      tip.style.display = 'none';  // inline 'none' overrides CSS rule
     };
 
     // Attach to all buttons that have tooltip data

@@ -403,6 +403,11 @@ class SystemBlocksMain {
             }
           });
         }
+
+        // Update group boundaries so the dashed rectangle follows its blocks
+        if (features.updateGroupBoundaries) {
+          features.updateGroupBoundaries();
+        }
       } else if (features.isLassoSelecting) {
         // Update lasso selection
         features.updateLassoSelection(x, y);

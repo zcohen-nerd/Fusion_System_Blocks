@@ -617,15 +617,21 @@ class DiagramRenderer {
       path.setAttribute('marker-end', fwdMarker);
     } else if (direction === 'bidirectional') {
       path.setAttribute('marker-end', fwdMarker);
-      // CEF workaround: marker-start is unreliable in Fusion 360's
-      // Chromium, so render a manual reverse arrow polygon instead.
-      this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke, styling.strokeWidth);
     } else if (direction === 'backward') {
-      // CEF workaround: use a manual polygon for the start arrow
-      this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke, styling.strokeWidth);
+      // No marker-end for backward — only start arrow
     }
     // direction === 'none' → no markers
+
+    // Append path BEFORE manual arrows so the arrow polygon renders
+    // on top of the connection line (correct SVG stacking order).
     group.appendChild(path);
+
+    // CEF workaround: marker-start is unreliable in Fusion 360's
+    // Chromium, so render a manual reverse arrow polygon instead.
+    // Appended after the path so the arrow sits visually on top.
+    if (direction === 'bidirectional' || direction === 'backward') {
+      this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke, styling.strokeWidth);
+    }
 
     // --- Waypoint handles (orthogonal mode only) ---
     if (this.routingMode === 'orthogonal' && connection.waypoints && connection.waypoints.length > 0) {
@@ -835,27 +841,32 @@ class DiagramRenderer {
    * strokeWidth scales the arrow to match the SVG marker (markerUnits=strokeWidth).
    */
   _addManualStartArrow(group, fromX, fromY, toX, toY, fillColor, strokeWidth = 2) {
-    // SVG markers now use fixed size (userSpaceOnUse) to prevent
-    // scaling issues with thick lines. Length=10px.
+    // Arrow size matches the SVG <marker> (10×7, userSpaceOnUse).
     const size = 10;
     // Angle from start toward end (approximate — ignores bezier curvature)
     const dx = toX - fromX;
     const dy = toY - fromY;
     const angle = Math.atan2(dy, dx);
-    // Arrow points backward (opposite the path direction)
-    const tipX = fromX;
-    const tipY = fromY;
+
+    // Offset the arrow tip 1px outward (toward the source block) so it
+    // sits flush with the block edge without being partially hidden.
+    const tipX = fromX - Math.cos(angle) * 1;
+    const tipY = fromY - Math.sin(angle) * 1;
+
+    // Base of the arrowhead extends along the path toward the target.
     const halfSpread = Math.atan2(3.5, 10); // ~19° — matches forward marker polygon (0 0, 10 3.5, 0 7)
-    const baseX1 = fromX + Math.cos(angle + halfSpread) * size;
-    const baseY1 = fromY + Math.sin(angle + halfSpread) * size;
-    const baseX2 = fromX + Math.cos(angle - halfSpread) * size;
-    const baseY2 = fromY + Math.sin(angle - halfSpread) * size;
+    const baseX1 = tipX + Math.cos(angle + halfSpread) * size;
+    const baseY1 = tipY + Math.sin(angle + halfSpread) * size;
+    const baseX2 = tipX + Math.cos(angle - halfSpread) * size;
+    const baseY2 = tipY + Math.sin(angle - halfSpread) * size;
 
     const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     arrow.setAttribute('points',
       `${tipX},${tipY} ${baseX1},${baseY1} ${baseX2},${baseY2}`);
     arrow.setAttribute('fill', fillColor);
-    arrow.setAttribute('stroke', 'none');
+    arrow.setAttribute('stroke', fillColor);
+    arrow.setAttribute('stroke-width', '0.5');
+    arrow.setAttribute('stroke-linejoin', 'round');
     arrow.setAttribute('class', 'manual-start-arrow');
     group.appendChild(arrow);
   }
