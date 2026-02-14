@@ -121,6 +121,16 @@ class DiagramEditorCore {
     this.diagram.metadata.modified = new Date().toISOString();
   }
 
+  updateConnection(connectionId, updates) {
+    const connection = this.diagram.connections.find(c => c.id === connectionId);
+    if (connection) {
+      Object.assign(connection, updates);
+      this.diagram.metadata.modified = new Date().toISOString();
+      return connection;
+    }
+    return null;
+  }
+
   updateBlock(blockId, updates) {
     const block = this.diagram.blocks.find(b => b.id === blockId);
     if (block) {

@@ -531,7 +531,21 @@ class SystemBlocksMain {
       const { x, y } = screenToSVG(e.clientX, e.clientY);
       const block = core.getBlockAt(x, y);
 
-      this.showContextMenu(e.clientX, e.clientY, block, core, renderer, features);
+      if (block) {
+        this.showContextMenu(e.clientX, e.clientY, block, core, renderer, features);
+      } else {
+        // Check if right-clicked on a connection (via SVG DOM hit path)
+        const connGroup = e.target.closest('[data-connection-id]');
+        if (connGroup) {
+          const connectionId = connGroup.getAttribute('data-connection-id');
+          const connection = core.diagram.connections.find(c => c.id === connectionId);
+          if (connection) {
+            this.showConnectionContextMenu(e.clientX, e.clientY, connection, core, renderer, features);
+            return;
+          }
+        }
+        this.showContextMenu(e.clientX, e.clientY, null, core, renderer, features);
+      }
     });
 
     // Close context menu on any left-click OUTSIDE the menu.
@@ -543,6 +557,10 @@ class SystemBlocksMain {
         const menu = document.getElementById('block-context-menu');
         if (!menu || !menu.contains(e.target)) {
           this.hideContextMenu();
+        }
+        const connMenu = document.getElementById('connection-context-menu');
+        if (!connMenu || !connMenu.contains(e.target)) {
+          this.hideConnectionContextMenu();
         }
       }
     });
@@ -953,6 +971,96 @@ class SystemBlocksMain {
   hideContextMenu() {
     const menu = document.getElementById('block-context-menu');
     if (menu) menu.classList.remove('show');
+  }
+
+  // =========================================================================
+  // CONNECTION CONTEXT MENU
+  // =========================================================================
+  showConnectionContextMenu(clientX, clientY, connection, core, renderer, features) {
+    this.hideContextMenu();
+    this.hideConnectionContextMenu();
+
+    // Highlight the targeted connection while menu is open
+    renderer.highlightConnection(connection.id, true);
+    this._highlightedConnectionId = connection.id;
+
+    const menu = document.getElementById('connection-context-menu');
+    if (!menu) return;
+
+    // Wire up handlers (cloneNode trick to replace previous listeners)
+    const freshMenu = menu.cloneNode(true);
+    menu.parentNode.replaceChild(freshMenu, menu);
+    freshMenu.id = 'connection-context-menu';
+
+    // --- Type submenu ---
+    freshMenu.querySelectorAll('[data-conn-type]').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newType = item.getAttribute('data-conn-type');
+        core.updateConnection(connection.id, { type: newType });
+        renderer.renderConnection(core.diagram.connections.find(c => c.id === connection.id));
+        if (window.advancedFeatures) window.advancedFeatures.saveState();
+        this.hideConnectionContextMenu();
+      });
+    });
+
+    // --- Direction submenu ---
+    freshMenu.querySelectorAll('[data-conn-direction]').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newDir = item.getAttribute('data-conn-direction');
+        core.updateConnection(connection.id, { arrowDirection: newDir });
+        renderer.renderConnection(core.diagram.connections.find(c => c.id === connection.id));
+        if (window.advancedFeatures) window.advancedFeatures.saveState();
+        this.hideConnectionContextMenu();
+      });
+    });
+
+    // --- Select Connected Blocks ---
+    this._ctxAction(freshMenu, 'ctx-conn-select-blocks', () => {
+      this.hideConnectionContextMenu();
+      if (window.advancedFeatures) {
+        window.advancedFeatures.clearSelection();
+        if (connection.fromBlock) window.advancedFeatures.addToSelection(connection.fromBlock);
+        if (connection.toBlock) window.advancedFeatures.addToSelection(connection.toBlock);
+      }
+      renderer.updateAllBlocks(core.diagram);
+    });
+
+    // --- Delete Connection ---
+    this._ctxAction(freshMenu, 'ctx-conn-delete', () => {
+      this.hideConnectionContextMenu();
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
+      core.removeConnection(connection.id);
+      renderer.updateAllBlocks(core.diagram);
+      this._updateMinimap();
+    });
+
+    // Position and show
+    freshMenu.style.left = clientX + 'px';
+    freshMenu.style.top = clientY + 'px';
+    freshMenu.classList.add('show');
+
+    // Clamp to viewport
+    requestAnimationFrame(() => {
+      const rect = freshMenu.getBoundingClientRect();
+      if (rect.right > window.innerWidth) {
+        freshMenu.style.left = (clientX - rect.width) + 'px';
+      }
+      if (rect.bottom > window.innerHeight) {
+        freshMenu.style.top = (clientY - rect.height) + 'px';
+      }
+    });
+  }
+
+  hideConnectionContextMenu() {
+    const menu = document.getElementById('connection-context-menu');
+    if (menu) menu.classList.remove('show');
+    // Clear connection highlight
+    if (this._highlightedConnectionId && window.diagramRenderer) {
+      window.diagramRenderer.highlightConnection(this._highlightedConnectionId, false);
+      this._highlightedConnectionId = null;
+    }
   }
 
   _ctxAction(menu, id, handler) {

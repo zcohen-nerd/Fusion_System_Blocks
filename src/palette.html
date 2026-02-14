@@ -2677,6 +2677,39 @@
       <span class="ctx-icon">🔍</span> Fit to View
     </div>
   </div>
+  <!-- Connection context menu (right-click a connection line) -->
+  <div id="connection-context-menu" class="fusion-context-menu" style="position:fixed; z-index:1000000;">
+    <div class="fusion-context-menu-item has-submenu">
+      <span class="ctx-icon">🔌</span> Type
+      <span class="ctx-arrow">▸</span>
+      <div class="fusion-context-submenu">
+        <div class="fusion-context-menu-item" data-conn-type="auto">Auto</div>
+        <div class="fusion-context-menu-item" data-conn-type="power">⚡ Power</div>
+        <div class="fusion-context-menu-item" data-conn-type="data">📡 Data</div>
+        <div class="fusion-context-menu-item" data-conn-type="electrical">⚙️ Electrical</div>
+        <div class="fusion-context-menu-item" data-conn-type="mechanical">🔩 Mechanical</div>
+      </div>
+    </div>
+    <div class="fusion-context-menu-item has-submenu">
+      <span class="ctx-icon">➡️</span> Direction
+      <span class="ctx-arrow">▸</span>
+      <div class="fusion-context-submenu">
+        <div class="fusion-context-menu-item" data-conn-direction="forward">→ Forward</div>
+        <div class="fusion-context-menu-item" data-conn-direction="backward">← Backward</div>
+        <div class="fusion-context-menu-item" data-conn-direction="bidirectional">↔ Bidirectional</div>
+        <div class="fusion-context-menu-item" data-conn-direction="none">— None</div>
+      </div>
+    </div>
+    <div class="fusion-context-menu-separator"></div>
+    <div id="ctx-conn-select-blocks" class="fusion-context-menu-item">
+      <span class="ctx-icon">🎯</span> Select Connected Blocks
+    </div>
+    <div class="fusion-context-menu-separator"></div>
+    <div id="ctx-conn-delete" class="fusion-context-menu-item danger">
+      <span class="ctx-icon">🗑️</span> Delete Connection
+      <span class="ctx-shortcut">Del</span>
+    </div>
+  </div>
   <div id="import-dialog" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
                                   background: var(--fusion-panel-bg, #2b2b2b); border: 2px solid var(--fusion-panel-border, #555); 
                                   padding: 20px; z-index: 10000; min-width: 500px; color: var(--fusion-text-primary, #ffffff); 
