@@ -8,7 +8,12 @@ Write-Host "🚀 Creating Beta Release: $Version" -ForegroundColor Green
 Write-Host ""
 
 # Navigate to public repo
-Set-Location "C:\Users\Zachary Cohen\OneDrive\Documents\Python Scripts\Fusion_System_Blocks_Public"
+$PublicRepoPath = $env:FSB_PUBLIC_REPO
+if (-not $PublicRepoPath) {
+    Write-Host "ERROR: Set FSB_PUBLIC_REPO environment variable to public repo path" -ForegroundColor Red
+    exit 1
+}
+Set-Location $PublicRepoPath
 
 # Create a beta release tag
 Write-Host "📋 Creating release tag..." -ForegroundColor Cyan

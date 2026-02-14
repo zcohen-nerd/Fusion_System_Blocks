@@ -1,10 +1,16 @@
 # Script to update public README and create beta release
 
 # Navigate to public repo
-Set-Location "C:\Users\Zachary Cohen\OneDrive\Documents\Python Scripts\Fusion_System_Blocks_Public"
+$PublicRepoPath = $env:FSB_PUBLIC_REPO
+$PrivateRepoPath = $env:FSB_PRIVATE_REPO
+if (-not $PublicRepoPath -or -not $PrivateRepoPath) {
+    Write-Host "ERROR: Set FSB_PUBLIC_REPO and FSB_PRIVATE_REPO environment variables" -ForegroundColor Red
+    exit 1
+}
+Set-Location $PublicRepoPath
 
 # Copy the improved README
-Copy-Item "C:\Users\Zachary Cohen\OneDrive\Documents\Python Scripts\Fusion_System_Blocks\IMPROVED_PUBLIC_README.md" "README.md" -Force
+Copy-Item (Join-Path $PrivateRepoPath "IMPROVED_PUBLIC_README.md") "README.md" -Force
 
 # Initialize Git and add the improved README
 git add README.md

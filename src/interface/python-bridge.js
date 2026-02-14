@@ -807,16 +807,16 @@ class PythonInterface {
   }
 
   displaySyncResults(results) {
-    const { total_blocks, sync_successful, sync_failed, errors } = results;
+    const { total_blocks: totalBlocks, sync_successful: syncSuccessful, sync_failed: syncFailed, errors } = results;
     
-    if (sync_failed > 0) {
+    if (syncFailed > 0) {
       this.showNotification(
-        `Component sync: ${sync_successful} successful, ${sync_failed} failed`, 
+        `Component sync: ${syncSuccessful} successful, ${syncFailed} failed`, 
         'warning'
       );
     } else {
       this.showNotification(
-        `All ${sync_successful} components synced successfully`, 
+        `All ${syncSuccessful} components synced successfully`, 
         'success'
       );
     }

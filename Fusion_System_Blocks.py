@@ -9,14 +9,14 @@ import adsk.core
 import adsk.fusion
 
 # Add src directory to path so we can import our modules
-src_path = os.path.join(os.path.dirname(__file__), "src")
-sys.path.insert(0, src_path)
+SRC_PATH = os.path.join(os.path.dirname(__file__), "src")
+sys.path.insert(0, SRC_PATH)
 import diagram_data  # noqa: E402
 
 # Add repo root to path for core library
-repo_root = os.path.dirname(__file__)
-if repo_root not in sys.path:
-    sys.path.insert(0, repo_root)
+REPO_ROOT = os.path.dirname(__file__)
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 # Import the core library for validation and action planning (hard dependency)
 from fsb_core.bridge_actions import BridgeAction, BridgeEvent
