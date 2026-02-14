@@ -21,8 +21,10 @@ if repo_root not in sys.path:
 # Import the core library for validation and action planning (hard dependency)
 from fsb_core.bridge_actions import BridgeAction, BridgeEvent
 from fsb_core.delta import apply_patch, is_trivial_patch
+from fsb_core.requirements import validate_requirements
 from fsb_core.serialization import dict_to_graph
 from fsb_core.validation import get_error_summary, validate_graph
+from fsb_core.version_control import SnapshotStore
 
 # Import logging utilities
 try:
@@ -60,6 +62,9 @@ _handlers = []  # keep event handlers alive
 # Pending CAD link data — stored when sendInfoToHTML may arrive
 # before the palette web-view is ready after being restored.
 _pending_cad_link: Optional[dict] = None
+
+# Global snapshot store for version control (Issue #31)
+_snapshot_store = SnapshotStore(max_snapshots=50)
 
 
 def send_palette_notification(message: str, level: str = "info") -> None:
@@ -815,6 +820,115 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         if ok:
             return {"success": True, "documents": list_named_diagrams()}
         return {"success": False, "error": "Delete failed"}
+
+    # ── Requirements & Version Control (Issue #31) ───────────────────
+
+    def _handle_validate_requirements(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Evaluate all requirements on the current diagram.
+
+        Returns pass/fail results for every requirement defined
+        on the graph.
+        """
+        try:
+            diagram_json = data.get("diagram", "{}")
+            diagram = (
+                diagram_json
+                if isinstance(diagram_json, dict)
+                else json.loads(diagram_json)
+            )
+            graph = dict_to_graph(diagram)
+            results = validate_requirements(graph)
+            return {
+                "success": True,
+                "results": [r.to_dict() for r in results],
+            }
+        except Exception as exc:
+            return {
+                "success": False,
+                "error": f"Requirement validation failed: {exc}",
+            }
+
+    def _handle_create_snapshot(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Create a version-control snapshot of the current diagram."""
+        global _snapshot_store
+        try:
+            diagram_json = data.get("diagram", "{}")
+            diagram = (
+                diagram_json
+                if isinstance(diagram_json, dict)
+                else json.loads(diagram_json)
+            )
+            graph = dict_to_graph(diagram)
+            author = data.get("author", "")
+            description = data.get("description", "")
+            snap = _snapshot_store.add(graph, author=author, description=description)
+            return {
+                "success": True,
+                "snapshotId": snap.id,
+                "snapshots": _snapshot_store.list_snapshots(),
+            }
+        except Exception as exc:
+            return {
+                "success": False,
+                "error": f"Snapshot creation failed: {exc}",
+            }
+
+    def _handle_list_snapshots(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Return the list of stored snapshots."""
+        global _snapshot_store
+        return {
+            "success": True,
+            "snapshots": _snapshot_store.list_snapshots(),
+        }
+
+    def _handle_restore_snapshot(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Restore the diagram to a previous snapshot."""
+        global _snapshot_store
+        snapshot_id = data.get("snapshotId", "")
+        try:
+            graph = _snapshot_store.restore(snapshot_id)
+            from fsb_core.serialization import graph_to_dict
+
+            diagram = graph_to_dict(graph)
+            return {"success": True, "diagram": diagram}
+        except KeyError as exc:
+            return {"success": False, "error": str(exc)}
+        except Exception as exc:
+            return {
+                "success": False,
+                "error": f"Snapshot restore failed: {exc}",
+            }
+
+    def _handle_compare_snapshots(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Compare two snapshots and return a structured diff."""
+        global _snapshot_store
+        old_id = data.get("oldId", "")
+        new_id = data.get("newId", "")
+        try:
+            diff = _snapshot_store.compare(old_id, new_id)
+            return {
+                "success": True,
+                "diff": {
+                    "addedBlockIds": diff.added_block_ids,
+                    "removedBlockIds": diff.removed_block_ids,
+                    "modifiedBlockIds": diff.modified_block_ids,
+                    "connectionChanges": [
+                        {
+                            "connectionId": c.connection_id,
+                            "changeType": c.change_type,
+                            "details": c.details,
+                        }
+                        for c in diff.connection_changes
+                    ],
+                },
+            }
+        except KeyError as exc:
+            return {"success": False, "error": str(exc)}
+        except Exception as exc:
+            return {
+                "success": False,
+                "error": f"Snapshot comparison failed: {exc}",
+            }
 
 
 def _create_palette() -> Optional[adsk.core.Palette]:

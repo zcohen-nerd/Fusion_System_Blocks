@@ -109,7 +109,7 @@ class ToolbarManager {
         order: 7
       },
       'View': {
-        buttons: ['fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap'],
+        buttons: ['fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'routing-mode'],
         order: 7
       }
     };
@@ -128,7 +128,7 @@ class ToolbarManager {
 
   getDefaultButtonState(buttonId) {
     // Buttons that are always enabled
-    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'connect', 'history'];
+    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'routing-mode', 'connect', 'history'];
     if (alwaysEnabled.includes(buttonId)) return true;
 
     // Undo/redo: enabled when there are states to restore
@@ -238,6 +238,7 @@ class ToolbarManager {
     this.addButtonListener('zoom-out', () => this.handleZoomOut());
     this.addButtonListener('snap-grid', () => this.handleToggleSnapGrid());
     this.addButtonListener('minimap', () => this.handleToggleMinimap());
+    this.addButtonListener('routing-mode', () => this.handleToggleRoutingMode());
   }
 
   addButtonListener(buttonId, handler) {
@@ -566,7 +567,8 @@ class ToolbarManager {
           'exp-assembly-md': 'assembly_md',
           'exp-assembly-json': 'assembly_json',
           'exp-connection-matrix': 'connection_matrix',
-          'exp-svg': 'svg'
+          'exp-svg': 'svg',
+          'exp-pdf': 'pdf'
         };
 
         const selected = [];
@@ -1418,6 +1420,28 @@ class ToolbarManager {
         const btn = document.getElementById('btn-minimap');
         if (btn) btn.classList.toggle('active', hidden);
       }
+    }
+  }
+
+  /**
+   * Toggle connection routing between Bezier curves and orthogonal
+   * (Manhattan / right-angle) routing with obstacle avoidance.
+   */
+  handleToggleRoutingMode() {
+    if (!window.diagramRenderer) return;
+    const newMode = window.diagramRenderer.toggleRoutingMode();
+    const btn = document.getElementById('btn-routing-mode');
+    if (btn) {
+      btn.classList.toggle('active', newMode === 'orthogonal');
+      btn.title = newMode === 'orthogonal'
+        ? 'Switch to curved connections'
+        : 'Switch to orthogonal connections';
+    }
+    if (window.pythonInterface) {
+      window.pythonInterface.showNotification(
+        `Routing: ${newMode === 'orthogonal' ? 'Orthogonal' : 'Bezier'}`,
+        'info'
+      );
     }
   }
 

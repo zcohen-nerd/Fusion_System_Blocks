@@ -548,6 +548,101 @@ class PythonInterface {
       });
   }
 
+  // === REQUIREMENTS & VERSION CONTROL (Issue #31) ===
+
+  /**
+   * Validate all requirements on the current diagram.
+   * @returns {Promise<Array>} Array of requirement result objects.
+   */
+  validateRequirements() {
+    if (!window.diagramEditor) return Promise.reject('No diagram editor available');
+    const diagramJson = window.diagramEditor.exportDiagram();
+    return this.sendMessage(BridgeAction.VALIDATE_REQUIREMENTS, { diagram: diagramJson }, true)
+      .then(response => {
+        if (response.success) {
+          return response.results || [];
+        }
+        throw new Error(response.error || 'Validation failed');
+      });
+  }
+
+  /**
+   * Create a version-control snapshot of the current diagram.
+   * @param {string} [description=''] - Commit message.
+   * @param {string} [author=''] - Author name.
+   * @returns {Promise<Object>} Response with snapshotId and snapshots list.
+   */
+  createSnapshot(description = '', author = '') {
+    if (!window.diagramEditor) return Promise.reject('No diagram editor available');
+    const diagramJson = window.diagramEditor.exportDiagram();
+    return this.sendMessage(BridgeAction.CREATE_SNAPSHOT, {
+      diagram: diagramJson,
+      description: description,
+      author: author
+    }, true)
+      .then(response => {
+        if (response.success) {
+          this.showNotification('Snapshot created', 'success');
+          return response;
+        }
+        throw new Error(response.error || 'Snapshot failed');
+      })
+      .catch(error => {
+        this.showNotification('Failed to create snapshot: ' + error.message, 'error');
+        throw error;
+      });
+  }
+
+  /**
+   * List all stored snapshots.
+   * @returns {Promise<Array>} Array of snapshot summary objects.
+   */
+  listSnapshots() {
+    return this.sendMessage(BridgeAction.LIST_SNAPSHOTS, {}, true)
+      .then(response => response.snapshots || [])
+      .catch(() => []);
+  }
+
+  /**
+   * Restore the diagram from a previous snapshot.
+   * @param {string} snapshotId - ID of the snapshot to restore.
+   * @returns {Promise<Object>} Response with the restored diagram.
+   */
+  restoreSnapshot(snapshotId) {
+    if (window.showLoadingSpinner) window.showLoadingSpinner('Restoring snapshot\u2026');
+    return this.sendMessage(BridgeAction.RESTORE_SNAPSHOT, { snapshotId }, true)
+      .then(response => {
+        if (response.success && response.diagram) {
+          this.handleLoadDiagram(response.diagram);
+          this.showNotification('Snapshot restored', 'success');
+        } else {
+          throw new Error(response.error || 'Restore failed');
+        }
+        return response;
+      })
+      .catch(error => {
+        this.showNotification('Restore failed: ' + error.message, 'error');
+        throw error;
+      })
+      .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
+  }
+
+  /**
+   * Compare two snapshots and return a structured diff.
+   * @param {string} oldId - Baseline snapshot ID.
+   * @param {string} newId - Target snapshot ID.
+   * @returns {Promise<Object>} Diff result object.
+   */
+  compareSnapshots(oldId, newId) {
+    return this.sendMessage(BridgeAction.COMPARE_SNAPSHOTS, { oldId, newId }, true)
+      .then(response => {
+        if (response.success) {
+          return response.diff;
+        }
+        throw new Error(response.error || 'Comparison failed');
+      });
+  }
+
   // === UI HELPERS ===
 
   showNotification(message, type = 'info') {

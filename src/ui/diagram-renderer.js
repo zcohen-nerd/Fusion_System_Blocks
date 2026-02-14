@@ -30,6 +30,15 @@ class DiagramRenderer {
     this.blockElements = new Map(); // Cache block DOM elements
     this.connectionElements = new Map(); // Cache connection DOM elements
     
+    /**
+     * Connection routing mode: 'bezier' (default curves) or 'orthogonal'
+     * (right-angle Manhattan routing). Toggle via setRoutingMode().
+     */
+    this.routingMode = 'bezier';
+
+    /** Orthogonal routing engine instance (created lazily). */
+    this._orthogonalRouter = null;
+
     this.initializeRenderer();
   }
 
@@ -551,12 +560,18 @@ class DiagramRenderer {
     const toX = toBlock.x;
     const toY = toBlock.y + toYOffset;
 
-    // Create curved path definition.
-    const dx = Math.abs(toX - fromX);
-    const dy = toY - fromY;
-    const yBulge = Math.abs(dy) < 10 ? Math.max(30, dx * 0.15) : 0;
-    const midX = (fromX + toX) / 2;
-    const d = `M ${fromX} ${fromY} C ${midX} ${fromY - yBulge} ${midX} ${toY - yBulge} ${toX} ${toY}`;
+    // Choose path based on routing mode
+    let d;
+    if (this.routingMode === 'orthogonal') {
+      d = this._computeOrthogonalPath(fromX, fromY, toX, toY, connection);
+    } else {
+      // Default Bezier curve
+      const dx = Math.abs(toX - fromX);
+      const dy = toY - fromY;
+      const yBulge = Math.abs(dy) < 10 ? Math.max(30, dx * 0.15) : 0;
+      const midX = (fromX + toX) / 2;
+      d = `M ${fromX} ${fromY} C ${midX} ${fromY - yBulge} ${midX} ${toY - yBulge} ${toX} ${toY}`;
+    }
 
     // Group element for the connection (hit area + visible stroke)
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -600,6 +615,26 @@ class DiagramRenderer {
     // direction === 'none' → no markers
     group.appendChild(path);
 
+    // --- Waypoint handles (orthogonal mode only) ---
+    if (this.routingMode === 'orthogonal' && connection.waypoints && connection.waypoints.length > 0) {
+      this._renderWaypointHandles(group, connection);
+    }
+
+    // --- Double-click to add a waypoint (orthogonal mode only) ---
+    group.addEventListener('dblclick', (e) => {
+      if (this.routingMode !== 'orthogonal') return;
+      e.stopPropagation();
+      const svgPt = this._clientToSVG(e.clientX, e.clientY);
+      if (!svgPt) return;
+      if (!connection.waypoints) connection.waypoints = [];
+      connection.waypoints.push({ x: svgPt.x, y: svgPt.y });
+      // Persist the waypoints on the editor's connection object
+      if (this.editor) {
+        this.editor.updateConnection(connection.id, { waypoints: connection.waypoints });
+      }
+      this.renderConnection(connection);
+    });
+
     // Ensure connectionsLayer is still in the DOM (defensive)
     const target = this.connectionsLayer && this.connectionsLayer.parentNode
       ? this.connectionsLayer
@@ -612,6 +647,101 @@ class DiagramRenderer {
       'path:', d.substring(0, 60) + '...');
 
     return group;
+  }
+
+  /**
+   * Convert browser client coordinates to SVG (diagram) coordinates.
+   * Re-usable utility matching main-coordinator.js screenToSVG logic.
+   */
+  _clientToSVG(clientX, clientY) {
+    if (!this.svg) return null;
+    const ctm = this.svg.getScreenCTM();
+    if (ctm) {
+      const pt = this.svg.createSVGPoint();
+      pt.x = clientX;
+      pt.y = clientY;
+      return pt.matrixTransform(ctm.inverse());
+    }
+    // Fallback
+    const rect = this.svg.getBoundingClientRect();
+    const vb = this.svg.viewBox.baseVal;
+    return {
+      x: (clientX - rect.left) * (vb.width / rect.width) + vb.x,
+      y: (clientY - rect.top) * (vb.height / rect.height) + vb.y
+    };
+  }
+
+  /**
+   * Render draggable circles for each waypoint of a connection.
+   * Right-click on a handle removes the waypoint.
+   */
+  _renderWaypointHandles(group, connection) {
+    const waypoints = connection.waypoints || [];
+    waypoints.forEach((wp, idx) => {
+      const handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      handle.setAttribute('cx', wp.x);
+      handle.setAttribute('cy', wp.y);
+      handle.setAttribute('r', '5');
+      handle.setAttribute('fill', '#FF6B35');
+      handle.setAttribute('stroke', '#fff');
+      handle.setAttribute('stroke-width', '1.5');
+      handle.setAttribute('cursor', 'grab');
+      handle.setAttribute('class', 'waypoint-handle');
+      handle.setAttribute('data-wp-index', String(idx));
+
+      // --- Drag behaviour ---
+      let dragging = false;
+      handle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        dragging = true;
+        handle.setAttribute('cursor', 'grabbing');
+
+        const onMove = (me) => {
+          if (!dragging) return;
+          const pt = this._clientToSVG(me.clientX, me.clientY);
+          if (!pt) return;
+          wp.x = pt.x;
+          wp.y = pt.y;
+          handle.setAttribute('cx', pt.x);
+          handle.setAttribute('cy', pt.y);
+          // Live re-route the path (lightweight — just update d attribute)
+          const pathD = this._computeOrthogonalPath(
+            parseFloat(group.querySelector('.connection-line')?.getAttribute('d')?.split(' ')[1]) || 0,
+            0, 0, 0, connection
+          );
+          // Full re-render for accurate routing
+          this.renderConnection(connection);
+        };
+
+        const onUp = () => {
+          dragging = false;
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          // Persist final position
+          if (this.editor) {
+            this.editor.updateConnection(connection.id, { waypoints: connection.waypoints });
+          }
+          this.renderConnection(connection);
+        };
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+
+      // --- Right-click to remove waypoint ---
+      handle.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        connection.waypoints.splice(idx, 1);
+        if (this.editor) {
+          this.editor.updateConnection(connection.id, { waypoints: connection.waypoints });
+        }
+        this.renderConnection(connection);
+      });
+
+      group.appendChild(handle);
+    });
   }
 
   /**
@@ -716,6 +846,60 @@ class DiagramRenderer {
     arrow.setAttribute('stroke', 'none');
     arrow.setAttribute('class', 'manual-start-arrow');
     group.appendChild(arrow);
+  }
+
+  /**
+   * Compute an orthogonal (Manhattan) SVG path string for a connection.
+   * Delegates to the OrthogonalRouter engine for obstacle avoidance.
+   * @private
+   */
+  _computeOrthogonalPath(fromX, fromY, toX, toY, connection) {
+    if (!this._orthogonalRouter) {
+      this._orthogonalRouter = typeof OrthogonalRouter !== 'undefined'
+        ? new OrthogonalRouter()
+        : null;
+    }
+    if (!this._orthogonalRouter) {
+      // Fallback if router not loaded — simple 3-segment path
+      const midX = (fromX + toX) / 2;
+      return `M ${fromX} ${fromY} L ${midX} ${fromY} L ${midX} ${toY} L ${toX} ${toY}`;
+    }
+
+    const blocks = this.editor.diagram.blocks || [];
+    const obstacles = this._orthogonalRouter.buildObstacles(
+      blocks, connection.fromBlock, connection.toBlock
+    );
+    const waypoints = connection.waypoints || [];
+    return this._orthogonalRouter.computePath(
+      fromX, fromY, toX, toY, obstacles, waypoints
+    );
+  }
+
+  /**
+   * Set the connection routing mode and re-render all connections.
+   * @param {'bezier'|'orthogonal'} mode
+   */
+  setRoutingMode(mode) {
+    if (mode !== 'bezier' && mode !== 'orthogonal') return;
+    if (this.routingMode === mode) return;
+    this.routingMode = mode;
+    logger.info('Routing mode changed to:', mode);
+    // Re-render all connections with the new mode
+    if (this.editor && this.editor.diagram) {
+      this.editor.diagram.connections.forEach(conn => {
+        this.renderConnection(conn);
+      });
+    }
+  }
+
+  /**
+   * Toggle between Bezier and orthogonal routing modes.
+   * @returns {string} The new active mode.
+   */
+  toggleRoutingMode() {
+    const newMode = this.routingMode === 'bezier' ? 'orthogonal' : 'bezier';
+    this.setRoutingMode(newMode);
+    return newMode;
   }
 
   highlightConnection(connectionId, highlight = true) {

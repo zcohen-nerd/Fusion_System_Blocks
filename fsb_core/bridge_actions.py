@@ -37,6 +37,11 @@ class BridgeAction(str, Enum):
     SAVE_NAMED_DIAGRAM = "save_named_diagram"
     LOAD_NAMED_DIAGRAM = "load_named_diagram"
     DELETE_NAMED_DIAGRAM = "delete_named_diagram"
+    VALIDATE_REQUIREMENTS = "validate_requirements"
+    CREATE_SNAPSHOT = "create_snapshot"
+    LIST_SNAPSHOTS = "list_snapshots"
+    RESTORE_SNAPSHOT = "restore_snapshot"
+    COMPARE_SNAPSHOTS = "compare_snapshots"
 
 
 class BridgeEvent(str, Enum):

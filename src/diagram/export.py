@@ -745,6 +745,516 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
+# ---------------------------------------------------------------------------
+# PDF export — pure-Python, zero external dependencies
+# ---------------------------------------------------------------------------
+
+# Page-size presets in PDF points (1 pt = 1/72 inch)
+_PDF_PAGE_SIZES: dict[str, tuple[float, float]] = {
+    "letter": (612.0, 792.0),
+    "a4": (595.28, 841.89),
+    "a3": (841.89, 1190.55),
+}
+
+
+class _PdfWriter:
+    """Minimal PDF 1.4 writer with text and basic drawing primitives.
+
+    This is intentionally limited — it covers text rendering, simple
+    table drawing, and coloured rectangles/lines needed for the system
+    blocks report.  No images or fonts beyond the 14 built-in PDF fonts
+    are supported.
+    """
+
+    def __init__(self, page_width: float, page_height: float) -> None:
+        self._page_width = page_width
+        self._page_height = page_height
+        self._objects: list[bytes] = [b""]  # placeholder — 1-indexed
+        self._pages: list[int] = []  # object ids of page objects
+        self._stream_stack: list[list[str]] = []
+        self._fonts: dict[str, int] = {}
+        # Reserve obj 1 for catalog, 2 for pages dict
+        self._objects.append(b"")  # obj 1
+        self._objects.append(b"")  # obj 2
+
+    # ---- Object helpers ----
+
+    def _new_obj(self) -> int:
+        self._objects.append(b"")
+        return len(self._objects) - 1
+
+    def _set_obj(self, obj_id: int, data: bytes) -> None:
+        self._objects[obj_id] = data
+
+    # ---- Fonts ----
+
+    def _ensure_font(self, name: str) -> str:
+        """Return a PDF font resource name (/F1 etc.) for a built-in font."""
+        if name in self._fonts:
+            return f"/F{self._fonts[name]}"
+        obj_id = self._new_obj()
+        self._set_obj(
+            obj_id,
+            (
+                f"{obj_id} 0 obj\n"
+                f"<< /Type /Font /Subtype /Type1 /BaseFont /{name} >>\n"
+                f"endobj\n"
+            ).encode(),
+        )
+        self._fonts[name] = obj_id
+        return f"/F{obj_id}"
+
+    # ---- Page content builders ----
+
+    def new_page(self) -> None:
+        self._stream_stack.append([])
+
+    def _s(self) -> list[str]:
+        return self._stream_stack[-1]
+
+    def set_font(self, font_key: str, size: float) -> None:
+        self._s().append(f"{font_key} {size} Tf")
+
+    def set_color(self, r: float, g: float, b: float) -> None:
+        self._s().append(f"{r:.3f} {g:.3f} {b:.3f} rg")
+
+    def set_stroke_color(self, r: float, g: float, b: float) -> None:
+        self._s().append(f"{r:.3f} {g:.3f} {b:.3f} RG")
+
+    def set_line_width(self, w: float) -> None:
+        self._s().append(f"{w:.2f} w")
+
+    def move_to(self, x: float, y: float) -> None:
+        """Move text cursor (PDF coordinate: bottom-left origin)."""
+        self._s().append(f"1 0 0 1 {x:.2f} {y:.2f} Tm")
+
+    def draw_text(self, x: float, y: float, text: str) -> None:
+        safe = text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+        # PDF y=0 is bottom — caller provides top-origin y and we flip
+        py = self._page_height - y
+        self._s().append("BT")
+        self._s().append(f"1 0 0 1 {x:.2f} {py:.2f} Tm")
+        self._s().append(f"({safe}) Tj")
+        self._s().append("ET")
+
+    def draw_rect(
+        self, x: float, y: float, w: float, h: float, *, fill: bool = True
+    ) -> None:
+        py = self._page_height - y - h
+        op = "f" if fill else "S"
+        self._s().append(f"{x:.2f} {py:.2f} {w:.2f} {h:.2f} re {op}")
+
+    def draw_line(self, x1: float, y1: float, x2: float, y2: float) -> None:
+        py1 = self._page_height - y1
+        py2 = self._page_height - y2
+        self._s().append(f"{x1:.2f} {py1:.2f} m {x2:.2f} {py2:.2f} l S")
+
+    def finish_page(self) -> None:
+        stream_body = "\n".join(self._stream_stack.pop()).encode()
+        stream_obj_id = self._new_obj()
+        self._set_obj(
+            stream_obj_id,
+            (
+                f"{stream_obj_id} 0 obj\n<< /Length {len(stream_body)} >>\nstream\n"
+            ).encode()
+            + stream_body
+            + b"\nendstream\nendobj\n",
+        )
+
+        # Font resources
+        font_entries = " ".join(f"/F{oid} {oid} 0 R" for oid in self._fonts.values())
+
+        page_obj_id = self._new_obj()
+        self._set_obj(
+            page_obj_id,
+            (
+                f"{page_obj_id} 0 obj\n"
+                f"<< /Type /Page /Parent 2 0 R "
+                f"/MediaBox [0 0 {self._page_width:.2f} {self._page_height:.2f}] "
+                f"/Contents {stream_obj_id} 0 R "
+                f"/Resources << /Font << {font_entries} >> >> >>\n"
+                f"endobj\n"
+            ).encode(),
+        )
+        self._pages.append(page_obj_id)
+
+    def to_bytes(self) -> bytes:
+        """Serialise the PDF to bytes."""
+        # Build catalog (obj 1) and pages (obj 2)
+        page_refs = " ".join(f"{p} 0 R" for p in self._pages)
+        self._set_obj(
+            1,
+            b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+        )
+        self._set_obj(
+            2,
+            (
+                f"2 0 obj\n<< /Type /Pages /Kids [{page_refs}] "
+                f"/Count {len(self._pages)} >>\nendobj\n"
+            ).encode(),
+        )
+
+        buf = io.BytesIO()
+        buf.write(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+        offsets: list[int] = [0]  # index 0 unused
+        for idx in range(1, len(self._objects)):
+            offsets.append(buf.tell())
+            buf.write(self._objects[idx])
+
+        # Cross-reference table
+        xref_offset = buf.tell()
+        buf.write(b"xref\n")
+        buf.write(f"0 {len(self._objects)}\n".encode())
+        buf.write(b"0000000000 65535 f \n")
+        for idx in range(1, len(self._objects)):
+            buf.write(f"{offsets[idx]:010d} 00000 n \n".encode())
+
+        buf.write(b"trailer\n")
+        buf.write(f"<< /Size {len(self._objects)} /Root 1 0 R >>\n".encode())
+        buf.write(b"startxref\n")
+        buf.write(f"{xref_offset}\n".encode())
+        buf.write(b"%%EOF\n")
+        return buf.getvalue()
+
+
+def _pdf_hex_to_rgb(hex_color: str) -> tuple[float, float, float]:
+    """Convert a hex colour string (#RRGGBB) to PDF-normalised (0-1) RGB."""
+    hex_color = hex_color.lstrip("#")
+    if len(hex_color) == 3:
+        hex_color = "".join(c * 2 for c in hex_color)
+    r = int(hex_color[0:2], 16) / 255.0
+    g = int(hex_color[2:4], 16) / 255.0
+    b = int(hex_color[4:6], 16) / 255.0
+    return (r, g, b)
+
+
+def _pdf_truncate(text: str, max_chars: int) -> str:
+    """Truncate to *max_chars* and add ellipsis if needed."""
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 1] + "…"
+
+
+def generate_pdf_report(
+    diagram: dict[str, Any],
+    *,
+    page_size: str = "letter",
+    include_diagram: bool = True,
+) -> bytes:
+    """Generate a PDF report for the diagram using only the standard library.
+
+    The report includes:
+    - Header with title and generation timestamp
+    - Summary statistics (block/connection counts, status breakdown)
+    - Block details table
+    - Connection details table
+    - Rule-check results
+    - Optional embedded diagram visualisation
+
+    Args:
+        diagram: The diagram to export.
+        page_size: ``"letter"`` (default), ``"a4"``, or ``"a3"``.
+        include_diagram: Whether to include the diagram visualisation page.
+
+    Returns:
+        Raw PDF bytes ready to write to a file.
+    """
+    from .rules import find_block_by_id, run_all_rule_checks
+
+    pw, ph = _PDF_PAGE_SIZES.get(page_size.lower(), _PDF_PAGE_SIZES["letter"])
+    pdf = _PdfWriter(pw, ph)
+    margin = 50.0
+    usable_w = pw - 2 * margin
+
+    # Pre-compute data
+    blocks = diagram.get("blocks", [])
+    connections = diagram.get("connections", [])
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    status_counts: dict[str, int] = {}
+    for block in blocks:
+        s = block.get("status", "Placeholder")
+        status_counts[s] = status_counts.get(s, 0) + 1
+
+    rule_results = run_all_rule_checks(diagram)
+
+    # ---- Helpers ----
+    f_regular = pdf._ensure_font("Helvetica")
+    f_bold = pdf._ensure_font("Helvetica-Bold")
+
+    def _heading(y: float, text: str, size: float = 14) -> float:
+        pdf.set_font(f_bold, size)
+        pdf.set_color(0, 0.47, 0.83)  # accent blue
+        pdf.draw_text(margin, y, text)
+        return y + size + 6
+
+    def _body(y: float, text: str, size: float = 9) -> float:
+        pdf.set_font(f_regular, size)
+        pdf.set_color(0.13, 0.13, 0.13)
+        pdf.draw_text(margin, y, text)
+        return y + size + 3
+
+    def _table_header(y: float, cols: list[tuple[str, float]]) -> float:
+        """Draw a table header row and return the new y."""
+        row_h = 16
+        # Header background
+        pdf.set_color(0, 0.47, 0.83)
+        pdf.draw_rect(margin, y, usable_w, row_h, fill=True)
+        # Header text
+        pdf.set_font(f_bold, 8)
+        pdf.set_color(1, 1, 1)
+        cx = margin + 4
+        for label, col_w in cols:
+            pdf.draw_text(cx, y + 4, label)
+            cx += col_w
+        return y + row_h
+
+    def _table_row(
+        y: float, values: list[str], col_widths: list[float], *, alt: bool = False
+    ) -> float:
+        row_h = 14
+        if alt:
+            pdf.set_color(0.96, 0.96, 0.96)
+            pdf.draw_rect(margin, y, usable_w, row_h, fill=True)
+        pdf.set_font(f_regular, 7.5)
+        pdf.set_color(0.13, 0.13, 0.13)
+        cx = margin + 4
+        for val, cw in zip(values, col_widths):
+            pdf.draw_text(cx, y + 3, _pdf_truncate(val, int(cw / 4)))
+            cx += cw
+        return y + row_h
+
+    def _check_page_break(y: float, needed: float = 60) -> float:
+        """If remaining space is too small, finish this page and start next."""
+        if y + needed > ph - margin:
+            _finish_page_with_footer(y)
+            pdf.new_page()
+            y = margin + 10
+        return y
+
+    def _finish_page_with_footer(y: float) -> None:  # noqa: ARG001
+        pdf.set_font(f_regular, 7)
+        pdf.set_color(0.6, 0.6, 0.6)
+        pdf.draw_line(margin, ph - 35, pw - margin, ph - 35)
+        pdf.draw_text(margin, ph - 30, f"Fusion System Blocks — generated {timestamp}")
+        pdf.draw_text(pw - margin - 60, ph - 30, f"Page {len(pdf._pages) + 1}")
+        pdf.finish_page()
+
+    # === PAGE 1 — Title & Summary ===
+    pdf.new_page()
+    y = margin
+
+    # Title
+    pdf.set_font(f_bold, 20)
+    pdf.set_color(0, 0.47, 0.83)
+    pdf.draw_text(margin, y, "System Blocks Report")
+    y += 28
+
+    # Divider
+    pdf.set_stroke_color(0, 0.47, 0.83)
+    pdf.set_line_width(2)
+    pdf.draw_line(margin, y, pw - margin, y)
+    y += 12
+
+    y = _body(y, f"Generated: {timestamp}")
+    y += 8
+
+    # Summary table
+    y = _heading(y, "Summary")
+    cols_summary = [("Metric", usable_w * 0.6), ("Value", usable_w * 0.4)]
+    y = _table_header(y, cols_summary)
+    cw_s = [c[1] for c in cols_summary]
+    y = _table_row(y, ["Total Blocks", str(len(blocks))], cw_s)
+    y = _table_row(y, ["Total Connections", str(len(connections))], cw_s, alt=True)
+    y += 12
+
+    # Status breakdown
+    y = _heading(y, "Status Breakdown")
+    cols_status = [("Status", usable_w * 0.6), ("Count", usable_w * 0.4)]
+    y = _table_header(y, cols_status)
+    cw_st = [c[1] for c in cols_status]
+    for i, (status, count) in enumerate(status_counts.items()):
+        y = _check_page_break(y)
+        y = _table_row(y, [status, str(count)], cw_st, alt=i % 2 == 1)
+    y += 12
+
+    # Rule check results
+    y = _check_page_break(y, 80)
+    y = _heading(y, "Rule Check Results")
+    if rule_results:
+        for r in rule_results:
+            y = _check_page_break(y)
+            icon = "X" if r.get("severity") == "error" else "!"
+            y = _body(y, f"[{icon}] {r['message']}")
+    else:
+        y = _body(y, "All rule checks passed.")
+    y += 12
+
+    _finish_page_with_footer(y)
+
+    # === PAGE 2 — Block Details ===
+    pdf.new_page()
+    y = margin
+    y = _heading(y, "Block Details")
+    col_defs_b = [
+        ("Name", usable_w * 0.22),
+        ("Type", usable_w * 0.14),
+        ("Status", usable_w * 0.14),
+        ("Interfaces", usable_w * 0.10),
+        ("Links", usable_w * 0.08),
+        ("Attributes", usable_w * 0.32),
+    ]
+    y = _table_header(y, col_defs_b)
+    cw_b = [c[1] for c in col_defs_b]
+    for i, b in enumerate(blocks):
+        y = _check_page_break(y)
+        intf_count = str(len(b.get("interfaces", [])))
+        link_count = str(len(b.get("links", [])))
+        attrs = (
+            "; ".join(f"{k}: {v}" for k, v in b.get("attributes", {}).items()) or "-"
+        )
+        y = _table_row(
+            y,
+            [
+                b.get("name", "Unnamed"),
+                b.get("type", "Generic"),
+                b.get("status", "Placeholder"),
+                intf_count,
+                link_count,
+                attrs,
+            ],
+            cw_b,
+            alt=i % 2 == 1,
+        )
+    y += 12
+
+    # Connection details
+    y = _check_page_break(y, 60)
+    y = _heading(y, "Connection Details")
+    col_defs_c = [
+        ("From", usable_w * 0.30),
+        ("To", usable_w * 0.30),
+        ("Type", usable_w * 0.18),
+        ("Attributes", usable_w * 0.22),
+    ]
+    y = _table_header(y, col_defs_c)
+    cw_c = [c[1] for c in col_defs_c]
+    for i, conn in enumerate(connections):
+        y = _check_page_break(y)
+        fb = find_block_by_id(diagram, conn.get("from", {}).get("blockId", ""))
+        tb = find_block_by_id(diagram, conn.get("to", {}).get("blockId", ""))
+        from_name = fb.get("name", "?") if fb else "?"
+        to_name = tb.get("name", "?") if tb else "?"
+        attrs = (
+            "; ".join(f"{k}: {v}" for k, v in conn.get("attributes", {}).items()) or "-"
+        )
+        y = _table_row(
+            y,
+            [from_name, to_name, conn.get("kind", "data"), attrs],
+            cw_c,
+            alt=i % 2 == 1,
+        )
+
+    _finish_page_with_footer(y)
+
+    # === PAGE 3 (optional) — Diagram Visualisation ===
+    if include_diagram and blocks:
+        pdf.new_page()
+        y = margin
+        y = _heading(y, "Diagram Visualisation")
+        y += 4
+
+        # Compute block bounding box
+        default_w_b, default_h_b = 160, 80
+        xs = [bl.get("x", 0) for bl in blocks]
+        ys_list = [bl.get("y", 0) for bl in blocks]
+        ws_list = [bl.get("width", default_w_b) for bl in blocks]
+        hs_list = [bl.get("height", default_h_b) for bl in blocks]
+        pad = 20
+        d_min_x = min(xs) - pad
+        d_min_y = min(ys_list) - pad
+        d_max_x = max(x + w for x, w in zip(xs, ws_list)) + pad
+        d_max_y = max(yy + h for yy, h in zip(ys_list, hs_list)) + pad
+        d_w = d_max_x - d_min_x or 1
+        d_h = d_max_y - d_min_y or 1
+
+        # Scale to fit usable area
+        avail_w = usable_w
+        avail_h = ph - y - margin - 40
+        scale = min(avail_w / d_w, avail_h / d_h, 1.0)
+
+        # Type colours
+        type_fills: dict[str, str] = {
+            "Electrical": "#E8F4FD",
+            "Mechanical": "#FFF3E0",
+            "Software": "#F3E5F5",
+            "Generic": "#F5F5F5",
+        }
+        type_strokes: dict[str, str] = {
+            "Electrical": "#2196F3",
+            "Mechanical": "#FF9800",
+            "Software": "#9C27B0",
+            "Generic": "#757575",
+        }
+
+        id_to_block_p = {bl["id"]: bl for bl in blocks}
+
+        # Draw connections as lines
+        pdf.set_line_width(1.0)
+        for conn in connections:
+            fb = id_to_block_p.get(
+                conn.get("from", {}).get("blockId") or conn.get("fromBlock", "")
+            )
+            tb = id_to_block_p.get(
+                conn.get("to", {}).get("blockId") or conn.get("toBlock", "")
+            )
+            if not fb or not tb:
+                continue
+            fw_c = fb.get("width", default_w_b)
+            fh_c = fb.get("height", default_h_b)
+            th_c = tb.get("height", default_h_b)
+            x1 = margin + (fb.get("x", 0) + fw_c - d_min_x) * scale
+            y1_c = y + (fb.get("y", 0) + fh_c / 2 - d_min_y) * scale
+            x2 = margin + (tb.get("x", 0) - d_min_x) * scale
+            y2_c = y + (tb.get("y", 0) + th_c / 2 - d_min_y) * scale
+            pdf.set_stroke_color(0.4, 0.4, 0.4)
+            pdf.draw_line(x1, y1_c, x2, y2_c)
+
+        # Draw blocks as rectangles with names
+        for bl in blocks:
+            bx = margin + (bl.get("x", 0) - d_min_x) * scale
+            by = y + (bl.get("y", 0) - d_min_y) * scale
+            bw = (bl.get("width", default_w_b)) * scale
+            bh = (bl.get("height", default_h_b)) * scale
+            btype = bl.get("type", "Generic")
+            fill_hex = type_fills.get(btype, "#F5F5F5")
+            stroke_hex = type_strokes.get(btype, "#757575")
+
+            fr, fg, fb_c = _pdf_hex_to_rgb(fill_hex)
+            pdf.set_color(fr, fg, fb_c)
+            pdf.draw_rect(bx, by, bw, bh, fill=True)
+
+            sr, sg, sb = _pdf_hex_to_rgb(stroke_hex)
+            pdf.set_stroke_color(sr, sg, sb)
+            pdf.set_line_width(1.5)
+            pdf.draw_rect(bx, by, bw, bh, fill=False)
+
+            # Block name centred
+            name = bl.get("name", "")
+            font_size = max(6, min(9, bw / max(len(name), 1) * 1.2))
+            pdf.set_font(f_regular, font_size)
+            pdf.set_color(0.13, 0.13, 0.13)
+            # Approximate centre — Helvetica avg char width ≈ 0.5 * font_size
+            text_w = len(name) * font_size * 0.5
+            tx = bx + (bw - text_w) / 2
+            ty = by + bh / 2 - font_size / 3
+            pdf.draw_text(tx, ty, name)
+
+        _finish_page_with_footer(y + d_h * scale + 8)
+
+    return pdf.to_bytes()
+
+
 def _render_block_shape(
     parts: list[str],
     shape: str,
@@ -846,6 +1356,7 @@ EXPORT_PROFILES: dict[str, list[str]] = {
         "assembly_json",
         "connection_matrix",
         "svg",
+        "pdf",
     ],
 }
 
@@ -1034,6 +1545,7 @@ def export_report_files(
             lambda: generate_connection_matrix_csv(diagram),
         ),
         "svg": ("diagram.svg", lambda: generate_svg_diagram(diagram)),
+        "pdf": ("system_blocks_report.pdf", lambda: generate_pdf_report(diagram)),
     }
 
     errors: list[str] = []
@@ -1044,8 +1556,13 @@ def export_report_files(
         try:
             content = gen_fn()
             filepath = output_path / filename
-            with open(filepath, "w", encoding="utf-8") as fh:
-                fh.write(content)
+            # PDF returns bytes; all other generators return str
+            if isinstance(content, bytes):
+                with open(filepath, "wb") as fb:
+                    fb.write(content)
+            else:
+                with open(filepath, "w", encoding="utf-8") as fh:
+                    fh.write(content)
             results[key] = str(filepath)
         except Exception as exc:  # noqa: BLE001
             errors.append(f"{key}: {exc}")

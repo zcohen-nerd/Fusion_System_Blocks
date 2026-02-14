@@ -8,6 +8,8 @@
     { id: 'diagram' },
     { id: 'linking' },
     { id: 'validation' },
+    { id: 'requirements' },
+    { id: 'history' },
     { id: 'reports' }
   ];
 
@@ -189,6 +191,102 @@
           q('#export-status').textContent = 'Failed';
         });
       }
+    });
+
+    // === Requirements tab (Issue #31) ===
+    const bValidateReqs = q('#action-validate-reqs');
+    if (bValidateReqs) bValidateReqs.addEventListener('click', () => {
+      if (window.pythonInterface) {
+        q('#reqs-status').textContent = 'Checking…';
+        window.pythonInterface.validateRequirements().then((results) => {
+          renderRequirementResults(results);
+          const allPass = results.length > 0 && results.every(r => r.passed);
+          q('#reqs-status').textContent = results.length === 0 ? 'No requirements' : (allPass ? 'All pass' : 'Issues found');
+        }).catch(() => {
+          q('#reqs-status').textContent = 'Error';
+        });
+      }
+    });
+
+    // === History / Snapshot tab (Issue #31) ===
+    const bCreateSnap = q('#action-create-snapshot');
+    if (bCreateSnap) bCreateSnap.addEventListener('click', () => {
+      if (window.pythonInterface) {
+        const desc = (q('#snapshot-description') || {}).value || '';
+        window.pythonInterface.createSnapshot(desc).then((resp) => {
+          if (resp && resp.snapshots) renderSnapshotList(resp.snapshots);
+          q('#snapshot-description').value = '';
+        }).catch(() => {});
+      }
+    });
+
+    const bRefreshSnaps = q('#action-refresh-snapshots');
+    if (bRefreshSnaps) bRefreshSnaps.addEventListener('click', () => {
+      if (window.pythonInterface) {
+        window.pythonInterface.listSnapshots().then(renderSnapshotList).catch(() => {});
+      }
+    });
+  }
+
+  // === Requirement results renderer (Issue #31) ===
+  function renderRequirementResults(results) {
+    const table = q('#reqs-results-table');
+    const body = q('#reqs-results-body');
+    const empty = q('#reqs-empty');
+    if (!body) return;
+    while (body.firstChild) body.removeChild(body.firstChild);
+    if (!results || results.length === 0) {
+      if (table) table.style.display = 'none';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (table) table.style.display = '';
+    if (empty) empty.style.display = 'none';
+    results.forEach((r) => {
+      const tr = document.createElement('tr');
+      const icon = r.passed ? '✅' : '❌';
+      const color = r.passed ? '#2e7d32' : '#c62828';
+      tr.innerHTML =
+        '<td style="padding:4px 6px;color:' + color + ';">' + icon + '</td>' +
+        '<td style="padding:4px 6px;">' + (r.requirementName || '—') + '</td>' +
+        '<td style="padding:4px 6px;text-align:right;">' + (r.actualValue != null ? r.actualValue.toFixed(2) : '—') + '</td>' +
+        '<td style="padding:4px 6px;text-align:center;">' + (r.operator || '') + '</td>' +
+        '<td style="padding:4px 6px;text-align:right;">' + (r.targetValue != null ? r.targetValue.toFixed(2) : '—') + '</td>' +
+        '<td style="padding:4px 6px;">' + (r.unit || '') + '</td>';
+      body.appendChild(tr);
+    });
+  }
+
+  // === Snapshot list renderer (Issue #31) ===
+  function renderSnapshotList(snapshots) {
+    const list = q('#snapshot-list');
+    if (!list) return;
+    while (list.firstChild) list.removeChild(list.firstChild);
+    if (!snapshots || snapshots.length === 0) {
+      const li = document.createElement('li');
+      li.style.cssText = 'color:var(--fusion-text-secondary);font-size:11px;';
+      li.textContent = 'No snapshots yet.';
+      list.appendChild(li);
+      return;
+    }
+    snapshots.slice().reverse().forEach((snap) => {
+      const li = document.createElement('li');
+      li.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;padding:4px 0;border-bottom:1px solid var(--fusion-border-color,#333);';
+      const ts = snap.timestamp ? new Date(snap.timestamp).toLocaleString() : '—';
+      const desc = snap.description || '(no description)';
+      li.innerHTML =
+        '<span style="flex:1;"><strong>' + desc + '</strong><br><span style="color:var(--fusion-text-secondary);font-size:10px;">' + ts + '</span></span>' +
+        '<button class="sb-tab snap-restore-btn" data-snap-id="' + snap.id + '" style="font-size:10px;padding:2px 6px;">Restore</button>';
+      list.appendChild(li);
+    });
+    // Wire restore buttons
+    qa('.snap-restore-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const snapId = e.target.getAttribute('data-snap-id');
+        if (snapId && window.pythonInterface) {
+          window.pythonInterface.restoreSnapshot(snapId).catch(() => {});
+        }
+      });
     });
   }
 

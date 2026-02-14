@@ -62,6 +62,12 @@ from .validation import (
     ValidationErrorCode,
     validate_graph,
 )
+from .version_control import (
+    SnapshotStore,
+    create_snapshot,
+    diff_graphs,
+    restore_snapshot,
+)
 
 __all__ = [
     # Models
@@ -99,4 +105,9 @@ __all__ = [
     "compute_patch",
     "apply_patch",
     "is_trivial_patch",
+    # Version Control
+    "create_snapshot",
+    "restore_snapshot",
+    "diff_graphs",
+    "SnapshotStore",
 ]

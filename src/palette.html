@@ -1658,6 +1658,10 @@
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-zoom"/></svg></div>
                   <span>Minimap</span>
                 </button>
+                <button id="btn-routing-mode" class="ribbon-button-small" title="Toggle orthogonal routing" aria-label="Toggle Orthogonal Routing">
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-zoom"/></svg></div>
+                  <span>Ortho</span>
+                </button>
               </div>
             </div>
           </div>
@@ -2669,6 +2673,9 @@
         </label>
         <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
           <input type="checkbox" id="exp-svg"> SVG Diagram (.svg)
+        </label>
+        <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="exp-pdf"> PDF Report (.pdf)
         </label>
       </div>
 
@@ -4539,6 +4546,8 @@
     <button id="tab-diagram" class="sb-tab" role="tab" aria-selected="true" aria-controls="panel-diagram">Diagram</button>
     <button id="tab-linking" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-linking">Linking</button>
     <button id="tab-validation" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-validation">Validation</button>
+    <button id="tab-requirements" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-requirements">Reqs</button>
+    <button id="tab-history" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-history">History</button>
     <button id="tab-reports" class="sb-tab" role="tab" aria-selected="false" aria-controls="panel-reports">Reports</button>
     <span class="sr-only" id="tab-status" aria-live="polite"></span>
   </nav>
@@ -4596,6 +4605,67 @@
     </div>
   </section>
 
+  <!-- Requirements Panel (Issue #31) -->
+  <section id="panel-requirements" class="sb-panel" role="tabpanel" aria-labelledby="tab-requirements" aria-hidden="true">
+    <div class="sb-section">
+      <h3>Requirements Verification</h3>
+      <p style="color:var(--fusion-text-secondary);font-size:11px;margin:0 0 8px 0;">
+        Evaluate system-level requirements against block attributes.
+      </p>
+      <div class="sb-controls">
+        <button id="action-validate-reqs" class="sb-tab">Check Requirements</button>
+        <span id="reqs-status" class="pill">Not checked</span>
+      </div>
+    </div>
+    <div class="sb-section">
+      <h4>Results</h4>
+      <table id="reqs-results-table" style="width:100%;border-collapse:collapse;font-size:11px;display:none;">
+        <thead>
+          <tr style="background:var(--fusion-bg-secondary);">
+            <th style="padding:4px 6px;text-align:left;">Status</th>
+            <th style="padding:4px 6px;text-align:left;">Requirement</th>
+            <th style="padding:4px 6px;text-align:right;">Actual</th>
+            <th style="padding:4px 6px;text-align:center;">Op</th>
+            <th style="padding:4px 6px;text-align:right;">Target</th>
+            <th style="padding:4px 6px;text-align:left;">Unit</th>
+          </tr>
+        </thead>
+        <tbody id="reqs-results-body"></tbody>
+      </table>
+      <p id="reqs-empty" style="color:var(--fusion-text-secondary);font-size:11px;">
+        No requirements defined on this diagram. Add requirements in the block attributes panel.
+      </p>
+    </div>
+  </section>
+
+  <!-- History / Version Control Panel (Issue #31) -->
+  <section id="panel-history" class="sb-panel" role="tabpanel" aria-labelledby="tab-history" aria-hidden="true">
+    <div class="sb-section">
+      <h3>Version History</h3>
+      <p style="color:var(--fusion-text-secondary);font-size:11px;margin:0 0 8px 0;">
+        Create and manage snapshots of your diagram.
+      </p>
+      <div class="sb-controls" style="gap:6px;">
+        <input type="text" id="snapshot-description" class="fusion-input"
+               placeholder="Snapshot description…" style="flex:1;font-size:11px;padding:4px 6px;" />
+        <button id="action-create-snapshot" class="sb-tab">Create Snapshot</button>
+      </div>
+    </div>
+    <div class="sb-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <h4 style="margin:0;">Snapshots</h4>
+        <button id="action-refresh-snapshots" class="sb-tab" style="font-size:10px;padding:2px 6px;">Refresh</button>
+      </div>
+      <ul id="snapshot-list" class="sb-list" style="max-height:200px;overflow-y:auto;" aria-live="polite">
+        <li style="color:var(--fusion-text-secondary);font-size:11px;">No snapshots yet.</li>
+      </ul>
+    </div>
+    <div class="sb-section" id="snapshot-compare-section" style="display:none;">
+      <h4>Comparison Result</h4>
+      <div id="snapshot-diff-result" style="font-size:11px;"></div>
+    </div>
+  </section>
+
   <section id="panel-reports" class="sb-panel" role="tabpanel" aria-labelledby="tab-reports" aria-hidden="true">
     <div class="sb-section">
       <h3>Export Reports</h3>
@@ -4629,6 +4699,7 @@
   <script src="./utils/logger.js"></script>
   <script src="./utils/delta-utils.js"></script>
   <script src="./core/diagram-editor.js"></script>
+  <script src="./core/orthogonal-router.js"></script>
   <script src="./ui/diagram-renderer.js"></script>
   <script src="./ui/minimap.js"></script>
   <script src="./ui/toolbar-manager.js"></script>

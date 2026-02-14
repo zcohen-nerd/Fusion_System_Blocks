@@ -108,7 +108,8 @@ class DiagramEditorCore {
       fromBlock: fromBlockId,
       toBlock: toBlockId,
       type: connectionType,
-      arrowDirection: arrowDirection
+      arrowDirection: arrowDirection,
+      waypoints: []
     };
 
     this.diagram.connections.push(connection);

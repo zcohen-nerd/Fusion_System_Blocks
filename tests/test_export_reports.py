@@ -563,7 +563,12 @@ class TestExportProfiles:
         for key, path_str in result.items():
             if key == "error":
                 continue
-            content = Path(path_str).read_text(encoding="utf-8")
+            p = Path(path_str)
+            # PDF is binary; all other formats are UTF-8 text
+            if key == "pdf":
+                content = p.read_bytes()
+            else:
+                content = p.read_text(encoding="utf-8")
             assert len(content) > 0, f"Empty file for {key}"
 
 
@@ -644,3 +649,166 @@ def _make_sample_diagram() -> dict[str, Any]:
             }
         ],
     }
+
+
+class TestPdfExport:
+    """Tests for the generate_pdf_report function."""
+
+    @pytest.fixture
+    def sample_diagram(self):
+        """Provide a representative diagram for PDF tests."""
+        return {
+            "schema": "system-blocks-v1",
+            "blocks": [
+                {
+                    "id": "b1",
+                    "name": "Power Supply",
+                    "type": "Electrical",
+                    "status": "Verified",
+                    "x": 50,
+                    "y": 60,
+                    "width": 160,
+                    "height": 80,
+                    "interfaces": [
+                        {
+                            "id": "i1",
+                            "name": "VCC",
+                            "direction": "output",
+                            "kind": "electrical",
+                        }
+                    ],
+                    "links": [],
+                    "attributes": {"voltage": "3.3V"},
+                },
+                {
+                    "id": "b2",
+                    "name": "MCU",
+                    "type": "Software",
+                    "status": "Planned",
+                    "x": 300,
+                    "y": 60,
+                    "width": 160,
+                    "height": 80,
+                    "interfaces": [
+                        {
+                            "id": "i2",
+                            "name": "PWR",
+                            "direction": "input",
+                            "kind": "electrical",
+                        }
+                    ],
+                    "links": [],
+                    "attributes": {},
+                },
+            ],
+            "connections": [
+                {
+                    "id": "c1",
+                    "from": {"blockId": "b1", "interfaceId": "i1"},
+                    "to": {"blockId": "b2", "interfaceId": "i2"},
+                    "kind": "electrical",
+                    "attributes": {},
+                }
+            ],
+        }
+
+    def test_pdf_returns_bytes(self, sample_diagram):
+        """PDF generator must return raw bytes."""
+        result = diagram_data.generate_pdf_report(sample_diagram)
+        assert isinstance(result, bytes)
+
+    def test_pdf_starts_with_header(self, sample_diagram):
+        """Valid PDF must start with %PDF-1.x header."""
+        result = diagram_data.generate_pdf_report(sample_diagram)
+        assert result[:5] == b"%PDF-"
+
+    def test_pdf_ends_with_eof(self, sample_diagram):
+        """Valid PDF must end with %%EOF marker."""
+        result = diagram_data.generate_pdf_report(sample_diagram)
+        assert result.rstrip().endswith(b"%%EOF")
+
+    def test_pdf_contains_xref_table(self, sample_diagram):
+        """PDF must contain a cross-reference table."""
+        result = diagram_data.generate_pdf_report(sample_diagram)
+        assert b"xref" in result
+        assert b"startxref" in result
+
+    def test_pdf_page_size_letter(self, sample_diagram):
+        """Letter page size should produce MediaBox with 612x792."""
+        result = diagram_data.generate_pdf_report(sample_diagram, page_size="letter")
+        assert b"612.00" in result
+        assert b"792.00" in result
+
+    def test_pdf_page_size_a4(self, sample_diagram):
+        """A4 page size should produce MediaBox with 595x842."""
+        result = diagram_data.generate_pdf_report(sample_diagram, page_size="a4")
+        assert b"595.28" in result
+        assert b"841.89" in result
+
+    def test_pdf_page_size_a3(self, sample_diagram):
+        """A3 page size produces wider MediaBox."""
+        result = diagram_data.generate_pdf_report(sample_diagram, page_size="a3")
+        assert b"841.89" in result
+        assert b"1190.55" in result
+
+    def test_pdf_unknown_page_size_defaults_letter(self, sample_diagram):
+        """Unknown page size falls back to letter."""
+        result = diagram_data.generate_pdf_report(sample_diagram, page_size="folio")
+        assert b"612.00" in result
+
+    def test_pdf_contains_report_title(self, sample_diagram):
+        """Report title should appear in the PDF content stream."""
+        result = diagram_data.generate_pdf_report(sample_diagram)
+        assert b"System Blocks Report" in result
+
+    def test_pdf_contains_block_names(self, sample_diagram):
+        """Block names should appear in the PDF."""
+        result = diagram_data.generate_pdf_report(sample_diagram)
+        assert b"Power Supply" in result
+        assert b"MCU" in result
+
+    def test_pdf_includes_diagram_page(self, sample_diagram):
+        """With include_diagram=True (default), diagram page appears."""
+        result = diagram_data.generate_pdf_report(sample_diagram, include_diagram=True)
+        assert b"Diagram Visualisation" in result
+
+    def test_pdf_exclude_diagram_page(self, sample_diagram):
+        """With include_diagram=False, diagram page is omitted."""
+        result = diagram_data.generate_pdf_report(sample_diagram, include_diagram=False)
+        assert b"Diagram Visualisation" not in result
+
+    def test_pdf_empty_diagram(self):
+        """PDF should still generate for an empty diagram."""
+        empty = {"blocks": [], "connections": []}
+        result = diagram_data.generate_pdf_report(empty)
+        assert isinstance(result, bytes)
+        assert result[:5] == b"%PDF-"
+
+    def test_pdf_multiple_pages(self, sample_diagram):
+        """Report should have multiple Page objects."""
+        result = diagram_data.generate_pdf_report(sample_diagram)
+        page_count = result.count(b"/Type /Page ")
+        # At least 2 pages (summary + block details)
+        assert page_count >= 2
+
+    def test_pdf_has_fonts(self, sample_diagram):
+        """PDF should declare Helvetica font resources."""
+        result = diagram_data.generate_pdf_report(sample_diagram)
+        assert b"/BaseFont /Helvetica" in result
+
+    def test_pdf_export_in_profiles(self):
+        """'pdf' should appear in the 'full' export profile."""
+        assert "pdf" in diagram_data.EXPORT_PROFILES["full"]
+
+    def test_pdf_export_via_pipeline(self, sample_diagram, tmp_path):
+        """export_report_files with selected_formats=['pdf'] writes a PDF."""
+        results = diagram_data.export_report_files(
+            sample_diagram,
+            output_dir=str(tmp_path),
+            selected_formats=["pdf"],
+        )
+        assert "pdf" in results
+        pdf_path = Path(results["pdf"])
+        assert pdf_path.exists()
+        content = pdf_path.read_bytes()
+        assert content[:5] == b"%PDF-"
