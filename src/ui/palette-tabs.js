@@ -3,6 +3,14 @@
   const q = (sel) => document.querySelector(sel);
   const qa = (sel) => Array.from(document.querySelectorAll(sel));
 
+  function _escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   const tabs = [
     { id: 'home' },
     { id: 'diagram' },
@@ -280,11 +288,11 @@
       const color = r.passed ? '#2e7d32' : '#c62828';
       tr.innerHTML =
         '<td style="padding:4px 6px;color:' + color + ';">' + icon + '</td>' +
-        '<td style="padding:4px 6px;">' + (r.requirementName || '—') + '</td>' +
+        '<td style="padding:4px 6px;">' + _escapeHtml(r.requirementName || '—') + '</td>' +
         '<td style="padding:4px 6px;text-align:right;">' + (r.actualValue != null ? r.actualValue.toFixed(2) : '—') + '</td>' +
-        '<td style="padding:4px 6px;text-align:center;">' + (r.operator || '') + '</td>' +
+        '<td style="padding:4px 6px;text-align:center;">' + _escapeHtml(r.operator || '') + '</td>' +
         '<td style="padding:4px 6px;text-align:right;">' + (r.targetValue != null ? r.targetValue.toFixed(2) : '—') + '</td>' +
-        '<td style="padding:4px 6px;">' + (r.unit || '') + '</td>';
+        '<td style="padding:4px 6px;">' + _escapeHtml(r.unit || '') + '</td>';
       body.appendChild(tr);
     });
   }
@@ -307,8 +315,8 @@
       const ts = snap.timestamp ? new Date(snap.timestamp).toLocaleString() : '—';
       const desc = snap.description || '(no description)';
       li.innerHTML =
-        '<span style="flex:1;"><strong>' + desc + '</strong><br><span style="color:var(--fusion-text-secondary);font-size:10px;">' + ts + '</span></span>' +
-        '<button class="sb-tab snap-restore-btn" data-snap-id="' + snap.id + '" style="font-size:10px;padding:2px 6px;">Restore</button>';
+        '<span style="flex:1;"><strong>' + _escapeHtml(desc) + '</strong><br><span style="color:var(--fusion-text-secondary);font-size:10px;">' + _escapeHtml(ts) + '</span></span>' +
+        '<button class="sb-tab snap-restore-btn" data-snap-id="' + _escapeHtml(snap.id) + '" style="font-size:10px;padding:2px 6px;">Restore</button>';
       list.appendChild(li);
     });
     // Wire restore buttons

@@ -21,6 +21,14 @@ var logger = window.getSystemBlocksLogger
       error: () => {}
     };
 
+function _escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // Module loading is handled by <script> tags in palette.html.
 // The coordinator expects the following globals to be available:
 //   DiagramEditorCore, DiagramRenderer, ToolbarManager,
@@ -32,7 +40,7 @@ class SystemBlocksMain {
     this.isInitialized = false;
     this.moduleLoadPromises = [];
     
-  logger.info('=== System Blocks Editor Starting ===');
+    logger.info('=== System Blocks Editor Starting ===');
     this.initialize();
   }
 
@@ -43,7 +51,7 @@ class SystemBlocksMain {
         await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
       }
 
-  logger.debug('DOM ready, initializing modules...');
+      logger.debug('DOM ready, initializing modules...');
       
       // Initialize core modules in order
       await this.initializeModules();
@@ -101,7 +109,7 @@ class SystemBlocksMain {
       window.minimapInstance = minimapInst;
     }
 
-  logger.info('All modules initialized successfully');
+    logger.info('All modules initialized successfully');
   }
 
   setupModuleCommunication() {
@@ -764,7 +772,7 @@ class SystemBlocksMain {
         Block Properties
       </div>
       <label style="${labelStyle}">Name</label>
-      <input id="prop-name" style="${inputStyle}" value="${(block.name || '').replace(/"/g, '&quot;')}" />
+      <input id="prop-name" style="${inputStyle}" value="${_escapeHtml(block.name || '')}" />
       <label style="${labelStyle}">Type</label>
       <select id="prop-type" style="${selectStyle}">
         <option value="Generic"    ${block.type === 'Generic'    ? 'selected' : ''}>Generic</option>
@@ -793,8 +801,8 @@ class SystemBlocksMain {
       <div id="prop-attrs" style="max-height:140px; overflow-y:auto;">
         ${attrKeys.map(k => `
           <div style="display:flex; gap:6px; margin-bottom:4px;" class="attr-row">
-            <input class="attr-key" style="${inputStyle} width:40%;" value="${k.replace(/"/g, '&quot;')}" />
-            <input class="attr-val" style="${inputStyle} width:55%;" value="${String(attrs[k]).replace(/"/g, '&quot;')}" />
+            <input class="attr-key" style="${inputStyle} width:40%;" value="${_escapeHtml(k)}" />
+            <input class="attr-val" style="${inputStyle} width:55%;" value="${_escapeHtml(String(attrs[k]))}" />
             <button class="attr-del" style="background:#d32f2f; color:#fff; border:none; border-radius:4px; cursor:pointer; padding:0 8px;">✕</button>
           </div>
         `).join('')}
@@ -1580,10 +1588,10 @@ class SystemBlocksMain {
       
       // Status
       isReady: () => this.isInitialized,
-      getVersion: () => '2.0.0-modular'
+      getVersion: () => '0.1.0'
     };
     
-  logger.info('Global API available as window.SystemBlocks');
+    logger.info('Global API available as window.SystemBlocks');
   }
 
   finalizeInitialization() {
@@ -1839,7 +1847,7 @@ class SystemBlocksMain {
   }
 
   reinitialize() {
-  logger.info('Reinitializing System Blocks Editor...');
+    logger.info('Reinitializing System Blocks Editor...');
     this.isInitialized = false;
     this.modules.clear();
     this.initialize();

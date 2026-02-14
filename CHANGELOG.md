@@ -5,7 +5,7 @@ All notable changes to the Fusion System Blocks project will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-02-14
 
 ### Added
 - **Shared Bridge Action Constants:**
@@ -71,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Accessibility: keyboard nav, screen reader, high-contrast (#25)
   - Schema versioning and migration (SCHEMA_VERSION = "1.0") (#26)
 - **Block Shapes (Milestone 11.5):**
-  - 10 professional shapes: rectangle, circle, diamond, hexagon, parallelogram, oval, trapezoid, cylinder, cloud, star
+  - 8 professional shapes: rectangle, rounded, diamond, ellipse, hexagon, parallelogram, cylinder, triangle
   - Shape selector in block creation dialog and context menu
   - Shape-aware status halos and SVG rendering
 - **New Tests (398 additional tests, total: 605 across 23 files):**

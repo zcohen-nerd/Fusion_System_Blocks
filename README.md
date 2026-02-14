@@ -312,7 +312,7 @@ GitHub Actions runs on every push and pull request against `main`:
 
 ### Manual Testing in Fusion 360
 
-Use `docs/FUSION_MANUAL_TEST_PLAN.md` for a 75–95 minute verification run inside Fusion 360 (273 manual test steps across 33 phases). For comprehensive step-by-step procedures, see `docs/DETAILED_TESTING_DOCUMENTATION.md`.
+Use `docs/FUSION_MANUAL_TEST_PLAN.md` for a 45–55 minute verification run inside Fusion 360 (185 manual test steps across 20 phases). For comprehensive step-by-step procedures, see `docs/DETAILED_TESTING_DOCUMENTATION.md`.
 
 ---
 

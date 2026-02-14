@@ -1,11 +1,8 @@
-# Fusion 360 Regression Retest Plan
+# Fusion System Blocks — Manual Test Plan
 
-Focused retest covering only the phases that had failures
-during the previous full manual test run (Feb 2026).
-Phases that passed fully have been removed.
+Comprehensive manual verification plan for the Fusion System Blocks
+add-in covering all features across 20 phases (185 test steps).
 Estimated total time: **45–55 min**.
-
-**Fixes applied:** Issues #33–#59 (26 fixes in commit c4b69f4).
 
 ## Prerequisites
 

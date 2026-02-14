@@ -724,12 +724,6 @@ class ToolbarManager {
           .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
       } else {
         logger.error('Export failed: Python interface not available');
-        if (window.pythonInterface) {
-          window.pythonInterface.showNotification(
-            'Export failed — Python interface not available',
-            'error'
-          );
-        }
       }
     } catch (error) {
       logger.error('Export failed:', error);
@@ -827,7 +821,7 @@ class ToolbarManager {
 
       div.innerHTML =
         `<span class="history-icon">${icon}</span>` +
-        `<span class="history-label">${entry.label}</span>` +
+        `<span class="history-label">${this._escapeHtml(entry.label)}</span>` +
         `<span class="history-time">${timeAgo}</span>`;
 
       div.addEventListener('click', () => {

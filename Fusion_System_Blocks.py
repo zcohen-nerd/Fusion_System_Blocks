@@ -1638,7 +1638,7 @@ def generate_live_thumbnail(block_id, view_angle, size):
         if palette:
             script = (
                 "if(editor) { "
-                f"editor.onThumbnailUpdated('{block_id}', '{thumbnail_data}');"
+                f"editor.onThumbnailUpdated({json.dumps(block_id)}, {json.dumps(thumbnail_data)});"
                 " }"
             )
             palette.sendInfoToHTML(BridgeEvent.THUMBNAIL_UPDATED, script)

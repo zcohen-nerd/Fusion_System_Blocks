@@ -586,7 +586,7 @@ This detailed documentation provides comprehensive validation procedures for the
 
 **Test Steps**:
 1. **Shape Creation and Selection**
-   - [ ] Test all 10 professional shapes
+   - [ ] Test all 8 professional shapes
    - [ ] Verify shape selector interface
    - [ ] Confirm shape change operations
    - [ ] Test with various block types

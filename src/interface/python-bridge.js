@@ -21,6 +21,14 @@ var logger = window.getSystemBlocksLogger
       error: () => {}
     };
 
+function _escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 class PythonInterface {
   constructor() {
     this.isConnected = false;
@@ -199,7 +207,7 @@ class PythonInterface {
 
   handleLoadDiagram(jsonData) {
     try {
-    logger.debug('Received diagram from Python:', jsonData);
+      logger.debug('Received diagram from Python:', jsonData);
       
       if (window.diagramEditor) {
         // Ensure jsonData is a string for importDiagram (which calls JSON.parse)
@@ -216,7 +224,7 @@ class PythonInterface {
         }
       }
     } catch (error) {
-    logger.error('Failed to handle load diagram:', error);
+      logger.error('Failed to handle load diagram:', error);
       this.showNotification('Error loading diagram: ' + error.message, 'error');
     }
   }
@@ -227,7 +235,7 @@ class PythonInterface {
 
       if (data.success === false) {
         const message = data.error || 'CAD linking cancelled';
-    logger.warn('CAD link cancelled:', message);
+        logger.warn('CAD link cancelled:', message);
         this.showNotification(`CAD link cancelled: ${message}`, 'warning');
         return;
       }
@@ -247,14 +255,14 @@ class PythonInterface {
 
       this.handleCADLink(blockId, occToken, docId, docPath, componentName, metadata);
     } catch (error) {
-    logger.error('Failed to process CAD link payload:', error, payload);
+      logger.error('Failed to process CAD link payload:', error, payload);
       this.showNotification('Error processing CAD link: ' + error.message, 'error');
     }
   }
 
   handleCADLink(blockId, occToken, docId, docPath, componentName = '', metadata = {}) {
     try {
-    logger.debug('Received CAD link from Python:', { blockId, occToken, docId, docPath });
+      logger.debug('Received CAD link from Python:', { blockId, occToken, docId, docPath });
       
       if (window.diagramEditor) {
         const block = window.diagramEditor.diagram.blocks.find(b => b.id === blockId);
@@ -294,14 +302,14 @@ class PythonInterface {
         }
       }
     } catch (error) {
-    logger.error('Failed to handle CAD link:', error);
+      logger.error('Failed to handle CAD link:', error);
       this.showNotification('Error linking CAD component: ' + error.message, 'error');
     }
   }
 
   handleImportResponse(responseData) {
     try {
-    logger.debug('Received import response from Python:', responseData);
+      logger.debug('Received import response from Python:', responseData);
       
       if (responseData.success) {
         this.showNotification('Import completed successfully', 'success');
@@ -313,7 +321,7 @@ class PythonInterface {
         this.showNotification('Import failed: ' + responseData.error, 'error');
       }
     } catch (error) {
-    logger.error('Failed to handle import response:', error);
+      logger.error('Failed to handle import response:', error);
       this.showNotification('Error processing import: ' + error.message, 'error');
     }
   }
@@ -754,8 +762,8 @@ class PythonInterface {
       div.innerHTML =
         '<span class="rule-icon">' + icon + '</span>' +
         '<span class="rule-message">' +
-          '<strong>' + (result.rule || 'check') + '</strong>: ' +
-          (result.message || '') +
+          '<strong>' + _escapeHtml(result.rule || 'check') + '</strong>: ' +
+          _escapeHtml(result.message || '') +
         '</span>';
 
       // Click to highlight offending blocks/connections
@@ -814,7 +822,7 @@ class PythonInterface {
     }
     
     if (errors.length > 0) {
-  logger.error('Sync errors:', errors);
+      logger.error('Sync errors:', errors);
     }
   }
 
@@ -824,7 +832,7 @@ class PythonInterface {
     this.testConnection();
     
     if (this.isConnected && this.messageQueue.length > 0) {
-  logger.debug(`Sending ${this.messageQueue.length} queued messages`);
+      logger.debug(`Sending ${this.messageQueue.length} queued messages`);
       const queuedMessages = [...this.messageQueue];
       this.messageQueue = [];
       
