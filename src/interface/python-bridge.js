@@ -552,11 +552,23 @@ class PythonInterface {
 
   showNotification(message, type = 'info') {
     logger.debug(`[${type.toUpperCase()}] ${message}`);
+
+    // Announce to screen readers via ARIA live region
+    var announcer = document.getElementById('aria-live-announcer');
+    if (announcer) {
+      announcer.textContent = message;
+    }
     
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
+    // Accessibility: mark errors/warnings as alerts for screen readers
+    if (type === 'error' || type === 'warning') {
+      notification.setAttribute('role', 'alert');
+    } else {
+      notification.setAttribute('role', 'status');
+    }
     
     // Style notification
     Object.assign(notification.style, {

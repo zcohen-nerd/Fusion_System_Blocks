@@ -611,3 +611,77 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ============================================================
+   ACCESSIBILITY — Focus indicators (WCAG 2.1 AA)
+   ============================================================ */
+.ribbon-button-large:focus-visible,
+.ribbon-button-small:focus-visible {
+  outline: 2px solid var(--fusion-accent-blue, #0078d4);
+  outline-offset: 2px;
+  z-index: 1; /* raise above siblings so outline is visible */
+}
+
+.fusion-button:focus-visible {
+  outline: 2px solid var(--fusion-accent-blue, #0078d4);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   HIGH-CONTRAST MODE (Windows / OS-level)
+   ============================================================ */
+@media (prefers-contrast: more) {
+  .ribbon-button-large,
+  .ribbon-button-small {
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #ffffff;
+  }
+
+  .ribbon-button-large:hover,
+  .ribbon-button-small:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #ffffff;
+  }
+
+  .ribbon-button-large:focus-visible,
+  .ribbon-button-small:focus-visible {
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
+  }
+
+  .ribbon-button-large.active,
+  .ribbon-button-small.active {
+    background: rgba(255, 140, 0, 0.4);
+    border-color: #ff8c00;
+  }
+
+  .ribbon-group {
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .ribbon-group-label {
+    color: #ffffff;
+  }
+
+  .fusion-ribbon {
+    border-bottom-color: rgba(255, 255, 255, 0.5);
+  }
+
+  .fusion-modal {
+    border: 2px solid #ffffff;
+  }
+
+  .fusion-button {
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    color: #ffffff;
+  }
+
+  .fusion-button:focus-visible {
+    outline: 3px solid #ffffff;
+  }
+
+  .fusion-button-primary {
+    background: #0078d4;
+    border-color: #ffffff;
+  }
+}
