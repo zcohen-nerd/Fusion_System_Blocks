@@ -64,7 +64,8 @@ class ToolbarManager {
       'open-named': 'btn-open-named',
       'go-up': 'btn-go-up',
       'drill-down': 'btn-drill-down',
-      'create-child': 'btn-create-child'
+      'create-child': 'btn-create-child',
+      'history': 'btn-history'
     };
 
     this.initializeToolbar();
@@ -127,7 +128,7 @@ class ToolbarManager {
 
   getDefaultButtonState(buttonId) {
     // Buttons that are always enabled
-    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'connect'];
+    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'connect', 'history'];
     if (alwaysEnabled.includes(buttonId)) return true;
 
     // Undo/redo: enabled when there are states to restore
@@ -193,6 +194,13 @@ class ToolbarManager {
     this.addButtonListener('import', () => this.handleImport());
     this.addButtonListener('copy', () => this.handleCopy());
     this.addButtonListener('paste', () => this.handlePaste());
+    this.addButtonListener('history', () => this.handleToggleHistory());
+
+    // Wire history panel close button
+    const historyClose = document.getElementById('history-close');
+    if (historyClose) {
+      historyClose.addEventListener('click', () => this.handleToggleHistory());
+    }
 
     // Create operations
     this.addButtonListener('block', () => this.handleCreateBlock());
@@ -626,6 +634,102 @@ class ToolbarManager {
         logger.debug('Nothing to redo');
       }
     }
+  }
+
+  handleToggleHistory() {
+    const panel = document.getElementById('history-panel');
+    if (!panel) return;
+    const isVisible = panel.classList.contains('show');
+    if (isVisible) {
+      panel.classList.remove('show');
+    } else {
+      this.updateHistoryPanel();
+      panel.classList.add('show');
+    }
+  }
+
+  /**
+   * Refresh the undo history panel with current entries.
+   * Called by AdvancedFeatures._notifyHistoryUpdate() after every
+   * saveState(), undo(), redo(), and jumpToState().
+   */
+  updateHistoryPanel() {
+    const list = document.getElementById('history-list');
+    const countEl = document.getElementById('history-count');
+    const panel = document.getElementById('history-panel');
+    if (!list || !panel) return;
+
+    // Only refresh if panel is visible
+    if (!panel.classList.contains('show')) return;
+
+    if (!window.advancedFeatures) {
+      list.innerHTML = '<div style="padding:12px;color:#888;font-size:11px;">No history available</div>';
+      return;
+    }
+
+    const entries = window.advancedFeatures.getHistoryEntries();
+    if (countEl) {
+      const total = entries.length;
+      const max = window.advancedFeatures.maxUndoLevels || 50;
+      countEl.textContent = `(${total}/${max})`;
+    }
+
+    // Build HTML — most recent at top
+    const iconMap = {
+      'Initial state': '🏁',
+      'Add block': '➕',
+      'Delete block': '🗑️',
+      'Move block': '↕️',
+      'Rename block': '✏️',
+      'Change type': '🔷',
+      'Change status': '📊',
+      'Change shape': '⬡',
+      'Resize block': '↔️',
+      'Add connection': '🔗',
+      'Delete connection': '✂️',
+      'Change connection type': '🔌',
+      'Change direction': '➡️',
+      'Edit block': '📝',
+      'Edit connection': '📝',
+      'Edit': '📝'
+    };
+
+    list.innerHTML = '';
+    // Display entries in reverse order (most recent first)
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const entry = entries[i];
+      const div = document.createElement('div');
+      div.className = 'history-entry' +
+        (entry.isCurrent ? ' current' : '') +
+        (entry.isRedo ? ' redo-entry' : '');
+      div.setAttribute('data-history-index', entry.index);
+
+      const icon = iconMap[entry.label] || '📝';
+      const timeAgo = this._formatTimeAgo(entry.timestamp);
+
+      div.innerHTML =
+        `<span class="history-icon">${icon}</span>` +
+        `<span class="history-label">${entry.label}</span>` +
+        `<span class="history-time">${timeAgo}</span>`;
+
+      div.addEventListener('click', () => {
+        window.advancedFeatures.jumpToState(entry.index);
+      });
+
+      list.appendChild(div);
+    }
+
+    // Scroll current entry into view
+    const currentEl = list.querySelector('.current');
+    if (currentEl) currentEl.scrollIntoView({ block: 'nearest' });
+  }
+
+  _formatTimeAgo(timestamp) {
+    const diff = Date.now() - timestamp;
+    if (diff < 5000) return 'now';
+    if (diff < 60000) return Math.floor(diff / 1000) + 's ago';
+    if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+    return Math.floor(diff / 3600000) + 'h ago';
   }
 
   handleLinkCAD() {

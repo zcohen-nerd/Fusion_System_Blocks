@@ -978,8 +978,87 @@
     
     /* Legend Panel Slide-in */
     .status-legend,
-    .connection-legend {
+    .connection-legend,
+    .history-panel {
       animation: slideInFromRight 0.4s ease-out;
+    }
+
+    /* === UNDO HISTORY PANEL === */
+    .history-panel {
+      position: fixed;
+      right: 8px;
+      top: 120px;
+      width: 240px;
+      max-height: 400px;
+      background: var(--fusion-panel-bg, #2b2b2b);
+      border: 1px solid var(--fusion-panel-border, #555);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 5000;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .history-panel.show { display: flex; }
+    .history-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--fusion-panel-border, #444);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--fusion-text-primary, #eee);
+    }
+    .history-panel-header .history-close {
+      background: none;
+      border: none;
+      color: var(--fusion-text-secondary, #aaa);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 4px;
+    }
+    .history-panel-header .history-close:hover { color: #fff; }
+    .history-panel-header .history-count {
+      font-size: 11px;
+      color: var(--fusion-text-secondary, #999);
+      font-weight: 400;
+    }
+    .history-panel-list {
+      overflow-y: auto;
+      flex: 1;
+      padding: 4px 0;
+      max-height: 340px;
+    }
+    .history-entry {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--fusion-text-primary, #ddd);
+      transition: background 0.15s;
+      position: relative;
+    }
+    .history-entry:hover { background: var(--fusion-bg-hover, #3a3a3a); }
+    .history-entry.current {
+      background: rgba(33, 150, 243, 0.15);
+      border-left: 3px solid var(--fusion-accent-blue, #2196F3);
+      font-weight: 600;
+    }
+    .history-entry.redo-entry { opacity: 0.45; }
+    .history-entry .history-icon {
+      font-size: 12px;
+      flex-shrink: 0;
+      width: 16px;
+      text-align: center;
+    }
+    .history-entry .history-label { flex: 1; }
+    .history-entry .history-time {
+      font-size: 10px;
+      color: var(--fusion-text-secondary, #888);
+      flex-shrink: 0;
     }
     
     @keyframes slideInFromRight {
@@ -1419,6 +1498,10 @@
                 <button id="btn-paste" class="ribbon-button-small" title="Paste — Paste blocks from clipboard (Ctrl+V)">
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-paste"/></svg></div>
                   <span>Paste</span>
+                </button>
+                <button id="btn-history" class="ribbon-button-small" title="Toggle Undo History Panel">
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-undo"/></svg></div>
+                  <span>History</span>
                 </button>
               </div>
             </div>
@@ -2710,6 +2793,18 @@
       <span class="ctx-shortcut">Del</span>
     </div>
   </div>
+
+  <!-- Undo History Panel -->
+  <div id="history-panel" class="history-panel">
+    <div class="history-panel-header">
+      <span>⏱ History <span class="history-count" id="history-count"></span></span>
+      <button class="history-close" id="history-close" title="Close">&times;</button>
+    </div>
+    <div class="history-panel-list" id="history-list">
+      <!-- Dynamically populated -->
+    </div>
+  </div>
+
   <div id="import-dialog" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
                                   background: var(--fusion-panel-bg, #2b2b2b); border: 2px solid var(--fusion-panel-border, #555); 
                                   padding: 20px; z-index: 10000; min-width: 500px; color: var(--fusion-text-primary, #ffffff); 

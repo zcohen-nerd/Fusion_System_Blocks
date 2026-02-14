@@ -334,10 +334,15 @@ class AdvancedFeatures {
 
   // === UNDO/REDO SYSTEM ===
   setupUndoRedo() {
-    this.saveState(); // Initial state
+    this.saveState('Initial state'); // Initial state
   }
 
-  saveState() {
+  /**
+   * Save the current diagram state to the undo stack.
+   * @param {string} [label] - Human-readable description of the operation.
+   *   If omitted, auto-detects by comparing against previous state.
+   */
+  saveState(label) {
     if (this.isPerformingUndoRedo) return;
 
     // Deep-clone groups and layers so undo history is not corrupted
@@ -353,11 +358,19 @@ class AdvancedFeatures {
       return copy;
     };
 
+    const diagramSnapshot = JSON.parse(JSON.stringify(this.editor.diagram));
+
+    // Auto-detect label if not provided
+    if (!label) {
+      label = this._detectOperationLabel(diagramSnapshot);
+    }
+
     const state = {
-      diagram: JSON.parse(JSON.stringify(this.editor.diagram)),
+      diagram: diagramSnapshot,
       selectedBlocks: new Set(this.selectedBlocks),
       groups: cloneMap(this.groups),
       layers: cloneMap(this.layers),
+      label: label,
       timestamp: Date.now()
     };
     
@@ -370,6 +383,53 @@ class AdvancedFeatures {
     
     // Clear redo stack when new action is performed
     this.redoStack = [];
+
+    // Notify history panel
+    this._notifyHistoryUpdate();
+  }
+
+  /**
+   * Auto-detect what changed by comparing with the previous state.
+   * @param {Object} currentDiagram - The new diagram snapshot.
+   * @returns {string} A human-readable label.
+   */
+  _detectOperationLabel(currentDiagram) {
+    if (this.undoStack.length === 0) return 'Initial state';
+    const prev = this.undoStack[this.undoStack.length - 1].diagram;
+    const prevBlocks = prev.blocks.length;
+    const curBlocks = currentDiagram.blocks.length;
+    const prevConns = prev.connections.length;
+    const curConns = currentDiagram.connections.length;
+
+    if (curBlocks > prevBlocks) return 'Add block';
+    if (curBlocks < prevBlocks) return 'Delete block';
+    if (curConns > prevConns) return 'Add connection';
+    if (curConns < prevConns) return 'Delete connection';
+
+    // Check for block property changes (position, name, type, shape, status)
+    for (let i = 0; i < curBlocks; i++) {
+      const cb = currentDiagram.blocks[i];
+      const pb = prev.blocks.find(b => b.id === cb.id);
+      if (!pb) return 'Edit block';
+      if (cb.x !== pb.x || cb.y !== pb.y) return 'Move block';
+      if (cb.name !== pb.name) return 'Rename block';
+      if (cb.type !== pb.type) return 'Change type';
+      if (cb.status !== pb.status) return 'Change status';
+      if (cb.shape !== pb.shape) return 'Change shape';
+      if ((cb.width || 120) !== (pb.width || 120) ||
+          (cb.height || 80) !== (pb.height || 80)) return 'Resize block';
+    }
+
+    // Check connection property changes
+    for (let i = 0; i < curConns; i++) {
+      const cc = currentDiagram.connections[i];
+      const pc = prev.connections.find(c => c.id === cc.id);
+      if (!pc) return 'Edit connection';
+      if (cc.type !== pc.type) return 'Change connection type';
+      if (cc.arrowDirection !== pc.arrowDirection) return 'Change direction';
+    }
+
+    return 'Edit';
   }
 
   undo() {
@@ -386,6 +446,7 @@ class AdvancedFeatures {
     this.restoreState(previousState);
     
     this.isPerformingUndoRedo = false;
+    this._notifyHistoryUpdate();
     return true;
   }
 
@@ -402,6 +463,7 @@ class AdvancedFeatures {
     this.restoreState(nextState);
     
     this.isPerformingUndoRedo = false;
+    this._notifyHistoryUpdate();
     return true;
   }
 
@@ -431,6 +493,88 @@ class AdvancedFeatures {
         this.renderGroupBoundary(group);
       }
     });
+  }
+
+  /**
+   * Jump to a specific state in the combined undo/redo timeline.
+   * Index 0 = oldest undo state, currentIndex = current state.
+   * @param {number} targetIndex - Index in the combined timeline.
+   */
+  jumpToState(targetIndex) {
+    // Build combined timeline: [...undoStack]
+    // Current state is undoStack[undoStack.length - 1]
+    const currentIndex = this.undoStack.length - 1;
+    if (targetIndex === currentIndex) return;
+    if (targetIndex < 0) return;
+
+    this.isPerformingUndoRedo = true;
+
+    if (targetIndex < currentIndex) {
+      // Need to undo (currentIndex - targetIndex) times
+      const steps = currentIndex - targetIndex;
+      for (let i = 0; i < steps; i++) {
+        const state = this.undoStack.pop();
+        this.redoStack.push(state);
+      }
+    } else {
+      // Need to redo (targetIndex - currentIndex) times
+      const steps = targetIndex - currentIndex;
+      for (let i = 0; i < steps; i++) {
+        const state = this.redoStack.pop();
+        this.undoStack.push(state);
+      }
+    }
+
+    // Restore the state at the (new) top of undoStack
+    const targetState = this.undoStack[this.undoStack.length - 1];
+    this.restoreState(targetState);
+
+    this.isPerformingUndoRedo = false;
+    this._notifyHistoryUpdate();
+  }
+
+  /**
+   * Return formatted history entries for the UI panel.
+   * Each entry: { index, label, timestamp, isCurrent, isRedo }
+   */
+  getHistoryEntries() {
+    const entries = [];
+    const currentIndex = this.undoStack.length - 1;
+
+    // Undo stack entries (oldest first)
+    for (let i = 0; i < this.undoStack.length; i++) {
+      const state = this.undoStack[i];
+      entries.push({
+        index: i,
+        label: state.label || 'Edit',
+        timestamp: state.timestamp,
+        isCurrent: i === currentIndex,
+        isRedo: false
+      });
+    }
+
+    // Redo stack entries (in reverse — oldest redo first)
+    for (let i = this.redoStack.length - 1; i >= 0; i--) {
+      const state = this.redoStack[i];
+      entries.push({
+        index: currentIndex + (this.redoStack.length - i),
+        label: state.label || 'Edit',
+        timestamp: state.timestamp,
+        isCurrent: false,
+        isRedo: true
+      });
+    }
+
+    return entries;
+  }
+
+  /**
+   * Notify the history panel to refresh its display.
+   */
+  _notifyHistoryUpdate() {
+    if (window.toolbarManager && typeof window.toolbarManager.updateHistoryPanel === 'function') {
+      window.toolbarManager.updateHistoryPanel();
+    }
   }
 
   // === UI UPDATES ===
