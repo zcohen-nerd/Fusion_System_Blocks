@@ -62,16 +62,21 @@
     }
     
     .header-logo {
-      display: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--fusion-text-primary);
+      white-space: nowrap;
     }
     
-    .header-logo::before {
-      content: '';
-      width: 24px;
-      height: 24px;
-      background: var(--fusion-gradient-active);
+    .header-logo img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
       border-radius: var(--fusion-radius-small);
-      box-shadow: var(--fusion-shadow-button);
     }
     
     /* === MILESTONE 10: ENHANCED TOOLBAR STYLING === */
@@ -1428,6 +1433,7 @@
   <div id="aria-live-announcer" aria-live="polite" aria-atomic="true" class="sr-only"></div>
   <header>
     <div class="header-logo">
+      <img src="../assets/logo_full.png" alt="Fusion System Blocks logo" />
       <span>System Blocks</span>
     </div>
     <!-- Fusion 360 Style Ribbon Interface -->

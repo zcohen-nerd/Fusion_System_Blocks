@@ -1,12 +1,23 @@
-# Fusion System Blocks
+<p align="center">
+  <img src="assets/logo_full.png" alt="Fusion System Blocks" width="280" />
+</p>
 
-Fusion System Blocks is a Fusion 360 add-in that embeds system block diagrams directly inside a CAD assembly. Diagrams, CAD components, and documentation stay in sync so designers can plan architecture, link components, and capture engineering intent without leaving Fusion 360.
+<h1 align="center">Fusion System Blocks</h1>
+
+<p align="center">
+  A Fusion 360 add-in that embeds system block diagrams directly inside a CAD assembly.<br>
+  Diagrams, CAD components, and documentation stay in sync so designers can plan architecture, link components, and capture engineering intent without leaving Fusion 360.
+</p>
+
+<p align="center">
 
 [![License: Community](https://img.shields.io/badge/License-Community-blueviolet.svg)](LICENSE)
 [![Fusion 360](https://img.shields.io/badge/Platform-Fusion%20360-orange.svg)](https://www.autodesk.com/products/fusion-360)
 [![CI](https://github.com/zcohen-nerd/Fusion_System_Blocks/actions/workflows/ci.yml/badge.svg)](https://github.com/zcohen-nerd/Fusion_System_Blocks/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/Tests-605%20passing-brightgreen.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.9%E2%80%933.12-blue.svg)]()
+
+</p>
 
 ---
 

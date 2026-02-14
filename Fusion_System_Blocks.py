@@ -1825,11 +1825,13 @@ def run(context):
         # Create command definition for showing palette
         cmdDef = UI.commandDefinitions.itemById("SystemBlocksPaletteShowCommand")
         if not cmdDef:
+            addin_path = os.path.dirname(__file__)
+            resource_folder = os.path.join(addin_path, "resources")
             cmdDef = UI.commandDefinitions.addButtonDefinition(
                 "SystemBlocksPaletteShowCommand",
                 "System Blocks",
                 "Show the System Blocks Diagram Editor",
-                # Removed the resource folder path - will use default icon
+                resource_folder,
             )
 
         # Create the event handler
