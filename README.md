@@ -129,10 +129,9 @@ Fusion_System_Blocks/
 │   │   ├── logger.js
 │   │   └── delta-utils.js         #   JS delta utilities (computePatch, applyPatch)
 │   └── *.css                      #   Fusion theme, ribbon, and icon styles
-├── tests/                         # 557 pytest tests across 22 files
+├── tests/                         # 605 pytest tests across 12 files
 ├── docs/                          # Architecture decisions, test plans, milestones
 ├── scripts/                       # PowerShell build and deployment automation
-├── fusion_system_blocks/          # Packaged add-in folder for distribution
 └── exports/                       # Distribution ZIPs
 ```
 

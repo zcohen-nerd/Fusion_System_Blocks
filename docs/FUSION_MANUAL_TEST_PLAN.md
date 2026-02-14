@@ -2,7 +2,7 @@
 
 Comprehensive pre-release validation checklist for the
 Fusion System Blocks add-in. Every testable feature is
-covered exactly once. Estimated total time: **65–85 min**.
+covered exactly once. Estimated total time: **75–95 min**.
 
 ## Prerequisites
 
@@ -238,21 +238,24 @@ palette HTML integrity.
 
 | Step | Action | Expected Result | Pass |
 |------|--------|-----------------|------|
-| 17.1 | Click **Export** in ribbon | Dialog with 10 format checkboxes | [ ] |
-| 17.2 | Verify all 10 formats | Markdown, HTML, Pin Map CSV, C Header, BOM CSV, BOM JSON, Assembly MD, Assembly JSON, Connection Matrix, SVG | [ ] |
+| 17.1 | Click **Export** in ribbon | Dialog with 11 format checkboxes | [ ] |
+| 17.2 | Verify all 11 formats | Markdown, HTML, Pin Map CSV, C Header, BOM CSV, BOM JSON, Assembly MD, Assembly JSON, Connection Matrix, SVG, PDF Report | [ ] |
 | 17.3 | Verify defaults | Markdown, HTML, Pin Map CSV, C Header, BOM CSV checked | [ ] |
-| 17.4 | Click **Select None** | All 10 unchecked | [ ] |
-| 17.5 | Click **Select All** | All 10 checked | [ ] |
+| 17.4 | Click **Select None** | All 11 unchecked | [ ] |
+| 17.5 | Click **Select All** | All 11 checked | [ ] |
 | 17.6 | Check only Markdown + HTML | Only 2 checked | [ ] |
 | 17.7 | Click **Browse…** | Native folder picker opens; chosen path shown | [ ] |
 | 17.8 | Click **Export** | Toast: "Exported 2 files to {path}" | [ ] |
 | 17.9 | Open folder | Only `.md` and `.html` present | [ ] |
 | 17.10 | Click **Cancel** in dialog | Dialog closes without exporting | [ ] |
 | 17.11 | Try exporting with no formats selected | Warning: "Select at least one export format" | [ ] |
-| 17.12 | Select All → Export all 10 | Toast reports 10 files exported | [ ] |
+| 17.12 | Select All → Export all 11 | Toast reports 11 files exported | [ ] |
 | 17.13 | Open `.md`, `.html` reports | Block/connection tables present, properly formatted | [ ] |
 | 17.14 | Open remaining 8 files (pin_map.csv, pins.h, bom.csv, bom.json, assembly_sequence.md/.json, connection_matrix.csv, diagram.svg) | All have valid, non-empty content matching diagram data | [ ] |
 | 17.15 | Open `diagram.svg` → inspect block shapes | Blocks with non-default shapes (Diamond, Ellipse, Hexagon, etc.) render as their correct shape — not plain rectangles | [ ] |
+| 17.16 | Check only PDF Report → click **Export** | `.pdf` file created in export folder | [ ] |
+| 17.17 | Open the PDF file | Contains header with title and timestamp, block details table, connection details table, and rule-check results | [ ] |
+| 17.18 | Export PDF for diagram with 3+ blocks and connections | PDF has non-trivial multi-page content | [ ] |
 
 ## Phase 18: Rule Checking / Validation (3 min)
 
@@ -288,6 +291,9 @@ palette HTML integrity.
 | 20.5 | Click **Align Right** | Blocks right-edge aligned | [ ] |
 | 20.6 | Drag a block near another block's horizontal edge | Blue alignment guide line appears when edges align; block snaps to guide | [ ] |
 | 20.7 | Release the dragged block | Alignment guide line disappears | [ ] |
+| 20.8 | Drag a block near another block's vertical edge | Vertical alignment guide line appears and block snaps | [ ] |
+| 20.9 | Drag a block so its center aligns with another block's center | Center alignment guide line appears | [ ] |
+| 20.10 | Drag a block 6+ px away from any alignment edge | No guide line appears (5 px snap tolerance) | [ ] |
 
 ## Phase 21: Tab Panels & Status Bar (3 min)
 
@@ -302,9 +308,17 @@ dedicated phases above.
 | 21.3 | Click **Linking** tab | "Start CAD Selection" button and linking status pill visible | [ ] |
 | 21.4 | Click **Validation** tab | Filter checkboxes, category dropdown, "Run Checks" button, results area visible | [ ] |
 | 21.5 | Click **Reports** tab | "Export…" button, status pill, path display, file list visible | [ ] |
-| 21.6 | Check **Bridge** pill in status bar | "connected" (green) when bridge active; "offline" (red) otherwise | [ ] |
-| 21.7 | Check **Health** pill | Displays status (e.g., "OK" or "Issues detected") | [ ] |
-| 21.8 | Check **Last Saved** pill | Timestamp shown (updates after each save) | [ ] |
+| 21.6 | Click **Reqs** tab | "Check Requirements" button, status pill "Not checked", and empty-state message visible | [ ] |
+| 21.7 | Add block-level requirements → click **Check Requirements** | Results table appears with columns: Status (✅/❌), Requirement, Actual, Op, Target, Unit | [ ] |
+| 21.8 | Verify passing requirements show green ✅ | Failing requirements show red ❌; status pill updates | [ ] |
+| 21.9 | Click **History** tab | Snapshot description input, "Create Snapshot" button, "Refresh" button, and "No snapshots yet." message visible | [ ] |
+| 21.10 | Type a description → click **Create Snapshot** | Snapshot appears in list with description and timestamp | [ ] |
+| 21.11 | Create a second snapshot | Both listed (most recent first) | [ ] |
+| 21.12 | Click **Restore** on an older snapshot | Diagram reverts to that snapshot's state | [ ] |
+| 21.13 | Click **Refresh** | Snapshot list refreshes from backend | [ ] |
+| 21.14 | Check **Bridge** pill in status bar | "connected" (green) when bridge active; "offline" (red) otherwise | [ ] |
+| 21.15 | Check **Health** pill | Displays status (e.g., "OK" or "Issues detected") | [ ] |
+| 21.16 | Check **Last Saved** pill | Timestamp shown (updates after each save) | [ ] |
 
 ## Phase 22: Visual Verification (3 min)
 
@@ -316,7 +330,9 @@ dedicated phases above.
 | 22.4 | Verify status indicator dots | Colored circle (r=6) with subtle stroke at top-right of each block | [ ] |
 | 22.5 | Add a new block | Scale+fade-in animation plays on appearance | [ ] |
 | 22.6 | Add 3+ connections to the same port | Connections fan out vertically (no overlap) | [ ] |
-| 22.7 | Trigger an async operation (e.g. Save, Export, Load) | Loading spinner/overlay appears during processing and disappears on completion | [ ] |
+| 22.7 | Trigger Save → observe loading overlay | Spinner with "Saving diagram…" message appears and disappears on completion | [ ] |
+| 22.8 | Trigger Export → observe loading overlay | Spinner with "Exporting reports…" message appears; overlay blocks user interaction | [ ] |
+| 22.9 | If an async operation fails | Spinner disappears and error notification shown (spinner does not get stuck) | [ ] |
 
 ## Phase 23: Edge Cases & Error Handling (3 min)
 
@@ -388,6 +404,62 @@ dedicated phases above.
 | 29.3 | Open a modal → press **Tab** | Focus cycles through interactive elements inside the modal | [ ] |
 | 29.4 | Press **Escape** inside a modal | Modal closes and focus returns to canvas | [ ] |
 | 29.5 | Check minimap container | Has `aria-hidden="true"` (decorative canvas) | [ ] |
+| 29.6 | Perform an action (e.g. add block) → inspect `#aria-live-announcer` | Screen reader live region announces the change (e.g., "Block added") | [ ] |
+| 29.7 | Enable high-contrast mode in OS settings | Ribbon buttons show increased border visibility and brighter focus outlines per `@media (prefers-contrast: more)` rules | [ ] |
+| 29.8 | Tab through ribbon buttons with keyboard | `:focus-visible` outline indicator appears on each focused button | [ ] |
+| 29.9 | Use Left/Right arrow keys in tab bar | Focus moves between tabs; `aria-selected` attribute updates on the focused tab | [ ] |
+
+## Phase 30: Orthogonal Routing & Waypoints (3 min)
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 30.1 | Click **Ortho** toggle button in View ribbon | Notification shows "Routing: Orthogonal"; button appears highlighted/active | [ ] |
+| 30.2 | Draw a connection between two blocks | Connection renders with right-angle segments only (no curves) | [ ] |
+| 30.3 | Place a third block between two connected blocks | Orthogonal route recalculates to avoid the obstacle | [ ] |
+| 30.4 | Move a connected block | Orthogonal path recalculates around obstacles | [ ] |
+| 30.5 | Click **Ortho** toggle again | Notification shows "Routing: Bezier"; connections revert to cubic Bezier curves | [ ] |
+| 30.6 | In orthogonal mode, double-click a connection | Waypoint handle appears on the connection | [ ] |
+| 30.7 | Drag a waypoint handle to a new position | Route bends through the new waypoint position | [ ] |
+| 30.8 | Right-click a waypoint handle | Waypoint is removed; route recalculates | [ ] |
+
+## Phase 31: Undo History Panel (3 min)
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 31.1 | Click **History** button in Edit ribbon group | Undo history panel opens on the right side | [ ] |
+| 31.2 | Verify initial state entry | "Initial state" entry with 🏁 icon shown | [ ] |
+| 31.3 | Add a block | "Add block" entry with ➕ icon appears at top of history list | [ ] |
+| 31.4 | Delete a block | "Delete block" entry with 🗑️ icon appears | [ ] |
+| 31.5 | Rename a block | "Rename block" entry with ✏️ icon appears | [ ] |
+| 31.6 | Inspect time labels on entries | Each entry shows a time-ago label (e.g., "now", "5s ago") | [ ] |
+| 31.7 | Verify current state entry | Current state entry is highlighted / distinguished from others | [ ] |
+| 31.8 | Undo an action → inspect panel | Current-state highlight moves up one entry; undone entry is dimmed (redo at 0.45 opacity) | [ ] |
+| 31.9 | Click an earlier entry in the history panel | Diagram jumps to that state (jumpToState) | [ ] |
+| 31.10 | Check entry count label | Label updates accurately (e.g., "(5/50)") | [ ] |
+| 31.11 | Click the × close button on the panel | Panel hides | [ ] |
+
+## Phase 32: Connection Context Menu (2 min)
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 32.1 | Right-click a connection line | Context menu shows: Type ▸, Direction ▸, Select Connected Blocks, Delete | [ ] |
+| 32.2 | Inspect the connection while menu is open | Connection highlighted orange while menu is visible | [ ] |
+| 32.3 | Click **Type ▸ → Power** | Connection changes to red, 3 px solid | [ ] |
+| 32.4 | Click **Type ▸ → Data** | Connection changes to blue, dash 8,4 | [ ] |
+| 32.5 | Click **Direction ▸ → Bidirectional** | Arrows appear at both ends of the connection | [ ] |
+| 32.6 | Click **Direction ▸ → None** | No arrowheads on the connection | [ ] |
+| 32.7 | Click **Select Connected Blocks** | Both endpoint blocks become selected | [ ] |
+| 32.8 | Click **Delete** | Connection is removed from the canvas | [ ] |
+| 32.9 | Click away from the open context menu | Menu dismisses; connection highlight clears | [ ] |
+
+## Phase 33: Schema Versioning & Migration (2 min)
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 33.1 | Save a diagram → inspect persisted data | `schemaVersion: "1.0"` field present in saved data | [ ] |
+| 33.2 | Load a version 1.0 diagram | Data loads unchanged; no migration occurs | [ ] |
+| 33.3 | Load a pre-versioned diagram (no `schemaVersion` field) | Diagram loads successfully and migrates silently (adds `requirements` arrays) | [ ] |
+| 33.4 | Run validation on a diagram with invalid `schemaVersion` | Appropriate validation error reported | [ ] |
 
 ## Quick Smoke Test
 
@@ -429,20 +501,24 @@ Log filename format:
 | 14 | Named Documents | 6 | _ | _ |
 | 15 | Import | 8 | _ | _ |
 | 16 | CAD Linking | 9 | _ | _ |
-| 17 | Export & Report Validation | 15 | _ | _ |
+| 17 | Export & Report Validation | 18 | _ | _ |
 | 18 | Rule Checking / Validation | 6 | _ | _ |
 | 19 | Hierarchy / Child Diagrams | 7 | _ | _ |
-| 20 | Arrange / Layout | 7 | _ | _ |
-| 21 | Tab Panels & Status Bar | 8 | _ | _ |
-| 22 | Visual Verification | 7 | _ | _ |
+| 20 | Arrange / Layout | 10 | _ | _ |
+| 21 | Tab Panels & Status Bar | 16 | _ | _ |
+| 22 | Visual Verification | 9 | _ | _ |
 | 23 | Edge Cases & Errors | 7 | _ | _ |
 | 24 | Performance & Stress | 5 | _ | _ |
 | 25 | Annotations | 6 | _ | _ |
 | 26 | Keyboard Shortcuts Help | 4 | _ | _ |
 | 27 | Crash Recovery | 5 | _ | _ |
 | 28 | Unsaved Changes Warning | 4 | _ | _ |
-| 29 | Accessibility | 5 | _ | _ |
-| **TOTAL** | | **215** | _ | _ |
+| 29 | Accessibility | 9 | _ | _ |
+| 30 | Orthogonal Routing & Waypoints | 8 | _ | _ |
+| 31 | Undo History Panel | 11 | _ | _ |
+| 32 | Connection Context Menu | 9 | _ | _ |
+| 33 | Schema Versioning & Migration | 4 | _ | _ |
+| **TOTAL** | | **273** | _ | _ |
 
 **Tested By**: _________________ **Date**: _________________
 

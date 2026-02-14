@@ -79,17 +79,11 @@ Fusion_System_Blocks/
 │   ├── logging_util.py            # Production logging with session IDs, decorators
 │   └── diagnostics.py             # DiagnosticsRunner with self-test suite
 ├── FUSION_DEPLOYMENT_GUIDE.md     # Deployment instructions for Fusion 360
-├── fusion_system_blocks/          # Packaged add-in folder (for distribution)
-│   ├── __init__.py                # Package initializer
-│   ├── main.py                    # Thin wrapper delegating to root Fusion_System_Blocks.py
-│   └── core/
-│       └── diagram_data.py        # Wrapper re-exporting src/diagram_data.py
 ├── Fusion_System_Blocks.manifest  # Fusion 360 add-in manifest (JSON)
 ├── Fusion_System_Blocks.py        # Primary Python entry point for Fusion 360
 ├── LICENSE                        # Software license (Community/Commercial dual-license)
 ├── README.md                      # Project overview and quickstart
 ├── scripts/                       # Build and deployment scripts
-│   ├── cleanup_obsolete.ps1       # Remove legacy files and caches
 │   ├── create_beta_release.ps1    # Package beta releases
 │   ├── create_distribution_package.ps1 # Create distribution ZIP for Fusion 360
 │   ├── deploy_simple.ps1          # Deploy to local Fusion 360 for testing
@@ -167,12 +161,6 @@ Fusion_System_Blocks/
 - **`instructions/`**: Copilot custom instructions enforcing coding standards (Python PEP 8/257, Markdown, security/OWASP)
 - **`prompts/`**: Reusable prompt templates for common development workflows (folder structure analysis, refactoring, UX design)
 - **`workflows/`**: GitHub Actions CI/CD pipelines (lint, type-check, test)
-
-### `fusion_system_blocks/`: Distribution Package
-- **Purpose**: A clean, importable package structure for distribution that mirrors the root-level code
-- **`main.py`**: Thin wrapper that imports and delegates to `Fusion_System_Blocks.py`
-- **`core/diagram_data.py`**: Re-exports `src/diagram_data.py` to maintain import compatibility
-- **Usage**: When packaged as a ZIP, Fusion 360 loads this folder structure
 
 ### `src/`: Source Code (Hybrid Python/JavaScript)
 The source directory contains both Python business logic and JavaScript frontend modules.
@@ -260,7 +248,6 @@ The source directory contains both Python business logic and JavaScript frontend
   - `test_validation.py`: Diagram-level validation (required fields, link integrity)
 
 ### `scripts/`: Build and Deployment Automation
-- **`cleanup_obsolete.ps1`**: Removes legacy files, demo HTML, caches, and old docs
 - **`create_beta_release.ps1`**: Packages beta releases with version tagging
 - **`create_distribution_package.ps1`**: Creates ZIP distribution for Fusion 360 installation
 - **`deploy_simple.ps1`**: Copies add-in to local Fusion 360 add-ins directory for testing
@@ -440,7 +427,6 @@ The source directory contains both Python business logic and JavaScript frontend
 
 #### Python Dependencies
 - **Backend → Core Logic**: `Fusion_System_Blocks.py` imports `diagram_data` from `src/`
-- **Package → Core**: `fusion_system_blocks/core/diagram_data.py` re-exports `src/diagram_data.py`
 - **Tests → Source**: Tests import directly from `src/` (added to `sys.path` by pytest)
 
 #### JavaScript Dependencies
@@ -486,7 +472,7 @@ The source directory contains both Python business logic and JavaScript frontend
 - **Script**: `deploy_simple.ps1`
 - **Process**:
   1. Detect Fusion 360 add-ins directory (Windows/Mac)
-  2. Copy `Fusion_System_Blocks.py`, `Fusion_System_Blocks.manifest`, `src/`, and `fusion_system_blocks/` to add-ins folder
+  2. Copy `Fusion_System_Blocks.py`, `Fusion_System_Blocks.manifest`, `src/`, `fsb_core/`, and `fusion_addin/` to add-ins folder
   3. Restart Fusion 360 to load updated add-in
 
 ### Output Structure
@@ -498,11 +484,21 @@ Fusion_System_Blocks_v1.0_Beta.zip
 ├── Fusion_System_Blocks.manifest  # Manifest
 ├── LICENSE                        # License file
 ├── README.md                      # User-facing documentation
-├── fusion_system_blocks/          # Package structure
+├── fsb_core/                      # Core logic package
 │   ├── __init__.py
-│   ├── main.py
-│   └── core/
-│       └── diagram_data.py
+│   ├── models.py
+│   ├── validation.py
+│   ├── serialization.py
+│   ├── graph_builder.py
+│   ├── action_plan.py
+│   └── version_control.py
+├── fusion_addin/                  # Fusion 360 adapter package
+│   ├── __init__.py
+│   ├── adapter.py
+│   ├── diagnostics.py
+│   ├── document.py
+│   ├── logging_util.py
+│   └── selection.py
 └── src/                           # Source code
     ├── core/
     ├── features/
@@ -531,14 +527,16 @@ Fusion_System_Blocks_v1.0_Beta.zip
 ### Python-Specific Structure Patterns
 
 #### Package Hierarchy
-- **Root Package**: `fusion_system_blocks/` (distribution package)
-- **Core Module**: `fusion_system_blocks.core.diagram_data` (wrapper re-exporting `src/diagram_data.py`)
-- **Entry Point**: `fusion_system_blocks.main` (wrapper delegating to root `Fusion_System_Blocks.py`)
+- **Core Library**: `fsb_core/` (pure Python core logic)
+- **Fusion Adapter**: `fusion_addin/` (Fusion 360 integration layer)
+- **Business Logic**: `src/diagram_data.py` (re-exports from `src/diagram/`)
+- **Entry Point**: `Fusion_System_Blocks.py` (root level, loaded by Fusion 360)
 
 #### Module Import Strategy
 - **Development**: Add `src/` to `sys.path`, import `diagram_data` directly
-- **Distribution**: Import `from fusion_system_blocks.core import diagram_data`
-- **Rationale**: Avoid code duplication; single source of truth in `src/diagram_data.py`
+- **Core Logic**: Import from `fsb_core` (e.g., `from fsb_core.models import Graph`)
+- **Fusion Adapter**: Import from `fusion_addin` (e.g., `from fusion_addin.adapter import FusionAdapter`)
+- **Rationale**: Avoid code duplication; single source of truth in `src/diagram/`
 
 #### Type Hints and Annotations
 - **All Public Functions**: Type-annotated (PEP 484)

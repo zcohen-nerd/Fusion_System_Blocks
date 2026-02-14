@@ -30,6 +30,14 @@ if (Test-Path "src") {
     Copy-Item "src" "$PackageDir\src" -Recurse
 }
 
+# Copy core library and Fusion adapter packages
+if (Test-Path "fsb_core") {
+    Copy-Item "fsb_core" "$PackageDir\fsb_core" -Recurse
+}
+if (Test-Path "fusion_addin") {
+    Copy-Item "fusion_addin" "$PackageDir\fusion_addin" -Recurse
+}
+
 # Copy documentation
 if (Test-Path "docs") {
     Copy-Item "docs" "$PackageDir\docs" -Recurse
