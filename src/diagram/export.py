@@ -770,7 +770,7 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
     conn_styles: dict[str, dict[str, Any]] = {
         "power": {"stroke": "#dc3545", "width": 3, "dash": None},
         "data": {"stroke": "#007bff", "width": 2, "dash": "8,4"},
-        "electrical": {"stroke": "#28a745", "width": 2, "dash": "4,2"},
+        "electrical": {"stroke": "#dc3545", "width": 3, "dash": None},  # alias → power
         "mechanical": {"stroke": "#6c757d", "width": 2, "dash": "12,6"},
     }
     default_conn_style: dict[str, Any] = {"stroke": "#666", "width": 2, "dash": None}

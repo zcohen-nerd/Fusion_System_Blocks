@@ -421,6 +421,17 @@ class SystemBlocksMain {
         if (features.updateGroupBoundaries) {
           features.updateGroupBoundaries();
         }
+
+        // Re-render dimension annotations that reference any moved block
+        // so the measurement line follows block positions.
+        if (core.diagram.annotations && renderer.renderAnnotation) {
+          core.diagram.annotations.forEach(ann => {
+            if (ann.type === 'dimension' &&
+                (movedSet.has(ann.refBlockA) || movedSet.has(ann.refBlockB))) {
+              renderer.renderAnnotation(ann);
+            }
+          });
+        }
       } else if (features.isLassoSelecting) {
         // Update lasso selection
         features.updateLassoSelection(x, y);
@@ -956,6 +967,12 @@ class SystemBlocksMain {
         this.enterConnectionMode(block, core, renderer);
       });
 
+      // Cross-hierarchy connection — show a block picker dialog
+      this._ctxAction(freshMenu, 'ctx-cross-connect', () => {
+        this.hideContextMenu();
+        this._showCrossConnectDialog(block, core, renderer, features);
+      });
+
       // Type submenu
       freshMenu.querySelectorAll('[data-set-type]').forEach(item => {
         item.addEventListener('click', (e) => {
@@ -1030,6 +1047,14 @@ class SystemBlocksMain {
         core.selectBlock(newBlock.id);
         const emptyState = document.getElementById('empty-canvas-state');
         if (emptyState) emptyState.classList.add('hidden');
+
+        // Auto-start inline rename so the user can immediately name the block
+        const svgEl = document.getElementById('svg-canvas');
+        if (svgEl) {
+          setTimeout(() => {
+            this.startInlineEdit(newBlock, svgEl, core, renderer);
+          }, 50);
+        }
       });
     });
 
@@ -1153,6 +1178,86 @@ class SystemBlocksMain {
   _ctxAction(menu, id, handler) {
     const el = menu.querySelector('#' + id);
     if (el) el.addEventListener('click', handler);
+  }
+
+  /**
+   * Show a dialog that lists all blocks across the hierarchy (parent,
+   * children, siblings) so the user can create a cross-branch connection.
+   * @private
+   */
+  _showCrossConnectDialog(sourceBlock, core, renderer, features) {
+    // Collect all blocks from the hierarchy
+    const allBlocks = [];
+
+    // Helper: recursively collect blocks from a diagram and its children
+    const collectFromDiagram = (diagram, path) => {
+      (diagram.blocks || []).forEach(b => {
+        allBlocks.push({ block: b, path: path, diagram: diagram });
+        if (b.childDiagram) {
+          collectFromDiagram(b.childDiagram, path + ' › ' + (b.name || b.id));
+        }
+      });
+    };
+
+    // Start from root — walk up the hierarchy stack first
+    let rootDiagram = core.diagram;
+    let rootPath = 'Current';
+    if (features && features._hierarchyStack && features._hierarchyStack.length > 0) {
+      rootDiagram = features._hierarchyStack[0].diagram;
+      rootPath = 'Root';
+    }
+    collectFromDiagram(rootDiagram, rootPath);
+
+    // Also include current-level blocks that might not be in the root walk
+    // (they already are if we walked from root, so deduplicate by id)
+    const seen = new Set(allBlocks.map(e => e.block.id));
+    (core.diagram.blocks || []).forEach(b => {
+      if (!seen.has(b.id)) {
+        allBlocks.push({ block: b, path: 'Current', diagram: core.diagram });
+      }
+    });
+
+    // Filter out the source block itself
+    const candidates = allBlocks.filter(e => e.block.id !== sourceBlock.id);
+
+    if (candidates.length === 0) {
+      if (window.pythonInterface) {
+        window.pythonInterface.showNotification('No other blocks found in the hierarchy', 'warning');
+      }
+      return;
+    }
+
+    // Build a simple selection prompt
+    const lines = candidates.map((e, i) =>
+      `${i + 1}. [${e.path}] ${e.block.name || e.block.id} (${e.block.type || 'generic'})`
+    );
+    const choice = prompt(
+      `Connect "${sourceBlock.name || sourceBlock.id}" to which block?\n\n` +
+      lines.join('\n') +
+      '\n\nEnter number:',
+      '1'
+    );
+    if (!choice) return;
+    const idx = parseInt(choice, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= candidates.length) return;
+
+    const target = candidates[idx];
+    const connType = document.getElementById('connection-type-select');
+    const type = connType ? connType.value : 'data';
+    const dirSelect = document.getElementById('arrow-direction-select');
+    const direction = dirSelect ? dirSelect.value : 'forward';
+
+    const conn = core.addConnection(sourceBlock.id, target.block.id, type, direction);
+    if (conn) {
+      renderer.renderConnection(conn);
+      if (features) features.saveState();
+      if (window.pythonInterface) {
+        window.pythonInterface.showNotification(
+          `Connected to "${target.block.name || target.block.id}" (${target.path})`,
+          'success'
+        );
+      }
+    }
   }
 
   // =========================================================================
@@ -1501,7 +1606,7 @@ class SystemBlocksMain {
       const fromId = blockIdMap.get(conn.from);
       const toId = blockIdMap.get(conn.to);
       if (fromId && toId) {
-        const c = core.addConnection(fromId, toId, 'electrical');
+        const c = core.addConnection(fromId, toId, 'power');
         if (c) renderer.renderConnection(c);
       }
     }
@@ -1549,7 +1654,7 @@ class SystemBlocksMain {
         const fromId = nameToId.get(from);
         const toId = nameToId.get(to);
         if (fromId && toId) {
-          const c = core.addConnection(fromId, toId, kind || 'electrical');
+          const c = core.addConnection(fromId, toId, kind || 'power');
           if (c) { renderer.renderConnection(c); connCount++; }
         }
       }

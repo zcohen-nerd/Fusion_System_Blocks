@@ -140,9 +140,7 @@ def remove_block_from_diagram(diagram: dict[str, Any], block_id: str) -> bool:
         return False
 
     diagram["connections"] = [
-        c
-        for c in diagram["connections"]
-        if not _conn_involves_block(c, block_id)
+        c for c in diagram["connections"] if not _conn_involves_block(c, block_id)
     ]
 
     return block_removed

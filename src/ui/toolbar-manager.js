@@ -407,7 +407,6 @@ class ToolbarManager {
       'KeyC': { handler: () => this.handleConnect() },  // bare C = connect mode
       'Shift+KeyP': { shift: true, handler: () => this.handleSetConnectionType('power') },
       'Shift+KeyD': { shift: true, handler: () => this.handleSetConnectionType('data') },
-      'Shift+KeyE': { shift: true, handler: () => this.handleSetConnectionType('electrical') },
       'Shift+KeyM': { shift: true, handler: () => this.handleSetConnectionType('mechanical') },
       'Shift+ArrowUp': { ctrl: true, shift: true, handler: () => this.handleNavigateUp() },
       'Shift+ArrowDown': { ctrl: true, shift: true, handler: () => this.handleDrillDown() },
@@ -469,7 +468,16 @@ class ToolbarManager {
     if (confirm('Create new diagram? Unsaved changes will be lost.')) {
       this.editor.diagram = this.editor.createEmptyDiagram();
       this.editor.clearSelection();
+      // Clear all groups so labels don't persist into the new document
+      if (window.advancedFeatures) {
+        window.advancedFeatures.groups.clear();
+        window.advancedFeatures.clearSelection();
+        if (window.advancedFeatures._hierarchyStack) {
+          window.advancedFeatures._hierarchyStack = [];
+        }
+      }
       this.renderer.updateAllBlocks(this.editor.diagram);
+      this._updateBreadcrumb();
     }
   }
 
@@ -1482,16 +1490,143 @@ class ToolbarManager {
       if (window.pythonInterface) {
         window.pythonInterface.checkRules()
           .catch(error => {
-            // checkRules() already shows a notification for the real error,
-            // so only log here to avoid overwriting it with a misleading
-            // "bridge not connected" message.
-            logger.error('Check rules failed:', error);
+            logger.error('Check rules failed via bridge:', error);
+            // Fall back to client-side checks
+            this._runClientSideRuleChecks();
           });
       } else {
-        logger.error('Check rules failed: Python interface not available');
+        // No Python bridge — run checks client-side
+        this._runClientSideRuleChecks();
       }
     } catch (error) {
       logger.error('Check rules failed:', error);
+      this._runClientSideRuleChecks();
+    }
+  }
+
+  /**
+   * Run diagram rule checks entirely in JavaScript and display detailed results.
+   * This is used as a fallback when the Python bridge is unavailable,
+   * and also ensures users always see what was checked.
+   * @private
+   */
+  _runClientSideRuleChecks() {
+    if (!this.editor || !this.editor.diagram) return;
+    const diagram = this.editor.diagram;
+    const results = [];
+
+    // Rule 1: Orphaned blocks (no connections)
+    const connectedIds = new Set();
+    (diagram.connections || []).forEach(c => {
+      connectedIds.add(c.fromBlock);
+      connectedIds.add(c.toBlock);
+    });
+    const orphans = diagram.blocks.filter(b => !connectedIds.has(b.id));
+    if (orphans.length > 0 && diagram.blocks.length > 1) {
+      results.push({
+        success: false,
+        rule: 'connectivity',
+        severity: 'warning',
+        message: `${orphans.length} block(s) have no connections: ${orphans.map(b => b.name || b.id).join(', ')}`,
+        blocks: orphans.map(b => b.id),
+      });
+    } else {
+      results.push({
+        success: true,
+        rule: 'connectivity',
+        message: 'All blocks are connected',
+      });
+    }
+
+    // Rule 2: Placeholder status check
+    const placeholders = diagram.blocks.filter(b => (b.status || 'Placeholder') === 'Placeholder');
+    if (placeholders.length > 0) {
+      results.push({
+        success: false,
+        rule: 'implementation_completeness',
+        severity: 'warning',
+        message: `${placeholders.length} block(s) still in Placeholder status: ${placeholders.map(b => b.name || b.id).join(', ')}`,
+        blocks: placeholders.map(b => b.id),
+      });
+    } else {
+      results.push({
+        success: true,
+        rule: 'implementation_completeness',
+        message: 'All blocks have implementation status set',
+      });
+    }
+
+    // Rule 3: Duplicate block names
+    const nameCount = {};
+    diagram.blocks.forEach(b => {
+      const name = b.name || '';
+      nameCount[name] = (nameCount[name] || 0) + 1;
+    });
+    const dupes = Object.entries(nameCount).filter(([, count]) => count > 1);
+    if (dupes.length > 0) {
+      results.push({
+        success: false,
+        rule: 'unique_names',
+        severity: 'warning',
+        message: `Duplicate block names: ${dupes.map(([name, count]) => `"${name}" (×${count})`).join(', ')}`,
+      });
+    } else {
+      results.push({
+        success: true,
+        rule: 'unique_names',
+        message: 'All block names are unique',
+      });
+    }
+
+    // Rule 4: Self-connections
+    const selfConns = (diagram.connections || []).filter(c => c.fromBlock === c.toBlock);
+    if (selfConns.length > 0) {
+      results.push({
+        success: false,
+        rule: 'no_self_connections',
+        severity: 'error',
+        message: `${selfConns.length} self-connection(s) detected`,
+        blocks: selfConns.map(c => c.fromBlock),
+      });
+    } else {
+      results.push({
+        success: true,
+        rule: 'no_self_connections',
+        message: 'No self-connections found',
+      });
+    }
+
+    // Rule 5: Blocks with default names
+    const defaultNames = diagram.blocks.filter(b => /^New \w+ Block$/.test(b.name || ''));
+    if (defaultNames.length > 0) {
+      results.push({
+        success: false,
+        rule: 'named_blocks',
+        severity: 'warning',
+        message: `${defaultNames.length} block(s) still have default names: ${defaultNames.map(b => b.name).join(', ')}`,
+        blocks: defaultNames.map(b => b.id),
+      });
+    } else {
+      results.push({
+        success: true,
+        rule: 'named_blocks',
+        message: 'All blocks have been renamed from defaults',
+      });
+    }
+
+    // Display results using the same UI as the Python bridge
+    if (window.pythonInterface && window.pythonInterface.displayRuleResults) {
+      window.pythonInterface.displayRuleResults(results);
+    } else {
+      // Minimal fallback notification
+      const failures = results.filter(r => !r.success);
+      const total = results.length;
+      const passed = total - failures.length;
+      const summary = `Rule check: ${passed}/${total} passed` +
+        (failures.length > 0 ? ` — ${failures.length} issue(s) found` : '');
+      alert(summary + '\n\n' + results.map(r =>
+        (r.success ? '✅' : '⚠️') + ' ' + r.rule + ': ' + r.message
+      ).join('\n'));
     }
   }
 
@@ -1520,6 +1655,8 @@ class ToolbarManager {
     // Restore parent diagram
     this.editor.diagram = parentDiagram;
     this.editor.clearSelection();
+    // Clear child-level groups so they don't bleed into the parent view
+    if (features) features.groups.clear();
     this.renderer.updateAllBlocks(this.editor.diagram);
     this._updateBreadcrumb();
     this.updateButtonStates();
@@ -1546,6 +1683,8 @@ class ToolbarManager {
     // Load child diagram
     this.editor.diagram = block.childDiagram;
     this.editor.clearSelection();
+    // Clear parent-level groups so they don't bleed into the child view
+    if (features) features.groups.clear();
     this.renderer.updateAllBlocks(this.editor.diagram);
     this._updateBreadcrumb();
     this.updateButtonStates();

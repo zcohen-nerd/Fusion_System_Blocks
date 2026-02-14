@@ -107,7 +107,6 @@ class DiagramRenderer {
       'arrowhead':            '#666',     // default
       'arrowhead-power':      '#dc3545',  // power → red
       'arrowhead-data':       '#007bff',  // data → blue
-      'arrowhead-electrical': '#28a745',  // electrical → green
       'arrowhead-mechanical': '#6c757d',  // mechanical → gray
     };
 
@@ -562,8 +561,8 @@ class DiagramRenderer {
     const direction = (connection.arrowDirection || 'forward').toLowerCase();
     // Use a type-specific arrowhead marker so the arrowhead colour
     // matches the connection line colour.
-    const markerSuffix = ['power', 'data', 'electrical', 'mechanical'].includes(connType)
-      ? '-' + connType : '';
+    const markerSuffix = ['power', 'data', 'mechanical'].includes(connType)
+      ? '-' + connType : (connType === 'electrical' ? '-power' : '');
     const fwdMarker = `url(#arrowhead${markerSuffix})`;
 
     // --- Resolve port-aware endpoints ---
@@ -626,17 +625,35 @@ class DiagramRenderer {
         break;
     }
 
+    // Determine whether this is a vertical connection (top/bottom ports)
+    const isVerticalFrom = (fromPort === 'top' || fromPort === 'bottom');
+    const isVerticalTo   = (toPort === 'top' || toPort === 'bottom');
+    const isVertical = isVerticalFrom || isVerticalTo;
+
     // Choose path based on routing mode
     let d;
     if (this.routingMode === 'orthogonal') {
-      d = this._computeOrthogonalPath(fromX, fromY, toX, toY, connection);
+      if (isVertical) {
+        d = this._computeVerticalOrthogonalPath(fromX, fromY, toX, toY, fromPort, toPort);
+      } else {
+        d = this._computeOrthogonalPath(fromX, fromY, toX, toY, connection);
+      }
     } else {
-      // Default Bezier curve
-      const dx = Math.abs(toX - fromX);
-      const dy = toY - fromY;
-      const yBulge = Math.abs(dy) < 10 ? Math.max(30, dx * 0.15) : 0;
-      const midX = (fromX + toX) / 2;
-      d = `M ${fromX} ${fromY} C ${midX} ${fromY - yBulge} ${midX} ${toY - yBulge} ${toX} ${toY}`;
+      if (isVertical) {
+        // Vertical Bezier: stubs go up/down then curve across
+        const dy = Math.abs(toY - fromY);
+        const dx = toX - fromX;
+        const xBulge = Math.abs(dx) < 10 ? Math.max(30, dy * 0.15) : 0;
+        const midY = (fromY + toY) / 2;
+        d = `M ${fromX} ${fromY} C ${fromX - xBulge} ${midY} ${toX - xBulge} ${midY} ${toX} ${toY}`;
+      } else {
+        // Default horizontal Bezier curve
+        const dx = Math.abs(toX - fromX);
+        const dy = toY - fromY;
+        const yBulge = Math.abs(dy) < 10 ? Math.max(30, dx * 0.15) : 0;
+        const midX = (fromX + toX) / 2;
+        d = `M ${fromX} ${fromY} C ${midX} ${fromY - yBulge} ${midX} ${toY - yBulge} ${toX} ${toY}`;
+      }
     }
 
     // Group element for the connection (hit area + visible stroke)
@@ -823,7 +840,7 @@ class DiagramRenderer {
     const styles = {
       'power':      { stroke: '#dc3545', strokeWidth: 3, dashArray: null },
       'data':       { stroke: '#007bff', strokeWidth: 2, dashArray: '8,4' },
-      'electrical': { stroke: '#28a745', strokeWidth: 2, dashArray: '4,2' },
+      'electrical': { stroke: '#dc3545', strokeWidth: 3, dashArray: null }, // alias → power
       'mechanical': { stroke: '#6c757d', strokeWidth: 2, dashArray: '12,6' }
     };
     return styles[connType] || { stroke: '#666', strokeWidth: 2, dashArray: null };
@@ -892,33 +909,50 @@ class DiagramRenderer {
    * CEF workaround — render a small reverse-arrow triangle at the start
    * of a connection path. Fusion's Chromium does not reliably render
    * SVG marker-start, so we draw a manual polygon instead.
-   * strokeWidth scales the arrow to match the SVG marker (markerUnits=strokeWidth).
+   *
+   * The arrow tip always sits at (fromX, fromY) and points AWAY from
+   * the path's first segment direction (i.e. back toward the source
+   * block).  For orthogonal routes this means the arrow points along
+   * the first segment axis rather than using a raw start→end angle.
    */
   _addManualStartArrow(group, fromX, fromY, toX, toY, fillColor, strokeWidth = 2) {
-    // Arrow size matches the SVG <marker> (10×7, userSpaceOnUse).
     const size = 10;
-    // Angle from start toward end — the arrow tip should point
-    // BACKWARD (away from the target, toward the source block).
-    const dx = toX - fromX;
-    const dy = toY - fromY;
-    // Angle pointing from source toward target
-    const angleToTarget = Math.atan2(dy, dx);
-    // Reverse it — the backward arrow points away from the target
-    const angle = angleToTarget + Math.PI;
 
-    // Arrow tip sits at the connection start point
+    // Determine the path's first-segment direction.
+    // Prefer the actual SVG path data (orthogonal routing produces L
+    // segments that differ from the straight-line angle).
+    let segDx = toX - fromX;
+    let segDy = toY - fromY;
+    const pathEl = group.querySelector('.connection-line');
+    if (pathEl) {
+      const d = pathEl.getAttribute('d') || '';
+      // Parse the second point from the path: "M x0 y0 L x1 y1 ..."
+      // or Bezier: "M x0 y0 C cx1 cy1 cx2 cy2 x1 y1"
+      const tokens = d.replace(/[MLCQZmlcqz,]/g, ' ').trim().split(/\s+/).map(Number);
+      if (tokens.length >= 4) {
+        const x1 = tokens[2];
+        const y1 = tokens[3];
+        if (!(isNaN(x1) || isNaN(y1))) {
+          segDx = x1 - fromX;
+          segDy = y1 - fromY;
+        }
+      }
+    }
+
+    // Angle of the first segment (source → first bend/control point)
+    const segAngle = Math.atan2(segDy, segDx);
+    // Arrow tip points BACKWARD (away from path direction)
+    const tipAngle = segAngle + Math.PI;
+
     const tipX = fromX;
     const tipY = fromY;
 
-    // Base of the arrowhead extends along the path toward the target.
-    const halfSpread = Math.atan2(3.5, 10); // ~19° — matches forward marker polygon (0 0, 10 3.5, 0 7)
-    // Base points extend in the direction opposite to the arrow tip
-    // (i.e. toward the target), fanning out symmetrically.
-    const baseAngle = angleToTarget; // toward target = away from tip
-    const baseX1 = tipX + Math.cos(baseAngle + halfSpread) * size;
-    const baseY1 = tipY + Math.sin(baseAngle + halfSpread) * size;
-    const baseX2 = tipX + Math.cos(baseAngle - halfSpread) * size;
-    const baseY2 = tipY + Math.sin(baseAngle - halfSpread) * size;
+    const halfSpread = Math.atan2(3.5, 10); // ~19°
+    // Base extends along the path direction (away from tip)
+    const baseX1 = tipX + Math.cos(segAngle + halfSpread) * size;
+    const baseY1 = tipY + Math.sin(segAngle + halfSpread) * size;
+    const baseX2 = tipX + Math.cos(segAngle - halfSpread) * size;
+    const baseY2 = tipY + Math.sin(segAngle - halfSpread) * size;
 
     const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     arrow.setAttribute('points',
@@ -956,6 +990,46 @@ class DiagramRenderer {
     return this._orthogonalRouter.computePath(
       fromX, fromY, toX, toY, obstacles, waypoints
     );
+  }
+
+  /**
+   * Compute an orthogonal (Manhattan) SVG path for connections using
+   * top/bottom ports. Routes vertically out of the source port, across
+   * horizontally, then vertically into the target port.
+   * @private
+   */
+  _computeVerticalOrthogonalPath(fromX, fromY, toX, toY, fromPort, toPort) {
+    const STUB = 20; // px to extend out of port before turning
+
+    // Determine stub directions (positive Y = downward in SVG)
+    const fromDir = fromPort === 'bottom' ? 1 : -1; // bottom→down, top→up
+    const toDir   = toPort   === 'bottom' ? 1 : -1;
+
+    const stubFromY = fromY + STUB * fromDir;
+    const stubToY   = toY   + STUB * toDir;
+
+    // Simple case: ports face each other (e.g. bottom→top) and there is
+    // enough vertical room — route via a single horizontal midpoint.
+    const facingEachOther =
+      (fromPort === 'bottom' && toPort === 'top'  && fromY < toY) ||
+      (fromPort === 'top'    && toPort === 'bottom' && fromY > toY);
+
+    if (facingEachOther) {
+      const midY = (fromY + toY) / 2;
+      return `M ${fromX} ${fromY} L ${fromX} ${midY} L ${toX} ${midY} L ${toX} ${toY}`;
+    }
+
+    // General case: ports face the same direction or away from each other.
+    // Route: stub out → horizontal jog → vertical span → stub in.
+    // Pick the midY that is safely beyond both stubs.
+    const midY = fromDir === toDir
+      ? (fromDir > 0
+          ? Math.max(stubFromY, stubToY) + STUB
+          : Math.min(stubFromY, stubToY) - STUB)
+      : (stubFromY + stubToY) / 2;
+
+    return `M ${fromX} ${fromY} L ${fromX} ${midY} ` +
+           `L ${toX} ${midY} L ${toX} ${toY}`;
   }
 
   /**
@@ -1018,6 +1092,12 @@ class DiagramRenderer {
     if (this._annotationElements) {
       this._annotationElements.forEach(el => el.remove());
       this._annotationElements.clear();
+    }
+    // Clear group boundary overlays so they don't persist across
+    // drill-down, navigate-up, or new-document operations.
+    const svg = this.svg;
+    if (svg) {
+      svg.querySelectorAll('[id^="group-boundary-"]').forEach(el => el.remove());
     }
 
     // Batch render using documentFragment for fewer reflows
@@ -1114,6 +1194,14 @@ class DiagramRenderer {
         const by = blockB.y + (blockB.height || 80) / 2;
         const dist = Math.round(Math.hypot(bx - ax, by - ay));
         const label = annotation.text || `${dist}px`;
+
+        // Keep annotation x/y/width/height in sync with blocks
+        // so the hit rect and selection outline track correctly.
+        annotation.x = Math.min(ax, bx) - 5;
+        annotation.y = Math.min(ay, by) - 15;
+        annotation.width = Math.abs(bx - ax) + 10;
+        annotation.height = Math.abs(by - ay) + 30;
+
         // Dimension line
         const line = document.createElementNS(ns, 'line');
         line.setAttribute('x1', ax);
@@ -1213,7 +1301,7 @@ class DiagramRenderer {
    * @private
    */
   _setupAnnotationInteractivity(g, annotation) {
-    g.style.cursor = 'move';
+    g.style.cursor = annotation.type === 'dimension' ? 'pointer' : 'move';
     g.setAttribute('pointer-events', 'all');
 
     // Add a transparent hit rect so clicks register everywhere in the group
@@ -1262,15 +1350,17 @@ class DiagramRenderer {
       outline.setAttribute('pointer-events', 'none');
       g.insertBefore(outline, g.firstChild);
 
-      // Drag initialisation
-      isDraggingAnn = true;
-      const svgPt = this._clientToSVG(e.clientX, e.clientY);
-      if (svgPt) {
-        dragStartX = svgPt.x;
-        dragStartY = svgPt.y;
+      // Drag initialisation (not for dimensions — they track blocks)
+      if (annotation.type !== 'dimension') {
+        isDraggingAnn = true;
+        const svgPt = this._clientToSVG(e.clientX, e.clientY);
+        if (svgPt) {
+          dragStartX = svgPt.x;
+          dragStartY = svgPt.y;
+        }
+        annStartX = annotation.x || 0;
+        annStartY = annotation.y || 0;
       }
-      annStartX = annotation.x || 0;
-      annStartY = annotation.y || 0;
     });
 
     // --- DRAG on mousemove ---

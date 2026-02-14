@@ -262,7 +262,6 @@
       font-family: var(--fusion-font-family);
       fill: var(--fusion-text-primary);
       user-select: none;
-      pointer-events: none;
     }
     
     .annotation-note {
@@ -626,12 +625,6 @@
     .connection[data-type="data"] {
       stroke: var(--fusion-connection-data);
       stroke-width: 2;
-    }
-    
-    .connection[data-type="electrical"] {
-      stroke: var(--fusion-connection-electrical);
-      stroke-width: 1.5;
-      stroke-dasharray: 5,3;
     }
     
     .connection[data-type="mechanical"] {
@@ -1411,7 +1404,6 @@
     /* === Fusion CONNECTION LINE COLORS === */
     .connection-power { stroke: var(--fusion-connection-power); fill: var(--fusion-connection-power); }
     .connection-data { stroke: var(--fusion-connection-data); fill: var(--fusion-connection-data); }
-    .connection-electrical { stroke: var(--fusion-connection-electrical); fill: var(--fusion-connection-electrical); }
     .connection-mechanical { stroke: var(--fusion-connection-mechanical); fill: var(--fusion-connection-mechanical); }
     .connection-generic { stroke: var(--fusion-text-secondary); fill: var(--fusion-text-secondary); }
   </style>
@@ -1722,8 +1714,7 @@
         <div class="connection-type-container">
           <label for="connection-type-select" class="fusion-label">Connection:</label>
           <select id="connection-type-select" class="connection-type-select" title="Choose connection type for new connections">
-            <option value="electrical" selected>Electrical</option>
-            <option value="power">Power</option>
+            <option value="power" selected>Power</option>
             <option value="data">Data</option>
             <option value="mechanical">Mechanical</option>
           </select>
@@ -1802,16 +1793,6 @@
         <marker id="arrowhead-data-reverse" markerWidth="10" markerHeight="7"
                 refX="0" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
           <polygon points="10 0, 0 3.5, 10 7" fill="#007bff" />
-        </marker>
-
-        <!-- Electrical — forward & reverse -->
-        <marker id="arrowhead-electrical" markerWidth="10" markerHeight="7"
-                refX="10" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#28a745" />
-        </marker>
-        <marker id="arrowhead-electrical-reverse" markerWidth="10" markerHeight="7"
-                refX="0" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
-          <polygon points="10 0, 0 3.5, 10 7" fill="#28a745" />
         </marker>
 
         <!-- Mechanical — forward & reverse -->
@@ -2454,18 +2435,6 @@
       </div>
       <div class="connection-item">
         <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" class="connection-electrical" stroke-width="2" stroke-dasharray="4,2"/>
-          <polygon points="30,6 26,3 26,9" class="connection-electrical"/>
-        </svg>
-        <span>
-          <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
-            <use href="#icon-electrical"/>
-          </svg>
-          Electrical
-        </span>
-      </div>
-      <div class="connection-item">
-        <svg width="40" height="12" viewBox="0 0 40 12">
           <line x1="0" y1="6" x2="30" y2="6" class="connection-mechanical" stroke-width="2" stroke-dasharray="12,6"/>
           <line x1="30" y1="3" x2="26" y2="6" class="connection-mechanical" stroke-width="2"/>
           <line x1="30" y1="9" x2="26" y2="6" class="connection-mechanical" stroke-width="2"/>
@@ -2641,7 +2610,6 @@
         <table style="width:100%;border-collapse:collapse;"><tbody>
           <tr><td style="padding:2px 6px;"><kbd>Shift+P</kbd></td><td>Power</td></tr>
           <tr><td style="padding:2px 6px;"><kbd>Shift+D</kbd></td><td>Data</td></tr>
-          <tr><td style="padding:2px 6px;"><kbd>Shift+E</kbd></td><td>Electrical</td></tr>
           <tr><td style="padding:2px 6px;"><kbd>Shift+M</kbd></td><td>Mechanical</td></tr>
         </tbody></table>
       </div>
@@ -2771,6 +2739,9 @@
       <span class="ctx-icon">🔗</span> Connect to…
       <span class="ctx-shortcut">C</span>
     </div>
+    <div id="ctx-cross-connect" class="fusion-context-menu-item" data-needs-block>
+      <span class="ctx-icon">🌐</span> Connect Across Diagrams…
+    </div>
     <div class="fusion-context-menu-separator" data-needs-block></div>
     <div id="ctx-delete" class="fusion-context-menu-item danger" data-needs-block>
       <span class="ctx-icon">🗑️</span> Delete
@@ -2793,7 +2764,6 @@
         <div class="fusion-context-menu-item" data-conn-type="auto">Auto</div>
         <div class="fusion-context-menu-item" data-conn-type="power">⚡ Power</div>
         <div class="fusion-context-menu-item" data-conn-type="data">📡 Data</div>
-        <div class="fusion-context-menu-item" data-conn-type="electrical">⚙️ Electrical</div>
         <div class="fusion-context-menu-item" data-conn-type="mechanical">🔩 Mechanical</div>
       </div>
     </div>
