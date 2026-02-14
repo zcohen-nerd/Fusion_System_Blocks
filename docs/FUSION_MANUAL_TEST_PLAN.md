@@ -2,7 +2,7 @@
 
 Comprehensive pre-release validation checklist for the
 Fusion System Blocks add-in. Every testable feature is
-covered exactly once. Estimated total time: **50–65 min**.
+covered exactly once. Estimated total time: **65–85 min**.
 
 ## Prerequisites
 
@@ -130,6 +130,11 @@ palette HTML integrity.
 | 8.5 | Press **Ctrl+0** or click **Fit to View** button | All blocks fit within visible area | [ ] |
 | 8.6 | Toggle **Snap to Grid** button | OFF → blocks move freely; ON → snap to 20 px grid | [ ] |
 | 8.7 | Verify grid pattern | 20 px grid lines visible in SVG background | [ ] |
+| 8.8 | Verify minimap visible in bottom-right (160×110 canvas) | Dark overlay with coloured rectangles representing blocks | [ ] |
+| 8.9 | Pan or zoom the canvas | Minimap viewport rectangle updates in real-time | [ ] |
+| 8.10 | Click on the minimap | Main canvas pans so clicked point is centred | [ ] |
+| 8.11 | Click-drag on the minimap | Canvas pans continuously following the mouse | [ ] |
+| 8.12 | Press **M** or click **Minimap** button in View ribbon | Minimap hides; press/click again → reappears | [ ] |
 
 ## Phase 9: Selection & Grouping (3 min)
 
@@ -247,6 +252,7 @@ palette HTML integrity.
 | 17.12 | Select All → Export all 10 | Toast reports 10 files exported | [ ] |
 | 17.13 | Open `.md`, `.html` reports | Block/connection tables present, properly formatted | [ ] |
 | 17.14 | Open remaining 8 files (pin_map.csv, pins.h, bom.csv, bom.json, assembly_sequence.md/.json, connection_matrix.csv, diagram.svg) | All have valid, non-empty content matching diagram data | [ ] |
+| 17.15 | Open `diagram.svg` → inspect block shapes | Blocks with non-default shapes (Diamond, Ellipse, Hexagon, etc.) render as their correct shape — not plain rectangles | [ ] |
 
 ## Phase 18: Rule Checking / Validation (3 min)
 
@@ -280,6 +286,8 @@ palette HTML integrity.
 | 20.3 | Select 3 blocks → click **Align Left** | All 3 left-edge aligned | [ ] |
 | 20.4 | Click **Align Center** | Blocks center-aligned horizontally | [ ] |
 | 20.5 | Click **Align Right** | Blocks right-edge aligned | [ ] |
+| 20.6 | Drag a block near another block's horizontal edge | Blue alignment guide line appears when edges align; block snaps to guide | [ ] |
+| 20.7 | Release the dragged block | Alignment guide line disappears | [ ] |
 
 ## Phase 21: Tab Panels & Status Bar (3 min)
 
@@ -308,6 +316,7 @@ dedicated phases above.
 | 22.4 | Verify status indicator dots | Colored circle (r=6) with subtle stroke at top-right of each block | [ ] |
 | 22.5 | Add a new block | Scale+fade-in animation plays on appearance | [ ] |
 | 22.6 | Add 3+ connections to the same port | Connections fan out vertically (no overlap) | [ ] |
+| 22.7 | Trigger an async operation (e.g. Save, Export, Load) | Loading spinner/overlay appears during processing and disappears on completion | [ ] |
 
 ## Phase 23: Edge Cases & Error Handling (3 min)
 
@@ -330,6 +339,55 @@ dedicated phases above.
 | 24.3 | Select All → drag | All blocks move together smoothly | [ ] |
 | 24.4 | Save large diagram → Load | Complete in < 3 seconds | [ ] |
 | 24.5 | Auto Layout on 20+ blocks | Layout completes without freezing | [ ] |
+
+## Phase 25: Annotations (3 min)
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 25.1 | Click **Text** button in Annotate ribbon group | Text annotation created on canvas at default/offset position | [ ] |
+| 25.2 | Double-click text annotation | Inline editor opens; type new text, press **Enter** | [ ] |
+| 25.3 | Click **Note** button | Note annotation (yellow/styled) created on canvas | [ ] |
+| 25.4 | Click **Dimension** button | Dimension annotation (measurement-style) created | [ ] |
+| 25.5 | Click **Callout** button | Callout annotation (highlighted/boxed) created | [ ] |
+| 25.6 | Select annotation → press **Delete** | Annotation removed from canvas | [ ] |
+
+## Phase 26: Keyboard Shortcuts Help (2 min)
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 26.1 | Press **?** (Shift+/) | Keyboard shortcuts overlay dialog appears | [ ] |
+| 26.2 | Inspect dialog content | Shortcuts grouped by category (File, Edit, Create, Navigate, View, Selection, Connection Types) with correct key bindings | [ ] |
+| 26.3 | Verify **M** → "Toggle Minimap" listed under View | Entry present | [ ] |
+| 26.4 | Press **?** again or click **×** button | Dialog closes | [ ] |
+
+## Phase 27: Crash Recovery (3 min)
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 27.1 | Create a diagram with 3+ blocks (do NOT save) | Diagram has unsaved changes | [ ] |
+| 27.2 | Wait ~30 seconds | Auto-backup timer fires (internal; no visible UI) | [ ] |
+| 27.3 | Force-close the palette (simulate crash) | Palette closes | [ ] |
+| 27.4 | Reopen the add-in palette | Recovery prompt appears: "Recover unsaved diagram?" | [ ] |
+| 27.5 | Click **Recover** | Previous diagram restored with blocks and connections | [ ] |
+
+## Phase 28: Unsaved Changes Warning (2 min)
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 28.1 | Create or modify a diagram (do NOT save) | Canvas has unsaved changes | [ ] |
+| 28.2 | Attempt to close the palette | Browser-level "unsaved changes" confirmation dialog appears | [ ] |
+| 28.3 | Cancel the close | Palette remains open; diagram intact | [ ] |
+| 28.4 | Save the diagram, then close | No warning — palette closes cleanly | [ ] |
+
+## Phase 29: Accessibility (2 min)
+
+| Step | Action | Expected Result | Pass |
+|------|--------|-----------------|------|
+| 29.1 | Inspect ribbon buttons with dev tools | All buttons have `aria-label` attributes | [ ] |
+| 29.2 | Inspect modal dialogs | Dialogs have `role="dialog"`, `aria-modal="true"`, and `aria-labelledby` pointing to title | [ ] |
+| 29.3 | Open a modal → press **Tab** | Focus cycles through interactive elements inside the modal | [ ] |
+| 29.4 | Press **Escape** inside a modal | Modal closes and focus returns to canvas | [ ] |
+| 29.5 | Check minimap container | Has `aria-hidden="true"` (decorative canvas) | [ ] |
 
 ## Quick Smoke Test
 
@@ -362,7 +420,7 @@ Log filename format:
 | 5 | Block Shapes | 10 | _ | _ |
 | 6 | Connections | 20 | _ | _ |
 | 7 | Property Editor | 7 | _ | _ |
-| 8 | Canvas Navigation | 7 | _ | _ |
+| 8 | Canvas Navigation | 12 | _ | _ |
 | 9 | Selection & Grouping | 9 | _ | _ |
 | 10 | Context Menu | 5 | _ | _ |
 | 11 | Search & Filter | 6 | _ | _ |
@@ -371,15 +429,20 @@ Log filename format:
 | 14 | Named Documents | 6 | _ | _ |
 | 15 | Import | 8 | _ | _ |
 | 16 | CAD Linking | 9 | _ | _ |
-| 17 | Export & Report Validation | 14 | _ | _ |
+| 17 | Export & Report Validation | 15 | _ | _ |
 | 18 | Rule Checking / Validation | 6 | _ | _ |
 | 19 | Hierarchy / Child Diagrams | 7 | _ | _ |
-| 20 | Arrange / Layout | 5 | _ | _ |
+| 20 | Arrange / Layout | 7 | _ | _ |
 | 21 | Tab Panels & Status Bar | 8 | _ | _ |
-| 22 | Visual Verification | 6 | _ | _ |
+| 22 | Visual Verification | 7 | _ | _ |
 | 23 | Edge Cases & Errors | 7 | _ | _ |
 | 24 | Performance & Stress | 5 | _ | _ |
-| **TOTAL** | | **181** | _ | _ |
+| 25 | Annotations | 6 | _ | _ |
+| 26 | Keyboard Shortcuts Help | 4 | _ | _ |
+| 27 | Crash Recovery | 5 | _ | _ |
+| 28 | Unsaved Changes Warning | 4 | _ | _ |
+| 29 | Accessibility | 5 | _ | _ |
+| **TOTAL** | | **215** | _ | _ |
 
 **Tested By**: _________________ **Date**: _________________
 
