@@ -364,11 +364,14 @@ class ToolbarManager {
         }
       }
       if (window.pythonInterface) {
-        window.pythonInterface.loadDiagram();
+        if (window.showLoadingSpinner) window.showLoadingSpinner('Loading diagram\u2026');
+        window.pythonInterface.loadDiagram()
+          .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
       } else {
         logger.error('Load failed: Python interface not available');
       }
     } catch (error) {
+      if (window.hideLoadingSpinner) window.hideLoadingSpinner();
       logger.error('Load failed:', error);
     }
   }
@@ -585,12 +588,12 @@ class ToolbarManager {
   _executeExport(formats, outputPath) {
     try {
       if (window.pythonInterface) {
+        if (window.showLoadingSpinner) window.showLoadingSpinner('Exporting reports\u2026');
         window.pythonInterface.exportReports(formats, outputPath)
           .catch(error => {
-            // exportReports already shows a notification with the
-            // actual error detail — no need to show a second one here.
             logger.error('Export failed:', error);
-          });
+          })
+          .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
       } else {
         logger.error('Export failed: Python interface not available');
         if (window.pythonInterface) {

@@ -2408,6 +2408,31 @@
 
   <!-- ========== EXPORT OPTIONS DIALOG ========== -->
 
+  <!-- ========== LOADING SPINNER OVERLAY ========== -->
+  <div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:250000;
+    display:none;align-items:center;justify-content:center;flex-direction:column;">
+    <div style="width:48px;height:48px;border:4px solid rgba(255,255,255,0.2);border-top:4px solid var(--fusion-accent,#0078d4);
+      border-radius:50%;animation:fsb-spin 0.8s linear infinite;"></div>
+    <div id="loading-message" style="margin-top:14px;color:#fff;font-size:13px;font-family:Arial,sans-serif;">Loading…</div>
+  </div>
+  <style>
+    @keyframes fsb-spin { to { transform: rotate(360deg); } }
+  </style>
+  <script>
+    // Global loading spinner helpers
+    window.showLoadingSpinner = function(msg) {
+      var el = document.getElementById('loading-overlay');
+      if (!el) return;
+      var msgEl = document.getElementById('loading-message');
+      if (msgEl) msgEl.textContent = msg || 'Loading\u2026';
+      el.style.display = 'flex';
+    };
+    window.hideLoadingSpinner = function() {
+      var el = document.getElementById('loading-overlay');
+      if (el) el.style.display = 'none';
+    };
+  </script>
+
   <!-- ========== KEYBOARD SHORTCUTS HELP ========== -->
   <div id="shortcuts-overlay" class="fusion-modal-overlay" style="display:none;">
     <div class="fusion-modal" style="min-width:420px;max-width:560px;max-height:80vh;overflow-y:auto;">

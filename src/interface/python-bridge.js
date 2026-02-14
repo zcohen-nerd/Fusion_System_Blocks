@@ -376,6 +376,7 @@ class PythonInterface {
   }
 
   loadDiagram() {
+    if (window.showLoadingSpinner) window.showLoadingSpinner('Loading diagram\u2026');
     return this.sendMessage(BridgeAction.LOAD_DIAGRAM, {}, true)
       .then(response => {
         if (response.success === false) {
@@ -391,7 +392,8 @@ class PythonInterface {
       .catch(error => {
         this.showNotification('Failed to load diagram: ' + error.message, 'error');
         throw error;
-      });
+      })
+      .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
   }
 
   exportReports(formats, outputPath) {
@@ -450,6 +452,7 @@ class PythonInterface {
 
   checkRules() {
     if (!window.diagramEditor) return Promise.reject('No diagram editor available');
+    if (window.showLoadingSpinner) window.showLoadingSpinner('Running rule checks\u2026');
     
     const diagramJson = window.diagramEditor.exportDiagram();
     return this.sendMessage(BridgeAction.CHECK_RULES, { diagram: diagramJson }, true)
@@ -464,11 +467,13 @@ class PythonInterface {
       .catch(error => {
         this.showNotification('Failed to check rules: ' + error.message, 'error');
         throw error;
-      });
+      })
+      .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
   }
 
   syncComponents() {
     if (!window.diagramEditor) return Promise.reject('No diagram editor available');
+    if (window.showLoadingSpinner) window.showLoadingSpinner('Syncing components\u2026');
     
     const diagramJson = window.diagramEditor.exportDiagram();
     return this.sendMessage(BridgeAction.SYNC_COMPONENTS, { diagram: diagramJson }, true)
@@ -479,7 +484,8 @@ class PythonInterface {
       .catch(error => {
         this.showNotification('Failed to sync components: ' + error.message, 'error');
         throw error;
-      });
+      })
+      .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
   }
 
   // === NAMED DOCUMENT OPERATIONS ===
@@ -509,6 +515,7 @@ class PythonInterface {
   }
 
   loadNamedDiagram(slug) {
+    if (window.showLoadingSpinner) window.showLoadingSpinner('Opening document\u2026');
     return this.sendMessage(BridgeAction.LOAD_NAMED_DIAGRAM, { slug }, true)
       .then(response => {
         if (response.success && response.diagram) {
@@ -521,7 +528,8 @@ class PythonInterface {
       .catch(error => {
         this.showNotification('Failed to open document: ' + error.message, 'error');
         throw error;
-      });
+      })
+      .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
   }
 
   deleteNamedDiagram(slug) {
