@@ -1134,8 +1134,9 @@
     /* === Fusion RULE PANEL === */
     .rule-panel {
       position: absolute;
-      bottom: var(--fusion-spacing-md);
-      right: var(--fusion-spacing-md);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       background: var(--fusion-panel-bg);
       border: 1px solid var(--fusion-panel-border);
       border-radius: var(--fusion-radius-medium);
@@ -1148,6 +1149,7 @@
       max-height: 420px;
       overflow-y: auto;
       color: var(--fusion-text-primary);
+      cursor: default;
     }
     
     .rule-panel h4 {
@@ -2474,10 +2476,11 @@
     
     <!-- Rule Check Panel -->
     <div class="rule-panel" id="rule-panel" style="display:none;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div id="rule-panel-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:grab;user-select:none;" title="Drag to move">
         <h4 style="margin:0;">Check Rules</h4>
         <button id="rule-panel-close" style="background:none;border:none;color:var(--fusion-text-secondary);cursor:pointer;font-size:16px;padding:0 4px;" title="Close">&times;</button>
       </div>
+      <div style="font-size:10px;color:var(--fusion-text-secondary);margin-bottom:6px;">Drag the title bar to move this panel</div>
       <div id="rule-checkboxes" style="margin-bottom:8px;">
         <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
           <input type="checkbox" data-rule="connectivity" checked> Connectivity &mdash; orphaned blocks

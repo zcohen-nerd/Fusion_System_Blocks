@@ -1503,6 +1503,10 @@ class ToolbarManager {
     if (!panel) return;
 
     if (panel.style.display === 'none') {
+      // Reset to centered position each time the panel opens
+      panel.style.top = '50%';
+      panel.style.left = '50%';
+      panel.style.transform = 'translate(-50%, -50%)';
       panel.style.display = 'block';
       this._setupRulePanelListeners();
       // Auto-run all checked rules on open so results are immediate
@@ -1546,6 +1550,39 @@ class ToolbarManager {
     if (noneBtn) {
       noneBtn.addEventListener('click', () => {
         panel.querySelectorAll('input[data-rule]').forEach(cb => { cb.checked = false; });
+      });
+    }
+
+    // --- Drag-to-move via title bar ---
+    const header = document.getElementById('rule-panel-header');
+    if (header) {
+      let dragging = false;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      header.addEventListener('mousedown', (e) => {
+        if (e.target.tagName === 'BUTTON') return; // don't drag on close btn
+        dragging = true;
+        const rect = panel.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        header.style.cursor = 'grabbing';
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        // Switch from centered transform to explicit top/left
+        panel.style.transform = 'none';
+        panel.style.top = (e.clientY - offsetY) + 'px';
+        panel.style.left = (e.clientX - offsetX) + 'px';
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (dragging) {
+          dragging = false;
+          header.style.cursor = 'grab';
+        }
       });
     }
   }

@@ -1080,16 +1080,19 @@ class DiagramRenderer {
         line.setAttribute('stroke-width', String(styling.strokeWidth));
       }
     } else {
-      // Cross-diagram stub — highlight the dashed stub line
-      const stubLine = group.querySelector('line[stroke="#FF6B35"]');
+      // Cross-diagram stub — highlight the visible (non-transparent) line
+      const stubLines = group.querySelectorAll('line');
+      const stubLine = stubLines.length > 1 ? stubLines[1] : stubLines[0]; // [0]=hit area, [1]=visible
       if (stubLine) {
         if (highlight) {
+          stubLine.setAttribute('data-orig-stroke', stubLine.getAttribute('stroke'));
+          stubLine.setAttribute('data-orig-width', stubLine.getAttribute('stroke-width'));
           stubLine.setAttribute('stroke-width', '4');
           stubLine.setAttribute('stroke', '#FFD700');
           group.setAttribute('data-highlighted', 'true');
         } else {
-          stubLine.setAttribute('stroke-width', '2');
-          stubLine.setAttribute('stroke', '#FF6B35');
+          stubLine.setAttribute('stroke', stubLine.getAttribute('data-orig-stroke') || '#666');
+          stubLine.setAttribute('stroke-width', stubLine.getAttribute('data-orig-width') || '2');
           group.removeAttribute('data-highlighted');
         }
       }
@@ -1103,10 +1106,11 @@ class DiagramRenderer {
     // Also clear any highlighted cross-diagram stubs
     if (this.svg) {
       this.svg.querySelectorAll('.cross-diagram-stub[data-highlighted]').forEach(g => {
-        const stubLine = g.querySelector('line[stroke="#FFD700"]');
+        const stubLines = g.querySelectorAll('line');
+        const stubLine = stubLines.length > 1 ? stubLines[1] : stubLines[0];
         if (stubLine) {
-          stubLine.setAttribute('stroke-width', '2');
-          stubLine.setAttribute('stroke', '#FF6B35');
+          stubLine.setAttribute('stroke', stubLine.getAttribute('data-orig-stroke') || '#666');
+          stubLine.setAttribute('stroke-width', stubLine.getAttribute('data-orig-width') || '2');
         }
         g.removeAttribute('data-highlighted');
       });
@@ -1256,10 +1260,16 @@ class DiagramRenderer {
         endY = startY;
       }
 
+      // --- Connection type styling (match regular connections) ---
+      const connType = (conn.type || 'auto').toLowerCase();
+      const styling = this.getConnectionStyling(connType);
+      const direction = (conn.arrowDirection || 'forward').toLowerCase();
+
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('class', 'cross-diagram-stub connection-group');
       g.setAttribute('data-connection-id', conn.id);
       g.setAttribute('data-cross-diagram', 'true');
+      g.setAttribute('data-connection-type', connType);
 
       // Wide invisible hit area for click / right-click
       const hitLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -1273,16 +1283,44 @@ class DiagramRenderer {
       hitLine.setAttribute('cursor', 'pointer');
       g.appendChild(hitLine);
 
-      // Dashed stub line
+      // Stub line — type-specific colour, width, and dash
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('x1', startX);
       line.setAttribute('y1', startY);
       line.setAttribute('x2', endX);
       line.setAttribute('y2', endY);
-      line.setAttribute('stroke', '#FF6B35');
-      line.setAttribute('stroke-width', '2');
-      line.setAttribute('stroke-dasharray', '4,2');
+      line.setAttribute('stroke', styling.stroke);
+      line.setAttribute('stroke-width', String(styling.strokeWidth));
+      // Overlay a short cross-diagram dash on the type dash
+      line.setAttribute('stroke-dasharray', styling.dashArray || '4,2');
       g.appendChild(line);
+
+      // --- Arrowhead ---
+      // For a stub, the "forward" tip points outward (toward remote block)
+      // and the "backward" tip points inward (toward local block).
+      const arrowSize = 8;
+      const drawArrowAt = (tipX, tipY, pointsRight) => {
+        const dir = pointsRight ? 1 : -1;
+        const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        poly.setAttribute('points',
+          `${tipX},${tipY} ${tipX - dir * arrowSize},${tipY - arrowSize / 2} ${tipX - dir * arrowSize},${tipY + arrowSize / 2}`);
+        poly.setAttribute('fill', styling.stroke);
+        g.appendChild(poly);
+      };
+
+      // Determine which end gets an arrow
+      const outwardRight = isOutgoing; // outgoing stub points right
+      if (direction === 'forward') {
+        // Arrow at stub tip (outward end)
+        drawArrowAt(endX, endY, outwardRight);
+      } else if (direction === 'backward') {
+        // Arrow at block side (inward end)
+        drawArrowAt(startX, startY, !outwardRight);
+      } else if (direction === 'bidirectional') {
+        drawArrowAt(endX, endY, outwardRight);
+        drawArrowAt(startX, startY, !outwardRight);
+      }
+      // direction === 'none' → no arrows
 
       // Flag/label background
       const labelX = isOutgoing ? endX + 4 : endX - 4;
