@@ -1244,6 +1244,13 @@ class SystemBlocksMain {
     // Always uses updateAllBlocks because renderConnection can't render
     // cross-diagram stubs (it fails when one block is in another diagram).
     const updateConn = (updates) => {
+      // Clear highlight tracking BEFORE re-render — updateAllBlocks
+      // destroys and recreates all SVG elements, so the subsequent
+      // hideConnectionContextMenu must NOT try to un-highlight the
+      // freshly-created stub (it would overwrite type-specific styling
+      // with defaults because data-orig-stroke is absent on new elements).
+      this._highlightedConnectionId = null;
+
       // Directly modify the connection reference (already the real object)
       Object.assign(connection, updates);
       // Also update via core for local connections (marks metadata modified)
