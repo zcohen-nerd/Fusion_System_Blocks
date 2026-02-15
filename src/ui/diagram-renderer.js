@@ -1139,12 +1139,45 @@ class DiagramRenderer {
 
     const blockIds = new Set((diagram.blocks || []).map(b => b.id));
 
-    (diagram.connections || []).forEach(conn => {
+    // Collect ALL cross-diagram connections: from this diagram, from child
+    // diagrams, and from parent/ancestor diagrams in the hierarchy stack.
+    const crossConns = [];
+    const seen = new Set();
+    const addIfCross = (conn) => {
+      if (seen.has(conn.id || (conn.fromBlock + '-' + conn.toBlock))) return;
       const fromLocal = blockIds.has(conn.fromBlock);
       const toLocal   = blockIds.has(conn.toBlock);
+      if (fromLocal !== toLocal) {
+        seen.add(conn.id || (conn.fromBlock + '-' + conn.toBlock));
+        crossConns.push(conn);
+      }
+    };
 
-      // Only render stubs where ONE end is local and the other is remote
-      if (fromLocal === toLocal) return; // both local (normal) or both missing
+    // 1. Current diagram's own connections
+    (diagram.connections || []).forEach(addIfCross);
+
+    // 2. Child diagram connections that reference a block in this diagram
+    const scanChildren = (blocks) => {
+      for (const b of (blocks || [])) {
+        if (b.childDiagram) {
+          (b.childDiagram.connections || []).forEach(addIfCross);
+          scanChildren(b.childDiagram.blocks);
+        }
+      }
+    };
+    scanChildren(diagram.blocks);
+
+    // 3. Parent / ancestor diagrams from the hierarchy stack
+    if (window.advancedFeatures && window.advancedFeatures._hierarchyStack) {
+      for (const entry of window.advancedFeatures._hierarchyStack) {
+        (entry.diagram.connections || []).forEach(addIfCross);
+        scanChildren(entry.diagram.blocks);
+      }
+    }
+
+    crossConns.forEach(conn => {
+      const fromLocal = blockIds.has(conn.fromBlock);
+      const toLocal   = blockIds.has(conn.toBlock);
 
       const localBlockId = fromLocal ? conn.fromBlock : conn.toBlock;
       const remoteBlockId = fromLocal ? conn.toBlock : conn.fromBlock;
@@ -1249,7 +1282,7 @@ class DiagramRenderer {
       g.appendChild(title);
 
       svg.appendChild(g);
-    });
+    }); // end crossConns.forEach
   }
 
   // ---- Annotation rendering ----

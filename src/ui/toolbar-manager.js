@@ -1494,9 +1494,11 @@ class ToolbarManager {
     const panel = document.getElementById('rule-panel');
     if (!panel) return;
 
-    if (panel.style.display === 'none' || !panel.style.display) {
-      panel.style.display = '';
+    if (panel.style.display === 'none') {
+      panel.style.display = 'block';
       this._setupRulePanelListeners();
+      // Auto-run all checked rules on open so results are immediate
+      this._runSelectedRules();
     } else {
       panel.style.display = 'none';
     }
