@@ -232,6 +232,9 @@ class SystemBlocksMain {
       // Do not start drag/select while in connection drawing mode
       if (this._connectionMode && this._connectionMode.active) return;
 
+      // Dimension pick mode — capture block clicks
+      if (this._dimensionMode && this._dimensionMode.active) return;
+
       const { x, y } = screenToSVG(e.clientX, e.clientY);
 
       // --- Port click: start connection mode from that block ---
@@ -548,6 +551,53 @@ class SystemBlocksMain {
         this.exitConnectionMode(svg);
         e.stopPropagation();
       }
+
+      // --- Dimension pick mode: pick blocks on mouseup ---
+      if (this._dimensionMode && this._dimensionMode.active) {
+        const { x, y } = screenToSVG(e.clientX, e.clientY);
+        let hitBlock = core.getBlockAt(x, y);
+        if (!hitBlock) hitBlock = core.getBlockAt(x, y, 8);
+
+        if (hitBlock) {
+          if (!this._dimensionMode.firstBlock) {
+            // First block picked
+            this._dimensionMode.firstBlock = hitBlock;
+            renderer.highlightBlock(hitBlock.id, true);
+            this._toast('Now click the second block for the dimension', 'info');
+
+            // Create temp dashed line from first block center
+            const w1 = hitBlock.width || 120;
+            const h1 = hitBlock.height || 80;
+            const cx = hitBlock.x + w1 / 2;
+            const cy = hitBlock.y + h1 / 2;
+            const tmpLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            tmpLine.setAttribute('x1', cx);
+            tmpLine.setAttribute('y1', cy);
+            tmpLine.setAttribute('x2', cx);
+            tmpLine.setAttribute('y2', cy);
+            tmpLine.setAttribute('stroke', '#FF6B35');
+            tmpLine.setAttribute('stroke-width', '1.5');
+            tmpLine.setAttribute('stroke-dasharray', '4,3');
+            tmpLine.setAttribute('pointer-events', 'none');
+            svg.appendChild(tmpLine);
+            this._dimensionMode.tempLine = tmpLine;
+          } else if (hitBlock.id !== this._dimensionMode.firstBlock.id) {
+            // Second block picked — create the dimension
+            const firstId = this._dimensionMode.firstBlock.id;
+            const secondId = hitBlock.id;
+            const label = prompt('Dimension label (leave blank for auto):', '');
+            if (window.toolbarManager) {
+              window.toolbarManager._addAnnotation('dimension', label || '', {
+                refBlockA: firstId,
+                refBlockB: secondId,
+              });
+            }
+            this.exitDimensionMode(svg);
+          }
+          e.stopPropagation();
+        }
+      }
+
       // Reset the flag so the NEXT mouseup can complete connections
       connectionStartedThisClick = false;
     });
@@ -637,13 +687,27 @@ class SystemBlocksMain {
     this._connectionModeExitTime = 0;
     this._connectionModeEntryTime = 0;
 
+    // =========================================================================
+    // DIMENSION PICK MODE — click first block, then second block
+    // =========================================================================
+    this._dimensionMode = {
+      active: false,
+      firstBlock: null,
+      tempLine: null
+    };
+
     svg.addEventListener('mousemove', (e) => {
-      if (!this._connectionMode.active || !this._connectionMode.tempLine) return;
-
-      const { x, y } = screenToSVG(e.clientX, e.clientY);
-
-      this._connectionMode.tempLine.setAttribute('x2', x);
-      this._connectionMode.tempLine.setAttribute('y2', y);
+      if (this._connectionMode.active && this._connectionMode.tempLine) {
+        const { x, y } = screenToSVG(e.clientX, e.clientY);
+        this._connectionMode.tempLine.setAttribute('x2', x);
+        this._connectionMode.tempLine.setAttribute('y2', y);
+      }
+      // Update dimension pick temp line
+      if (this._dimensionMode.active && this._dimensionMode.tempLine) {
+        const { x, y } = screenToSVG(e.clientX, e.clientY);
+        this._dimensionMode.tempLine.setAttribute('x2', x);
+        this._dimensionMode.tempLine.setAttribute('y2', y);
+      }
     });
 
     // Keep the click handler as an additional path for connection completion.
@@ -691,10 +755,13 @@ class SystemBlocksMain {
       e.stopPropagation();
     });
 
-    // Escape to cancel connection mode
+    // Escape to cancel connection mode or dimension mode
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this._connectionMode.active) {
         this.exitConnectionMode(svg);
+      }
+      if (e.key === 'Escape' && this._dimensionMode.active) {
+        this.exitDimensionMode(svg);
       }
       // Escape closes open modal dialogs
       if (e.key === 'Escape') {
@@ -1232,7 +1299,7 @@ class SystemBlocksMain {
       `${i + 1}. [${e.path}] ${e.block.name || e.block.id} (${e.block.type || 'generic'})`
     );
     const choice = prompt(
-      `Connect "${sourceBlock.name || sourceBlock.id}" to which block?\n\n` +
+      'Connect [' + (sourceBlock.name || sourceBlock.id) + '] to which block?\n\n' +
       lines.join('\n') +
       '\n\nEnter number:',
       '1'
@@ -1250,6 +1317,8 @@ class SystemBlocksMain {
     const conn = core.addConnection(sourceBlock.id, target.block.id, type, direction);
     if (conn) {
       renderer.renderConnection(conn);
+      // Re-render cross-diagram stubs so the new connection shows its flag
+      renderer.renderCrossDiagramStubs(core.diagram);
       if (features) features.saveState();
       if (window.pythonInterface) {
         window.pythonInterface.showNotification(
@@ -1318,6 +1387,37 @@ class SystemBlocksMain {
     this._connectionMode.sourceBlock = null;
     this._connectionMode.tempLine = null;
     this._connectionModeExitTime = performance.now();
+    if (svg) svg.style.cursor = '';
+  }
+
+  // ---- Dimension pick mode (issue #87) ----
+
+  /**
+   * Enter dimension-pick mode: user clicks first block, then second block
+   * to create a dimension annotation between them.
+   */
+  enterDimensionMode() {
+    const svg = document.getElementById('svg-canvas');
+    if (!svg) return;
+    this._dimensionMode.active = true;
+    this._dimensionMode.firstBlock = null;
+    this._dimensionMode.tempLine = null;
+    svg.style.cursor = 'crosshair';
+    this._toast('Click the first block for the dimension line', 'info');
+    logger.info('Dimension pick mode: click two blocks or press Escape');
+  }
+
+  exitDimensionMode(svg) {
+    if (!svg) svg = document.getElementById('svg-canvas');
+    if (this._dimensionMode.tempLine) {
+      this._dimensionMode.tempLine.remove();
+    }
+    if (this._dimensionMode.firstBlock && window.diagramRenderer) {
+      window.diagramRenderer.highlightBlock(this._dimensionMode.firstBlock.id, false);
+    }
+    this._dimensionMode.active = false;
+    this._dimensionMode.firstBlock = null;
+    this._dimensionMode.tempLine = null;
     if (svg) svg.style.cursor = '';
   }
 

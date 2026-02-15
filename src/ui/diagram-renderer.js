@@ -1114,10 +1114,142 @@ class DiagramRenderer {
       this.renderConnection(connection);
     });
 
+    // Render cross-diagram connection stubs for connections whose
+    // remote endpoint is not in this diagram view.
+    this.renderCrossDiagramStubs(diagram);
+
     // Render all annotations
     if (diagram.annotations) {
       diagram.annotations.forEach(ann => this.renderAnnotation(ann));
     }
+  }
+
+  // ---- Cross-diagram connection stubs ----
+
+  /**
+   * Render stub indicators for connections that reference blocks not
+   * present in the current diagram (i.e. cross-diagram connections).
+   * Each stub shows a short line + flag with the remote block name.
+   */
+  renderCrossDiagramStubs(diagram) {
+    // Clear any previous stubs
+    const svg = this.svg;
+    if (!svg) return;
+    svg.querySelectorAll('.cross-diagram-stub').forEach(el => el.remove());
+
+    const blockIds = new Set((diagram.blocks || []).map(b => b.id));
+
+    (diagram.connections || []).forEach(conn => {
+      const fromLocal = blockIds.has(conn.fromBlock);
+      const toLocal   = blockIds.has(conn.toBlock);
+
+      // Only render stubs where ONE end is local and the other is remote
+      if (fromLocal === toLocal) return; // both local (normal) or both missing
+
+      const localBlockId = fromLocal ? conn.fromBlock : conn.toBlock;
+      const remoteBlockId = fromLocal ? conn.toBlock : conn.fromBlock;
+      const isOutgoing = fromLocal; // stub goes OUT from a local block
+
+      const localBlock = diagram.blocks.find(b => b.id === localBlockId);
+      if (!localBlock) return;
+
+      // Try to resolve the remote block name from the hierarchy
+      let remoteName = remoteBlockId;
+      if (window.advancedFeatures && window.advancedFeatures._hierarchyStack) {
+        // Walk the hierarchy to find the block
+        const findInDiagram = (d) => {
+          for (const b of (d.blocks || [])) {
+            if (b.id === remoteBlockId) return b.name || b.id;
+            if (b.childDiagram) {
+              const found = findInDiagram(b.childDiagram);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        // Search from root
+        const stack = window.advancedFeatures._hierarchyStack;
+        const root = stack.length > 0 ? stack[0].diagram : diagram;
+        remoteName = findInDiagram(root) || remoteBlockId;
+      }
+
+      // Position the stub on the right side of the block (outgoing)
+      // or left side (incoming)
+      const w = localBlock.width || 120;
+      const h = localBlock.height || 80;
+      const stubLen = 30;
+      let startX, startY, endX, endY;
+
+      if (isOutgoing) {
+        startX = localBlock.x + w;
+        startY = localBlock.y + h / 2;
+        endX = startX + stubLen;
+        endY = startY;
+      } else {
+        startX = localBlock.x;
+        startY = localBlock.y + h / 2;
+        endX = startX - stubLen;
+        endY = startY;
+      }
+
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', 'cross-diagram-stub');
+
+      // Dashed stub line
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', startX);
+      line.setAttribute('y1', startY);
+      line.setAttribute('x2', endX);
+      line.setAttribute('y2', endY);
+      line.setAttribute('stroke', '#FF6B35');
+      line.setAttribute('stroke-width', '2');
+      line.setAttribute('stroke-dasharray', '4,2');
+      g.appendChild(line);
+
+      // Flag/label background
+      const labelX = isOutgoing ? endX + 4 : endX - 4;
+      const labelAnchor = isOutgoing ? 'start' : 'end';
+      const arrow = isOutgoing ? '\u2192 ' : '\u2190 ';
+
+      // Background rect (rendered after text to size it)
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', labelX);
+      text.setAttribute('y', endY + 4);
+      text.setAttribute('font-size', '10');
+      text.setAttribute('font-family', 'Arial, sans-serif');
+      text.setAttribute('fill', '#FF6B35');
+      text.setAttribute('font-weight', 'bold');
+      text.setAttribute('text-anchor', labelAnchor);
+      text.textContent = arrow + remoteName;
+
+      // Small circle at the end of stub (port indicator)
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', endX);
+      circle.setAttribute('cy', endY);
+      circle.setAttribute('r', '3');
+      circle.setAttribute('fill', '#FF6B35');
+      g.appendChild(circle);
+
+      // 🌐 icon prefix
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      icon.setAttribute('x', isOutgoing ? endX + 4 : endX - 4);
+      icon.setAttribute('y', endY - 8);
+      icon.setAttribute('font-size', '10');
+      icon.setAttribute('text-anchor', labelAnchor);
+      icon.textContent = '\uD83C\uDF10'; // 🌐
+      g.appendChild(icon);
+
+      g.appendChild(text);
+
+      // Add tooltip via title element
+      const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      title.textContent = (isOutgoing ? 'Outgoing' : 'Incoming') +
+        ' cross-diagram connection ' + (isOutgoing ? 'to' : 'from') +
+        ' "' + remoteName + '"';
+      g.appendChild(title);
+
+      svg.appendChild(g);
+    });
   }
 
   // ---- Annotation rendering ----

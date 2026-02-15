@@ -1141,19 +1141,23 @@ class ToolbarManager {
   }
 
   handleAddDimension() {
-    // Dimension annotation: show measurement between two selected blocks
-    if (!window.advancedFeatures || window.advancedFeatures.getSelectionCount() < 2) {
-      if (window.pythonInterface) {
-        window.pythonInterface.showNotification('Select exactly 2 blocks to add a dimension line', 'warning');
+    // If two blocks are already selected, create the dimension immediately
+    if (window.advancedFeatures && window.advancedFeatures.getSelectionCount() >= 2) {
+      const ids = window.advancedFeatures.getSelectedBlocks().slice(0, 2);
+      const blockA = this.editor.diagram.blocks.find(b => b.id === ids[0]);
+      const blockB = this.editor.diagram.blocks.find(b => b.id === ids[1]);
+      if (blockA && blockB) {
+        const label = prompt('Dimension label (leave blank for auto):', '');
+        this._addAnnotation('dimension', label || '', { refBlockA: ids[0], refBlockB: ids[1] });
+        return;
       }
-      return;
     }
-    const ids = window.advancedFeatures.getSelectedBlocks().slice(0, 2);
-    const blockA = this.editor.diagram.blocks.find(b => b.id === ids[0]);
-    const blockB = this.editor.diagram.blocks.find(b => b.id === ids[1]);
-    if (!blockA || !blockB) return;
-    const label = prompt('Dimension label (leave blank for auto):', '');
-    this._addAnnotation('dimension', label || '', { refBlockA: ids[0], refBlockB: ids[1] });
+    // Otherwise enter dimension pick mode — user clicks two blocks
+    if (window.SystemBlocksMain) {
+      window.SystemBlocksMain.enterDimensionMode();
+    } else if (window.pythonInterface) {
+      window.pythonInterface.showNotification('Select exactly 2 blocks to add a dimension line', 'warning');
+    }
   }
 
   handleAddCallout() {
@@ -1486,148 +1490,280 @@ class ToolbarManager {
   }
 
   handleCheckRules() {
-    try {
-      if (window.pythonInterface) {
-        window.pythonInterface.checkRules()
-          .catch(error => {
-            logger.error('Check rules failed via bridge:', error);
-            // Fall back to client-side checks
-            this._runClientSideRuleChecks();
-          });
-      } else {
-        // No Python bridge — run checks client-side
-        this._runClientSideRuleChecks();
-      }
-    } catch (error) {
-      logger.error('Check rules failed:', error);
-      this._runClientSideRuleChecks();
+    // Toggle the rule panel visibility
+    const panel = document.getElementById('rule-panel');
+    if (!panel) return;
+
+    if (panel.style.display === 'none' || !panel.style.display) {
+      panel.style.display = '';
+      this._setupRulePanelListeners();
+    } else {
+      panel.style.display = 'none';
     }
   }
 
   /**
-   * Run diagram rule checks entirely in JavaScript and display detailed results.
-   * This is used as a fallback when the Python bridge is unavailable,
-   * and also ensures users always see what was checked.
+   * One-time setup of event listeners for the rule check panel.
    * @private
    */
-  _runClientSideRuleChecks() {
+  _setupRulePanelListeners() {
+    if (this._rulePanelBound) return;
+    this._rulePanelBound = true;
+
+    const panel = document.getElementById('rule-panel');
+    if (!panel) return;
+
+    // Close button
+    const closeBtn = document.getElementById('rule-panel-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
+    }
+
+    // Run button
+    const runBtn = document.getElementById('rule-run-btn');
+    if (runBtn) {
+      runBtn.addEventListener('click', () => this._runSelectedRules());
+    }
+
+    // Select All / None buttons
+    const allBtn = document.getElementById('rule-select-all-btn');
+    const noneBtn = document.getElementById('rule-select-none-btn');
+    if (allBtn) {
+      allBtn.addEventListener('click', () => {
+        panel.querySelectorAll('input[data-rule]').forEach(cb => { cb.checked = true; });
+      });
+    }
+    if (noneBtn) {
+      noneBtn.addEventListener('click', () => {
+        panel.querySelectorAll('input[data-rule]').forEach(cb => { cb.checked = false; });
+      });
+    }
+  }
+
+  /**
+   * Run only the rules whose checkboxes are checked in the panel,
+   * then display results inline with clickable block highlights.
+   * @private
+   */
+  _runSelectedRules() {
     if (!this.editor || !this.editor.diagram) return;
     const diagram = this.editor.diagram;
+
+    // Determine which rules are checked
+    const panel = document.getElementById('rule-panel');
+    const checked = new Set();
+    if (panel) {
+      panel.querySelectorAll('input[data-rule]:checked').forEach(cb => {
+        checked.add(cb.getAttribute('data-rule'));
+      });
+    }
+    if (checked.size === 0) {
+      const results = document.getElementById('rule-results');
+      if (results) results.innerHTML = '<div style="color:var(--fusion-text-secondary);font-size:12px;padding:4px;">No rules selected. Check at least one rule above.</div>';
+      return;
+    }
+
     const results = [];
 
-    // Rule 1: Orphaned blocks (no connections)
-    const connectedIds = new Set();
-    (diagram.connections || []).forEach(c => {
-      connectedIds.add(c.fromBlock);
-      connectedIds.add(c.toBlock);
+    // Rule: Connectivity — orphaned blocks
+    if (checked.has('connectivity')) {
+      const connectedIds = new Set();
+      (diagram.connections || []).forEach(c => {
+        connectedIds.add(c.fromBlock);
+        connectedIds.add(c.toBlock);
+      });
+      const orphans = diagram.blocks.filter(b => !connectedIds.has(b.id));
+      if (orphans.length > 0 && diagram.blocks.length > 1) {
+        results.push({
+          success: false,
+          rule: 'Connectivity',
+          severity: 'warning',
+          message: `${orphans.length} block(s) have no connections`,
+          details: orphans.map(b => b.name || b.id),
+          blocks: orphans.map(b => b.id),
+        });
+      } else {
+        results.push({ success: true, rule: 'Connectivity', message: 'All blocks are connected' });
+      }
+    }
+
+    // Rule: Implementation Status
+    if (checked.has('implementation_completeness')) {
+      const placeholders = diagram.blocks.filter(b => (b.status || 'Placeholder') === 'Placeholder');
+      if (placeholders.length > 0) {
+        results.push({
+          success: false,
+          rule: 'Implementation Status',
+          severity: 'warning',
+          message: `${placeholders.length} block(s) in Placeholder status`,
+          details: placeholders.map(b => b.name || b.id),
+          blocks: placeholders.map(b => b.id),
+        });
+      } else {
+        results.push({ success: true, rule: 'Implementation Status', message: 'All blocks have status set' });
+      }
+    }
+
+    // Rule: Unique Names
+    if (checked.has('unique_names')) {
+      const nameCount = {};
+      diagram.blocks.forEach(b => {
+        const name = b.name || '';
+        nameCount[name] = (nameCount[name] || 0) + 1;
+      });
+      const dupes = Object.entries(nameCount).filter(([, count]) => count > 1);
+      if (dupes.length > 0) {
+        const dupeBlocks = diagram.blocks.filter(b => nameCount[b.name || ''] > 1);
+        results.push({
+          success: false,
+          rule: 'Unique Names',
+          severity: 'warning',
+          message: `Duplicate names found`,
+          details: dupes.map(([name, count]) => `"${name}" (x${count})`),
+          blocks: dupeBlocks.map(b => b.id),
+        });
+      } else {
+        results.push({ success: true, rule: 'Unique Names', message: 'All block names are unique' });
+      }
+    }
+
+    // Rule: No Self-Connections
+    if (checked.has('no_self_connections')) {
+      const selfConns = (diagram.connections || []).filter(c => c.fromBlock === c.toBlock);
+      if (selfConns.length > 0) {
+        results.push({
+          success: false,
+          rule: 'No Self-Connections',
+          severity: 'error',
+          message: `${selfConns.length} self-connection(s) detected`,
+          blocks: selfConns.map(c => c.fromBlock),
+        });
+      } else {
+        results.push({ success: true, rule: 'No Self-Connections', message: 'No self-connections found' });
+      }
+    }
+
+    // Rule: Named Blocks (default names)
+    if (checked.has('named_blocks')) {
+      const defaultNames = diagram.blocks.filter(b => /^New \w+ Block$/.test(b.name || ''));
+      if (defaultNames.length > 0) {
+        results.push({
+          success: false,
+          rule: 'Named Blocks',
+          severity: 'warning',
+          message: `${defaultNames.length} block(s) with default names`,
+          details: defaultNames.map(b => b.name),
+          blocks: defaultNames.map(b => b.id),
+        });
+      } else {
+        results.push({ success: true, rule: 'Named Blocks', message: 'All blocks have been renamed' });
+      }
+    }
+
+    // Display results inline in the panel
+    this._displayRuleResults(results);
+  }
+
+  /**
+   * Render rule check results into the rule-results container with
+   * clickable block highlights.
+   * @private
+   */
+  _displayRuleResults(results) {
+    const container = document.getElementById('rule-results');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Clear previous highlights
+    if (window.diagramRenderer) {
+      window.diagramRenderer.clearConnectionHighlights();
+      if (this.editor && this.editor.diagram) {
+        this.editor.diagram.blocks.forEach(b => {
+          window.diagramRenderer.highlightBlock(b.id, false);
+        });
+      }
+    }
+
+    const failures = results.filter(r => !r.success);
+    const total = results.length;
+    const passed = total - failures.length;
+
+    // Summary line
+    const summary = document.createElement('div');
+    summary.style.cssText = 'font-size:12px;font-weight:bold;padding:4px 0;margin-bottom:4px;border-bottom:1px solid var(--fusion-panel-border);';
+    summary.textContent = `${passed}/${total} rules passed` +
+      (failures.length > 0 ? ` \u2014 ${failures.length} issue(s)` : ' \u2714');
+    summary.style.color = failures.length > 0 ? 'var(--fusion-status-warning)' : 'var(--fusion-accent-green)';
+    container.appendChild(summary);
+
+    results.forEach(result => {
+      const row = document.createElement('div');
+      row.style.cssText = 'padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:11px;';
+
+      const icon = result.success ? '\u2705' : (result.severity === 'error' ? '\u274C' : '\u26A0\uFE0F');
+      const statusColor = result.success ? 'var(--fusion-accent-green)' : 'var(--fusion-status-warning)';
+
+      let html = `<div style="display:flex;align-items:center;gap:4px;">
+        <span>${icon}</span>
+        <strong style="color:${statusColor};">${result.rule}</strong>
+        <span style="color:var(--fusion-text-secondary);margin-left:auto;font-size:10px;">${result.success ? 'pass' : 'fail'}</span>
+      </div>
+      <div style="color:var(--fusion-text-secondary);font-size:10px;padding-left:20px;">${result.message}</div>`;
+
+      // Add clickable detail items
+      if (result.details && result.details.length > 0 && result.blocks) {
+        html += '<div style="padding-left:20px;margin-top:2px;">';
+        result.details.forEach((detail, i) => {
+          const blockId = result.blocks[i] || '';
+          html += `<span class="rule-block-link" data-block-id="${blockId}" style="color:#FF6B35;cursor:pointer;font-size:10px;text-decoration:underline;margin-right:6px;">${detail}</span>`;
+        });
+        html += '</div>';
+      } else if (!result.success && result.blocks && result.blocks.length > 0) {
+        // No details array but we have block ids — make them clickable
+        const blockNames = result.blocks.map(id => {
+          const b = this.editor.diagram.blocks.find(bl => bl.id === id);
+          return b ? (b.name || b.id) : id;
+        });
+        html += '<div style="padding-left:20px;margin-top:2px;">';
+        blockNames.forEach((name, i) => {
+          const blockId = result.blocks[i] || '';
+          html += `<span class="rule-block-link" data-block-id="${blockId}" style="color:#FF6B35;cursor:pointer;font-size:10px;text-decoration:underline;margin-right:6px;">${name}</span>`;
+        });
+        html += '</div>';
+      }
+
+      row.innerHTML = html;
+      container.appendChild(row);
     });
-    const orphans = diagram.blocks.filter(b => !connectedIds.has(b.id));
-    if (orphans.length > 0 && diagram.blocks.length > 1) {
-      results.push({
-        success: false,
-        rule: 'connectivity',
-        severity: 'warning',
-        message: `${orphans.length} block(s) have no connections: ${orphans.map(b => b.name || b.id).join(', ')}`,
-        blocks: orphans.map(b => b.id),
-      });
-    } else {
-      results.push({
-        success: true,
-        rule: 'connectivity',
-        message: 'All blocks are connected',
-      });
-    }
 
-    // Rule 2: Placeholder status check
-    const placeholders = diagram.blocks.filter(b => (b.status || 'Placeholder') === 'Placeholder');
-    if (placeholders.length > 0) {
-      results.push({
-        success: false,
-        rule: 'implementation_completeness',
-        severity: 'warning',
-        message: `${placeholders.length} block(s) still in Placeholder status: ${placeholders.map(b => b.name || b.id).join(', ')}`,
-        blocks: placeholders.map(b => b.id),
+    // Wire up click handlers for block links
+    container.querySelectorAll('.rule-block-link').forEach(link => {
+      link.addEventListener('click', () => {
+        const blockId = link.getAttribute('data-block-id');
+        if (!blockId) return;
+        // Clear previous highlights
+        if (window.diagramRenderer && this.editor && this.editor.diagram) {
+          this.editor.diagram.blocks.forEach(b => {
+            window.diagramRenderer.highlightBlock(b.id, false);
+          });
+          // Highlight this block
+          window.diagramRenderer.highlightBlock(blockId, true);
+        }
+        // Also select the block in the editor
+        if (this.editor) {
+          this.editor.selectBlock(blockId);
+        }
       });
-    } else {
-      results.push({
-        success: true,
-        rule: 'implementation_completeness',
-        message: 'All blocks have implementation status set',
-      });
-    }
-
-    // Rule 3: Duplicate block names
-    const nameCount = {};
-    diagram.blocks.forEach(b => {
-      const name = b.name || '';
-      nameCount[name] = (nameCount[name] || 0) + 1;
     });
-    const dupes = Object.entries(nameCount).filter(([, count]) => count > 1);
-    if (dupes.length > 0) {
-      results.push({
-        success: false,
-        rule: 'unique_names',
-        severity: 'warning',
-        message: `Duplicate block names: ${dupes.map(([name, count]) => `"${name}" (×${count})`).join(', ')}`,
-      });
-    } else {
-      results.push({
-        success: true,
-        rule: 'unique_names',
-        message: 'All block names are unique',
-      });
-    }
 
-    // Rule 4: Self-connections
-    const selfConns = (diagram.connections || []).filter(c => c.fromBlock === c.toBlock);
-    if (selfConns.length > 0) {
-      results.push({
-        success: false,
-        rule: 'no_self_connections',
-        severity: 'error',
-        message: `${selfConns.length} self-connection(s) detected`,
-        blocks: selfConns.map(c => c.fromBlock),
+    // Auto-highlight all failing blocks
+    failures.forEach(r => {
+      (r.blocks || []).forEach(bid => {
+        if (window.diagramRenderer) {
+          window.diagramRenderer.highlightBlock(bid, true);
+        }
       });
-    } else {
-      results.push({
-        success: true,
-        rule: 'no_self_connections',
-        message: 'No self-connections found',
-      });
-    }
-
-    // Rule 5: Blocks with default names
-    const defaultNames = diagram.blocks.filter(b => /^New \w+ Block$/.test(b.name || ''));
-    if (defaultNames.length > 0) {
-      results.push({
-        success: false,
-        rule: 'named_blocks',
-        severity: 'warning',
-        message: `${defaultNames.length} block(s) still have default names: ${defaultNames.map(b => b.name).join(', ')}`,
-        blocks: defaultNames.map(b => b.id),
-      });
-    } else {
-      results.push({
-        success: true,
-        rule: 'named_blocks',
-        message: 'All blocks have been renamed from defaults',
-      });
-    }
-
-    // Display results using the same UI as the Python bridge
-    if (window.pythonInterface && window.pythonInterface.displayRuleResults) {
-      window.pythonInterface.displayRuleResults(results);
-    } else {
-      // Minimal fallback notification
-      const failures = results.filter(r => !r.success);
-      const total = results.length;
-      const passed = total - failures.length;
-      const summary = `Rule check: ${passed}/${total} passed` +
-        (failures.length > 0 ? ` — ${failures.length} issue(s) found` : '');
-      alert(summary + '\n\n' + results.map(r =>
-        (r.success ? '✅' : '⚠️') + ' ' + r.rule + ': ' + r.message
-      ).join('\n'));
-    }
+    });
   }
 
   // === HIERARCHY NAVIGATION ===

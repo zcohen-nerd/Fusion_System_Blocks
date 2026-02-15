@@ -1143,8 +1143,9 @@
       font-size: var(--fusion-font-size-small);
       box-shadow: var(--fusion-shadow-medium);
       z-index: 100;
-      max-width: 350px;
-      max-height: 200px;
+      max-width: 380px;
+      min-width: 300px;
+      max-height: 420px;
       overflow-y: auto;
       color: var(--fusion-text-primary);
     }
@@ -2471,10 +2472,35 @@
       </div>
     </div>
     
-    <!-- Rule Results Panel -->
+    <!-- Rule Check Panel -->
     <div class="rule-panel" id="rule-panel" style="display:none;">
-      <h4>Rule Check Results</h4>
-      <div id="rule-results"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h4 style="margin:0;">Check Rules</h4>
+        <button id="rule-panel-close" style="background:none;border:none;color:var(--fusion-text-secondary);cursor:pointer;font-size:16px;padding:0 4px;" title="Close">&times;</button>
+      </div>
+      <div id="rule-checkboxes" style="margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="connectivity" checked> Connectivity &mdash; orphaned blocks
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="implementation_completeness" checked> Implementation Status &mdash; placeholder blocks
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="unique_names" checked> Unique Names &mdash; duplicate block names
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="no_self_connections" checked> No Self-Connections
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="named_blocks" checked> Named Blocks &mdash; default names
+        </label>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <button id="rule-run-btn" class="fusion-button primary" style="flex:1;padding:4px 8px;font-size:12px;">&#9654; Run Selected</button>
+        <button id="rule-select-all-btn" class="fusion-button" style="padding:4px 8px;font-size:12px;">All</button>
+        <button id="rule-select-none-btn" class="fusion-button" style="padding:4px 8px;font-size:12px;">None</button>
+      </div>
+      <div id="rule-results" style="max-height:150px;overflow-y:auto;"></div>
     </div>
   </div>
   
