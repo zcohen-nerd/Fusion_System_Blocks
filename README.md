@@ -31,7 +31,7 @@ Fusion System Blocks adds a **system block diagram palette** directly inside Fus
 - Export reports: BOM, connection matrix, pin map, PDF, SVG, and more.
 
 <p align="center">
-  <img src="docs/images/Blank%20Canvas.png" alt="Blank canvas – the diagram palette as it appears when first opened" width="720" />
+  <img src="docs/Images/Blank%20Canvas.png" alt="Blank canvas – the diagram palette as it appears when first opened" width="720" />
 </p>
 <p align="center"><em>The System Blocks palette, ready for a new diagram.</em></p>
 
@@ -99,7 +99,7 @@ A **system block** is a rectangle (or other shape) on the diagram that represent
 6. Press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save the diagram inside the Fusion document.
 
 <p align="center">
-  <img src="docs/images/System%20Diagram.png" alt="A system diagram built in Fusion System Blocks" width="720" />
+  <img src="docs/Images/System%20Diagram.png" alt="A system diagram built in Fusion System Blocks" width="720" />
 </p>
 <p align="center"><em>An example system diagram with blocks, connections, and hierarchy.</em></p>
 
