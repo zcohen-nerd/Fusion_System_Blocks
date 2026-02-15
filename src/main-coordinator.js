@@ -649,7 +649,12 @@ class SystemBlocksMain {
         const connGroup = e.target.closest('[data-connection-id]');
         if (connGroup) {
           const connectionId = connGroup.getAttribute('data-connection-id');
-          const connection = core.diagram.connections.find(c => c.id === connectionId);
+          // Search current diagram first, then cross-diagram
+          let connection = core.diagram.connections.find(c => c.id === connectionId);
+          if (!connection) {
+            const match = this._findCrossDiagramConnection(connectionId, core);
+            if (match) connection = match.connection;
+          }
           if (connection) {
             this.showConnectionContextMenu(e.clientX, e.clientY, connection, core, renderer, features);
             return;
@@ -1155,6 +1160,44 @@ class SystemBlocksMain {
   // =========================================================================
   // CONNECTION CONTEXT MENU
   // =========================================================================
+
+  /**
+   * Find a cross-diagram connection object and its owning diagram.
+   * Searches the current diagram, child diagrams, and ancestor diagrams.
+   * @returns {{ connection, diagram }|null}
+   */
+  _findCrossDiagramConnection(connectionId, core) {
+    // 1. Current diagram
+    const local = core.diagram.connections.find(c => c.id === connectionId);
+    if (local) return { connection: local, diagram: core.diagram };
+
+    // 2. Child diagrams (recursive)
+    const searchChildren = (blocks) => {
+      for (const b of (blocks || [])) {
+        if (b.childDiagram) {
+          const found = (b.childDiagram.connections || []).find(c => c.id === connectionId);
+          if (found) return { connection: found, diagram: b.childDiagram };
+          const deeper = searchChildren(b.childDiagram.blocks);
+          if (deeper) return deeper;
+        }
+      }
+      return null;
+    };
+    const fromChild = searchChildren(core.diagram.blocks);
+    if (fromChild) return fromChild;
+
+    // 3. Ancestor diagrams in the hierarchy stack
+    if (window.advancedFeatures && window.advancedFeatures._hierarchyStack) {
+      for (const entry of window.advancedFeatures._hierarchyStack) {
+        const found = (entry.diagram.connections || []).find(c => c.id === connectionId);
+        if (found) return { connection: found, diagram: entry.diagram };
+        const fromAncChild = searchChildren(entry.diagram.blocks);
+        if (fromAncChild) return fromAncChild;
+      }
+    }
+    return null;
+  }
+
   showConnectionContextMenu(clientX, clientY, connection, core, renderer, features) {
     this.hideContextMenu();
     this.hideConnectionContextMenu();
@@ -1162,6 +1205,9 @@ class SystemBlocksMain {
     // Highlight the targeted connection while menu is open
     renderer.highlightConnection(connection.id, true);
     this._highlightedConnectionId = connection.id;
+
+    // Determine if this is a cross-diagram connection
+    const isCross = !core.diagram.connections.some(c => c.id === connection.id);
 
     const menu = document.getElementById('connection-context-menu');
     if (!menu) return;
@@ -1171,14 +1217,28 @@ class SystemBlocksMain {
     menu.parentNode.replaceChild(freshMenu, menu);
     freshMenu.id = 'connection-context-menu';
 
+    // Helper: update a cross-diagram or local connection and re-render
+    const updateConn = (updates) => {
+      if (isCross) {
+        const match = this._findCrossDiagramConnection(connection.id, core);
+        if (match) Object.assign(match.connection, updates);
+      } else {
+        core.updateConnection(connection.id, updates);
+      }
+      // Re-render: for cross-diagram stubs we need updateAllBlocks
+      if (isCross) {
+        renderer.updateAllBlocks(core.diagram);
+      } else {
+        renderer.renderConnection(core.diagram.connections.find(c => c.id === connection.id));
+      }
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
+    };
+
     // --- Type submenu ---
     freshMenu.querySelectorAll('[data-conn-type]').forEach(item => {
       item.addEventListener('click', (e) => {
         e.stopPropagation();
-        const newType = item.getAttribute('data-conn-type');
-        core.updateConnection(connection.id, { type: newType });
-        renderer.renderConnection(core.diagram.connections.find(c => c.id === connection.id));
-        if (window.advancedFeatures) window.advancedFeatures.saveState();
+        updateConn({ type: item.getAttribute('data-conn-type') });
         this.hideConnectionContextMenu();
       });
     });
@@ -1187,10 +1247,7 @@ class SystemBlocksMain {
     freshMenu.querySelectorAll('[data-conn-direction]').forEach(item => {
       item.addEventListener('click', (e) => {
         e.stopPropagation();
-        const newDir = item.getAttribute('data-conn-direction');
-        core.updateConnection(connection.id, { arrowDirection: newDir });
-        renderer.renderConnection(core.diagram.connections.find(c => c.id === connection.id));
-        if (window.advancedFeatures) window.advancedFeatures.saveState();
+        updateConn({ arrowDirection: item.getAttribute('data-conn-direction') });
         this.hideConnectionContextMenu();
       });
     });
@@ -1200,8 +1257,10 @@ class SystemBlocksMain {
       this.hideConnectionContextMenu();
       if (window.advancedFeatures) {
         window.advancedFeatures.clearSelection();
-        if (connection.fromBlock) window.advancedFeatures.addToSelection(connection.fromBlock);
-        if (connection.toBlock) window.advancedFeatures.addToSelection(connection.toBlock);
+        // Only select blocks that exist in the current diagram
+        const blockIds = new Set(core.diagram.blocks.map(b => b.id));
+        if (blockIds.has(connection.fromBlock)) window.advancedFeatures.addToSelection(connection.fromBlock);
+        if (blockIds.has(connection.toBlock)) window.advancedFeatures.addToSelection(connection.toBlock);
       }
       renderer.updateAllBlocks(core.diagram);
     });
@@ -1210,7 +1269,14 @@ class SystemBlocksMain {
     this._ctxAction(freshMenu, 'ctx-conn-delete', () => {
       this.hideConnectionContextMenu();
       if (window.advancedFeatures) window.advancedFeatures.saveState();
-      core.removeConnection(connection.id);
+      if (isCross) {
+        const match = this._findCrossDiagramConnection(connection.id, core);
+        if (match) {
+          match.diagram.connections = match.diagram.connections.filter(c => c.id !== connection.id);
+        }
+      } else {
+        core.removeConnection(connection.id);
+      }
       renderer.updateAllBlocks(core.diagram);
       this._updateMinimap();
     });

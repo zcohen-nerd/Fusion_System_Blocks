@@ -1272,9 +1272,17 @@ class ToolbarManager {
       this.editor.clearSelection();
       if (window.advancedFeatures) window.advancedFeatures.saveState();
     } else if (window.SystemBlocksMain && window.SystemBlocksMain._selectedConnection) {
-      // Delete the selected connection
+      // Delete the selected connection (local or cross-diagram)
       const connId = window.SystemBlocksMain._selectedConnection;
-      this.editor.removeConnection(connId);
+      const localConn = this.editor.diagram.connections.find(c => c.id === connId);
+      if (localConn) {
+        this.editor.removeConnection(connId);
+      } else if (window.SystemBlocksMain._findCrossDiagramConnection) {
+        const match = window.SystemBlocksMain._findCrossDiagramConnection(connId, this.editor);
+        if (match) {
+          match.diagram.connections = match.diagram.connections.filter(c => c.id !== connId);
+        }
+      }
       this.renderer.clearConnectionHighlights();
       window.SystemBlocksMain._selectedConnection = null;
       this.renderer.updateAllBlocks(this.editor.diagram);

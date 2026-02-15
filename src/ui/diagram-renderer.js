@@ -1060,19 +1060,39 @@ class DiagramRenderer {
   }
 
   highlightConnection(connectionId, highlight = true) {
-    const group = this.connectionElements.get(connectionId);
+    let group = this.connectionElements.get(connectionId);
+    // Also check cross-diagram stubs which are not in connectionElements
+    if (!group && this.svg) {
+      group = this.svg.querySelector(`.cross-diagram-stub[data-connection-id="${connectionId}"]`);
+    }
     if (!group) return;
+
     const line = group.querySelector('.connection-line');
-    if (!line) return;
-    if (highlight) {
-      line.setAttribute('stroke', '#FF6B35');
-      line.setAttribute('stroke-width', '3');
+    if (line) {
+      // Regular connection path
+      if (highlight) {
+        line.setAttribute('stroke', '#FF6B35');
+        line.setAttribute('stroke-width', '3');
+      } else {
+        const connType = group.getAttribute('data-connection-type') || 'auto';
+        const styling = this.getConnectionStyling(connType);
+        line.setAttribute('stroke', styling.stroke);
+        line.setAttribute('stroke-width', String(styling.strokeWidth));
+      }
     } else {
-      // Restore type-specific styling
-      const connType = group.getAttribute('data-connection-type') || 'auto';
-      const styling = this.getConnectionStyling(connType);
-      line.setAttribute('stroke', styling.stroke);
-      line.setAttribute('stroke-width', String(styling.strokeWidth));
+      // Cross-diagram stub — highlight the dashed stub line
+      const stubLine = group.querySelector('line[stroke="#FF6B35"]');
+      if (stubLine) {
+        if (highlight) {
+          stubLine.setAttribute('stroke-width', '4');
+          stubLine.setAttribute('stroke', '#FFD700');
+          group.setAttribute('data-highlighted', 'true');
+        } else {
+          stubLine.setAttribute('stroke-width', '2');
+          stubLine.setAttribute('stroke', '#FF6B35');
+          group.removeAttribute('data-highlighted');
+        }
+      }
     }
   }
 
@@ -1080,6 +1100,17 @@ class DiagramRenderer {
     this.connectionElements.forEach((group, id) => {
       this.highlightConnection(id, false);
     });
+    // Also clear any highlighted cross-diagram stubs
+    if (this.svg) {
+      this.svg.querySelectorAll('.cross-diagram-stub[data-highlighted]').forEach(g => {
+        const stubLine = g.querySelector('line[stroke="#FFD700"]');
+        if (stubLine) {
+          stubLine.setAttribute('stroke-width', '2');
+          stubLine.setAttribute('stroke', '#FF6B35');
+        }
+        g.removeAttribute('data-highlighted');
+      });
+    }
   }
 
   updateAllBlocks(diagram) {
@@ -1226,7 +1257,21 @@ class DiagramRenderer {
       }
 
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      g.setAttribute('class', 'cross-diagram-stub');
+      g.setAttribute('class', 'cross-diagram-stub connection-group');
+      g.setAttribute('data-connection-id', conn.id);
+      g.setAttribute('data-cross-diagram', 'true');
+
+      // Wide invisible hit area for click / right-click
+      const hitLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      hitLine.setAttribute('x1', startX);
+      hitLine.setAttribute('y1', startY);
+      hitLine.setAttribute('x2', endX);
+      hitLine.setAttribute('y2', endY);
+      hitLine.setAttribute('stroke', 'transparent');
+      hitLine.setAttribute('stroke-width', '14');
+      hitLine.setAttribute('pointer-events', 'stroke');
+      hitLine.setAttribute('cursor', 'pointer');
+      g.appendChild(hitLine);
 
       // Dashed stub line
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
