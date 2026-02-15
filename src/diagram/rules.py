@@ -5,6 +5,8 @@ Provides functions to check logic level compatibility, power budget,
 implementation completeness, and other design rules.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 
