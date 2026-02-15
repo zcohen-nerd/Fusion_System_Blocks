@@ -1274,14 +1274,11 @@ class ToolbarManager {
     } else if (window.SystemBlocksMain && window.SystemBlocksMain._selectedConnection) {
       // Delete the selected connection (local or cross-diagram)
       const connId = window.SystemBlocksMain._selectedConnection;
-      const localConn = this.editor.diagram.connections.find(c => c.id === connId);
-      if (localConn) {
-        this.editor.removeConnection(connId);
-      } else if (window.SystemBlocksMain._findCrossDiagramConnection) {
-        const match = window.SystemBlocksMain._findCrossDiagramConnection(connId, this.editor);
-        if (match) {
-          match.diagram.connections = match.diagram.connections.filter(c => c.id !== connId);
-        }
+      // Remove from current diagram
+      this.editor.diagram.connections = this.editor.diagram.connections.filter(c => c.id !== connId);
+      // Also purge from hierarchy stack snapshots and child diagrams
+      if (window.SystemBlocksMain._purgeConnectionFromAllSources) {
+        window.SystemBlocksMain._purgeConnectionFromAllSources(connId, this.editor);
       }
       this.renderer.clearConnectionHighlights();
       window.SystemBlocksMain._selectedConnection = null;

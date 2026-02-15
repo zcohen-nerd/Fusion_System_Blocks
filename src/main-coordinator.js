@@ -1166,6 +1166,29 @@ class SystemBlocksMain {
    * Searches the current diagram, child diagrams, and ancestor diagrams.
    * @returns {{ connection, diagram }|null}
    */
+  /**
+   * Remove a connection ID from every diagram in the hierarchy:
+   * current diagram's children and all ancestor stack snapshots.
+   * This prevents "ghost" stubs from reappearing after deletion.
+   */
+  _purgeConnectionFromAllSources(connectionId, core) {
+    const purgeFromChildren = (blocks) => {
+      for (const b of (blocks || [])) {
+        if (b.childDiagram) {
+          b.childDiagram.connections = (b.childDiagram.connections || []).filter(c => c.id !== connectionId);
+          purgeFromChildren(b.childDiagram.blocks);
+        }
+      }
+    };
+    purgeFromChildren(core.diagram.blocks);
+    if (window.advancedFeatures && window.advancedFeatures._hierarchyStack) {
+      for (const entry of window.advancedFeatures._hierarchyStack) {
+        entry.diagram.connections = (entry.diagram.connections || []).filter(c => c.id !== connectionId);
+        purgeFromChildren(entry.diagram.blocks);
+      }
+    }
+  }
+
   _findCrossDiagramConnection(connectionId, core) {
     // 1. Current diagram
     const local = core.diagram.connections.find(c => c.id === connectionId);
@@ -1217,20 +1240,19 @@ class SystemBlocksMain {
     menu.parentNode.replaceChild(freshMenu, menu);
     freshMenu.id = 'connection-context-menu';
 
-    // Helper: update a cross-diagram or local connection and re-render
+    // Helper: update a connection (local or cross-diagram) and re-render.
+    // Always uses updateAllBlocks because renderConnection can't render
+    // cross-diagram stubs (it fails when one block is in another diagram).
     const updateConn = (updates) => {
-      if (isCross) {
-        const match = this._findCrossDiagramConnection(connection.id, core);
-        if (match) Object.assign(match.connection, updates);
-      } else {
+      // Directly modify the connection reference (already the real object)
+      Object.assign(connection, updates);
+      // Also update via core for local connections (marks metadata modified)
+      if (!isCross) {
         core.updateConnection(connection.id, updates);
       }
-      // Re-render: for cross-diagram stubs we need updateAllBlocks
-      if (isCross) {
-        renderer.updateAllBlocks(core.diagram);
-      } else {
-        renderer.renderConnection(core.diagram.connections.find(c => c.id === connection.id));
-      }
+      // Always full re-render so stubs reflect type/direction changes
+      renderer.updateAllBlocks(core.diagram);
+      this._selectedConnection = null;
       if (window.advancedFeatures) window.advancedFeatures.saveState();
     };
 
@@ -1269,14 +1291,11 @@ class SystemBlocksMain {
     this._ctxAction(freshMenu, 'ctx-conn-delete', () => {
       this.hideConnectionContextMenu();
       if (window.advancedFeatures) window.advancedFeatures.saveState();
-      if (isCross) {
-        const match = this._findCrossDiagramConnection(connection.id, core);
-        if (match) {
-          match.diagram.connections = match.diagram.connections.filter(c => c.id !== connection.id);
-        }
-      } else {
-        core.removeConnection(connection.id);
-      }
+      // Remove from the current diagram
+      core.diagram.connections = core.diagram.connections.filter(c => c.id !== connection.id);
+      // Also purge from hierarchy stack snapshots and child diagrams
+      this._purgeConnectionFromAllSources(connection.id, core);
+      this._selectedConnection = null;
       renderer.updateAllBlocks(core.diagram);
       this._updateMinimap();
     });
