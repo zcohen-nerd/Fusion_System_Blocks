@@ -30,6 +30,11 @@ Fusion System Blocks adds a **system block diagram palette** directly inside Fus
 - Run rule checks to catch orphan blocks, interface mismatches, and power budget violations.
 - Export reports: BOM, connection matrix, pin map, PDF, SVG, and more.
 
+<p align="center">
+  <img src="docs/images/Blank%20Canvas.png" alt="Blank canvas – the diagram palette as it appears when first opened" width="720" />
+</p>
+<p align="center"><em>The System Blocks palette, ready for a new diagram.</em></p>
+
 ---
 
 ## Why This Exists
@@ -92,6 +97,11 @@ A **system block** is a rectangle (or other shape) on the diagram that represent
 4. Add a second block the same way.
 5. Select the first block and press <kbd>C</kbd> to enter connection mode, then click the second block. A wire appears between them.
 6. Press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save the diagram inside the Fusion document.
+
+<p align="center">
+  <img src="docs/images/System%20Diagram.png" alt="A system diagram built in Fusion System Blocks" width="720" />
+</p>
+<p align="center"><em>An example system diagram with blocks, connections, and hierarchy.</em></p>
 
 ### Typical Workflow
 
