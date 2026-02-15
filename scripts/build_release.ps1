@@ -3,7 +3,7 @@
 #
 # Usage:
 #   .\scripts\build_release.ps1            # uses version from manifest
-#   .\scripts\build_release.ps1 -Version "0.2.0"  # override version label
+#   .\scripts\build_release.ps1 -Version "0.1.1"  # override version label
 
 param(
     [string]$Version
@@ -69,6 +69,6 @@ Write-Host ""
 Write-Host "Install instructions:" -ForegroundColor Yellow
 Write-Host "  1. Unzip $zipName"
 Write-Host "  2. Copy the 'Fusion_System_Blocks' folder to:"
-Write-Host "     Windows: %APPDATA%\Autodesk\ApplicationPlugins\"
+Write-Host '     Windows: %APPDATA%\Autodesk\ApplicationPlugins\'
 Write-Host "     macOS:   ~/Library/Application Support/Autodesk/ApplicationPlugins/"
 Write-Host "  3. Restart Fusion and enable via Utilities > Add-Ins"

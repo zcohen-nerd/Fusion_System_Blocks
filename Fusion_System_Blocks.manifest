@@ -6,7 +6,7 @@
   "description": {
     "": "System Blocks Diagram Editor for complex engineering systems with hierarchy, validation, and CAD/ECAD integration."
   },
-  "version": "0.1.0",
+  "version": "0.1.1",
   "runOnStartup": false,
   "supportedOS": "windows|mac",
   "editEnabled": true

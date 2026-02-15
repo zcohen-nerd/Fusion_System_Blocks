@@ -40,7 +40,7 @@ _log_file_path: Path | None = None
 _logging_initialized: bool = False
 
 # Add-in version - update this when releasing new versions
-ADDIN_VERSION = "0.2.0"
+ADDIN_VERSION = "0.1.1"
 
 
 def _generate_session_id() -> str:

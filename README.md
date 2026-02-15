@@ -40,7 +40,7 @@ Most engineering teams document their system architecture in separate tools — 
 
 ## Current Status
 
-> **Experimental — v0.1.0**
+> **Experimental — V0.1.1**
 >
 > Core diagramming, CAD linking, and export features are implemented and tested (600+ automated tests). The add-in is usable for personal and academic projects. APIs and file formats may change before v1.0.
 

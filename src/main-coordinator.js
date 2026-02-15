@@ -1926,7 +1926,7 @@ class SystemBlocksMain {
       
       // Status
       isReady: () => this.isInitialized,
-      getVersion: () => '0.1.0'
+      getVersion: () => '0.1.1'
     };
     
     logger.info('Global API available as window.SystemBlocks');
