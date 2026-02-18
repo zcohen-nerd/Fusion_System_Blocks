@@ -281,6 +281,60 @@ class GraphBuilder:
         self._group_by_name[name] = group
         return self
 
+    def add_block_to_group(
+        self,
+        group_name: str,
+        block_name: str,
+    ) -> GraphBuilder:
+        """Add an existing block to an existing group.
+
+        Args:
+            group_name: Name of the target group.
+            block_name: Name of the block to add.
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If the group or block does not exist.
+        """
+        group = self._group_by_name.get(group_name)
+        if group is None:
+            raise ValueError(f"Group '{group_name}' not found.")
+        block = self._block_by_name.get(block_name)
+        if block is None:
+            raise ValueError(f"Block '{block_name}' not found.")
+        if block.id not in group.block_ids:
+            group.block_ids.append(block.id)
+        return self
+
+    def remove_block_from_group(
+        self,
+        group_name: str,
+        block_name: str,
+    ) -> GraphBuilder:
+        """Remove a block from an existing group.
+
+        Args:
+            group_name: Name of the target group.
+            block_name: Name of the block to remove.
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If the group or block does not exist.
+        """
+        group = self._group_by_name.get(group_name)
+        if group is None:
+            raise ValueError(f"Group '{group_name}' not found.")
+        block = self._block_by_name.get(block_name)
+        if block is None:
+            raise ValueError(f"Block '{block_name}' not found.")
+        if block.id in group.block_ids:
+            group.block_ids.remove(block.id)
+        return self
+
     def build(self) -> Graph:
         """Build and return the completed graph.
 

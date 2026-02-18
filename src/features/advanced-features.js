@@ -225,6 +225,76 @@ class AdvancedFeatures {
     }
   }
 
+  addBlockToGroup(groupId, blockId) {
+    const group = this.groups.get(groupId);
+    if (!group) return false;
+    if (group.blocks instanceof Set) {
+      if (group.blocks.has(blockId)) return false;
+      group.blocks.add(blockId);
+    } else {
+      if (group.blocks.includes(blockId)) return false;
+      group.blocks.push(blockId);
+    }
+    const blockIds = group.blocks instanceof Set
+      ? Array.from(group.blocks)
+      : group.blocks;
+    group.bounds = this.calculateGroupBounds(blockIds);
+    this.renderGroupBoundary(group);
+    this.saveState();
+    return true;
+  }
+
+  removeBlockFromGroup(groupId, blockId) {
+    const group = this.groups.get(groupId);
+    if (!group) return false;
+    if (group.blocks instanceof Set) {
+      if (!group.blocks.has(blockId)) return false;
+      group.blocks.delete(blockId);
+    } else {
+      const idx = group.blocks.indexOf(blockId);
+      if (idx === -1) return false;
+      group.blocks.splice(idx, 1);
+    }
+    const blockIds = group.blocks instanceof Set
+      ? Array.from(group.blocks)
+      : group.blocks;
+    if (blockIds.length === 0) {
+      this.removeGroupBoundary(groupId);
+      this.groups.delete(groupId);
+    } else {
+      group.bounds = this.calculateGroupBounds(blockIds);
+      this.renderGroupBoundary(group);
+    }
+    this.saveState();
+    return true;
+  }
+
+  /**
+   * Return non-default groups as an array of {id, name} objects.
+   */
+  getGroupList() {
+    const result = [];
+    this.groups.forEach((group, groupId) => {
+      if (groupId === 'default') return;
+      result.push({ id: groupId, name: group.name });
+    });
+    return result;
+  }
+
+  /**
+   * Return the group ID that contains the given block, or null.
+   */
+  getGroupForBlock(blockId) {
+    for (const [groupId, group] of this.groups) {
+      if (groupId === 'default') continue;
+      const blocks = group.blocks instanceof Set
+        ? group.blocks
+        : new Set(group.blocks);
+      if (blocks.has(blockId)) return groupId;
+    }
+    return null;
+  }
+
   calculateGroupBounds(blockIds) {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     

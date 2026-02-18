@@ -8,8 +8,6 @@ automatic startup, and that the toolbar control registration logic
 import json
 import pathlib
 
-import pytest
-
 _repo_root = pathlib.Path(__file__).resolve().parent.parent
 _manifest_path = _repo_root / "Fusion_System_Blocks.manifest"
 
@@ -19,9 +17,7 @@ class TestManifest:
 
     def test_manifest_exists(self):
         """Manifest file must exist at the repository root."""
-        assert _manifest_path.exists(), (
-            "Fusion_System_Blocks.manifest not found"
-        )
+        assert _manifest_path.exists(), "Fusion_System_Blocks.manifest not found"
 
     def test_manifest_is_valid_json(self):
         """Manifest must be valid JSON."""
@@ -36,9 +32,7 @@ class TestManifest:
         manually launched from Utilities → Add-Ins, making the
         toolbar button invisible until then.
         """
-        data = json.loads(
-            _manifest_path.read_text(encoding="utf-8")
-        )
+        data = json.loads(_manifest_path.read_text(encoding="utf-8"))
         assert data.get("runOnStartup") is True, (
             "runOnStartup must be true for the toolbar button "
             "to appear automatically when Fusion starts"
@@ -46,9 +40,7 @@ class TestManifest:
 
     def test_manifest_has_required_fields(self):
         """Manifest must contain the required Fusion add-in fields."""
-        data = json.loads(
-            _manifest_path.read_text(encoding="utf-8")
-        )
+        data = json.loads(_manifest_path.read_text(encoding="utf-8"))
         required = [
             "autodeskProduct",
             "type",
@@ -57,15 +49,11 @@ class TestManifest:
             "runOnStartup",
         ]
         for field in required:
-            assert field in data, (
-                f"Missing required manifest field: {field}"
-            )
+            assert field in data, f"Missing required manifest field: {field}"
 
     def test_manifest_type_is_addin(self):
         """Manifest type must be 'addin' (not 'script')."""
-        data = json.loads(
-            _manifest_path.read_text(encoding="utf-8")
-        )
+        data = json.loads(_manifest_path.read_text(encoding="utf-8"))
         assert data.get("type") == "addin"
 
 
@@ -82,15 +70,13 @@ class TestToolbarRegistration:
         # conftest.py already mocks adsk, so this import is safe
         import Fusion_System_Blocks as fsb
 
-        assert callable(
-            getattr(fsb, "_ensure_toolbar_controls", None)
-        ), "_ensure_toolbar_controls function is missing"
+        assert callable(getattr(fsb, "_ensure_toolbar_controls", None)), (
+            "_ensure_toolbar_controls function is missing"
+        )
 
     def test_workspace_activated_handler_exists(self):
         """WorkspaceActivatedHandler class must be defined."""
         import Fusion_System_Blocks as fsb
 
         cls = getattr(fsb, "WorkspaceActivatedHandler", None)
-        assert cls is not None, (
-            "WorkspaceActivatedHandler class is missing"
-        )
+        assert cls is not None, "WorkspaceActivatedHandler class is missing"

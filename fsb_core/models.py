@@ -564,6 +564,44 @@ class Graph:
             return True
         return False
 
+    def add_block_to_group(self, group_id: str, block_id: str) -> bool:
+        """Add a block to an existing group.
+
+        Args:
+            group_id: The ID of the group.
+            block_id: The ID of the block to add.
+
+        Returns:
+            True if the block was added, False if the group
+            was not found or the block is already in the group.
+        """
+        group = self.get_group_by_id(group_id)
+        if group is None:
+            return False
+        if block_id in group.block_ids:
+            return False
+        group.block_ids.append(block_id)
+        return True
+
+    def remove_block_from_group(self, group_id: str, block_id: str) -> bool:
+        """Remove a block from an existing group.
+
+        Args:
+            group_id: The ID of the group.
+            block_id: The ID of the block to remove.
+
+        Returns:
+            True if the block was removed, False if the group
+            was not found or the block was not in the group.
+        """
+        group = self.get_group_by_id(group_id)
+        if group is None:
+            return False
+        if block_id not in group.block_ids:
+            return False
+        group.block_ids.remove(block_id)
+        return True
+
     def get_child_groups(self, group_id: str) -> list[Group]:
         """Get groups that are direct children of the given group.
 
