@@ -15,6 +15,7 @@ Classes:
     Port: Represents a connection point on a block.
     Block: Represents a system component with ports and attributes.
     Connection: Represents a link between two ports on different blocks.
+    Group: Represents a named collection of blocks with metadata.
     Graph: Represents the complete system diagram.
 """
 
@@ -321,12 +322,40 @@ class Connection:
 
 
 @dataclass
+class Group:
+    """Represents a named collection of blocks in the diagram.
+
+    Groups act as first-class diagram elements that can hold blocks,
+    carry metadata, have descriptions, and be nested within other
+    groups for hierarchical organization.
+
+    Attributes:
+        id: Unique identifier for this group.
+        name: Human-readable name for the group.
+        description: Text note or description displayed as a label
+            or tooltip on the group boundary.
+        block_ids: IDs of blocks that belong to this group.
+        metadata: Custom properties on the group (owner, status,
+            subsystem category, etc.).
+        parent_group_id: ID of the parent group when nested.
+            ``None`` for top-level groups.
+    """
+
+    id: str = field(default_factory=generate_id)
+    name: str = ""
+    description: str = ""
+    block_ids: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    parent_group_id: str | None = None
+
+
+@dataclass
 class Graph:
     """Represents a complete system block diagram.
 
     The Graph is the top-level container for a system diagram, holding
-    all blocks and their connections. It provides methods for querying
-    and manipulating the diagram structure.
+    all blocks, connections, and groups. It provides methods for
+    querying and manipulating the diagram structure.
 
     Attributes:
         id: Unique identifier for this graph.
@@ -334,6 +363,7 @@ class Graph:
         schema: Schema version identifier.
         blocks: List of all blocks in the diagram.
         connections: List of all connections between blocks.
+        groups: List of all groups in the diagram.
         metadata: Additional diagram metadata.
         requirements: System-level requirements / budget constraints.
     """
@@ -343,6 +373,7 @@ class Graph:
     schema: str = "system-blocks-v2"
     blocks: list[Block] = field(default_factory=list)
     connections: list[Connection] = field(default_factory=list)
+    groups: list[Group] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
     requirements: list[Requirement] = field(default_factory=list)
 
@@ -475,6 +506,74 @@ class Graph:
         original_count = len(self.connections)
         self.connections = [c for c in self.connections if c.id != connection_id]
         return len(self.connections) < original_count
+
+    def add_group(self, group: Group) -> None:
+        """Add a group to the graph.
+
+        Args:
+            group: The group to add.
+        """
+        self.groups.append(group)
+
+    def get_group_by_id(self, group_id: str) -> Group | None:
+        """Find a group by its ID.
+
+        Args:
+            group_id: The unique identifier of the group.
+
+        Returns:
+            The matching Group, or None if not found.
+        """
+        for group in self.groups:
+            if group.id == group_id:
+                return group
+        return None
+
+    def get_group_by_name(self, name: str) -> Group | None:
+        """Find a group by its name.
+
+        Args:
+            name: The name of the group.
+
+        Returns:
+            The matching Group, or None if not found.
+        """
+        for group in self.groups:
+            if group.name == name:
+                return group
+        return None
+
+    def remove_group(self, group_id: str) -> bool:
+        """Remove a group from the graph.
+
+        Child groups that reference this group as parent have their
+        ``parent_group_id`` cleared. Blocks remain in the graph.
+
+        Args:
+            group_id: The ID of the group to remove.
+
+        Returns:
+            True if the group was found and removed, False otherwise.
+        """
+        original_count = len(self.groups)
+        self.groups = [g for g in self.groups if g.id != group_id]
+        if len(self.groups) < original_count:
+            for g in self.groups:
+                if g.parent_group_id == group_id:
+                    g.parent_group_id = None
+            return True
+        return False
+
+    def get_child_groups(self, group_id: str) -> list[Group]:
+        """Get groups that are direct children of the given group.
+
+        Args:
+            group_id: The ID of the parent group.
+
+        Returns:
+            List of child groups.
+        """
+        return [g for g in self.groups if g.parent_group_id == group_id]
 
     def get_block_ids(self) -> set[str]:
         """Get set of all block IDs in the graph.
