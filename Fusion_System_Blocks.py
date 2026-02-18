@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import datetime
 import json
 import os
 import sys
 import traceback
-from typing import Any, Optional
+from typing import Any
 
 import adsk.core
 import adsk.fusion
@@ -61,7 +63,7 @@ _handlers = []  # keep event handlers alive
 
 # Pending CAD link data — stored when sendInfoToHTML may arrive
 # before the palette web-view is ready after being restored.
-_pending_cad_link: Optional[dict] = None
+_pending_cad_link: dict | None = None
 
 # Global snapshot store for version control (Issue #31)
 _snapshot_store = SnapshotStore(max_snapshots=50)
@@ -145,7 +147,7 @@ def _show_validation_errors_dialog(errors: list) -> None:
         notify_error(error_text)
 
 
-def get_root_component() -> Optional[adsk.fusion.Component]:
+def get_root_component() -> adsk.fusion.Component | None:
     """Get the root component of the active design."""
     try:
         design = adsk.fusion.Design.cast(APP.activeProduct)
@@ -347,7 +349,7 @@ def save_named_diagram(label: str, json_data: str | dict) -> bool:
         return False
 
 
-def load_named_diagram(slug: str) -> Optional[str]:
+def load_named_diagram(slug: str) -> str | None:
     """Load a named diagram's JSON by slug.
 
     Args:
@@ -931,7 +933,7 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             }
 
 
-def _create_palette() -> Optional[adsk.core.Palette]:
+def _create_palette() -> adsk.core.Palette | None:
     """Create the System Blocks palette."""
     try:
         addin_path = os.path.dirname(__file__)
@@ -1823,39 +1825,27 @@ def _ensure_toolbar_controls() -> None:
     changes so the buttons remain visible after workspace switches.
     """
     try:
-        designWorkspace = UI.workspaces.itemById(
-            "FusionSolidEnvironment"
-        )
+        designWorkspace = UI.workspaces.itemById("FusionSolidEnvironment")
         if not designWorkspace:
             return
 
-        addInsPanel = designWorkspace.toolbarPanels.itemById(
-            "SolidScriptsAddinsPanel"
-        )
+        addInsPanel = designWorkspace.toolbarPanels.itemById("SolidScriptsAddinsPanel")
         if not addInsPanel:
             addInsPanel = designWorkspace.toolbarPanels.add(
                 "SolidScriptsAddinsPanel", "Add-Ins"
             )
 
         # Add main command control
-        cmdDef = UI.commandDefinitions.itemById(
-            "SystemBlocksPaletteShowCommand"
-        )
+        cmdDef = UI.commandDefinitions.itemById("SystemBlocksPaletteShowCommand")
         if cmdDef:
-            ctrl = addInsPanel.controls.itemById(
-                "SystemBlocksPaletteShowCommand"
-            )
+            ctrl = addInsPanel.controls.itemById("SystemBlocksPaletteShowCommand")
             if not ctrl:
                 addInsPanel.controls.addCommand(cmdDef)
 
         # Add diagnostics command control
-        diagCmdDef = UI.commandDefinitions.itemById(
-            "SystemBlocksDiagnosticsCommand"
-        )
+        diagCmdDef = UI.commandDefinitions.itemById("SystemBlocksDiagnosticsCommand")
         if diagCmdDef:
-            diagCtrl = addInsPanel.controls.itemById(
-                "SystemBlocksDiagnosticsCommand"
-            )
+            diagCtrl = addInsPanel.controls.itemById("SystemBlocksDiagnosticsCommand")
             if not diagCtrl:
                 addInsPanel.controls.addCommand(diagCmdDef)
 
@@ -1890,9 +1880,7 @@ class WorkspaceActivatedHandler(adsk.core.WorkspaceEventHandler):
             _ensure_toolbar_controls()
         except Exception:
             if LOGGING_AVAILABLE:
-                _logger.exception(
-                    "Error in WorkspaceActivatedHandler"
-                )
+                _logger.exception("Error in WorkspaceActivatedHandler")
 
 
 def run(context):

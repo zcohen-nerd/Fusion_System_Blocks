@@ -721,9 +721,7 @@ class TestGraphAddRemoveBlockFromGroup:
     def test_single_block_group_creation(self):
         """A group can be created with a single block."""
         b1 = Block(id="b1", name="Solo")
-        g1 = Group(
-            id="g1", name="SoloGroup", block_ids=["b1"]
-        )
+        g1 = Group(id="g1", name="SoloGroup", block_ids=["b1"])
         graph = Graph(id="g", blocks=[b1], groups=[g1])
         errors = validate_graph(graph)
         assert len(errors) == 0
@@ -754,9 +752,7 @@ class TestGraphBuilderAddRemoveBlock:
             GraphBuilder("Test")
             .add_block("Sensor")
             .add_block("MCU")
-            .add_group(
-                "Control", block_names=["Sensor", "MCU"]
-            )
+            .add_group("Control", block_names=["Sensor", "MCU"])
             .remove_block_from_group("Control", "Sensor")
             .build()
         )
@@ -768,19 +764,13 @@ class TestGraphBuilderAddRemoveBlock:
     def test_add_block_to_group_missing_group_raises(self):
         """Referencing non-existent group raises ValueError."""
         builder = GraphBuilder().add_block("A")
-        with pytest.raises(
-            ValueError, match="Group 'Missing' not found"
-        ):
+        with pytest.raises(ValueError, match="Group 'Missing' not found"):
             builder.add_block_to_group("Missing", "A")
 
     def test_add_block_to_group_missing_block_raises(self):
         """Referencing non-existent block raises ValueError."""
-        builder = (
-            GraphBuilder().add_block("A").add_group("G")
-        )
-        with pytest.raises(
-            ValueError, match="Block 'Missing' not found"
-        ):
+        builder = GraphBuilder().add_block("A").add_group("G")
+        with pytest.raises(ValueError, match="Block 'Missing' not found"):
             builder.add_block_to_group("G", "Missing")
 
     def test_remove_block_from_group_missing_group_raises(
@@ -788,40 +778,26 @@ class TestGraphBuilderAddRemoveBlock:
     ):
         """Referencing non-existent group raises ValueError."""
         builder = GraphBuilder().add_block("A")
-        with pytest.raises(
-            ValueError, match="Group 'Missing' not found"
-        ):
+        with pytest.raises(ValueError, match="Group 'Missing' not found"):
             builder.remove_block_from_group("Missing", "A")
 
     def test_remove_block_from_group_missing_block_raises(
         self,
     ):
         """Referencing non-existent block raises ValueError."""
-        builder = (
-            GraphBuilder().add_block("A").add_group("G")
-        )
-        with pytest.raises(
-            ValueError, match="Block 'Missing' not found"
-        ):
+        builder = GraphBuilder().add_block("A").add_group("G")
+        with pytest.raises(ValueError, match="Block 'Missing' not found"):
             builder.remove_block_from_group("G", "Missing")
 
     def test_add_block_to_group_returns_self(self):
         """add_block_to_group returns builder for chaining."""
-        builder = (
-            GraphBuilder()
-            .add_block("A")
-            .add_group("G", block_names=["A"])
-        )
+        builder = GraphBuilder().add_block("A").add_group("G", block_names=["A"])
         result = builder.add_block_to_group("G", "A")
         assert result is builder
 
     def test_remove_block_from_group_returns_self(self):
         """remove_block_from_group returns builder for chaining."""
-        builder = (
-            GraphBuilder()
-            .add_block("A")
-            .add_group("G", block_names=["A"])
-        )
+        builder = GraphBuilder().add_block("A").add_group("G", block_names=["A"])
         result = builder.remove_block_from_group("G", "A")
         assert result is builder
 

@@ -300,14 +300,10 @@ class GraphBuilder:
         """
         group = self._group_by_name.get(group_name)
         if group is None:
-            raise ValueError(
-                f"Group '{group_name}' not found."
-            )
+            raise ValueError(f"Group '{group_name}' not found.")
         block = self._block_by_name.get(block_name)
         if block is None:
-            raise ValueError(
-                f"Block '{block_name}' not found."
-            )
+            raise ValueError(f"Block '{block_name}' not found.")
         if block.id not in group.block_ids:
             group.block_ids.append(block.id)
         return self
@@ -331,14 +327,10 @@ class GraphBuilder:
         """
         group = self._group_by_name.get(group_name)
         if group is None:
-            raise ValueError(
-                f"Group '{group_name}' not found."
-            )
+            raise ValueError(f"Group '{group_name}' not found.")
         block = self._block_by_name.get(block_name)
         if block is None:
-            raise ValueError(
-                f"Block '{block_name}' not found."
-            )
+            raise ValueError(f"Block '{block_name}' not found.")
         if block.id in group.block_ids:
             group.block_ids.remove(block.id)
         return self

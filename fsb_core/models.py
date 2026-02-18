@@ -564,9 +564,7 @@ class Graph:
             return True
         return False
 
-    def add_block_to_group(
-        self, group_id: str, block_id: str
-    ) -> bool:
+    def add_block_to_group(self, group_id: str, block_id: str) -> bool:
         """Add a block to an existing group.
 
         Args:
@@ -585,9 +583,7 @@ class Graph:
         group.block_ids.append(block_id)
         return True
 
-    def remove_block_from_group(
-        self, group_id: str, block_id: str
-    ) -> bool:
+    def remove_block_from_group(self, group_id: str, block_id: str) -> bool:
         """Remove a block from an existing group.
 
         Args:
