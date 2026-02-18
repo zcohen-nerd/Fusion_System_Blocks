@@ -543,6 +543,11 @@ class DiagramRenderer {
       existing.remove();
     }
 
+    // Same-level stub connections are rendered by renderSameLevelStubs()
+    if (connection.renderAsStub) {
+      return null;
+    }
+
     const fromBlock = this.editor.diagram.blocks.find(b => b.id === connection.fromBlock);
     const toBlock = this.editor.diagram.blocks.find(b => b.id === connection.toBlock);
     
@@ -1061,9 +1066,10 @@ class DiagramRenderer {
 
   highlightConnection(connectionId, highlight = true) {
     let group = this.connectionElements.get(connectionId);
-    // Also check cross-diagram stubs which are not in connectionElements
+    // Also check cross-diagram and same-level stubs which are not in connectionElements
     if (!group && this.svg) {
-      group = this.svg.querySelector(`.cross-diagram-stub[data-connection-id="${connectionId}"]`);
+      group = this.svg.querySelector(`.cross-diagram-stub[data-connection-id="${connectionId}"]`) ||
+              this.svg.querySelector(`.same-level-stub[data-connection-id="${connectionId}"]`);
     }
     if (!group) return;
 
@@ -1103,9 +1109,9 @@ class DiagramRenderer {
     this.connectionElements.forEach((group, id) => {
       this.highlightConnection(id, false);
     });
-    // Also clear any highlighted cross-diagram stubs
+    // Also clear any highlighted cross-diagram and same-level stubs
     if (this.svg) {
-      this.svg.querySelectorAll('.cross-diagram-stub[data-highlighted]').forEach(g => {
+      this.svg.querySelectorAll('.cross-diagram-stub[data-highlighted], .same-level-stub[data-highlighted]').forEach(g => {
         const stubLines = g.querySelectorAll('line');
         const stubLine = stubLines.length > 1 ? stubLines[1] : stubLines[0];
         if (stubLine) {
@@ -1152,6 +1158,9 @@ class DiagramRenderer {
     // Render cross-diagram connection stubs for connections whose
     // remote endpoint is not in this diagram view.
     this.renderCrossDiagramStubs(diagram);
+
+    // Render same-level stub connections (renderAsStub flag)
+    this.renderSameLevelStubs(diagram);
 
     // Render all annotations
     if (diagram.annotations) {
@@ -1366,6 +1375,224 @@ class DiagramRenderer {
 
       svg.appendChild(g);
     }); // end crossConns.forEach
+  }
+
+  // ---- Same-level stub rendering ----
+
+  /**
+   * Render stub indicators for same-level connections that have
+   * renderAsStub === true. Each stub connection draws a short outgoing
+   * stub on the source block and a matching incoming stub on the
+   * destination block, using the port fan layout to stack neatly.
+   */
+  renderSameLevelStubs(diagram) {
+    const svg = this.svg;
+    if (!svg) return;
+    svg.querySelectorAll('.same-level-stub').forEach(el => el.remove());
+
+    const stubConns = (diagram.connections || []).filter(c => c.renderAsStub);
+    if (stubConns.length === 0) return;
+
+    // Pre-compute fan offsets per block side: group stub connections
+    // by (blockId, side) so multiple stubs on the same block edge
+    // are distributed vertically.
+    const outStubsByBlock = {};
+    const inStubsByBlock = {};
+    stubConns.forEach(conn => {
+      const fromPort = conn.fromPort || 'output';
+      const toPort = conn.toPort || 'input';
+      const outKey = conn.fromBlock + ':' + fromPort;
+      const inKey = conn.toBlock + ':' + toPort;
+      if (!outStubsByBlock[outKey]) outStubsByBlock[outKey] = [];
+      if (!inStubsByBlock[inKey]) inStubsByBlock[inKey] = [];
+      outStubsByBlock[outKey].push(conn);
+      inStubsByBlock[inKey].push(conn);
+    });
+
+    stubConns.forEach(conn => {
+      const fromBlock = diagram.blocks.find(b => b.id === conn.fromBlock);
+      const toBlock = diagram.blocks.find(b => b.id === conn.toBlock);
+      if (!fromBlock || !toBlock) return;
+
+      const connType = (conn.type || 'auto').toLowerCase();
+      const styling = this.getConnectionStyling(connType);
+      const direction = (conn.arrowDirection || 'forward').toLowerCase();
+      const stubLen = 30;
+
+      const fromPort = conn.fromPort || 'output';
+      const toPort = conn.toPort || 'input';
+      const fromW = fromBlock.width || 120;
+      const fromH = fromBlock.height || 80;
+      const toW = toBlock.width || 120;
+      const toH = toBlock.height || 80;
+
+      // Fan offset for source stub
+      const outKey = conn.fromBlock + ':' + fromPort;
+      const outList = outStubsByBlock[outKey] || [conn];
+      const outIdx = outList.indexOf(conn);
+
+      // Fan offset for target stub
+      const inKey = conn.toBlock + ':' + toPort;
+      const inList = inStubsByBlock[inKey] || [conn];
+      const inIdx = inList.indexOf(conn);
+
+      // --- Render source (outgoing) stub ---
+      this._renderStubElement(svg, conn, fromBlock, fromPort, fromW, fromH,
+        outIdx, outList.length, stubLen, styling, direction, true,
+        toBlock.name || toBlock.id, connType);
+
+      // --- Render target (incoming) stub ---
+      this._renderStubElement(svg, conn, toBlock, toPort, toW, toH,
+        inIdx, inList.length, stubLen, styling, direction, false,
+        fromBlock.name || fromBlock.id, connType);
+    });
+  }
+
+  /**
+   * Render a single stub element (source or target side) for a
+   * same-level stub connection.
+   * @private
+   */
+  _renderStubElement(svg, conn, block, portSide, blockW, blockH,
+                     fanIndex, fanTotal, stubLen, styling, direction,
+                     isOutgoing, remoteName, connType) {
+    let startX, startY, endX, endY;
+    const fanY = this._fanOffset(fanIndex, fanTotal, blockH);
+    const fanX = this._fanOffset(fanIndex, fanTotal, blockW);
+
+    switch (portSide) {
+      case 'input':
+        startX = block.x;
+        startY = block.y + fanY;
+        endX = startX - stubLen;
+        endY = startY;
+        break;
+      case 'top':
+        startX = block.x + fanX;
+        startY = block.y;
+        endX = startX;
+        endY = startY - stubLen;
+        break;
+      case 'bottom':
+        startX = block.x + fanX;
+        startY = block.y + blockH;
+        endX = startX;
+        endY = startY + stubLen;
+        break;
+      case 'output':
+      default:
+        startX = block.x + blockW;
+        startY = block.y + fanY;
+        endX = startX + stubLen;
+        endY = startY;
+        break;
+    }
+
+    const isHorizontal = (portSide === 'output' || portSide === 'input');
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'same-level-stub connection-group');
+    g.setAttribute('data-connection-id', conn.id);
+    g.setAttribute('data-stub-side', isOutgoing ? 'source' : 'target');
+    g.setAttribute('data-connection-type', connType);
+
+    // Wide invisible hit area
+    const hitLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    hitLine.setAttribute('x1', startX);
+    hitLine.setAttribute('y1', startY);
+    hitLine.setAttribute('x2', endX);
+    hitLine.setAttribute('y2', endY);
+    hitLine.setAttribute('stroke', 'transparent');
+    hitLine.setAttribute('stroke-width', '14');
+    hitLine.setAttribute('pointer-events', 'stroke');
+    hitLine.setAttribute('cursor', 'pointer');
+    g.appendChild(hitLine);
+
+    // Visible stub line
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', startX);
+    line.setAttribute('y1', startY);
+    line.setAttribute('x2', endX);
+    line.setAttribute('y2', endY);
+    line.setAttribute('stroke', styling.stroke);
+    line.setAttribute('stroke-width', String(styling.strokeWidth));
+    line.setAttribute('stroke-dasharray', styling.dashArray || '4,2');
+    g.appendChild(line);
+
+    // Arrowhead
+    const arrowSize = 8;
+    const drawArrowAt = (tipX, tipY, pointsRight) => {
+      if (isHorizontal) {
+        const dir = pointsRight ? 1 : -1;
+        const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        poly.setAttribute('points',
+          `${tipX},${tipY} ${tipX - dir * arrowSize},${tipY - arrowSize / 2} ${tipX - dir * arrowSize},${tipY + arrowSize / 2}`);
+        poly.setAttribute('fill', styling.stroke);
+        g.appendChild(poly);
+      } else {
+        const dir = pointsRight ? 1 : -1;  // reused as pointsDown
+        const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        poly.setAttribute('points',
+          `${tipX},${tipY} ${tipX - arrowSize / 2},${tipY - dir * arrowSize} ${tipX + arrowSize / 2},${tipY - dir * arrowSize}`);
+        poly.setAttribute('fill', styling.stroke);
+        g.appendChild(poly);
+      }
+    };
+
+    // Arrow direction logic for stubs
+    const stubPointsOutward = (portSide === 'output' || portSide === 'bottom');
+    if (direction === 'forward') {
+      if (isOutgoing) drawArrowAt(endX, endY, stubPointsOutward);
+      else drawArrowAt(startX, startY, !stubPointsOutward);
+    } else if (direction === 'backward') {
+      if (isOutgoing) drawArrowAt(startX, startY, !stubPointsOutward);
+      else drawArrowAt(endX, endY, stubPointsOutward);
+    } else if (direction === 'bidirectional') {
+      drawArrowAt(endX, endY, stubPointsOutward);
+      drawArrowAt(startX, startY, !stubPointsOutward);
+    }
+
+    // Port indicator circle at stub end
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', endX);
+    circle.setAttribute('cy', endY);
+    circle.setAttribute('r', '3');
+    circle.setAttribute('fill', styling.stroke);
+    g.appendChild(circle);
+
+    // Label with remote block name
+    const labelOffset = 4;
+    let labelX, labelY, labelAnchor;
+    if (isHorizontal) {
+      labelX = (portSide === 'output') ? endX + labelOffset : endX - labelOffset;
+      labelY = endY + 4;
+      labelAnchor = (portSide === 'output') ? 'start' : 'end';
+    } else {
+      labelX = endX + labelOffset;
+      labelY = (portSide === 'bottom') ? endY + 12 : endY - 4;
+      labelAnchor = 'start';
+    }
+
+    const arrow = isOutgoing ? '\u2192 ' : '\u2190 ';
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', labelX);
+    text.setAttribute('y', labelY);
+    text.setAttribute('font-size', '10');
+    text.setAttribute('font-family', 'Arial, sans-serif');
+    text.setAttribute('fill', styling.stroke);
+    text.setAttribute('font-weight', 'bold');
+    text.setAttribute('text-anchor', labelAnchor);
+    text.textContent = arrow + remoteName;
+    g.appendChild(text);
+
+    // Tooltip
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = (isOutgoing ? 'Outgoing' : 'Incoming') +
+      ' stub connection ' + (isOutgoing ? 'to' : 'from') +
+      ' "' + remoteName + '"';
+    g.appendChild(title);
+
+    svg.appendChild(g);
   }
 
   // ---- Annotation rendering ----

@@ -378,3 +378,148 @@ class TestConvenienceWrappers:
         data = {"id": "g1", "blocks": [], "connections": []}
         graph = convert_legacy_diagram(data)
         assert isinstance(graph, Graph)
+
+
+# =========================================================================
+# Same-level stub connection attribute tests
+# =========================================================================
+class TestStubConnectionAttribute:
+    """Test renderAsStub attribute handling in serialization."""
+
+    def test_render_as_stub_round_trip(self):
+        """renderAsStub attribute survives Graph → JSON → Graph round-trip."""
+        conn = Connection(
+            id="c1",
+            from_block_id="b1",
+            to_block_id="b2",
+            kind="power",
+            attributes={"renderAsStub": True},
+        )
+        block_a = Block(id="b1", name="Regulator")
+        block_b = Block(id="b2", name="IMU")
+        graph = Graph(id="g1", blocks=[block_a, block_b], connections=[conn])
+
+        restored = deserialize_graph(serialize_graph(graph))
+        rconn = restored.connections[0]
+        assert rconn.attributes.get("renderAsStub") is True
+
+    def test_render_as_stub_from_js_flat_format(self):
+        """dict_to_graph picks up top-level renderAsStub from JS format."""
+        data = {
+            "id": "g1",
+            "blocks": [
+                {"id": "b1", "name": "PSU"},
+                {"id": "b2", "name": "Sensor"},
+            ],
+            "connections": [
+                {
+                    "id": "c1",
+                    "fromBlock": "b1",
+                    "toBlock": "b2",
+                    "type": "power",
+                    "renderAsStub": True,
+                }
+            ],
+        }
+        graph = dict_to_graph(data)
+        conn = graph.connections[0]
+        assert conn.attributes.get("renderAsStub") is True
+
+    def test_render_as_stub_false_not_stored(self):
+        """Falsy renderAsStub value is not added to attributes."""
+        data = {
+            "id": "g1",
+            "blocks": [
+                {"id": "b1", "name": "A"},
+                {"id": "b2", "name": "B"},
+            ],
+            "connections": [
+                {
+                    "id": "c1",
+                    "from": {"blockId": "b1"},
+                    "to": {"blockId": "b2"},
+                    "renderAsStub": False,
+                }
+            ],
+        }
+        graph = dict_to_graph(data)
+        conn = graph.connections[0]
+        assert "renderAsStub" not in conn.attributes
+
+    def test_stub_connection_validates_normally(self):
+        """Connections with renderAsStub attribute pass normal validation."""
+        from fsb_core.validation import validate_graph
+
+        block_a = Block(
+            id="b1",
+            name="Power Supply",
+            ports=[
+                Port(
+                    id="p1",
+                    name="out",
+                    direction=PortDirection.OUTPUT,
+                ),
+            ],
+        )
+        block_b = Block(
+            id="b2",
+            name="Consumer",
+            ports=[
+                Port(
+                    id="p2",
+                    name="in",
+                    direction=PortDirection.INPUT,
+                ),
+            ],
+        )
+        conn = Connection(
+            id="c1",
+            from_block_id="b1",
+            from_port_id="p1",
+            to_block_id="b2",
+            to_port_id="p2",
+            kind="power",
+            attributes={"renderAsStub": True},
+        )
+        graph = Graph(id="g1", blocks=[block_a, block_b], connections=[conn])
+
+        errors = validate_graph(graph)
+        assert len(errors) == 0
+
+    def test_multiple_stub_connections_same_source(self):
+        """Multiple stub connections from same source block serialize."""
+        blocks = [
+            Block(id="psu", name="PSU"),
+            Block(id="imu", name="IMU"),
+            Block(id="motor", name="Motor"),
+            Block(id="sensor", name="Sensor"),
+        ]
+        conns = [
+            Connection(
+                id="c1",
+                from_block_id="psu",
+                to_block_id="imu",
+                kind="power",
+                attributes={"renderAsStub": True},
+            ),
+            Connection(
+                id="c2",
+                from_block_id="psu",
+                to_block_id="motor",
+                kind="power",
+                attributes={"renderAsStub": True},
+            ),
+            Connection(
+                id="c3",
+                from_block_id="psu",
+                to_block_id="sensor",
+                kind="power",
+                attributes={"renderAsStub": True},
+            ),
+        ]
+        graph = Graph(id="g1", blocks=blocks, connections=conns)
+
+        restored = deserialize_graph(serialize_graph(graph))
+        assert len(restored.connections) == 3
+        for rc in restored.connections:
+            assert rc.attributes.get("renderAsStub") is True

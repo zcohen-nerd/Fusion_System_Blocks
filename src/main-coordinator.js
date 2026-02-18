@@ -1045,6 +1045,12 @@ class SystemBlocksMain {
         this._showCrossConnectDialog(block, core, renderer, features);
       });
 
+      // Same-level stub connection — show a block picker for stub connections
+      this._ctxAction(freshMenu, 'ctx-stub-connect', () => {
+        this.hideContextMenu();
+        this._showStubConnectDialog(block, core, renderer, features);
+      });
+
       // Type submenu
       freshMenu.querySelectorAll('[data-set-type]').forEach(item => {
         item.addEventListener('click', (e) => {
@@ -1281,6 +1287,12 @@ class SystemBlocksMain {
       });
     });
 
+    // --- Toggle Stub Display ---
+    this._ctxAction(freshMenu, 'ctx-conn-toggle-stub', () => {
+      this.hideConnectionContextMenu();
+      updateConn({ renderAsStub: !connection.renderAsStub });
+    });
+
     // --- Select Connected Blocks ---
     this._ctxAction(freshMenu, 'ctx-conn-select-blocks', () => {
       this.hideConnectionContextMenu();
@@ -1415,6 +1427,53 @@ class SystemBlocksMain {
       if (window.pythonInterface) {
         window.pythonInterface.showNotification(
           `Connected to "${target.block.name || target.block.id}" (${target.path})`,
+          'success'
+        );
+      }
+    }
+  }
+
+  /**
+   * Show a dialog that lists all blocks on the current diagram level
+   * so the user can create a same-level stub connection.
+   * @private
+   */
+  _showStubConnectDialog(sourceBlock, core, renderer, features) {
+    const candidates = (core.diagram.blocks || []).filter(b => b.id !== sourceBlock.id);
+
+    if (candidates.length === 0) {
+      if (window.pythonInterface) {
+        window.pythonInterface.showNotification('No other blocks on this diagram level', 'warning');
+      }
+      return;
+    }
+
+    const lines = candidates.map((b, i) =>
+      `${i + 1}. ${b.name || b.id} (${b.type || 'generic'})`
+    );
+    const choice = prompt(
+      'Stub-connect [' + (sourceBlock.name || sourceBlock.id) + '] to which block?\n\n' +
+      lines.join('\n') +
+      '\n\nEnter number:',
+      '1'
+    );
+    if (!choice) return;
+    const idx = parseInt(choice, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= candidates.length) return;
+
+    const target = candidates[idx];
+    const connType = document.getElementById('connection-type-select');
+    const type = connType ? connType.value : 'data';
+    const dirSelect = document.getElementById('arrow-direction-select');
+    const direction = dirSelect ? dirSelect.value : 'forward';
+
+    const conn = core.addConnection(sourceBlock.id, target.id, type, direction, { renderAsStub: true });
+    if (conn) {
+      renderer.updateAllBlocks(core.diagram);
+      if (features) features.saveState();
+      if (window.pythonInterface) {
+        window.pythonInterface.showNotification(
+          `Stub-connected to "${target.name || target.id}"`,
           'success'
         );
       }
