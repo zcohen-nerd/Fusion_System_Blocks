@@ -8,8 +8,6 @@ automatic startup, and that the toolbar control registration logic
 import json
 import pathlib
 
-import pytest
-
 _repo_root = pathlib.Path(__file__).resolve().parent.parent
 _manifest_path = _repo_root / "Fusion_System_Blocks.manifest"
 
