@@ -1811,7 +1811,96 @@ def analyze_change_impact_for_block(block_id, diagram):
         notify_error(f"Change impact analysis error: {str(e)}")
 
 
+def _ensure_toolbar_controls() -> None:
+    """Add System Blocks commands to the active workspace toolbar.
+
+    Ensures the main "System Blocks" button and the "Run Diagnostics"
+    button are present in the design workspace's Add-Ins panel. This
+    is safe to call multiple times — it checks for existing controls
+    before adding new ones.
+
+    Called during initial startup and again whenever the workspace
+    changes so the buttons remain visible after workspace switches.
+    """
+    try:
+        designWorkspace = UI.workspaces.itemById(
+            "FusionSolidEnvironment"
+        )
+        if not designWorkspace:
+            return
+
+        addInsPanel = designWorkspace.toolbarPanels.itemById(
+            "SolidScriptsAddinsPanel"
+        )
+        if not addInsPanel:
+            addInsPanel = designWorkspace.toolbarPanels.add(
+                "SolidScriptsAddinsPanel", "Add-Ins"
+            )
+
+        # Add main command control
+        cmdDef = UI.commandDefinitions.itemById(
+            "SystemBlocksPaletteShowCommand"
+        )
+        if cmdDef:
+            ctrl = addInsPanel.controls.itemById(
+                "SystemBlocksPaletteShowCommand"
+            )
+            if not ctrl:
+                addInsPanel.controls.addCommand(cmdDef)
+
+        # Add diagnostics command control
+        diagCmdDef = UI.commandDefinitions.itemById(
+            "SystemBlocksDiagnosticsCommand"
+        )
+        if diagCmdDef:
+            diagCtrl = addInsPanel.controls.itemById(
+                "SystemBlocksDiagnosticsCommand"
+            )
+            if not diagCtrl:
+                addInsPanel.controls.addCommand(diagCmdDef)
+
+        if LOGGING_AVAILABLE:
+            _logger.info("Toolbar controls ensured in workspace")
+
+    except Exception:
+        if LOGGING_AVAILABLE:
+            _logger.exception("Failed to ensure toolbar controls")
+
+
+class WorkspaceActivatedHandler(adsk.core.WorkspaceEventHandler):
+    """Re-register toolbar controls when the workspace changes.
+
+    Fusion may discard toolbar controls when switching between
+    workspaces (e.g. Design ↔ Manufacture). This handler ensures
+    the System Blocks buttons are re-added whenever the user
+    returns to the Design workspace.
+    """
+
+    def __init__(self):
+        """Initialize the workspace activation handler."""
+        super().__init__()
+
+    def notify(self, args):
+        """Handle workspace activated event.
+
+        Args:
+            args: The workspace event arguments.
+        """
+        try:
+            _ensure_toolbar_controls()
+        except Exception:
+            if LOGGING_AVAILABLE:
+                _logger.exception(
+                    "Error in WorkspaceActivatedHandler"
+                )
+
+
 def run(context):
+    """Entry point called by Fusion when the add-in starts.
+
+    Args:
+        context: Fusion add-in context (unused).
+    """
     try:
         # Initialize logging
         if LOGGING_AVAILABLE:
@@ -1879,28 +1968,6 @@ def run(context):
             if LOGGING_AVAILABLE:
                 _logger.info("Palette created: SystemBlocksPalette")
 
-        # Add to appropriate workspace
-        workspaces = UI.workspaces
-        designWorkspace = workspaces.itemById("FusionSolidEnvironment")
-        if designWorkspace:
-            # Add to Add-ins panel
-            addInsPanel = designWorkspace.toolbarPanels.itemById(
-                "SolidScriptsAddinsPanel"
-            )
-            if not addInsPanel:
-                addInsPanel = designWorkspace.toolbarPanels.add(
-                    "SolidScriptsAddinsPanel", "Add-Ins"
-                )
-
-            # Add our command to the panel
-            controls = addInsPanel.controls
-            systemBlocksControl = controls.itemById("SystemBlocksPaletteShowCommand")
-            if not systemBlocksControl:
-                systemBlocksControl = controls.addCommand(cmdDef)
-
-            if LOGGING_AVAILABLE:
-                _logger.info("Added command to workspace panel")
-
         # Create diagnostics command
         diagCmdDef = UI.commandDefinitions.itemById("SystemBlocksDiagnosticsCommand")
         if not diagCmdDef:
@@ -1919,17 +1986,14 @@ def run(context):
                 "Command definition registered: SystemBlocksDiagnosticsCommand"
             )
 
-        # Add diagnostics command to panel
-        if designWorkspace:
-            addInsPanel = designWorkspace.toolbarPanels.itemById(
-                "SolidScriptsAddinsPanel"
-            )
-            if addInsPanel:
-                diagControl = addInsPanel.controls.itemById(
-                    "SystemBlocksDiagnosticsCommand"
-                )
-                if not diagControl:
-                    diagControl = addInsPanel.controls.addCommand(diagCmdDef)
+        # Add toolbar controls to the design workspace
+        _ensure_toolbar_controls()
+
+        # Register workspace activation handler so toolbar controls
+        # are re-added when the user switches workspaces.
+        onWorkspaceActivated = WorkspaceActivatedHandler()
+        UI.workspaceActivated.add(onWorkspaceActivated)
+        _handlers.append(onWorkspaceActivated)
 
         if LOGGING_AVAILABLE:
             _logger.info("=" * 60)
@@ -1948,6 +2012,11 @@ def run(context):
 
 
 def stop(context):
+    """Entry point called by Fusion when the add-in stops.
+
+    Args:
+        context: Fusion add-in context (unused).
+    """
     try:
         if LOGGING_AVAILABLE:
             _logger.info("SHUTDOWN BEGIN - System Blocks Add-in")
