@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from .models import Block, Graph, Port, PortDirection
+from .models import Block, Graph, Group, Port, PortDirection
 
 
 class ValidationErrorCode(Enum):
@@ -52,6 +52,11 @@ class ValidationErrorCode(Enum):
     # Graph-level errors
     CYCLE_DETECTED = "CYCLE_DETECTED"
     DISCONNECTED_BLOCK = "DISCONNECTED_BLOCK"
+
+    # Group-level errors
+    DUPLICATE_GROUP_ID = "DUPLICATE_GROUP_ID"
+    INVALID_GROUP_BLOCK_REFERENCE = "INVALID_GROUP_BLOCK_REFERENCE"
+    INVALID_GROUP_PARENT_REFERENCE = "INVALID_GROUP_PARENT_REFERENCE"
 
     # Schema errors
     INVALID_SCHEMA_VERSION = "INVALID_SCHEMA_VERSION"
@@ -126,6 +131,7 @@ def validate_graph(graph: Graph) -> list[ValidationError]:
     errors.extend(_validate_block_ids(graph))
     errors.extend(_validate_port_ids(graph))
     errors.extend(_validate_connections(graph))
+    errors.extend(_validate_groups(graph))
     errors.extend(_detect_cycles(graph))
 
     return errors
@@ -427,6 +433,81 @@ def _validate_port_directions(graph: Graph) -> list[ValidationError]:
                             },
                         )
                     )
+
+    return errors
+
+
+def _validate_groups(graph: Graph) -> list[ValidationError]:
+    """Validate all groups in the graph.
+
+    Checks for:
+    - Duplicate group IDs
+    - Block IDs that reference non-existent blocks
+    - Parent group IDs that reference non-existent groups
+
+    Args:
+        graph: The graph to validate.
+
+    Returns:
+        List of validation errors found.
+    """
+    errors: list[ValidationError] = []
+    block_ids: set[str] = {block.id for block in graph.blocks}
+    seen_group_ids: dict[str, Group] = {}
+    group_ids: set[str] = {g.id for g in graph.groups}
+
+    for group in graph.groups:
+        # Duplicate group ID check
+        if group.id in seen_group_ids:
+            errors.append(
+                ValidationError(
+                    code=ValidationErrorCode.DUPLICATE_GROUP_ID,
+                    message=(
+                        f"Duplicate group ID '{group.id}' found. "
+                        f"Groups '{seen_group_ids[group.id].name}'"
+                        f" and '{group.name}' share the same ID."
+                    ),
+                    details={
+                        "group_id": group.id,
+                        "first_group_name": (seen_group_ids[group.id].name),
+                        "second_group_name": group.name,
+                    },
+                )
+            )
+        else:
+            seen_group_ids[group.id] = group
+
+        # Validate block references
+        for bid in group.block_ids:
+            if bid not in block_ids:
+                errors.append(
+                    ValidationError(
+                        code=(ValidationErrorCode.INVALID_GROUP_BLOCK_REFERENCE),
+                        message=(
+                            f"Group '{group.name}' references "
+                            f"non-existent block '{bid}'."
+                        ),
+                        block_id=bid,
+                        details={"group_id": group.id},
+                    )
+                )
+
+        # Validate parent group reference
+        if group.parent_group_id is not None and group.parent_group_id not in group_ids:
+            errors.append(
+                ValidationError(
+                    code=(ValidationErrorCode.INVALID_GROUP_PARENT_REFERENCE),
+                    message=(
+                        f"Group '{group.name}' references "
+                        f"non-existent parent group "
+                        f"'{group.parent_group_id}'."
+                    ),
+                    details={
+                        "group_id": group.id,
+                        "parent_group_id": group.parent_group_id,
+                    },
+                )
+            )
 
     return errors
 

@@ -15,6 +15,7 @@ from .models import (
     BlockStatus,
     Connection,
     Graph,
+    Group,
     Port,
     PortDirection,
     PortKind,
@@ -49,6 +50,7 @@ class GraphBuilder:
         self._graph = Graph(name=name)
         self._current_block: Block | None = None
         self._block_by_name: dict[str, Block] = {}
+        self._group_by_name: dict[str, Group] = {}
 
     def add_block(
         self,
@@ -226,6 +228,57 @@ class GraphBuilder:
             Self for method chaining.
         """
         self._graph.metadata[key] = value
+        return self
+
+    def add_group(
+        self,
+        name: str,
+        block_names: list[str] | None = None,
+        description: str = "",
+        metadata: dict[str, Any] | None = None,
+        parent_group_name: str | None = None,
+    ) -> GraphBuilder:
+        """Add a group of blocks to the graph.
+
+        Args:
+            name: Name of the group.
+            block_names: Names of blocks to include. All must
+                have been added via :meth:`add_block` first.
+            description: Text note or description for the group.
+            metadata: Custom properties on the group.
+            parent_group_name: Name of an existing group to nest
+                this group inside.
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If a referenced block or parent group does
+                not exist.
+        """
+        block_ids: list[str] = []
+        for bname in block_names or []:
+            block = self._block_by_name.get(bname)
+            if block is None:
+                raise ValueError(f"Block '{bname}' not found.")
+            block_ids.append(block.id)
+
+        parent_group_id: str | None = None
+        if parent_group_name is not None:
+            parent = self._group_by_name.get(parent_group_name)
+            if parent is None:
+                raise ValueError(f"Parent group '{parent_group_name}' not found.")
+            parent_group_id = parent.id
+
+        group = Group(
+            name=name,
+            description=description,
+            block_ids=block_ids,
+            metadata=metadata or {},
+            parent_group_id=parent_group_id,
+        )
+        self._graph.add_group(group)
+        self._group_by_name[name] = group
         return self
 
     def build(self) -> Graph:

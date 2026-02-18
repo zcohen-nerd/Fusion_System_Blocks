@@ -18,6 +18,7 @@ from .models import (
     ComparisonOperator,
     Connection,
     Graph,
+    Group,
     Port,
     PortDirection,
     PortKind,
@@ -134,6 +135,7 @@ def graph_to_dict(graph: Graph) -> dict[str, Any]:
         "name": graph.name,
         "blocks": blocks_data,
         "connections": connections_data,
+        "groups": [_group_to_dict(g) for g in graph.groups],
         "metadata": graph.metadata,
         "requirements": [_requirement_to_dict(r) for r in graph.requirements],
     }
@@ -171,6 +173,10 @@ def dict_to_graph(data: dict[str, Any]) -> Graph:
     # Parse requirements (Milestone 18)
     for req_data in data.get("requirements", []):
         graph.requirements.append(_parse_requirement(req_data))
+
+    # Parse groups
+    for group_data in data.get("groups", []):
+        graph.groups.append(_parse_group(group_data))
 
     return graph
 
@@ -393,4 +399,55 @@ def _parse_requirement(data: dict[str, Any]) -> Requirement:
             data.get("linked_attribute", ""),
         ),
         tolerance=float(data.get("tolerance", 1e-9)),
+    )
+
+
+# ------------------------------------------------------------------
+# Group helpers
+# ------------------------------------------------------------------
+
+
+def _group_to_dict(group: Group) -> dict[str, Any]:
+    """Serialize a Group to dictionary.
+
+    Args:
+        group: The group to serialize.
+
+    Returns:
+        Dictionary representation.
+    """
+    result: dict[str, Any] = {
+        "id": group.id,
+        "name": group.name,
+        "description": group.description,
+        "blockIds": group.block_ids,
+        "metadata": group.metadata,
+    }
+    if group.parent_group_id is not None:
+        result["parentGroupId"] = group.parent_group_id
+    return result
+
+
+def _parse_group(data: dict[str, Any]) -> Group:
+    """Parse a Group from dictionary data.
+
+    Args:
+        data: Group dictionary.
+
+    Returns:
+        Constructed Group instance.
+    """
+    return Group(
+        id=data.get("id", ""),
+        name=data.get("name", ""),
+        description=data.get("description", ""),
+        block_ids=data.get(
+            "blockIds",
+            data.get("block_ids", []),
+        ),
+        metadata=data.get("metadata", {}),
+        parent_group_id=data.get(
+            "parentGroupId",
+            data.get("parent_group_id"),
+        ),
     )

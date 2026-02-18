@@ -163,6 +163,7 @@ class TestDictConversion:
             "name",
             "blocks",
             "connections",
+            "groups",
             "metadata",
             "requirements",
         }
