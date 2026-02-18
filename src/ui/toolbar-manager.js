@@ -272,10 +272,10 @@ class ToolbarManager {
         (window.advancedFeatures && window.advancedFeatures.hasSelection());
     }
 
-    // Create group: needs at least 2 blocks selected (single + multi-selection)
+    // Create group: needs at least 1 block selected
     if (buttonId === 'create-group') {
       const multiCount = window.advancedFeatures ? window.advancedFeatures.getSelectionCount() : 0;
-      return multiCount >= 2;
+      return multiCount >= 1;
     }
 
     // Ungroup: enabled when selected blocks belong to a non-default group
@@ -1337,7 +1337,7 @@ class ToolbarManager {
   handleCreateGroup() {
     if (!window.advancedFeatures || !window.advancedFeatures.hasSelection()) return;
     const ids = window.advancedFeatures.getSelectedBlocks();
-    if (ids.length < 2) return;
+    if (ids.length < 1) return;
     const name = prompt('Group name:', 'Group') || 'Group';
     window.advancedFeatures.createGroup(ids, name);
   }

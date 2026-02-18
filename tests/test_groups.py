@@ -649,3 +649,189 @@ class TestGraphBuilderGroups:
         sensors = graph.get_group_by_name("Sensors")
         assert len(sensors.block_ids) == 2
         assert sensors.metadata["subsystem"] == "input"
+
+
+# =========================================================================
+# Dynamic group membership (add/remove blocks)
+# =========================================================================
+class TestGraphAddRemoveBlockFromGroup:
+    """Test Graph add_block_to_group and remove_block_from_group."""
+
+    def _make_graph(self):
+        """Create a graph with blocks and a group."""
+        b1 = Block(id="b1", name="Sensor")
+        b2 = Block(id="b2", name="MCU")
+        b3 = Block(id="b3", name="Motor")
+        g1 = Group(id="g1", name="Control", block_ids=["b1"])
+        return Graph(
+            id="graph1",
+            blocks=[b1, b2, b3],
+            groups=[g1],
+        )
+
+    def test_add_block_to_group(self):
+        """add_block_to_group appends a block ID."""
+        graph = self._make_graph()
+        result = graph.add_block_to_group("g1", "b2")
+        assert result is True
+        assert "b2" in graph.groups[0].block_ids
+        assert len(graph.groups[0].block_ids) == 2
+
+    def test_add_block_to_group_already_present(self):
+        """add_block_to_group returns False for duplicate."""
+        graph = self._make_graph()
+        result = graph.add_block_to_group("g1", "b1")
+        assert result is False
+        assert len(graph.groups[0].block_ids) == 1
+
+    def test_add_block_to_group_missing_group(self):
+        """add_block_to_group returns False for missing group."""
+        graph = self._make_graph()
+        result = graph.add_block_to_group("missing", "b1")
+        assert result is False
+
+    def test_remove_block_from_group(self):
+        """remove_block_from_group removes the block ID."""
+        graph = self._make_graph()
+        result = graph.remove_block_from_group("g1", "b1")
+        assert result is True
+        assert "b1" not in graph.groups[0].block_ids
+        assert len(graph.groups[0].block_ids) == 0
+
+    def test_remove_block_from_group_not_present(self):
+        """remove_block_from_group returns False if absent."""
+        graph = self._make_graph()
+        result = graph.remove_block_from_group("g1", "b2")
+        assert result is False
+
+    def test_remove_block_from_group_missing_group(self):
+        """remove_block_from_group returns False for missing."""
+        graph = self._make_graph()
+        result = graph.remove_block_from_group("missing", "b1")
+        assert result is False
+
+    def test_add_then_remove_round_trip(self):
+        """Adding then removing a block restores original."""
+        graph = self._make_graph()
+        graph.add_block_to_group("g1", "b2")
+        assert len(graph.groups[0].block_ids) == 2
+        graph.remove_block_from_group("g1", "b2")
+        assert graph.groups[0].block_ids == ["b1"]
+
+    def test_single_block_group_creation(self):
+        """A group can be created with a single block."""
+        b1 = Block(id="b1", name="Solo")
+        g1 = Group(
+            id="g1", name="SoloGroup", block_ids=["b1"]
+        )
+        graph = Graph(id="g", blocks=[b1], groups=[g1])
+        errors = validate_graph(graph)
+        assert len(errors) == 0
+        assert len(graph.groups[0].block_ids) == 1
+
+
+class TestGraphBuilderAddRemoveBlock:
+    """Test GraphBuilder add_block_to_group, remove_block_from_group."""
+
+    def test_add_block_to_group_builder(self):
+        """Can add a block to an existing group via builder."""
+        graph = (
+            GraphBuilder("Test")
+            .add_block("Sensor")
+            .add_block("MCU")
+            .add_group("Control", block_names=["Sensor"])
+            .add_block_to_group("Control", "MCU")
+            .build()
+        )
+        grp = graph.get_group_by_name("Control")
+        mcu = graph.get_block_by_name("MCU")
+        assert mcu.id in grp.block_ids
+        assert len(grp.block_ids) == 2
+
+    def test_remove_block_from_group_builder(self):
+        """Can remove a block from a group via builder."""
+        graph = (
+            GraphBuilder("Test")
+            .add_block("Sensor")
+            .add_block("MCU")
+            .add_group(
+                "Control", block_names=["Sensor", "MCU"]
+            )
+            .remove_block_from_group("Control", "Sensor")
+            .build()
+        )
+        grp = graph.get_group_by_name("Control")
+        sensor = graph.get_block_by_name("Sensor")
+        assert sensor.id not in grp.block_ids
+        assert len(grp.block_ids) == 1
+
+    def test_add_block_to_group_missing_group_raises(self):
+        """Referencing non-existent group raises ValueError."""
+        builder = GraphBuilder().add_block("A")
+        with pytest.raises(
+            ValueError, match="Group 'Missing' not found"
+        ):
+            builder.add_block_to_group("Missing", "A")
+
+    def test_add_block_to_group_missing_block_raises(self):
+        """Referencing non-existent block raises ValueError."""
+        builder = (
+            GraphBuilder().add_block("A").add_group("G")
+        )
+        with pytest.raises(
+            ValueError, match="Block 'Missing' not found"
+        ):
+            builder.add_block_to_group("G", "Missing")
+
+    def test_remove_block_from_group_missing_group_raises(
+        self,
+    ):
+        """Referencing non-existent group raises ValueError."""
+        builder = GraphBuilder().add_block("A")
+        with pytest.raises(
+            ValueError, match="Group 'Missing' not found"
+        ):
+            builder.remove_block_from_group("Missing", "A")
+
+    def test_remove_block_from_group_missing_block_raises(
+        self,
+    ):
+        """Referencing non-existent block raises ValueError."""
+        builder = (
+            GraphBuilder().add_block("A").add_group("G")
+        )
+        with pytest.raises(
+            ValueError, match="Block 'Missing' not found"
+        ):
+            builder.remove_block_from_group("G", "Missing")
+
+    def test_add_block_to_group_returns_self(self):
+        """add_block_to_group returns builder for chaining."""
+        builder = (
+            GraphBuilder()
+            .add_block("A")
+            .add_group("G", block_names=["A"])
+        )
+        result = builder.add_block_to_group("G", "A")
+        assert result is builder
+
+    def test_remove_block_from_group_returns_self(self):
+        """remove_block_from_group returns builder for chaining."""
+        builder = (
+            GraphBuilder()
+            .add_block("A")
+            .add_group("G", block_names=["A"])
+        )
+        result = builder.remove_block_from_group("G", "A")
+        assert result is builder
+
+    def test_single_block_group_via_builder(self):
+        """Can create a group with one block via builder."""
+        graph = (
+            GraphBuilder("Test")
+            .add_block("Solo")
+            .add_group("SoloGroup", block_names=["Solo"])
+            .build()
+        )
+        grp = graph.get_group_by_name("SoloGroup")
+        assert len(grp.block_ids) == 1

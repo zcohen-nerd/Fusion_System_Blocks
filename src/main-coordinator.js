@@ -1084,6 +1084,53 @@ class SystemBlocksMain {
           this.hideContextMenu();
         });
       });
+
+      // Add to Group / Remove from Group
+      if (window.advancedFeatures) {
+        const groups = window.advancedFeatures.getGroupList();
+        const currentGroupId = window.advancedFeatures.getGroupForBlock(block.id);
+
+        // Populate "Add to Group" submenu
+        const submenu = freshMenu.querySelector('#ctx-add-to-group-submenu');
+        const addItem = freshMenu.querySelector('#ctx-add-to-group');
+        if (submenu) {
+          submenu.innerHTML = '';
+          const available = groups.filter(g => g.id !== currentGroupId);
+          if (available.length === 0) {
+            if (addItem) addItem.style.display = 'none';
+          } else {
+            available.forEach(g => {
+              const opt = document.createElement('div');
+              opt.className = 'fusion-context-menu-item';
+              opt.textContent = g.name;
+              opt.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (currentGroupId) {
+                  window.advancedFeatures.removeBlockFromGroup(currentGroupId, block.id);
+                }
+                window.advancedFeatures.addBlockToGroup(g.id, block.id);
+                this.hideContextMenu();
+              });
+              submenu.appendChild(opt);
+            });
+          }
+        }
+
+        // Show/hide "Remove from Group"
+        const removeItem = freshMenu.querySelector('#ctx-remove-from-group');
+        if (removeItem) {
+          if (currentGroupId) {
+            removeItem.style.display = '';
+            removeItem.addEventListener('click', (e) => {
+              e.stopPropagation();
+              window.advancedFeatures.removeBlockFromGroup(currentGroupId, block.id);
+              this.hideContextMenu();
+            });
+          } else {
+            removeItem.style.display = 'none';
+          }
+        }
+      }
     }
 
     // Canvas/empty-space actions — Add Block at the right-click position
@@ -1974,6 +2021,8 @@ class SystemBlocksMain {
       redo: () => this.modules.get('features').redo(),
       
       createGroup: (blockIds, name) => this.modules.get('features').createGroup(blockIds, name),
+      addBlockToGroup: (groupId, blockId) => this.modules.get('features').addBlockToGroup(groupId, blockId),
+      removeBlockFromGroup: (groupId, blockId) => this.modules.get('features').removeBlockFromGroup(groupId, blockId),
       
       // Python interface
       save: () => this.modules.get('python').saveDiagram(),
