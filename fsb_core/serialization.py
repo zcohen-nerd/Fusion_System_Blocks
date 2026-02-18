@@ -305,6 +305,11 @@ def _parse_connection(data: dict[str, Any]) -> Connection:
                 if data.get("arrowDirection")
                 else {}
             ),
+            **(
+                {"renderAsStub": data["renderAsStub"]}
+                if data.get("renderAsStub")
+                else {}
+            ),
         },
     )
 

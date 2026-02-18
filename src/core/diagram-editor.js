@@ -92,7 +92,7 @@ class DiagramEditorCore {
     this._markDirty();
   }
 
-  addConnection(fromBlockId, toBlockId, connectionType = 'auto', arrowDirection = 'forward') {
+  addConnection(fromBlockId, toBlockId, connectionType = 'auto', arrowDirection = 'forward', options = {}) {
     // Prevent connections with missing block IDs
     if (!fromBlockId || !toBlockId) return null;
 
@@ -115,6 +115,12 @@ class DiagramEditorCore {
       arrowDirection: arrowDirection,
       waypoints: []
     };
+
+    // Same-level stub connection: renders as short stubs on each block
+    // edge rather than a full line spanning the canvas.
+    if (options.renderAsStub) {
+      connection.renderAsStub = true;
+    }
 
     this.diagram.connections.push(connection);
     this.diagram.metadata.modified = new Date().toISOString();
