@@ -148,7 +148,7 @@ class AdvancedFeatures {
   }
 
   finishLassoSelection(endX, endY) {
-    if (!this.isLassoSelecting) return;
+    if (!this.isLassoSelecting) return [];
     
     const selectionBounds = {
       left: Math.min(this.lassoStart.x, endX),
@@ -162,6 +162,7 @@ class AdvancedFeatures {
       this.clearSelection();
     }
     
+    const newlySelected = [];
     this.editor.diagram.blocks.forEach(block => {
       const blockBounds = {
         left: block.x,
@@ -176,6 +177,7 @@ class AdvancedFeatures {
           blockBounds.top < selectionBounds.bottom &&
           blockBounds.bottom > selectionBounds.top) {
         this.addToSelection(block.id);
+        newlySelected.push(block.id);
       }
     });
     
@@ -185,6 +187,7 @@ class AdvancedFeatures {
       this.lassoRect = null;
     }
     this.isLassoSelecting = false;
+    return newlySelected;
   }
 
   // === GROUP MANAGEMENT ===
@@ -343,6 +346,8 @@ class AdvancedFeatures {
   calculateGroupBounds(blockIds) {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     
+    const blockIdSet = new Set(blockIds);
+
     blockIds.forEach(blockId => {
       const block = this.editor.diagram.blocks.find(b => b.id === blockId);
       if (block) {
@@ -350,6 +355,64 @@ class AdvancedFeatures {
         minY = Math.min(minY, block.y);
         maxX = Math.max(maxX, block.x + (block.width || 120));
         maxY = Math.max(maxY, block.y + (block.height || 80));
+      }
+    });
+
+    // Extend bounds to include named stubs attached to member blocks
+    const stubs = this.editor.diagram.namedStubs || [];
+    const STUB_LEN = 30;
+    const STUB_LABEL_PAD = 50; // extra padding for the stub label text
+    stubs.forEach(stub => {
+      if (!blockIdSet.has(stub.blockId)) return;
+      const block = this.editor.diagram.blocks.find(b => b.id === stub.blockId);
+      if (!block) return;
+      const w = block.width || 120;
+      const h = block.height || 80;
+      switch (stub.portSide) {
+        case 'input':
+          minX = Math.min(minX, block.x - STUB_LEN - STUB_LABEL_PAD);
+          break;
+        case 'top':
+          minY = Math.min(minY, block.y - STUB_LEN - STUB_LABEL_PAD);
+          break;
+        case 'bottom':
+          maxY = Math.max(maxY, block.y + h + STUB_LEN + STUB_LABEL_PAD);
+          break;
+        case 'output':
+        default:
+          maxX = Math.max(maxX, block.x + w + STUB_LEN + STUB_LABEL_PAD);
+          break;
+      }
+    });
+
+    // Also extend for same-level stub connections
+    const stubConns = (this.editor.diagram.connections || []).filter(c => c.renderAsStub);
+    stubConns.forEach(conn => {
+      const fromInGroup = blockIdSet.has(conn.fromBlock);
+      const toInGroup = blockIdSet.has(conn.toBlock);
+      if (fromInGroup) {
+        const block = this.editor.diagram.blocks.find(b => b.id === conn.fromBlock);
+        if (block) {
+          const w = block.width || 120;
+          const h = block.height || 80;
+          const port = conn.fromPort || 'output';
+          if (port === 'output') maxX = Math.max(maxX, block.x + w + STUB_LEN + STUB_LABEL_PAD);
+          if (port === 'input') minX = Math.min(minX, block.x - STUB_LEN - STUB_LABEL_PAD);
+          if (port === 'bottom') maxY = Math.max(maxY, block.y + h + STUB_LEN + STUB_LABEL_PAD);
+          if (port === 'top') minY = Math.min(minY, block.y - STUB_LEN - STUB_LABEL_PAD);
+        }
+      }
+      if (toInGroup) {
+        const block = this.editor.diagram.blocks.find(b => b.id === conn.toBlock);
+        if (block) {
+          const w = block.width || 120;
+          const h = block.height || 80;
+          const port = conn.toPort || 'input';
+          if (port === 'output') maxX = Math.max(maxX, block.x + w + STUB_LEN + STUB_LABEL_PAD);
+          if (port === 'input') minX = Math.min(minX, block.x - STUB_LEN - STUB_LABEL_PAD);
+          if (port === 'bottom') maxY = Math.max(maxY, block.y + h + STUB_LEN + STUB_LABEL_PAD);
+          if (port === 'top') minY = Math.min(minY, block.y - STUB_LEN - STUB_LABEL_PAD);
+        }
       }
     });
     
@@ -490,6 +553,123 @@ class AdvancedFeatures {
   generateGroupColor() {
     const colors = ['#FF6B35', '#004E89', '#009639', '#FF9F1C', '#7209B7'];
     return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  /**
+   * Show a visual color picker popup for changing a group's boundary color.
+   * Offers preset swatches and a native HTML color input for custom colors.
+   * @private
+   */
+  _showGroupColorPicker(group) {
+    const prev = document.getElementById('group-color-picker');
+    if (prev) prev.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'group-color-picker';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;' +
+      'align-items:center;justify-content:center;background:rgba(0,0,0,0.45);';
+
+    const card = document.createElement('div');
+    card.style.cssText = 'background:#1e1e2e;border:1px solid #555;border-radius:10px;' +
+      'padding:18px;width:280px;color:#ccc;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.5);';
+
+    const heading = document.createElement('div');
+    heading.textContent = 'Group Color: ' + (group.name || group.id);
+    heading.style.cssText = 'font-weight:600;margin-bottom:12px;font-size:14px;';
+    card.appendChild(heading);
+
+    // Preset swatches
+    const presets = [
+      '#FF6B35', '#004E89', '#009639', '#FF9F1C', '#7209B7',
+      '#E63946', '#2A9D8F', '#F4A261', '#264653', '#E76F51',
+      '#6A4C93', '#1982C4', '#8AC926', '#FFCA3A', '#FF595E'
+    ];
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px;';
+
+    let selectedColor = group.color || '#FF6B35';
+
+    presets.forEach(color => {
+      const swatch = document.createElement('div');
+      swatch.style.cssText = 'width:36px;height:36px;border-radius:6px;cursor:pointer;' +
+        'border:2px solid ' + (color === selectedColor ? '#fff' : 'transparent') + ';' +
+        'background:' + color + ';transition:border-color 0.15s;';
+      swatch.addEventListener('click', () => {
+        selectedColor = color;
+        // Update borders on all swatches
+        grid.querySelectorAll('div').forEach(s => {
+          s.style.borderColor = 'transparent';
+        });
+        swatch.style.borderColor = '#fff';
+        colorInput.value = color;
+        preview.style.background = color;
+      });
+      grid.appendChild(swatch);
+    });
+    card.appendChild(grid);
+
+    // Custom color row
+    const customRow = document.createElement('div');
+    customRow.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:14px;';
+
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = selectedColor;
+    colorInput.style.cssText = 'width:40px;height:32px;border:none;cursor:pointer;' +
+      'background:transparent;padding:0;';
+    colorInput.addEventListener('input', () => {
+      selectedColor = colorInput.value;
+      preview.style.background = selectedColor;
+      grid.querySelectorAll('div').forEach(s => {
+        s.style.borderColor = 'transparent';
+      });
+    });
+    customRow.appendChild(colorInput);
+
+    const customLabel = document.createElement('span');
+    customLabel.textContent = 'Custom color';
+    customLabel.style.cssText = 'flex:1;';
+    customRow.appendChild(customLabel);
+
+    const preview = document.createElement('div');
+    preview.style.cssText = 'width:28px;height:28px;border-radius:4px;border:1px solid #666;' +
+      'background:' + selectedColor + ';';
+    customRow.appendChild(preview);
+    card.appendChild(customRow);
+
+    // Buttons
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = 'padding:5px 14px;border:1px solid #555;border-radius:4px;' +
+      'background:transparent;color:#ccc;cursor:pointer;font-size:13px;';
+    cancelBtn.addEventListener('click', () => overlay.remove());
+    btnRow.appendChild(cancelBtn);
+
+    const applyBtn = document.createElement('button');
+    applyBtn.textContent = 'Apply';
+    applyBtn.style.cssText = 'padding:5px 14px;border:none;border-radius:4px;' +
+      'background:#4fc3f7;color:#111;font-weight:600;cursor:pointer;font-size:13px;';
+    applyBtn.addEventListener('click', () => {
+      group.color = selectedColor;
+      this.renderGroupBoundary(group);
+      this._syncGroupsToDiagram();
+      this.saveState();
+      overlay.remove();
+    });
+    btnRow.appendChild(applyBtn);
+    card.appendChild(btnRow);
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    // Click on overlay background dismisses
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
   }
 
   // === GROUP PERSISTENCE ===
@@ -660,13 +840,8 @@ class AdvancedFeatures {
     addSep();
 
     addItem('🎨 Change Color…', () => {
-      const newColor = prompt('Group color (hex):', group.color || '#FF6B35');
-      if (newColor && /^#[0-9a-fA-F]{3,8}$/.test(newColor)) {
-        group.color = newColor;
-        this.renderGroupBoundary(group);
-        this._syncGroupsToDiagram();
-        this.saveState();
-      }
+      menu.remove();
+      this._showGroupColorPicker(group);
     });
 
     addItem('🗑️ Ungroup', () => this.ungroupBlocks(group.id));
@@ -742,7 +917,7 @@ class AdvancedFeatures {
 
     const nameInput = addField('Name', group.name);
     const descInput = addField('Description', group.description, 'textarea');
-    const colorInput = addField('Color (hex)', group.color);
+    const colorInput = addField('Color', group.color, 'color');
 
     // Parent group selector
     const parentLabel = document.createElement('label');

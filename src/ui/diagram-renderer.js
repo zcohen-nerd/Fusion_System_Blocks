@@ -600,15 +600,17 @@ class DiagramRenderer {
     const toW   = resolvedTo.width    || 120;
     const toH   = resolvedTo.height   || 80;
 
-    // Fan offset: distribute connections sharing the same port side
-    const outConns = this.editor.diagram.connections.filter(
-      c => c.fromBlock === connection.fromBlock && (c.fromPort || 'output') === fromPort
-    );
-    const inConns = this.editor.diagram.connections.filter(
-      c => c.toBlock === connection.toBlock && (c.toPort || 'input') === toPort
-    );
-    const outIdx = outConns.indexOf(connection);
-    const inIdx  = inConns.indexOf(connection);
+    // Fan offset: use unified fan map so regular connections, stubs,
+    // and named stubs all share the same slot distribution per port side.
+    if (!this._cachedFanMap) {
+      this._cachedFanMap = this._buildUnifiedFanMap(this.editor.diagram);
+    }
+    const outSlot = this._lookupFanSlot(this._cachedFanMap, connection.fromBlock, fromPort, 'conn-from', connection.id);
+    const inSlot  = this._lookupFanSlot(this._cachedFanMap, connection.toBlock, toPort, 'conn-to', connection.id);
+    const outIdx = outSlot.index;
+    const outTotal = outSlot.total;
+    const inIdx  = inSlot.index;
+    const inTotal = inSlot.total;
 
     let fromX, fromY, toX, toY;
 
@@ -616,19 +618,19 @@ class DiagramRenderer {
     switch (fromPort) {
       case 'input':
         fromX = resolvedFrom.x;
-        fromY = resolvedFrom.y + this._fanOffset(outIdx, outConns.length, fromH);
+        fromY = resolvedFrom.y + this._fanOffset(outIdx, outTotal, fromH);
         break;
       case 'top':
-        fromX = resolvedFrom.x + this._fanOffset(outIdx, outConns.length, fromW);
+        fromX = resolvedFrom.x + this._fanOffset(outIdx, outTotal, fromW);
         fromY = resolvedFrom.y;
         break;
       case 'bottom':
-        fromX = resolvedFrom.x + this._fanOffset(outIdx, outConns.length, fromW);
+        fromX = resolvedFrom.x + this._fanOffset(outIdx, outTotal, fromW);
         fromY = resolvedFrom.y + fromH;
         break;
       default: // 'output'
         fromX = resolvedFrom.x + fromW;
-        fromY = resolvedFrom.y + this._fanOffset(outIdx, outConns.length, fromH);
+        fromY = resolvedFrom.y + this._fanOffset(outIdx, outTotal, fromH);
         break;
     }
 
@@ -636,19 +638,19 @@ class DiagramRenderer {
     switch (toPort) {
       case 'output':
         toX = resolvedTo.x + toW;
-        toY = resolvedTo.y + this._fanOffset(inIdx, inConns.length, toH);
+        toY = resolvedTo.y + this._fanOffset(inIdx, inTotal, toH);
         break;
       case 'top':
-        toX = resolvedTo.x + this._fanOffset(inIdx, inConns.length, toW);
+        toX = resolvedTo.x + this._fanOffset(inIdx, inTotal, toW);
         toY = resolvedTo.y;
         break;
       case 'bottom':
-        toX = resolvedTo.x + this._fanOffset(inIdx, inConns.length, toW);
+        toX = resolvedTo.x + this._fanOffset(inIdx, inTotal, toW);
         toY = resolvedTo.y + toH;
         break;
       default: // 'input'
         toX = resolvedTo.x;
-        toY = resolvedTo.y + this._fanOffset(inIdx, inConns.length, toH);
+        toY = resolvedTo.y + this._fanOffset(inIdx, inTotal, toH);
         break;
     }
 
@@ -675,18 +677,12 @@ class DiagramRenderer {
         d = this._computeMixedAxisBezier(fromX, fromY, toX, toY, fromPort, toPort);
       } else if (isVertical) {
         // Vertical Bezier: stubs go up/down then curve across
-        const dy = Math.abs(toY - fromY);
-        const dx = toX - fromX;
-        const xBulge = Math.abs(dx) < 10 ? Math.max(30, dy * 0.15) : 0;
-        const midY = (fromY + toY) / 2;
-        d = `M ${fromX} ${fromY} C ${fromX - xBulge} ${midY} ${toX - xBulge} ${midY} ${toX} ${toY}`;
+        d = this._computeCollisionAwareBezier(
+          fromX, fromY, toX, toY, fromPort, toPort, connection, true);
       } else {
-        // Default horizontal Bezier curve
-        const dx = Math.abs(toX - fromX);
-        const dy = toY - fromY;
-        const yBulge = Math.abs(dy) < 10 ? Math.max(30, dx * 0.15) : 0;
-        const midX = (fromX + toX) / 2;
-        d = `M ${fromX} ${fromY} C ${midX} ${fromY - yBulge} ${midX} ${toY - yBulge} ${toX} ${toY}`;
+        // Default horizontal Bezier curve with collision avoidance
+        d = this._computeCollisionAwareBezier(
+          fromX, fromY, toX, toY, fromPort, toPort, connection, false);
       }
     }
 
@@ -717,23 +713,23 @@ class DiagramRenderer {
     }
     path.setAttribute('class', 'connection-line');
 
-    // Apply directional markers
-    if (direction === 'forward') {
-      path.setAttribute('marker-end', fwdMarker);
-    } else if (direction === 'bidirectional') {
-      path.setAttribute('marker-end', fwdMarker);
-    } else if (direction === 'backward') {
-      // No marker-end for backward — only start arrow
-    }
-    // direction === 'none' → no markers
+    // Directional arrows — use manual polygon arrows for both ends.
+    // SVG marker-end auto-rotates based on path tangent, which can
+    // cause arrowheads to render perpendicular to the block face on
+    // curved or backward connections.  Manual arrows use the port
+    // direction instead, ensuring they always align with the block edge.
+    // (We already use manual start arrows as a CEF workaround.)
 
     // Append path BEFORE manual arrows so the arrow polygon renders
     // on top of the connection line (correct SVG stacking order).
     group.appendChild(path);
 
-    // CEF workaround: marker-start is unreliable in Fusion's
-    // Chromium, so render a manual reverse arrow polygon instead.
-    // Appended after the path so the arrow sits visually on top.
+    // Forward arrow at target (end) — uses toPort for alignment
+    if (direction === 'forward' || direction === 'bidirectional') {
+      this._addManualEndArrow(group, toX, toY, fromX, fromY, styling.stroke, styling.strokeWidth, toPort);
+    }
+
+    // Backward/bidirectional arrow at source (start)
     if (direction === 'bidirectional' || direction === 'backward') {
       this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke, styling.strokeWidth, fromPort);
     }
@@ -927,6 +923,78 @@ class DiagramRenderer {
   }
 
   /**
+   * Build a unified fan layout map for all connections on every
+   * (blockId, portSide) pair.  This ensures regular connections,
+   * same-level stubs, and named stubs all share the same slot
+   * distribution and don't overlap.
+   *
+   * Returns a Map keyed by "blockId:portSide", where each value is
+   * { total, items: [ { type, id, index }, ... ] }.
+   *
+   * Callers can look up their item by type+id to get the index and
+   * total for _fanOffset.
+   */
+  _buildUnifiedFanMap(diagram) {
+    const fanMap = {};
+
+    const addItem = (blockId, portSide, type, id) => {
+      const key = blockId + ':' + portSide;
+      if (!fanMap[key]) fanMap[key] = [];
+      fanMap[key].push({ type, id });
+    };
+
+    // 1. Regular connections (non-stub)
+    (diagram.connections || []).forEach(conn => {
+      if (conn.renderAsStub) return;
+      const fromPort = conn.fromPort || 'output';
+      const toPort = conn.toPort || 'input';
+      addItem(conn.fromBlock, fromPort, 'conn-from', conn.id);
+      addItem(conn.toBlock, toPort, 'conn-to', conn.id);
+    });
+
+    // 2. Same-level stub connections (renderAsStub)
+    (diagram.connections || []).forEach(conn => {
+      if (!conn.renderAsStub) return;
+      const fromPort = conn.fromPort || 'output';
+      const toPort = conn.toPort || 'input';
+      addItem(conn.fromBlock, fromPort, 'stub-from', conn.id);
+      addItem(conn.toBlock, toPort, 'stub-to', conn.id);
+    });
+
+    // 3. Named stubs (net labels)
+    (diagram.namedStubs || []).forEach(stub => {
+      addItem(stub.blockId, stub.portSide || 'output', 'named-stub', stub.id);
+    });
+
+    // Assign sequential indices
+    const result = new Map();
+    for (const key of Object.keys(fanMap)) {
+      const items = fanMap[key];
+      items.forEach((item, i) => { item.index = i; });
+      result.set(key, { total: items.length, items });
+    }
+    return result;
+  }
+
+  /**
+   * Look up the fan slot for a specific item in the unified fan map.
+   * @param {Map} fanMap - Result of _buildUnifiedFanMap.
+   * @param {string} blockId
+   * @param {string} portSide
+   * @param {string} type - 'conn-from', 'conn-to', 'stub-from', 'stub-to', 'named-stub'
+   * @param {string} id - connection or stub ID
+   * @returns {{ index: number, total: number }}
+   */
+  _lookupFanSlot(fanMap, blockId, portSide, type, id) {
+    const key = blockId + ':' + portSide;
+    const entry = fanMap.get(key);
+    if (!entry) return { index: 0, total: 1 };
+    const item = entry.items.find(i => i.type === type && i.id === id);
+    if (!item) return { index: 0, total: entry.total || 1 };
+    return { index: item.index, total: entry.total };
+  }
+
+  /**
    * Compute a vertical offset for the i-th connection out of total,
    * distributed symmetrically around the block's vertical center.
    * Keeps a 10 px margin from top/bottom edges.
@@ -989,6 +1057,66 @@ class DiagramRenderer {
     arrow.setAttribute('stroke-width', '0.5');
     arrow.setAttribute('stroke-linejoin', 'round');
     arrow.setAttribute('class', 'manual-start-arrow');
+    group.appendChild(arrow);
+  }
+
+  /**
+   * Render a manual forward-arrow polygon at the END of a connection path.
+   * The arrow tip sits at (toX, toY) and points INTO the target block
+   * along the port axis, so it always aligns with the block edge.
+   *
+   * @param {SVGGElement} group     Parent <g> to append to.
+   * @param {number}      toX       Target X.
+   * @param {number}      toY       Target Y.
+   * @param {number}      fromX     Source X (unused, kept for symmetry).
+   * @param {number}      fromY     Source Y (unused, kept for symmetry).
+   * @param {string}      fillColor Arrow fill colour.
+   * @param {number}      strokeWidth
+   * @param {string}      toPort    Target port name.
+   */
+  _addManualEndArrow(group, toX, toY, fromX, fromY, fillColor, strokeWidth = 2, toPort = 'input') {
+    const size = 10;
+
+    // The arrow should point INTO the block along the port axis.
+    // For an 'input' port (left edge), the path approaches from the
+    // left, so the arrow points right (into the block).
+    let segAngle;
+    switch (toPort) {
+      case 'output':
+        segAngle = 0; // port is on the right → arrow points right (into block from left is wrong; path arrives from left, arrow tip at right edge pointing right means pointing away)
+        break;
+      case 'top':
+        segAngle = -Math.PI / 2; // arrow points up into the block
+        break;
+      case 'bottom':
+        segAngle = Math.PI / 2; // arrow points down into the block
+        break;
+      default: // 'input'
+        segAngle = Math.PI; // arrow points left into the block
+        break;
+    }
+
+    const tipX = toX;
+    const tipY = toY;
+
+    const halfSpread = Math.atan2(3.5, 10); // ~19°
+    // Base extends AWAY from the block (opposite to segAngle = into block)
+    // The base is along the incoming path direction, which is opposite
+    // to the port's inward direction.
+    const awayAngle = segAngle + Math.PI; // reverse direction
+    const baseX1 = tipX + Math.cos(awayAngle + halfSpread) * size;
+    const baseY1 = tipY + Math.sin(awayAngle + halfSpread) * size;
+    const baseX2 = tipX + Math.cos(awayAngle - halfSpread) * size;
+    const baseY2 = tipY + Math.sin(awayAngle - halfSpread) * size;
+
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    arrow.setAttribute('points',
+      `${tipX},${tipY} ${baseX1},${baseY1} ${baseX2},${baseY2}`);
+    arrow.setAttribute('fill', fillColor);
+    arrow.setAttribute('stroke', fillColor);
+    arrow.setAttribute('stroke-width', '0.5');
+    arrow.setAttribute('stroke-linejoin', 'round');
+    arrow.setAttribute('class', 'manual-end-arrow');
     group.appendChild(arrow);
   }
 
@@ -1108,6 +1236,123 @@ class DiagramRenderer {
   }
 
   /**
+   * Compute a Bezier curve that avoids passing through intermediate blocks.
+   * Samples the default Bezier at several points; if any sample lands inside
+   * an obstacle, the control points are shifted vertically (for horizontal
+   * connections) or horizontally (for vertical ones) to route around them.
+   * @private
+   */
+  _computeCollisionAwareBezier(fromX, fromY, toX, toY, fromPort, toPort, connection, isVertical) {
+    const blocks = this.editor.diagram.blocks || [];
+    const obstacles = blocks
+      .filter(b => b.id !== connection.fromBlock && b.id !== connection.toBlock)
+      .map(b => ({ x: b.x, y: b.y, w: b.width || 120, h: b.height || 80 }));
+
+    if (isVertical) {
+      // Vertical Bezier: stubs go up/down then curve across
+      const dy = Math.abs(toY - fromY);
+      const dx = toX - fromX;
+      const xBulge = Math.abs(dx) < 10 ? Math.max(30, dy * 0.15) : 0;
+      const midY = (fromY + toY) / 2;
+      let cp1x = fromX - xBulge, cp1y = midY;
+      let cp2x = toX - xBulge,   cp2y = midY;
+
+      // Check for collisions and nudge control points horizontally
+      const nudge = this._bezierCollisionNudge(
+        fromX, fromY, cp1x, cp1y, cp2x, cp2y, toX, toY, obstacles, 'x');
+      cp1x += nudge;
+      cp2x += nudge;
+
+      return `M ${fromX} ${fromY} C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${toX} ${toY}`;
+    }
+
+    // Horizontal Bezier: stubs go left/right then curve vertically
+    const dx = Math.abs(toX - fromX);
+    const dy = toY - fromY;
+    const yBulge = Math.abs(dy) < 10 ? Math.max(30, dx * 0.15) : 0;
+    const midX = (fromX + toX) / 2;
+    let cp1x = midX, cp1y = fromY - yBulge;
+    let cp2x = midX, cp2y = toY - yBulge;
+
+    // Check for collisions and nudge control points vertically
+    const nudge = this._bezierCollisionNudge(
+      fromX, fromY, cp1x, cp1y, cp2x, cp2y, toX, toY, obstacles, 'y');
+    cp1y += nudge;
+    cp2y += nudge;
+
+    return `M ${fromX} ${fromY} C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${toX} ${toY}`;
+  }
+
+  /**
+   * Sample a cubic Bezier at several t values and check for collisions
+   * with obstacles. Returns an offset to apply to control points on
+   * the given axis ('x' or 'y') to route the curve around obstacles.
+   * @private
+   */
+  _bezierCollisionNudge(p0x, p0y, cp1x, cp1y, cp2x, cp2y, p3x, p3y, obstacles, axis) {
+    if (obstacles.length === 0) return 0;
+
+    // Sample the Bezier at several points
+    const samples = 8;
+    const margin = 6;
+    let hasCollision = false;
+    let collisionCenter = 0;
+
+    for (let i = 1; i < samples; i++) {
+      const t = i / samples;
+      const t2 = t * t, t3 = t2 * t;
+      const mt = 1 - t, mt2 = mt * mt, mt3 = mt2 * mt;
+      const sx = mt3 * p0x + 3 * mt2 * t * cp1x + 3 * mt * t2 * cp2x + t3 * p3x;
+      const sy = mt3 * p0y + 3 * mt2 * t * cp1y + 3 * mt * t2 * cp2y + t3 * p3y;
+
+      for (const obs of obstacles) {
+        if (sx > obs.x - margin && sx < obs.x + obs.w + margin &&
+            sy > obs.y - margin && sy < obs.y + obs.h + margin) {
+          hasCollision = true;
+          collisionCenter = axis === 'y'
+            ? (obs.y + obs.h / 2) : (obs.x + obs.w / 2);
+          break;
+        }
+      }
+      if (hasCollision) break;
+    }
+
+    if (!hasCollision) return 0;
+
+    // Decide nudge direction: push control points away from the obstacle
+    const curveMid = axis === 'y'
+      ? (p0y + p3y) / 2 : (p0x + p3x) / 2;
+    const sign = curveMid < collisionCenter ? -1 : 1;
+
+    // Nudge by enough to clear the obstacle (try increasing amounts)
+    for (const amount of [40, 70, 110, 160]) {
+      const nudge = sign * amount;
+      let clear = true;
+      for (let i = 1; i < samples; i++) {
+        const t = i / samples;
+        const t2 = t * t, t3 = t2 * t;
+        const mt = 1 - t, mt2 = mt * mt, mt3 = mt2 * mt;
+        let ncp1x = cp1x, ncp1y = cp1y, ncp2x = cp2x, ncp2y = cp2y;
+        if (axis === 'y') { ncp1y += nudge; ncp2y += nudge; }
+        else { ncp1x += nudge; ncp2x += nudge; }
+        const sx = mt3 * p0x + 3 * mt2 * t * ncp1x + 3 * mt * t2 * ncp2x + t3 * p3x;
+        const sy = mt3 * p0y + 3 * mt2 * t * ncp1y + 3 * mt * t2 * ncp2y + t3 * p3y;
+        for (const obs of obstacles) {
+          if (sx > obs.x - margin && sx < obs.x + obs.w + margin &&
+              sy > obs.y - margin && sy < obs.y + obs.h + margin) {
+            clear = false;
+            break;
+          }
+        }
+        if (!clear) break;
+      }
+      if (clear) return nudge;
+    }
+    // Couldn't fully clear — use largest nudge as best effort
+    return sign * 160;
+  }
+
+  /**
    * Compute a smooth Bezier curve for mixed-axis connections.
    * The control points extend along each port's natural axis so the
    * curve leaves and arrives in the correct direction.
@@ -1223,6 +1468,9 @@ class DiagramRenderer {
   }
 
   updateAllBlocks(diagram) {
+    // Invalidate the unified fan-map cache so it is rebuilt fresh
+    this._cachedFanMap = null;
+
     // Clear existing renders
     this.blockElements.forEach(element => element.remove());
     this.connectionElements.forEach(element => element.remove());
@@ -1576,21 +1824,12 @@ class DiagramRenderer {
     const stubConns = (diagram.connections || []).filter(c => c.renderAsStub);
     if (stubConns.length === 0) return;
 
-    // Pre-compute fan offsets per block side: group stub connections
-    // by (blockId, side) so multiple stubs on the same block edge
-    // are distributed vertically.
-    const outStubsByBlock = {};
-    const inStubsByBlock = {};
-    stubConns.forEach(conn => {
-      const fromPort = conn.fromPort || 'output';
-      const toPort = conn.toPort || 'input';
-      const outKey = conn.fromBlock + ':' + fromPort;
-      const inKey = conn.toBlock + ':' + toPort;
-      if (!outStubsByBlock[outKey]) outStubsByBlock[outKey] = [];
-      if (!inStubsByBlock[inKey]) inStubsByBlock[inKey] = [];
-      outStubsByBlock[outKey].push(conn);
-      inStubsByBlock[inKey].push(conn);
-    });
+    // Use the unified fan map so stubs share slots with regular
+    // connections and named stubs on the same port side.
+    if (!this._cachedFanMap) {
+      this._cachedFanMap = this._buildUnifiedFanMap(diagram);
+    }
+    const fanMap = this._cachedFanMap;
 
     stubConns.forEach(conn => {
       const fromBlock = diagram.blocks.find(b => b.id === conn.fromBlock);
@@ -1609,24 +1848,22 @@ class DiagramRenderer {
       const toW = toBlock.width || 120;
       const toH = toBlock.height || 80;
 
-      // Fan offset for source stub
-      const outKey = conn.fromBlock + ':' + fromPort;
-      const outList = outStubsByBlock[outKey] || [conn];
-      const outIdx = outList.indexOf(conn);
+      // Fan offset for source stub (unified)
+      const outSlot = this._lookupFanSlot(fanMap, conn.fromBlock, fromPort, 'stub-from', conn.id);
+      const outIdx = outSlot.index;
 
-      // Fan offset for target stub
-      const inKey = conn.toBlock + ':' + toPort;
-      const inList = inStubsByBlock[inKey] || [conn];
-      const inIdx = inList.indexOf(conn);
+      // Fan offset for target stub (unified)
+      const inSlot = this._lookupFanSlot(fanMap, conn.toBlock, toPort, 'stub-to', conn.id);
+      const inIdx = inSlot.index;
 
       // --- Render source (outgoing) stub ---
       this._renderStubElement(svg, conn, fromBlock, fromPort, fromW, fromH,
-        outIdx, outList.length, stubLen, styling, direction, true,
+        outIdx, outSlot.total, stubLen, styling, direction, true,
         toBlock.name || toBlock.id, connType);
 
       // --- Render target (incoming) stub ---
       this._renderStubElement(svg, conn, toBlock, toPort, toW, toH,
-        inIdx, inList.length, stubLen, styling, direction, false,
+        inIdx, inSlot.total, stubLen, styling, direction, false,
         fromBlock.name || fromBlock.id, connType);
     });
   }
@@ -1794,13 +2031,12 @@ class DiagramRenderer {
     const stubs = diagram.namedStubs || [];
     if (stubs.length === 0) return;
 
-    // Group by (blockId, portSide) for fan layout
-    const fanGroups = {};
-    stubs.forEach(stub => {
-      const key = stub.blockId + ':' + stub.portSide;
-      if (!fanGroups[key]) fanGroups[key] = [];
-      fanGroups[key].push(stub);
-    });
+    // Use unified fan map so named stubs share slots with regular
+    // connections and same-level stubs on the same port side.
+    if (!this._cachedFanMap) {
+      this._cachedFanMap = this._buildUnifiedFanMap(diagram);
+    }
+    const fanMap = this._cachedFanMap;
 
     // Assign a color to each unique net name for visual grouping
     const netNames = [...new Set(stubs.map(s => s.netName))];
@@ -1822,11 +2058,10 @@ class DiagramRenderer {
       const portSide = stub.portSide || 'output';
       const stubLen = 30;
 
-      // Fan offset
-      const key = stub.blockId + ':' + portSide;
-      const fanList = fanGroups[key] || [stub];
-      const fanIdx = fanList.indexOf(stub);
-      const fanTotal = fanList.length;
+      // Fan offset (unified)
+      const slot = this._lookupFanSlot(fanMap, stub.blockId, portSide, 'named', stub.id);
+      const fanIdx = slot.index;
+      const fanTotal = slot.total;
 
       // Get connection styling from stub type, then override color
       // with the net-specific color

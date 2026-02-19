@@ -162,6 +162,10 @@ class SystemBlocksMain {
     // Track whether a connection mode was JUST entered in this mousedown,
     // so the corresponding mouseup doesn't immediately complete/exit it.
     let connectionStartedThisClick = false;
+    // Track the screen coordinates where connection mode was started,
+    // so we can detect drag-to-connect gestures (significant movement
+    // between mousedown and mouseup).
+    let connectionStartPos = { x: 0, y: 0 };
 
     // --- Manual double-click detection state ---
     // Fusion's CEF may not reliably fire 'dblclick' on SVG elements,
@@ -261,6 +265,7 @@ class SystemBlocksMain {
           e.preventDefault();
           e.stopPropagation();
           connectionStartedThisClick = true;
+          connectionStartPos = { x: e.clientX, y: e.clientY };
           this.enterConnectionMode(block, core, renderer, portType);
           return;
         }
@@ -272,6 +277,7 @@ class SystemBlocksMain {
         e.preventDefault();
         e.stopPropagation();
         connectionStartedThisClick = true;
+        connectionStartPos = { x: e.clientX, y: e.clientY };
         this.enterConnectionMode(portHit.block, core, renderer, portHit.portType);
         return;
       }
@@ -297,6 +303,7 @@ class SystemBlocksMain {
           e.preventDefault();
           e.stopPropagation();
           connectionStartedThisClick = true;
+          connectionStartPos = { x: e.clientX, y: e.clientY };
           this.enterConnectionMode(pseudoBlock, core, renderer, 'output');
           return;
         }
@@ -474,6 +481,23 @@ class SystemBlocksMain {
         if (renderer.renderCrossDiagramStubs) {
           renderer.renderCrossDiagramStubs(core.diagram);
         }
+
+        // Move the inline rename foreignObject so it follows the dragged
+        // block instead of staying at its original creation position.
+        movedIds.forEach(bid => {
+          const fo = svg.querySelector(`foreignObject[data-inline-edit-block="${bid}"]`);
+          if (fo) {
+            const b = core.diagram.blocks.find(bl => bl.id === bid);
+            if (b) {
+              const bw = b.width || 120;
+              const bh = b.height || 80;
+              fo.setAttribute('x', b.x + 4);
+              fo.setAttribute('y', b.y + bh / 2 - 14);
+              fo.setAttribute('width', bw - 8);
+            }
+          }
+        });
+        }
       } else if (features.isLassoSelecting) {
         // Update lasso selection
         features.updateLassoSelection(x, y);
@@ -522,7 +546,11 @@ class SystemBlocksMain {
       } else if (features.isLassoSelecting) {
         // End lasso selection
         const { x, y } = screenToSVG(e.clientX, e.clientY);
-        features.finishLassoSelection(x, y);
+        const selected = features.finishLassoSelection(x, y);
+        // Offer to group the selected blocks if ≥2 were lasso-selected
+        if (selected && selected.length >= 2) {
+          this._offerGroupFromLasso(selected, features);
+        }
       }
 
       // --- Connection mode: complete connection on mouseup ---
@@ -530,9 +558,16 @@ class SystemBlocksMain {
       // from mousedown+mouseup on SVG elements, so we handle the
       // connection target selection here as the primary path.
       // HOWEVER, skip if the connection mode was JUST started in this
-      // same mousedown (port click) — otherwise the instant mouseup
-      // would complete/exit the mode before the user can pick a target.
-      if (this._connectionMode && this._connectionMode.active && !connectionStartedThisClick) {
+      // same mousedown (port click) — UNLESS the user dragged a
+      // significant distance, indicating a drag-to-connect or
+      // drag-to-stub gesture.
+      const dragDist = Math.hypot(
+        e.clientX - connectionStartPos.x,
+        e.clientY - connectionStartPos.y
+      );
+      const isDragGesture = connectionStartedThisClick && dragDist > 20;
+      if (this._connectionMode && this._connectionMode.active &&
+          (!connectionStartedThisClick || isDragGesture)) {
         const { x, y } = screenToSVG(e.clientX, e.clientY);
         // Use lenient hit detection (8px tolerance) for connection target —
         // users sometimes release just outside the block boundary.
@@ -933,6 +968,132 @@ class SystemBlocksMain {
           e.preventDefault();
         }
       }
+
+      // --- Keyboard shortcuts (skip when focused in an input/textarea) ---
+      const activeTag = document.activeElement ? document.activeElement.tagName : '';
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
+
+      // Ctrl+Shift+N — New block at center of viewport
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'N') {
+        e.preventDefault();
+        const vb = svg.viewBox.baseVal;
+        const cx = vb.x + vb.width / 2;
+        const cy = vb.y + vb.height / 2;
+        const snapped = core.snapToGrid(cx - 60, cy - 40);
+        const newBlock = core.addBlock({
+          name: 'New Block',
+          type: 'auto',
+          x: snapped.x,
+          y: snapped.y
+        });
+        renderer.renderBlock(newBlock);
+        core.selectBlock(newBlock.id);
+        setTimeout(() => this.startInlineEdit(newBlock, svg, core, renderer), 50);
+        return;
+      }
+
+      // Delete / Backspace — delete selected blocks
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const sel = features.selectedBlocks;
+        if (sel && sel.size > 0) {
+          e.preventDefault();
+          const ids = Array.from(sel);
+          ids.forEach(id => core.removeBlock(id));
+          features.clearSelection();
+          core.clearSelection();
+          renderer.updateAllBlocks(core.diagram);
+          if (features.updateGroupBoundaries) features.updateGroupBoundaries();
+          features.saveState();
+          this._updateMinimap();
+          return;
+        }
+        // Delete selected connection
+        if (this._selectedConnection) {
+          e.preventDefault();
+          core.removeConnection(this._selectedConnection.id);
+          this._selectedConnection = null;
+          renderer.clearConnectionHighlights();
+          renderer.updateAllBlocks(core.diagram);
+          if (features.updateGroupBoundaries) features.updateGroupBoundaries();
+          features.saveState();
+          return;
+        }
+      }
+
+      // Ctrl+G — group selected blocks
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'g') {
+        const sel = features.selectedBlocks;
+        if (sel && sel.size >= 2) {
+          e.preventDefault();
+          const blockIds = Array.from(sel);
+          const name = prompt('Group name:', 'Group');
+          if (name !== null) {
+            features.createGroup(blockIds, name || 'Group');
+            this._toast('Created group "' + (name || 'Group') + '"', 'success');
+          }
+        }
+        return;
+      }
+
+      // Ctrl+D — duplicate selected blocks
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        const sel = features.selectedBlocks;
+        if (sel && sel.size > 0) {
+          e.preventDefault();
+          features.clearSelection();
+          Array.from(sel).forEach(id => {
+            const orig = core.diagram.blocks.find(b => b.id === id);
+            if (!orig) return;
+            const dup = core.addBlock({
+              name: (orig.name || 'Block') + ' (copy)',
+              type: orig.type || 'auto',
+              x: (orig.x || 0) + 30,
+              y: (orig.y || 0) + 30,
+              width: orig.width,
+              height: orig.height,
+              shape: orig.shape,
+              status: orig.status
+            });
+            renderer.renderBlock(dup);
+            features.addToSelection(dup.id);
+          });
+          features.saveState();
+          this._updateMinimap();
+        }
+        return;
+      }
+
+      // Ctrl+Z — undo
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
+        if (features.undo) {
+          e.preventDefault();
+          features.undo();
+          renderer.updateAllBlocks(core.diagram);
+          if (features.updateGroupBoundaries) features.updateGroupBoundaries();
+          this._updateMinimap();
+        }
+        return;
+      }
+
+      // Ctrl+Shift+Z or Ctrl+Y — redo
+      if (((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Z') ||
+          ((e.ctrlKey || e.metaKey) && e.key === 'y')) {
+        if (features.redo) {
+          e.preventDefault();
+          features.redo();
+          renderer.updateAllBlocks(core.diagram);
+          if (features.updateGroupBoundaries) features.updateGroupBoundaries();
+          this._updateMinimap();
+        }
+        return;
+      }
+
+      // Ctrl+A — select all blocks
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        core.diagram.blocks.forEach(b => features.addToSelection(b.id));
+        return;
+      }
     });
   }
 
@@ -969,8 +1130,21 @@ class SystemBlocksMain {
       background: white; color: #333;
     `;
 
+    // Store block ID on the foreignObject so the drag handler can find it
+    fo.setAttribute('data-inline-edit-block', block.id);
+
     fo.appendChild(input);
     svg.appendChild(fo);
+
+    // Prevent mouse events on the input/foreignObject from bubbling up
+    // to the SVG canvas, which would start block dragging and prevent
+    // normal text cursor placement and selection.
+    const stopBubble = (e) => { e.stopPropagation(); };
+    fo.addEventListener('mousedown', stopBubble);
+    fo.addEventListener('mouseup', stopBubble);
+    fo.addEventListener('click', stopBubble);
+    fo.addEventListener('dblclick', stopBubble);
+    fo.addEventListener('pointerdown', stopBubble);
 
     // Select all text for easy replacement
     input.focus();
@@ -1003,6 +1177,12 @@ class SystemBlocksMain {
       }
       e.stopPropagation(); // prevent shortcuts from firing
     });
+
+    // Also stop propagation on input-level mouse events so clicks
+    // to position the text cursor work normally
+    input.addEventListener('mousedown', stopBubble);
+    input.addEventListener('mouseup', stopBubble);
+    input.addEventListener('click', stopBubble);
 
     input.addEventListener('blur', commit);
   }
@@ -1609,6 +1789,78 @@ class SystemBlocksMain {
     });
     menu.appendChild(deleteItem);
 
+    // --- Stub property editing options ---
+    const stub = (core.diagram.namedStubs || []).find(s => s.id === stubId);
+
+    if (stub) {
+      // Separator
+      const sep = document.createElement('div');
+      sep.style.cssText = 'border-top:1px solid #444;margin:4px 0;';
+      menu.appendChild(sep);
+
+      // Change direction
+      const dirItem = document.createElement('div');
+      dirItem.className = 'fusion-context-menu-item';
+      const curDir = stub.direction || 'forward';
+      const dirLabel = curDir === 'forward' ? '→ Forward'
+        : curDir === 'backward' ? '← Backward' : '↔ Bidirectional';
+      dirItem.innerHTML = '<span class="ctx-icon">🔄</span> Direction: ' + dirLabel;
+      dirItem.addEventListener('click', () => {
+        menu.remove();
+        const next = curDir === 'forward' ? 'backward'
+          : curDir === 'backward' ? 'bidirectional' : 'forward';
+        stub.direction = next;
+        renderer.updateAllBlocks(core.diagram);
+        if (features) {
+          features.updateGroupBoundaries();
+          features.saveState();
+        }
+        const labels = { forward: '→ Forward', backward: '← Backward', bidirectional: '↔ Bidirectional' };
+        this._toast('Stub direction: ' + labels[next], 'success');
+      });
+      menu.appendChild(dirItem);
+
+      // Change port side
+      const sideItem = document.createElement('div');
+      sideItem.className = 'fusion-context-menu-item';
+      const curSide = stub.portSide || 'output';
+      sideItem.innerHTML = '<span class="ctx-icon">📐</span> Port Side: ' + curSide;
+      sideItem.addEventListener('click', () => {
+        menu.remove();
+        const sides = ['output', 'input', 'top', 'bottom'];
+        const idx = sides.indexOf(curSide);
+        const next = sides[(idx + 1) % sides.length];
+        stub.portSide = next;
+        renderer.updateAllBlocks(core.diagram);
+        if (features) {
+          features.updateGroupBoundaries();
+          features.saveState();
+        }
+        this._toast('Stub moved to ' + next + ' side', 'success');
+      });
+      menu.appendChild(sideItem);
+
+      // Change connection type (styling)
+      const typeItem = document.createElement('div');
+      typeItem.className = 'fusion-context-menu-item';
+      const curType = stub.type || 'auto';
+      typeItem.innerHTML = '<span class="ctx-icon">🎨</span> Type: ' + curType;
+      typeItem.addEventListener('click', () => {
+        menu.remove();
+        const types = ['auto', 'power', 'data', 'signal', 'mechanical', 'software', 'optical', 'thermal'];
+        const idx = types.indexOf(curType);
+        const next = types[(idx + 1) % types.length];
+        stub.type = next;
+        renderer.updateAllBlocks(core.diagram);
+        if (features) {
+          features.updateGroupBoundaries();
+          features.saveState();
+        }
+        this._toast('Stub type: ' + next, 'success');
+      });
+      menu.appendChild(typeItem);
+    }
+
     // Delete entire net (all stubs with this name)
     const netBlocks = core.getStubsByNet ? core.getStubsByNet(netName) : [];
     if (netBlocks.length > 1) {
@@ -1765,6 +2017,10 @@ class SystemBlocksMain {
     const conn = core.addConnection(sourceBlock.id, target.id, type, direction, { renderAsStub: true });
     if (conn) {
       renderer.updateAllBlocks(core.diagram);
+      // Re-render group boundaries (updateAllBlocks clears them)
+      if (features && features.updateGroupBoundaries) {
+        features.updateGroupBoundaries();
+      }
       if (features) features.saveState();
       if (window.pythonInterface) {
         window.pythonInterface.showNotification(
@@ -1781,28 +2037,33 @@ class SystemBlocksMain {
    */
   _showNamedStubDialog(block, core, renderer, features) {
     const existingNets = core.getNetNames ? core.getNetNames() : [];
-    let msg = 'Enter net name for "' + (block.name || block.id) + '"\n';
-    if (existingNets.length > 0) {
-      msg += '\nExisting nets: ' + existingNets.join(', ') + '\n';
-    }
-    const netName = prompt(msg, '');
-    if (!netName || !netName.trim()) return;
 
-    const connType = document.getElementById('connection-type-select');
-    const type = connType ? connType.value : 'auto';
-    const arrowDir = document.getElementById('arrow-direction-select');
-    const direction = arrowDir ? arrowDir.value : 'forward';
+    this._promptWithAutocomplete(
+      'Net name for "' + (block.name || block.id) + '"',
+      existingNets,
+      ''
+    ).then(netName => {
+      if (!netName || !netName.trim()) return;
 
-    const stub = core.addNamedStub(netName.trim(), block.id, 'output', type, direction);
-    if (stub) {
-      renderer.updateAllBlocks(core.diagram);
-      if (features) features.saveState();
-      const netBlocks = core.getStubsByNet ? core.getStubsByNet(netName.trim()) : [];
-      this._toast('Net stub "' + netName.trim() + '" (' + netBlocks.length + ' block' +
-        (netBlocks.length !== 1 ? 's' : '') + ')', 'success');
-    } else {
-      this._toast('Net "' + netName.trim() + '" already exists on this block/port', 'warning');
-    }
+      const connType = document.getElementById('connection-type-select');
+      const type = connType ? connType.value : 'auto';
+      const arrowDir = document.getElementById('arrow-direction-select');
+      const direction = arrowDir ? arrowDir.value : 'forward';
+
+      const stub = core.addNamedStub(netName.trim(), block.id, 'output', type, direction);
+      if (stub) {
+        renderer.updateAllBlocks(core.diagram);
+        if (features && features.updateGroupBoundaries) {
+          features.updateGroupBoundaries();
+        }
+        if (features) features.saveState();
+        const netBlocks = core.getStubsByNet ? core.getStubsByNet(netName.trim()) : [];
+        this._toast('Net stub "' + netName.trim() + '" (' + netBlocks.length + ' block' +
+          (netBlocks.length !== 1 ? 's' : '') + ')', 'success');
+      } else {
+        this._toast('Net "' + netName.trim() + '" already exists on this block/port', 'warning');
+      }
+    });
   }
 
   // =========================================================================
@@ -1893,27 +2154,23 @@ class SystemBlocksMain {
 
     const sourceName = sourceBlock.name || sourceBlock.id;
 
-    // Build prompt with existing net names for reference
+    // Build autocomplete suggestions from existing net names
     const existingNets = core.getNetNames ? core.getNetNames() : [];
-    let promptMsg = 'Create a stub from "' + sourceName + '".\n\n';
-    if (existingNets.length > 0) {
-      promptMsg += 'Existing nets: ' + existingNets.join(', ') + '\n\n';
-    }
-    promptMsg += 'Enter a net name to create a named stub,\n';
-    promptMsg += 'or leave blank to pick a target block.\n';
-    promptMsg += '(Cancel to abort)';
 
-    const netName = prompt(promptMsg, '');
-
-    // null = user clicked Cancel
-    if (netName === null) {
-      if (window.diagramRenderer) {
-        window.diagramRenderer.highlightBlock(sourceBlock.id, false);
+    this._promptWithAutocomplete(
+      'Stub from "' + sourceName + '" — enter net name or leave blank to pick a target',
+      existingNets,
+      ''
+    ).then(netName => {
+      // null = user clicked Cancel
+      if (netName === null) {
+        if (window.diagramRenderer) {
+          window.diagramRenderer.highlightBlock(sourceBlock.id, false);
+        }
+        if (svg) svg.style.cursor = '';
+        this._connectionMode.sourceBlock = null;
+        return;
       }
-      if (svg) svg.style.cursor = '';
-      this._connectionMode.sourceBlock = null;
-      return;
-    }
 
     const trimmedName = netName.trim();
 
@@ -1927,6 +2184,10 @@ class SystemBlocksMain {
       const stub = core.addNamedStub(trimmedName, sourceBlock.id, sourcePort, type, direction);
       if (stub) {
         renderer.updateAllBlocks(core.diagram);
+        // Re-render group boundaries (updateAllBlocks clears them)
+        if (features && features.updateGroupBoundaries) {
+          features.updateGroupBoundaries();
+        }
         if (features) features.saveState();
 
         // Count how many blocks are on this net
@@ -1960,6 +2221,7 @@ class SystemBlocksMain {
       this._toast('Click the target block for the stub connection (Esc to cancel)', 'info');
       logger.info('Stub-target-pick mode: click a block or press Escape');
     }
+    }); // end _promptWithAutocomplete .then()
   }
 
   /**
@@ -1999,6 +2261,10 @@ class SystemBlocksMain {
       }
 
       renderer.updateAllBlocks(core.diagram);
+      // Re-render group boundaries (updateAllBlocks clears them)
+      if (features && features.updateGroupBoundaries) {
+        features.updateGroupBoundaries();
+      }
       if (features) features.saveState();
 
       const targetName = targetBlock.name || targetBlock.id;
@@ -2397,6 +2663,152 @@ class SystemBlocksMain {
 
     if (features) features.saveState();
     this._toast(`Imported ${imported} blocks and ${connCount} connections`, 'success');
+  }
+
+  /**
+   * After a lasso selection captures ≥2 blocks, show a floating action
+   * bar offering to create a group from the selected blocks.
+   * @private
+   */
+  _offerGroupFromLasso(blockIds, features) {
+    // Remove any previous group-offer bar
+    const prev = document.getElementById('lasso-group-bar');
+    if (prev) prev.remove();
+
+    const bar = document.createElement('div');
+    bar.id = 'lasso-group-bar';
+    bar.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);' +
+      'display:flex;align-items:center;gap:8px;padding:6px 14px;' +
+      'background:#1e1e2e;border:1px solid #444;border-radius:8px;' +
+      'color:#ccc;font-size:13px;z-index:10010;box-shadow:0 4px 12px rgba(0,0,0,0.4);';
+
+    const label = document.createElement('span');
+    label.textContent = blockIds.length + ' blocks selected';
+    bar.appendChild(label);
+
+    const groupBtn = document.createElement('button');
+    groupBtn.textContent = 'Group';
+    groupBtn.style.cssText = 'padding:4px 12px;border:none;border-radius:4px;' +
+      'background:#4fc3f7;color:#111;font-weight:600;cursor:pointer;font-size:13px;';
+    groupBtn.addEventListener('click', () => {
+      const name = prompt('Group name:', 'Group');
+      if (name !== null) {
+        features.createGroup(blockIds, name || 'Group');
+        this._toast('Created group "' + (name || 'Group') + '"', 'success');
+      }
+      bar.remove();
+    });
+    bar.appendChild(groupBtn);
+
+    const dismissBtn = document.createElement('button');
+    dismissBtn.textContent = '\u2715';
+    dismissBtn.title = 'Dismiss';
+    dismissBtn.style.cssText = 'padding:2px 6px;border:none;border-radius:4px;' +
+      'background:transparent;color:#888;cursor:pointer;font-size:15px;';
+    dismissBtn.addEventListener('click', () => bar.remove());
+    bar.appendChild(dismissBtn);
+
+    document.body.appendChild(bar);
+
+    // Auto-dismiss after 8 seconds
+    setTimeout(() => { if (bar.parentNode) bar.remove(); }, 8000);
+  }
+
+  /**
+   * Show a custom inline prompt with autocomplete suggestions.
+   * Returns a Promise that resolves with the entered text, or null if
+   * cancelled. The suggestions array provides autocomplete options that
+   * filter as the user types.
+   * @param {string} title    Title of the dialog.
+   * @param {string[]} suggestions  Autocomplete options.
+   * @param {string} [defaultValue='']  Initial input value.
+   * @returns {Promise<string|null>}
+   * @private
+   */
+  _promptWithAutocomplete(title, suggestions, defaultValue) {
+    return new Promise(resolve => {
+      // Remove any existing autocomplete dialog
+      const prev = document.getElementById('autocomplete-dialog');
+      if (prev) prev.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'autocomplete-dialog';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;' +
+        'align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
+
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#1e1e2e;border:1px solid #555;border-radius:8px;' +
+        'padding:16px;width:320px;color:#ccc;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.5);';
+
+      const heading = document.createElement('div');
+      heading.textContent = title;
+      heading.style.cssText = 'font-weight:600;margin-bottom:10px;font-size:14px;';
+      card.appendChild(heading);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = defaultValue || '';
+      input.style.cssText = 'width:100%;box-sizing:border-box;padding:6px 8px;' +
+        'background:#2a2a3e;border:1px solid #555;border-radius:4px;color:#eee;font-size:13px;';
+      input.setAttribute('autocomplete', 'off');
+      card.appendChild(input);
+
+      const listEl = document.createElement('div');
+      listEl.style.cssText = 'max-height:150px;overflow-y:auto;margin-top:6px;';
+      card.appendChild(listEl);
+
+      const renderSuggestions = (filter) => {
+        listEl.innerHTML = '';
+        const lf = (filter || '').toLowerCase();
+        const matches = suggestions.filter(s => s.toLowerCase().includes(lf));
+        matches.forEach(s => {
+          const item = document.createElement('div');
+          item.textContent = s;
+          item.style.cssText = 'padding:4px 8px;cursor:pointer;border-radius:3px;';
+          item.addEventListener('mouseenter', () => { item.style.background = '#3a3a5e'; });
+          item.addEventListener('mouseleave', () => { item.style.background = 'transparent'; });
+          item.addEventListener('click', () => {
+            input.value = s;
+            renderSuggestions(s);
+          });
+          listEl.appendChild(item);
+        });
+      };
+      renderSuggestions(defaultValue || '');
+
+      input.addEventListener('input', () => renderSuggestions(input.value));
+
+      // Buttons
+      const btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:12px;';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.cssText = 'padding:5px 14px;border:1px solid #555;border-radius:4px;' +
+        'background:transparent;color:#ccc;cursor:pointer;font-size:13px;';
+      cancelBtn.addEventListener('click', () => { overlay.remove(); resolve(null); });
+      btnRow.appendChild(cancelBtn);
+
+      const okBtn = document.createElement('button');
+      okBtn.textContent = 'OK';
+      okBtn.style.cssText = 'padding:5px 14px;border:none;border-radius:4px;' +
+        'background:#4fc3f7;color:#111;font-weight:600;cursor:pointer;font-size:13px;';
+      okBtn.addEventListener('click', () => { overlay.remove(); resolve(input.value); });
+      btnRow.appendChild(okBtn);
+
+      card.appendChild(btnRow);
+      overlay.appendChild(card);
+      document.body.appendChild(overlay);
+
+      // Focus input and select text
+      setTimeout(() => { input.focus(); input.select(); }, 0);
+
+      // Enter key submits, Escape cancels
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); overlay.remove(); resolve(input.value); }
+        if (ev.key === 'Escape') { ev.preventDefault(); overlay.remove(); resolve(null); }
+      });
+    });
   }
 
   _toast(message, type) {
