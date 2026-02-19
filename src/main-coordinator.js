@@ -431,6 +431,9 @@ class SystemBlocksMain {
       core.lastMouseMoveTime = currentTime;
       
       const { x, y } = screenToSVG(e.clientX, e.clientY);
+      // Track last known SVG-space mouse position for keyboard-triggered
+      // actions (e.g. B-key block creation at cursor location).
+      this._lastMouseSVG = { x, y };
       
       if (draggedBlock) {
         // Drag block — if block is part of multi-selection, move ALL selected
@@ -1245,10 +1248,19 @@ class SystemBlocksMain {
 
     const pickCategory = (cat) => {
       cleanup();
-      const vb = svg.viewBox.baseVal;
-      const cx = vb.x + vb.width / 2;
-      const cy = vb.y + vb.height / 2;
-      const snapped = core.snapToGrid(cx - 60, cy - 40);
+      // Place block at the last known mouse position on the canvas,
+      // falling back to viewport center if the mouse hasn't moved.
+      const mouse = this._lastMouseSVG;
+      let spawnX, spawnY;
+      if (mouse) {
+        spawnX = mouse.x - 60;
+        spawnY = mouse.y - 40;
+      } else {
+        const vb = svg.viewBox.baseVal;
+        spawnX = vb.x + vb.width / 2 - 60;
+        spawnY = vb.y + vb.height / 2 - 40;
+      }
+      const snapped = core.snapToGrid(spawnX, spawnY);
       const newBlock = core.addBlock({
         name: 'New ' + cat.name + ' Block',
         type: cat.name,

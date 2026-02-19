@@ -2089,11 +2089,15 @@ class DiagramRenderer {
       const fanTotal = slot.total;
 
       // Get connection styling from stub type, then override color
-      // with the net-specific color
+      // with the net-specific color only when the type is 'auto'.
       const baseStyling = this.getConnectionStyling(
         (stub.type || 'auto').toLowerCase()
       );
-      const netColor = netColors[stub.netName] || baseStyling.stroke;
+      // When the user explicitly sets a type (power, data, etc.), use
+      // the type color so the change is visually obvious.  For the
+      // default 'auto' type, use the net-palette color.
+      const explicitType = stub.type && stub.type !== 'auto';
+      const netColor = explicitType ? baseStyling.stroke : (netColors[stub.netName] || baseStyling.stroke);
 
       // Compute position
       const fanY = this._fanOffset(fanIdx, fanTotal, blockH);
@@ -2156,7 +2160,11 @@ class DiagramRenderer {
       line.setAttribute('y2', endY);
       line.setAttribute('stroke', netColor);
       line.setAttribute('stroke-width', String(baseStyling.strokeWidth));
-      line.setAttribute('stroke-dasharray', '4,2');
+      if (baseStyling.dashArray) {
+        line.setAttribute('stroke-dasharray', baseStyling.dashArray);
+      } else {
+        line.setAttribute('stroke-dasharray', '4,2');
+      }
       g.appendChild(line);
 
       // Net name diamond/marker at the end

@@ -1839,6 +1839,22 @@
           </div>
         </div>
         
+        <div class="connection-controls" style="display:flex; align-items:center; gap:4px; margin-left:auto;">
+          <label for="connection-type-select" style="font-size:11px; color:#999; white-space:nowrap;">Conn:</label>
+          <select id="connection-type-select" class="connection-type-select" style="font-size:11px; padding:2px 4px;" title="Connection type for new connections / selected item">
+            <option value="auto" selected>Auto</option>
+            <option value="power">Power</option>
+            <option value="data">Data</option>
+            <option value="mechanical">Mechanical</option>
+          </select>
+          <select id="arrow-direction-select" class="connection-type-select" style="font-size:11px; padding:2px 4px;" title="Arrow direction for new connections / selected item">
+            <option value="forward" selected>Forward</option>
+            <option value="bidirectional">Bidirectional</option>
+            <option value="backward">Backward</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        
         <div class="breadcrumb-container">
           <span id="breadcrumb-path" class="fusion-breadcrumb">Root</span>
         </div>
@@ -4835,20 +4851,6 @@
     <span id="status-health" class="pill">Health: Unknown</span>
     <span id="status-last-saved" class="pill">Last saved: never</span>
     <span id="status-conn" class="pill">Bridge: checking…</span>
-    <span class="pill" style="margin-left:auto; display:flex; align-items:center; gap:4px;">
-      <label for="connection-type-select" style="font-size:11px; color:#aaa;">Conn:</label>
-      <select id="connection-type-select" class="connection-type-select" title="Connection type for new connections / selected item">
-        <option value="power" selected>Power</option>
-        <option value="data">Data</option>
-        <option value="mechanical">Mechanical</option>
-      </select>
-      <select id="arrow-direction-select" class="connection-type-select" title="Arrow direction for new connections / selected item">
-        <option value="forward" selected>Forward</option>
-        <option value="bidirectional">Bidirectional</option>
-        <option value="backward">Backward</option>
-        <option value="none">None</option>
-      </select>
-    </span>
   </footer>
   
   <!-- Modular JavaScript Architecture -->
