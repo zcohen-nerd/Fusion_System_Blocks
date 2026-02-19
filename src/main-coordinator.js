@@ -1152,7 +1152,162 @@ class SystemBlocksMain {
         core.diagram.blocks.forEach(b => features.addToSelection(b.id));
         return;
       }
+
+      // B — open block creation quick-pick menu
+      if (e.key === 'b' || e.key === 'B') {
+        if (e.ctrlKey || e.metaKey || e.altKey) return; // don't hijack Ctrl+B etc.
+        // Only fire when nothing else is active
+        if (this._connectionMode && this._connectionMode.active) return;
+        if (this._stubTargetMode && this._stubTargetMode.active) return;
+        e.preventDefault();
+        this._showQuickBlockMenu(core, renderer, features, svg);
+        return;
+      }
     });
+  }
+
+  /**
+   * Show a keyboard-driven quick-pick overlay for block creation.
+   * Press B to open, then G/E/M/S to pick category and create block.
+   * @private
+   */
+  _showQuickBlockMenu(core, renderer, features, svg) {
+    // Remove any existing menu
+    const existing = document.getElementById('quick-block-menu');
+    if (existing) existing.remove();
+
+    const categories = [
+      { key: 'G', name: 'Generic',    icon: '\u2B1C' },
+      { key: 'E', name: 'Electrical', icon: '\u26A1' },
+      { key: 'M', name: 'Mechanical', icon: '\u2699\uFE0F' },
+      { key: 'S', name: 'Software',   icon: '\uD83D\uDCBB' }
+    ];
+
+    const menu = document.createElement('div');
+    menu.id = 'quick-block-menu';
+    menu.style.cssText = `
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: var(--fusion-panel-bg, #2b2b2b);
+      border: 2px solid var(--fusion-accent, #FF6B35);
+      border-radius: 10px; padding: 16px 20px; z-index: 100001;
+      min-width: 220px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      color: var(--fusion-text-primary, #fff); font-family: Arial, sans-serif;
+    `;
+
+    const title = document.createElement('div');
+    title.textContent = 'New Block';
+    title.style.cssText = 'font-size: 14px; font-weight: bold; margin-bottom: 10px; text-align: center; color: #FF6B35;';
+    menu.appendChild(title);
+
+    let focusIdx = 0;
+    const items = [];
+
+    categories.forEach((cat, idx) => {
+      const item = document.createElement('div');
+      item.style.cssText = `
+        padding: 8px 14px; cursor: pointer; font-size: 13px;
+        border-radius: 4px; display: flex; align-items: center; gap: 8px;
+      `;
+      item.innerHTML = `
+        <span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;
+          background:var(--fusion-accent,#FF6B35);color:#fff;border-radius:4px;font-size:11px;font-weight:bold;">
+          ${cat.key}
+        </span>
+        <span>${cat.icon}  ${cat.name}</span>
+      `;
+      item.addEventListener('mouseenter', () => {
+        focusIdx = idx;
+        highlightItem();
+      });
+      item.addEventListener('click', () => pickCategory(cat));
+      menu.appendChild(item);
+      items.push(item);
+    });
+
+    const hint = document.createElement('div');
+    hint.textContent = 'Press letter key or click • Esc to cancel';
+    hint.style.cssText = 'font-size: 10px; color: #777; text-align: center; margin-top: 10px;';
+    menu.appendChild(hint);
+
+    document.body.appendChild(menu);
+
+    const highlightItem = () => {
+      items.forEach((el, i) => {
+        el.style.background = i === focusIdx ? 'var(--fusion-hover-bg, #3a3a3a)' : '';
+      });
+    };
+    highlightItem();
+
+    const cleanup = () => {
+      menu.remove();
+      document.removeEventListener('keydown', onKey, true);
+    };
+
+    const pickCategory = (cat) => {
+      cleanup();
+      const vb = svg.viewBox.baseVal;
+      const cx = vb.x + vb.width / 2;
+      const cy = vb.y + vb.height / 2;
+      const snapped = core.snapToGrid(cx - 60, cy - 40);
+      const newBlock = core.addBlock({
+        name: 'New ' + cat.name + ' Block',
+        type: cat.name,
+        x: snapped.x,
+        y: snapped.y
+      });
+      renderer.renderBlock(newBlock);
+      core.selectBlock(newBlock.id);
+      features.clearSelection();
+      features.addToSelection(newBlock.id);
+      this.updatePropertiesPanel(newBlock, core, renderer);
+      if (features.saveState) features.saveState();
+      this._updateMinimap();
+      // Auto inline-edit for naming
+      setTimeout(() => this.startInlineEdit(newBlock, svg, core, renderer), 50);
+    };
+
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        cleanup();
+        return;
+      }
+      const upper = e.key.toUpperCase();
+      const match = categories.find(c => c.key === upper);
+      if (match) {
+        e.preventDefault();
+        e.stopPropagation();
+        pickCategory(match);
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        focusIdx = (focusIdx + 1) % items.length;
+        highlightItem();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        focusIdx = (focusIdx - 1 + items.length) % items.length;
+        highlightItem();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        pickCategory(categories[focusIdx]);
+      }
+    };
+
+    document.addEventListener('keydown', onKey, true);
+
+    // Close on outside click
+    const outsideClick = (e) => {
+      if (!menu.contains(e.target)) {
+        cleanup();
+        document.removeEventListener('mousedown', outsideClick);
+      }
+    };
+    setTimeout(() => document.addEventListener('mousedown', outsideClick), 0);
   }
 
   // =========================================================================
@@ -1559,12 +1714,6 @@ class SystemBlocksMain {
       this._ctxAction(freshMenu, 'ctx-cross-connect', () => {
         this.hideContextMenu();
         this._showCrossConnectDialog(block, core, renderer, features);
-      });
-
-      // Same-level stub connection — show a block picker for stub connections
-      this._ctxAction(freshMenu, 'ctx-stub-connect', () => {
-        this.hideContextMenu();
-        this._showStubConnectDialog(block, core, renderer, features);
       });
 
       // Named stub (net label) — prompt for net name via context menu
@@ -2162,57 +2311,6 @@ class SystemBlocksMain {
   }
 
   /**
-   * Show a dialog that lists all blocks on the current diagram level
-   * so the user can create a same-level stub connection.
-   * @private
-   */
-  _showStubConnectDialog(sourceBlock, core, renderer, features) {
-    const candidates = (core.diagram.blocks || []).filter(b => b.id !== sourceBlock.id);
-
-    if (candidates.length === 0) {
-      if (window.pythonInterface) {
-        window.pythonInterface.showNotification('No other blocks on this diagram level', 'warning');
-      }
-      return;
-    }
-
-    const lines = candidates.map((b, i) =>
-      `${i + 1}. ${b.name || b.id} (${b.type || 'generic'})`
-    );
-    const choice = prompt(
-      'Stub-connect [' + (sourceBlock.name || sourceBlock.id) + '] to which block?\n\n' +
-      lines.join('\n') +
-      '\n\nEnter number:',
-      '1'
-    );
-    if (!choice) return;
-    const idx = parseInt(choice, 10) - 1;
-    if (isNaN(idx) || idx < 0 || idx >= candidates.length) return;
-
-    const target = candidates[idx];
-    const connType = document.getElementById('connection-type-select');
-    const type = connType ? connType.value : 'data';
-    const dirSelect = document.getElementById('arrow-direction-select');
-    const direction = dirSelect ? dirSelect.value : 'forward';
-
-    const conn = core.addConnection(sourceBlock.id, target.id, type, direction, { renderAsStub: true });
-    if (conn) {
-      renderer.updateAllBlocks(core.diagram);
-      // Re-render group boundaries (updateAllBlocks clears them)
-      if (features && features.updateGroupBoundaries) {
-        features.updateGroupBoundaries();
-      }
-      if (features) features.saveState();
-      if (window.pythonInterface) {
-        window.pythonInterface.showNotification(
-          `Stub-connected to "${target.name || target.id}"`,
-          'success'
-        );
-      }
-    }
-  }
-
-  /**
    * Context-menu action: prompt for a net name and create a named stub on this block.
    * @private
    */
@@ -2651,29 +2749,61 @@ class SystemBlocksMain {
 
     if (typeSelect) {
       typeSelect.addEventListener('change', () => {
+        // Update selected connection
         const connId = this._selectedConnection;
-        if (!connId) return;
-        core.updateConnection(connId, { type: typeSelect.value });
-        const conn = core.diagram.connections.find(c => c.id === connId);
-        if (conn) {
-          renderer.renderConnection(conn);
-          renderer.highlightConnection(connId, true);
+        if (connId) {
+          core.updateConnection(connId, { type: typeSelect.value });
+          const conn = core.diagram.connections.find(c => c.id === connId);
+          if (conn) {
+            renderer.renderConnection(conn);
+            renderer.highlightConnection(connId, true);
+          }
+          if (window.advancedFeatures) window.advancedFeatures.saveState();
+          return;
         }
-        if (window.advancedFeatures) window.advancedFeatures.saveState();
+        // Update selected named stub
+        const stubId = this._selectedStub;
+        if (stubId) {
+          const stub = (core.diagram.namedStubs || []).find(s => s.id === stubId);
+          if (stub) {
+            stub.type = typeSelect.value;
+            core.diagram.metadata.modified = new Date().toISOString();
+            if (core._markDirty) core._markDirty();
+            renderer.updateAllBlocks(core.diagram);
+            renderer.highlightNamedStub(stubId, true);
+            if (window.advancedFeatures) window.advancedFeatures.saveState();
+          }
+        }
       });
     }
 
     if (dirSelect) {
       dirSelect.addEventListener('change', () => {
+        // Update selected connection
         const connId = this._selectedConnection;
-        if (!connId) return;
-        core.updateConnection(connId, { arrowDirection: dirSelect.value });
-        const conn = core.diagram.connections.find(c => c.id === connId);
-        if (conn) {
-          renderer.renderConnection(conn);
-          renderer.highlightConnection(connId, true);
+        if (connId) {
+          core.updateConnection(connId, { arrowDirection: dirSelect.value });
+          const conn = core.diagram.connections.find(c => c.id === connId);
+          if (conn) {
+            renderer.renderConnection(conn);
+            renderer.highlightConnection(connId, true);
+          }
+          if (window.advancedFeatures) window.advancedFeatures.saveState();
+          return;
         }
-        if (window.advancedFeatures) window.advancedFeatures.saveState();
+        // Update selected named stub
+        const stubId = this._selectedStub;
+        if (stubId) {
+          const stub = (core.diagram.namedStubs || []).find(s => s.id === stubId);
+          if (stub) {
+            stub.direction = dirSelect.value;
+            core.diagram.metadata.modified = new Date().toISOString();
+            if (core._markDirty) core._markDirty();
+            renderer.updateAllBlocks(core.diagram);
+            renderer.highlightNamedStub(stubId, true);
+            if (window.advancedFeatures) window.advancedFeatures.saveState();
+          }
+        }
       });
     }
   }
