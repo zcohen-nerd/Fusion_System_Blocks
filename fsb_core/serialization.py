@@ -19,6 +19,7 @@ from .models import (
     Connection,
     Graph,
     Group,
+    NamedStub,
     Port,
     PortDirection,
     PortKind,
@@ -136,6 +137,7 @@ def graph_to_dict(graph: Graph) -> dict[str, Any]:
         "blocks": blocks_data,
         "connections": connections_data,
         "groups": [_group_to_dict(g) for g in graph.groups],
+        "namedStubs": [_named_stub_to_dict(s) for s in graph.named_stubs],
         "metadata": graph.metadata,
         "requirements": [_requirement_to_dict(r) for r in graph.requirements],
     }
@@ -177,6 +179,10 @@ def dict_to_graph(data: dict[str, Any]) -> Graph:
     # Parse groups
     for group_data in data.get("groups", []):
         graph.groups.append(_parse_group(group_data))
+
+    # Parse named stubs (net-label stubs)
+    for stub_data in data.get("namedStubs", []):
+        graph.named_stubs.append(_parse_named_stub(stub_data))
 
     return graph
 
@@ -450,4 +456,56 @@ def _parse_group(data: dict[str, Any]) -> Group:
             "parentGroupId",
             data.get("parent_group_id"),
         ),
+    )
+
+
+# ------------------------------------------------------------------
+# Named stub helpers
+# ------------------------------------------------------------------
+
+
+def _named_stub_to_dict(stub: NamedStub) -> dict[str, Any]:
+    """Serialize a NamedStub to dictionary.
+
+    Args:
+        stub: The named stub to serialize.
+
+    Returns:
+        Dictionary representation.
+    """
+    return {
+        "id": stub.id,
+        "netName": stub.net_name,
+        "blockId": stub.block_id,
+        "portSide": stub.port_side,
+        "type": stub.stub_type,
+        "direction": stub.direction,
+    }
+
+
+def _parse_named_stub(data: dict[str, Any]) -> NamedStub:
+    """Parse a NamedStub from dictionary data.
+
+    Args:
+        data: Named stub dictionary.
+
+    Returns:
+        Constructed NamedStub instance.
+    """
+    return NamedStub(
+        id=data.get("id", ""),
+        net_name=data.get(
+            "netName",
+            data.get("net_name", ""),
+        ),
+        block_id=data.get(
+            "blockId",
+            data.get("block_id", ""),
+        ),
+        port_side=data.get(
+            "portSide",
+            data.get("port_side", "output"),
+        ),
+        stub_type=data.get("type", data.get("stub_type", "auto")),
+        direction=data.get("direction", "forward"),
     )

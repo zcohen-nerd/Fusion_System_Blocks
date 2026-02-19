@@ -11,6 +11,7 @@ from fsb_core.models import (
     BlockStatus,
     Connection,
     Graph,
+    NamedStub,
     Port,
     PortDirection,
     PortKind,
@@ -225,3 +226,52 @@ class TestGraphQueries:
     def test_get_all_port_ids_empty(self):
         graph = Graph(id="g1")
         assert graph.get_all_port_ids() == set()
+
+
+# =========================================================================
+# NamedStub
+# =========================================================================
+class TestNamedStub:
+    """Test NamedStub dataclass creation and field defaults."""
+
+    def test_create_named_stub(self):
+        stub = NamedStub(net_name="5V", block_id="b1")
+        assert stub.net_name == "5V"
+        assert stub.block_id == "b1"
+        assert stub.port_side == "output"
+        assert stub.stub_type == "auto"
+        assert stub.direction == "forward"
+        assert isinstance(stub.id, str)
+        assert len(stub.id) > 0
+
+    def test_named_stub_auto_id(self):
+        s1 = NamedStub(net_name="A")
+        s2 = NamedStub(net_name="A")
+        assert s1.id != s2.id
+
+    def test_named_stub_custom_fields(self):
+        stub = NamedStub(
+            id="ns-custom",
+            net_name="GND",
+            block_id="b2",
+            port_side="bottom",
+            stub_type="power",
+            direction="none",
+        )
+        assert stub.id == "ns-custom"
+        assert stub.port_side == "bottom"
+        assert stub.stub_type == "power"
+        assert stub.direction == "none"
+
+    def test_graph_with_named_stubs(self):
+        stubs = [
+            NamedStub(net_name="CLK", block_id="b1"),
+            NamedStub(net_name="CLK", block_id="b2"),
+        ]
+        graph = Graph(id="g1", named_stubs=stubs)
+        assert len(graph.named_stubs) == 2
+        assert all(s.net_name == "CLK" for s in graph.named_stubs)
+
+    def test_graph_named_stubs_default_empty(self):
+        graph = Graph(id="g1")
+        assert graph.named_stubs == []

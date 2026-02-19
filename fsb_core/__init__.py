@@ -42,6 +42,7 @@ from .models import (
     DiffResult,
     Graph,
     Group,
+    NamedStub,
     Port,
     PortDirection,
     PortKind,

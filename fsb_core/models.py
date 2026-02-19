@@ -322,6 +322,35 @@ class Connection:
 
 
 @dataclass
+class NamedStub:
+    """A net-name stub on a block port.
+
+    Named stubs work like net labels in EDA tools: blocks that share
+    the same ``net_name`` are implicitly connected.  This avoids
+    drawing long arrows for high-fan-out patterns (e.g. a power rail
+    feeding many consumers).
+
+    Attributes:
+        id: Unique identifier for this stub.
+        net_name: The net/label name (e.g. ``"5V"``, ``"CLK"``).
+        block_id: ID of the block this stub is attached to.
+        port_side: Which side of the block the stub extends from
+            (``"input"``, ``"output"``, ``"top"``, ``"bottom"``).
+        stub_type: Connection type for styling (``"power"``,
+            ``"data"``, ``"auto"``, etc.).
+        direction: Arrow direction (``"forward"``, ``"backward"``,
+            ``"bidirectional"``, ``"none"``).
+    """
+
+    id: str = field(default_factory=generate_id)
+    net_name: str = ""
+    block_id: str = ""
+    port_side: str = "output"
+    stub_type: str = "auto"
+    direction: str = "forward"
+
+
+@dataclass
 class Group:
     """Represents a named collection of blocks in the diagram.
 
@@ -374,6 +403,7 @@ class Graph:
     blocks: list[Block] = field(default_factory=list)
     connections: list[Connection] = field(default_factory=list)
     groups: list[Group] = field(default_factory=list)
+    named_stubs: list[NamedStub] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
     requirements: list[Requirement] = field(default_factory=list)
 

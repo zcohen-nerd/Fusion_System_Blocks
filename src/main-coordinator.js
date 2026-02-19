@@ -231,6 +231,8 @@ class SystemBlocksMain {
 
       // Do not start drag/select while in connection drawing mode
       if (this._connectionMode && this._connectionMode.active) return;
+      // Do not start drag/select while in stub-target-pick mode
+      if (this._stubTargetMode && this._stubTargetMode.active) return;
 
       // Dimension pick mode — capture block clicks
       if (this._dimensionMode && this._dimensionMode.active) return;
@@ -547,8 +549,30 @@ class SystemBlocksMain {
               '(' + bestPort + ')');
             if (window.advancedFeatures) window.advancedFeatures.saveState();
           }
+          this.exitConnectionMode(svg);
+        } else if (!targetBlock) {
+          // --- Dropped on empty canvas: offer stub creation ---
+          this._offerStubCreation(svg, core, renderer, features);
+        } else {
+          // Dropped on the same source block — just cancel
+          this.exitConnectionMode(svg);
         }
-        this.exitConnectionMode(svg);
+        e.stopPropagation();
+      }
+
+      // --- Stub-target-pick mode: complete stub on block click ---
+      if (this._stubTargetMode && this._stubTargetMode.active) {
+        const { x, y } = screenToSVG(e.clientX, e.clientY);
+        let hitBlock = core.getBlockAt(x, y);
+        if (!hitBlock) hitBlock = core.getBlockAt(x, y, 8);
+
+        if (hitBlock && hitBlock.id !== this._stubTargetMode.sourceBlock.id) {
+          this._completeStubConnection(hitBlock, core, renderer, features);
+        } else if (!hitBlock) {
+          // Clicked empty space again — cancel stub-target-pick
+          this._toast('Stub connection cancelled', 'info');
+          this.exitStubTargetMode(svg);
+        }
         e.stopPropagation();
       }
 
@@ -645,6 +669,14 @@ class SystemBlocksMain {
       if (block) {
         this.showContextMenu(e.clientX, e.clientY, block, core, renderer, features);
       } else {
+        // Check if right-clicked on a named stub (net label)
+        const namedStubGroup = e.target.closest('.named-stub[data-stub-id]');
+        if (namedStubGroup) {
+          const stubId = namedStubGroup.getAttribute('data-stub-id');
+          const netName = namedStubGroup.getAttribute('data-net-name');
+          this._showNamedStubContextMenu(e.clientX, e.clientY, stubId, netName, core, renderer, features);
+          return;
+        }
         // Check if right-clicked on a connection (via SVG DOM hit path)
         const connGroup = e.target.closest('[data-connection-id]');
         if (connGroup) {
@@ -693,6 +725,16 @@ class SystemBlocksMain {
     this._connectionModeEntryTime = 0;
 
     // =========================================================================
+    // STUB-TARGET-PICK MODE — after dropping on empty canvas, user picks
+    // the target block to create a same-level stub connection.
+    // =========================================================================
+    this._stubTargetMode = {
+      active: false,
+      sourceBlock: null,
+      sourcePort: null
+    };
+
+    // =========================================================================
     // DIMENSION PICK MODE — click first block, then second block
     // =========================================================================
     this._dimensionMode = {
@@ -721,6 +763,21 @@ class SystemBlocksMain {
     // the primary path. The addConnection() duplicate guard prevents
     // double-creation if both fire.
     svg.addEventListener('click', (e) => {
+      // --- Stub-target-pick mode (click path) ---
+      if (this._stubTargetMode && this._stubTargetMode.active) {
+        const { x, y } = screenToSVG(e.clientX, e.clientY);
+        let hitBlock = core.getBlockAt(x, y);
+        if (!hitBlock) hitBlock = core.getBlockAt(x, y, 8);
+        if (hitBlock && hitBlock.id !== this._stubTargetMode.sourceBlock.id) {
+          this._completeStubConnection(hitBlock, core, renderer, features);
+        } else if (!hitBlock) {
+          this._toast('Stub connection cancelled', 'info');
+          this.exitStubTargetMode(svg);
+        }
+        e.stopPropagation();
+        return;
+      }
+
       if (!this._connectionMode.active) return;
 
       // If connection mode was JUST entered (e.g. port single-click),
@@ -755,13 +812,23 @@ class SystemBlocksMain {
           logger.info('Connection created (via click):', conn.id);
           if (window.advancedFeatures) window.advancedFeatures.saveState();
         }
+        this.exitConnectionMode(svg);
+      } else if (!targetBlock) {
+        // Dropped on empty canvas — offer stub creation (click path)
+        this._offerStubCreation(svg, core, renderer, features);
+      } else {
+        this.exitConnectionMode(svg);
       }
-      this.exitConnectionMode(svg);
       e.stopPropagation();
     });
 
-    // Escape to cancel connection mode or dimension mode
+    // Escape to cancel connection mode, stub-target-pick, or dimension mode
     document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this._stubTargetMode.active) {
+        this._toast('Stub connection cancelled', 'info');
+        this.exitStubTargetMode(svg);
+        return;
+      }
       if (e.key === 'Escape' && this._connectionMode.active) {
         this.exitConnectionMode(svg);
       }
@@ -832,6 +899,13 @@ class SystemBlocksMain {
       if (newName && newName !== block.name) {
         core.updateBlock(block.id, { name: newName });
         renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+        // Re-render stub connections so labels reflect the new name
+        if (renderer.renderSameLevelStubs) {
+          renderer.renderSameLevelStubs(core.diagram);
+        }
+        if (renderer.renderCrossDiagramStubs) {
+          renderer.renderCrossDiagramStubs(core.diagram);
+        }
       } else {
         // Restore text visibility if no change
         if (textEl) textEl.style.display = '';
@@ -1049,6 +1123,12 @@ class SystemBlocksMain {
       this._ctxAction(freshMenu, 'ctx-stub-connect', () => {
         this.hideContextMenu();
         this._showStubConnectDialog(block, core, renderer, features);
+      });
+
+      // Named stub (net label) — prompt for net name via context menu
+      this._ctxAction(freshMenu, 'ctx-named-stub', () => {
+        this.hideContextMenu();
+        this._showNamedStubDialog(block, core, renderer, features);
       });
 
       // Type submenu
@@ -1393,6 +1473,83 @@ class SystemBlocksMain {
     }
   }
 
+  /**
+   * Right-click context menu for named stubs (net labels).
+   * Offers rename and delete actions.
+   * @private
+   */
+  _showNamedStubContextMenu(clientX, clientY, stubId, netName, core, renderer, features) {
+    // Build a tiny floating context menu on the fly
+    let menu = document.getElementById('named-stub-context-menu');
+    if (menu) menu.remove();
+
+    menu = document.createElement('div');
+    menu.id = 'named-stub-context-menu';
+    menu.className = 'fusion-context-menu show';
+    menu.style.cssText = 'position:fixed;z-index:1000000;left:' + clientX + 'px;top:' + clientY + 'px;';
+
+    // Rename option
+    const renameItem = document.createElement('div');
+    renameItem.className = 'fusion-context-menu-item';
+    renameItem.innerHTML = '<span class="ctx-icon">✏️</span> Rename Net…';
+    renameItem.addEventListener('click', () => {
+      menu.remove();
+      const newName = prompt('Rename net "' + netName + '" to:', netName);
+      if (!newName || !newName.trim() || newName.trim() === netName) return;
+      // Rename all stubs with this net name
+      const stubs = core.getStubsByNet ? core.getStubsByNet(netName) : [];
+      stubs.forEach(s => { s.netName = newName.trim(); });
+      renderer.updateAllBlocks(core.diagram);
+      if (features) features.saveState();
+      this._toast('Renamed net to "' + newName.trim() + '"', 'success');
+    });
+    menu.appendChild(renameItem);
+
+    // Delete this stub
+    const deleteItem = document.createElement('div');
+    deleteItem.className = 'fusion-context-menu-item danger';
+    deleteItem.innerHTML = '<span class="ctx-icon">🗑️</span> Remove This Stub';
+    deleteItem.addEventListener('click', () => {
+      menu.remove();
+      core.removeNamedStub(stubId);
+      renderer.updateAllBlocks(core.diagram);
+      if (features) features.saveState();
+      this._toast('Removed net stub', 'success');
+    });
+    menu.appendChild(deleteItem);
+
+    // Delete entire net (all stubs with this name)
+    const netBlocks = core.getStubsByNet ? core.getStubsByNet(netName) : [];
+    if (netBlocks.length > 1) {
+      const deleteNetItem = document.createElement('div');
+      deleteNetItem.className = 'fusion-context-menu-item danger';
+      deleteNetItem.innerHTML = '<span class="ctx-icon">⛔</span> Delete Entire Net "' + netName + '" (' + netBlocks.length + ')';
+      deleteNetItem.addEventListener('click', () => {
+        menu.remove();
+        const ok = confirm('Delete all ' + netBlocks.length + ' stubs on net "' + netName + '"?');
+        if (!ok) return;
+        // Remove all stubs in this net
+        const toRemove = netBlocks.map(s => s.id);
+        toRemove.forEach(id => core.removeNamedStub(id));
+        renderer.updateAllBlocks(core.diagram);
+        if (features) features.saveState();
+        this._toast('Deleted net "' + netName + '"', 'success');
+      });
+      menu.appendChild(deleteNetItem);
+    }
+
+    document.body.appendChild(menu);
+
+    // Close on outside click
+    const closer = (e) => {
+      if (!menu.contains(e.target)) {
+        menu.remove();
+        document.removeEventListener('mousedown', closer);
+      }
+    };
+    setTimeout(() => document.addEventListener('mousedown', closer), 0);
+  }
+
   _ctxAction(menu, id, handler) {
     const el = menu.querySelector('#' + id);
     if (el) el.addEventListener('click', handler);
@@ -1527,6 +1684,36 @@ class SystemBlocksMain {
     }
   }
 
+  /**
+   * Context-menu action: prompt for a net name and create a named stub on this block.
+   * @private
+   */
+  _showNamedStubDialog(block, core, renderer, features) {
+    const existingNets = core.getNetNames ? core.getNetNames() : [];
+    let msg = 'Enter net name for "' + (block.name || block.id) + '"\n';
+    if (existingNets.length > 0) {
+      msg += '\nExisting nets: ' + existingNets.join(', ') + '\n';
+    }
+    const netName = prompt(msg, '');
+    if (!netName || !netName.trim()) return;
+
+    const connType = document.getElementById('connection-type-select');
+    const type = connType ? connType.value : 'auto';
+    const arrowDir = document.getElementById('arrow-direction-select');
+    const direction = arrowDir ? arrowDir.value : 'forward';
+
+    const stub = core.addNamedStub(netName.trim(), block.id, 'output', type, direction);
+    if (stub) {
+      renderer.updateAllBlocks(core.diagram);
+      if (features) features.saveState();
+      const netBlocks = core.getStubsByNet ? core.getStubsByNet(netName.trim()) : [];
+      this._toast('Net stub "' + netName.trim() + '" (' + netBlocks.length + ' block' +
+        (netBlocks.length !== 1 ? 's' : '') + ')', 'success');
+    } else {
+      this._toast('Net "' + netName.trim() + '" already exists on this block/port', 'warning');
+    }
+  }
+
   // =========================================================================
   // CONNECTION DRAWING MODE
   // =========================================================================
@@ -1585,6 +1772,165 @@ class SystemBlocksMain {
     this._connectionMode.sourceBlock = null;
     this._connectionMode.tempLine = null;
     this._connectionModeExitTime = performance.now();
+    if (svg) svg.style.cursor = '';
+  }
+
+  // =========================================================================
+  // STUB-TARGET-PICK MODE — draw-to-empty → click target block for stub
+  // =========================================================================
+
+  /**
+   * Called when the user drops a connection line on empty canvas.
+   * Prompts for a net name:
+   *   - Enter a name → creates a named stub (net label).
+   *     Blocks sharing the same name are implicitly connected.
+   *   - Leave blank and click OK → enters stub-target-pick mode
+   *     so the next block click creates a paired stub connection.
+   *   - Cancel → abort.
+   * @private
+   */
+  _offerStubCreation(svg, core, renderer, features) {
+    const sourceBlock = this._connectionMode.sourceBlock;
+    const sourcePort = this._connectionMode.sourcePort || 'output';
+    // Clean up connection mode visuals but keep source info
+    if (this._connectionMode.tempLine) {
+      this._connectionMode.tempLine.remove();
+    }
+    this._connectionMode.active = false;
+    this._connectionMode.tempLine = null;
+    this._connectionModeExitTime = performance.now();
+
+    const sourceName = sourceBlock.name || sourceBlock.id;
+
+    // Build prompt with existing net names for reference
+    const existingNets = core.getNetNames ? core.getNetNames() : [];
+    let promptMsg = 'Create a stub from "' + sourceName + '".\n\n';
+    if (existingNets.length > 0) {
+      promptMsg += 'Existing nets: ' + existingNets.join(', ') + '\n\n';
+    }
+    promptMsg += 'Enter a net name to create a named stub,\n';
+    promptMsg += 'or leave blank to pick a target block.\n';
+    promptMsg += '(Cancel to abort)';
+
+    const netName = prompt(promptMsg, '');
+
+    // null = user clicked Cancel
+    if (netName === null) {
+      if (window.diagramRenderer) {
+        window.diagramRenderer.highlightBlock(sourceBlock.id, false);
+      }
+      if (svg) svg.style.cursor = '';
+      this._connectionMode.sourceBlock = null;
+      return;
+    }
+
+    const trimmedName = netName.trim();
+
+    if (trimmedName) {
+      // --- Named stub (net label) ---
+      const connType = document.getElementById('connection-type-select');
+      const type = connType ? connType.value : 'auto';
+      const arrowDir = document.getElementById('arrow-direction-select');
+      const direction = arrowDir ? arrowDir.value : 'forward';
+
+      const stub = core.addNamedStub(trimmedName, sourceBlock.id, sourcePort, type, direction);
+      if (stub) {
+        renderer.updateAllBlocks(core.diagram);
+        if (features) features.saveState();
+
+        // Count how many blocks are on this net
+        const netBlocks = core.getStubsByNet
+          ? core.getStubsByNet(trimmedName)
+          : [];
+        if (netBlocks.length > 1) {
+          this._toast('Added to net "' + trimmedName + '" (' + netBlocks.length + ' blocks)', 'success');
+        } else {
+          this._toast('Created net stub "' + trimmedName + '"', 'success');
+        }
+        logger.info('Named stub created:', stub.id, 'net:', trimmedName,
+          'on block:', sourceName);
+      } else {
+        this._toast('Stub "' + trimmedName + '" already exists on this port', 'warning');
+      }
+
+      if (window.diagramRenderer) {
+        window.diagramRenderer.highlightBlock(sourceBlock.id, false);
+      }
+      if (svg) svg.style.cursor = '';
+      this._connectionMode.sourceBlock = null;
+    } else {
+      // --- Blank name: enter stub-target-pick mode ---
+      this._stubTargetMode.active = true;
+      this._stubTargetMode.sourceBlock = sourceBlock;
+      this._stubTargetMode.sourcePort = sourcePort;
+      this._connectionMode.sourceBlock = null;
+      if (svg) svg.style.cursor = 'crosshair';
+
+      this._toast('Click the target block for the stub connection (Esc to cancel)', 'info');
+      logger.info('Stub-target-pick mode: click a block or press Escape');
+    }
+  }
+
+  /**
+   * Complete the stub connection to the target block.
+   * @private
+   */
+  _completeStubConnection(targetBlock, core, renderer, features) {
+    const svg = document.getElementById('svg-canvas');
+    const sourceBlock = this._stubTargetMode.sourceBlock;
+    const sourcePort = this._stubTargetMode.sourcePort || 'output';
+    const sourceId = sourceBlock ? sourceBlock.id : null;
+
+    const connType = document.getElementById('connection-type-select');
+    const type = connType ? connType.value : 'auto';
+    const arrowDir = document.getElementById('arrow-direction-select');
+    const direction = arrowDir ? arrowDir.value : 'forward';
+
+    const conn = core.addConnection(sourceId, targetBlock.id, type, direction, { renderAsStub: true });
+    if (conn) {
+      conn.fromPort = sourcePort;
+      // Pick the closest target port based on relative block positions
+      const tw = targetBlock.width || 120;
+      const th = targetBlock.height || 80;
+      const sw = sourceBlock.width || 120;
+      const sh = sourceBlock.height || 80;
+      const srcCX = sourceBlock.x + sw / 2;
+      const srcCY = sourceBlock.y + sh / 2;
+      const tgtCX = targetBlock.x + tw / 2;
+      const tgtCY = targetBlock.y + th / 2;
+      // Use a simple heuristic: if target is to the right, use input port; etc.
+      const dx = tgtCX - srcCX;
+      const dy = tgtCY - srcCY;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        conn.toPort = dx > 0 ? 'input' : 'output';
+      } else {
+        conn.toPort = dy > 0 ? 'top' : 'bottom';
+      }
+
+      renderer.updateAllBlocks(core.diagram);
+      if (features) features.saveState();
+
+      const targetName = targetBlock.name || targetBlock.id;
+      this._toast('Stub connection created to "' + targetName + '"', 'success');
+      logger.info('Stub connection created:', conn.id,
+        'from', sourceBlock.name || sourceId,
+        'to', targetName);
+    }
+
+    this.exitStubTargetMode(svg);
+  }
+
+  /**
+   * Exit stub-target-pick mode and clean up visuals.
+   */
+  exitStubTargetMode(svg) {
+    if (!svg) svg = document.getElementById('svg-canvas');
+    if (this._stubTargetMode.sourceBlock && window.diagramRenderer) {
+      window.diagramRenderer.highlightBlock(this._stubTargetMode.sourceBlock.id, false);
+    }
+    this._stubTargetMode.active = false;
+    this._stubTargetMode.sourceBlock = null;
+    this._stubTargetMode.sourcePort = null;
     if (svg) svg.style.cursor = '';
   }
 

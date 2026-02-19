@@ -1162,6 +1162,9 @@ class DiagramRenderer {
     // Render same-level stub connections (renderAsStub flag)
     this.renderSameLevelStubs(diagram);
 
+    // Render named stubs (net labels)
+    this.renderNamedStubs(diagram);
+
     // Render all annotations
     if (diagram.annotations) {
       diagram.annotations.forEach(ann => this.renderAnnotation(ann));
@@ -1593,6 +1596,225 @@ class DiagramRenderer {
     g.appendChild(title);
 
     svg.appendChild(g);
+  }
+
+  // ---- Named stub (net label) rendering ----
+
+  /**
+   * Render net-label stubs for blocks that share a netName.
+   * Each named stub draws a short line from the block edge with the
+   * net name as its label.  Blocks sharing the same netName are
+   * implicitly connected (like net labels in EDA schematic tools).
+   */
+  renderNamedStubs(diagram) {
+    const svg = this.svg;
+    if (!svg) return;
+    svg.querySelectorAll('.named-stub').forEach(el => el.remove());
+
+    const stubs = diagram.namedStubs || [];
+    if (stubs.length === 0) return;
+
+    // Group by (blockId, portSide) for fan layout
+    const fanGroups = {};
+    stubs.forEach(stub => {
+      const key = stub.blockId + ':' + stub.portSide;
+      if (!fanGroups[key]) fanGroups[key] = [];
+      fanGroups[key].push(stub);
+    });
+
+    // Assign a color to each unique net name for visual grouping
+    const netNames = [...new Set(stubs.map(s => s.netName))];
+    const netColors = {};
+    const palette = [
+      '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
+      '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990'
+    ];
+    netNames.forEach((name, i) => {
+      netColors[name] = palette[i % palette.length];
+    });
+
+    stubs.forEach(stub => {
+      const block = diagram.blocks.find(b => b.id === stub.blockId);
+      if (!block) return;
+
+      const blockW = block.width || 120;
+      const blockH = block.height || 80;
+      const portSide = stub.portSide || 'output';
+      const stubLen = 30;
+
+      // Fan offset
+      const key = stub.blockId + ':' + portSide;
+      const fanList = fanGroups[key] || [stub];
+      const fanIdx = fanList.indexOf(stub);
+      const fanTotal = fanList.length;
+
+      // Get connection styling from stub type, then override color
+      // with the net-specific color
+      const baseStyling = this.getConnectionStyling(
+        (stub.type || 'auto').toLowerCase()
+      );
+      const netColor = netColors[stub.netName] || baseStyling.stroke;
+
+      // Compute position
+      const fanY = this._fanOffset(fanIdx, fanTotal, blockH);
+      const fanX = this._fanOffset(fanIdx, fanTotal, blockW);
+
+      let startX, startY, endX, endY;
+      switch (portSide) {
+        case 'input':
+          startX = block.x;
+          startY = block.y + fanY;
+          endX = startX - stubLen;
+          endY = startY;
+          break;
+        case 'top':
+          startX = block.x + fanX;
+          startY = block.y;
+          endX = startX;
+          endY = startY - stubLen;
+          break;
+        case 'bottom':
+          startX = block.x + fanX;
+          startY = block.y + blockH;
+          endX = startX;
+          endY = startY + stubLen;
+          break;
+        case 'output':
+        default:
+          startX = block.x + blockW;
+          startY = block.y + fanY;
+          endX = startX + stubLen;
+          endY = startY;
+          break;
+      }
+
+      const isHorizontal = (portSide === 'output' || portSide === 'input');
+      const direction = stub.direction || 'forward';
+
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', 'named-stub connection-group');
+      g.setAttribute('data-stub-id', stub.id);
+      g.setAttribute('data-net-name', stub.netName);
+
+      // Wide invisible hit area
+      const hitLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      hitLine.setAttribute('x1', startX);
+      hitLine.setAttribute('y1', startY);
+      hitLine.setAttribute('x2', endX);
+      hitLine.setAttribute('y2', endY);
+      hitLine.setAttribute('stroke', 'transparent');
+      hitLine.setAttribute('stroke-width', '14');
+      hitLine.setAttribute('pointer-events', 'stroke');
+      hitLine.setAttribute('cursor', 'pointer');
+      g.appendChild(hitLine);
+
+      // Visible stub line
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', startX);
+      line.setAttribute('y1', startY);
+      line.setAttribute('x2', endX);
+      line.setAttribute('y2', endY);
+      line.setAttribute('stroke', netColor);
+      line.setAttribute('stroke-width', String(baseStyling.strokeWidth));
+      line.setAttribute('stroke-dasharray', '4,2');
+      g.appendChild(line);
+
+      // Net name diamond/marker at the end
+      const diamond = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      const ds = 5; // diamond half-size
+      diamond.setAttribute('points',
+        `${endX},${endY - ds} ${endX + ds},${endY} ${endX},${endY + ds} ${endX - ds},${endY}`);
+      diamond.setAttribute('fill', netColor);
+      diamond.setAttribute('stroke', 'none');
+      g.appendChild(diamond);
+
+      // Arrowhead
+      const arrowSize = 8;
+      const stubPointsOutward = (portSide === 'output' || portSide === 'bottom');
+      const drawArrow = (tipX, tipY, pointsRight) => {
+        if (isHorizontal) {
+          const dir = pointsRight ? 1 : -1;
+          const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+          poly.setAttribute('points',
+            `${tipX},${tipY} ${tipX - dir * arrowSize},${tipY - arrowSize / 2} ${tipX - dir * arrowSize},${tipY + arrowSize / 2}`);
+          poly.setAttribute('fill', netColor);
+          g.appendChild(poly);
+        } else {
+          const dir = pointsRight ? 1 : -1;
+          const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+          poly.setAttribute('points',
+            `${tipX},${tipY} ${tipX - arrowSize / 2},${tipY - dir * arrowSize} ${tipX + arrowSize / 2},${tipY - dir * arrowSize}`);
+          poly.setAttribute('fill', netColor);
+          g.appendChild(poly);
+        }
+      };
+
+      if (direction === 'forward') {
+        drawArrow(endX, endY, stubPointsOutward);
+      } else if (direction === 'backward') {
+        drawArrow(startX, startY, !stubPointsOutward);
+      } else if (direction === 'bidirectional') {
+        drawArrow(endX, endY, stubPointsOutward);
+        drawArrow(startX, startY, !stubPointsOutward);
+      }
+
+      // Net name label
+      const labelOffset = 4;
+      let labelX, labelY, labelAnchor;
+      if (isHorizontal) {
+        labelX = (portSide === 'output') ? endX + labelOffset : endX - labelOffset;
+        labelY = endY + 4;
+        labelAnchor = (portSide === 'output') ? 'start' : 'end';
+      } else {
+        labelX = endX + labelOffset;
+        labelY = (portSide === 'bottom') ? endY + 12 : endY - 4;
+        labelAnchor = 'start';
+      }
+
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', labelX);
+      text.setAttribute('y', labelY);
+      text.setAttribute('font-size', '10');
+      text.setAttribute('font-family', 'Arial, sans-serif');
+      text.setAttribute('fill', netColor);
+      text.setAttribute('font-weight', 'bold');
+      text.setAttribute('text-anchor', labelAnchor);
+      text.textContent = stub.netName;
+      g.appendChild(text);
+
+      // Count of blocks on this net
+      const netCount = stubs.filter(s => s.netName === stub.netName).length;
+      if (netCount > 1) {
+        const countText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        const countX = isHorizontal ? labelX : labelX;
+        const countY = labelY + 11;
+        countText.setAttribute('x', countX);
+        countText.setAttribute('y', countY);
+        countText.setAttribute('font-size', '8');
+        countText.setAttribute('font-family', 'Arial, sans-serif');
+        countText.setAttribute('fill', netColor);
+        countText.setAttribute('font-style', 'italic');
+        countText.setAttribute('text-anchor', labelAnchor);
+        countText.textContent = '(' + netCount + ' blocks)';
+        g.appendChild(countText);
+      }
+
+      // Tooltip
+      const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      const otherBlocks = stubs
+        .filter(s => s.netName === stub.netName && s.blockId !== stub.blockId)
+        .map(s => {
+          const b = diagram.blocks.find(bl => bl.id === s.blockId);
+          return b ? (b.name || b.id) : s.blockId;
+        });
+      title.textContent = 'Net: ' + stub.netName +
+        (otherBlocks.length > 0
+          ? '\nConnected to: ' + otherBlocks.join(', ')
+          : '\n(no other blocks on this net yet)');
+      g.appendChild(title);
+
+      svg.appendChild(g);
+    });
   }
 
   // ---- Annotation rendering ----

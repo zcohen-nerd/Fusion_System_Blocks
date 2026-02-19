@@ -14,6 +14,7 @@ from fsb_core.models import (
     BlockStatus,
     Connection,
     Graph,
+    NamedStub,
     Port,
     PortDirection,
     PortKind,
@@ -165,6 +166,7 @@ class TestDictConversion:
             "connections",
             "groups",
             "metadata",
+            "namedStubs",
             "requirements",
         }
 
@@ -524,3 +526,112 @@ class TestStubConnectionAttribute:
         assert len(restored.connections) == 3
         for rc in restored.connections:
             assert rc.attributes.get("renderAsStub") is True
+
+
+# =========================================================================
+# Named stub serialization tests
+# =========================================================================
+class TestNamedStubSerialization:
+    """Verify NamedStub round-trip through serialization."""
+
+    def test_named_stub_round_trip(self):
+        """A graph with named stubs survives a round-trip."""
+        stub = NamedStub(
+            id="ns-1",
+            net_name="5V_Rail",
+            block_id="b1",
+            port_side="output",
+            stub_type="power",
+            direction="forward",
+        )
+        block = Block(id="b1", name="PSU")
+        graph = Graph(id="g1", blocks=[block], named_stubs=[stub])
+
+        restored = deserialize_graph(serialize_graph(graph))
+
+        assert len(restored.named_stubs) == 1
+        rs = restored.named_stubs[0]
+        assert rs.id == "ns-1"
+        assert rs.net_name == "5V_Rail"
+        assert rs.block_id == "b1"
+        assert rs.port_side == "output"
+        assert rs.stub_type == "power"
+        assert rs.direction == "forward"
+
+    def test_multiple_named_stubs_round_trip(self):
+        """Multiple stubs on different blocks with the same net name."""
+        stubs = [
+            NamedStub(id="ns-1", net_name="CLK", block_id="b1", port_side="output"),
+            NamedStub(id="ns-2", net_name="CLK", block_id="b2", port_side="input"),
+            NamedStub(id="ns-3", net_name="GND", block_id="b1", port_side="bottom"),
+        ]
+        blocks = [Block(id="b1", name="MCU"), Block(id="b2", name="Sensor")]
+        graph = Graph(id="g1", blocks=blocks, named_stubs=stubs)
+
+        restored = deserialize_graph(serialize_graph(graph))
+
+        assert len(restored.named_stubs) == 3
+        net_names = [s.net_name for s in restored.named_stubs]
+        assert net_names.count("CLK") == 2
+        assert net_names.count("GND") == 1
+
+    def test_empty_named_stubs_round_trip(self):
+        """Graph without named stubs serializes cleanly."""
+        graph = Graph(id="g1")
+        restored = deserialize_graph(serialize_graph(graph))
+        assert restored.named_stubs == []
+
+    def test_named_stub_dict_uses_camel_case(self):
+        """graph_to_dict outputs camelCase keys for JS compatibility."""
+        stub = NamedStub(
+            id="ns-1",
+            net_name="MISO",
+            block_id="b1",
+            port_side="top",
+            stub_type="data",
+            direction="backward",
+        )
+        graph = Graph(id="g1", named_stubs=[stub])
+        d = graph_to_dict(graph)
+
+        assert "namedStubs" in d
+        sd = d["namedStubs"][0]
+        assert sd["netName"] == "MISO"
+        assert sd["blockId"] == "b1"
+        assert sd["portSide"] == "top"
+        assert sd["type"] == "data"
+        assert sd["direction"] == "backward"
+
+    def test_named_stub_from_snake_case_dict(self):
+        """dict_to_graph accepts snake_case keys (Python-native format)."""
+        data = {
+            "id": "g1",
+            "namedStubs": [
+                {
+                    "id": "ns-1",
+                    "net_name": "SDA",
+                    "block_id": "b1",
+                    "port_side": "output",
+                    "stub_type": "data",
+                    "direction": "bidirectional",
+                }
+            ],
+        }
+        graph = dict_to_graph(data)
+        assert len(graph.named_stubs) == 1
+        assert graph.named_stubs[0].net_name == "SDA"
+        assert graph.named_stubs[0].direction == "bidirectional"
+
+    def test_named_stub_defaults(self):
+        """Missing optional fields fall back to defaults."""
+        data = {
+            "id": "g1",
+            "namedStubs": [{"id": "ns-min", "netName": "VCC"}],
+        }
+        graph = dict_to_graph(data)
+        stub = graph.named_stubs[0]
+        assert stub.net_name == "VCC"
+        assert stub.block_id == ""
+        assert stub.port_side == "output"
+        assert stub.stub_type == "auto"
+        assert stub.direction == "forward"

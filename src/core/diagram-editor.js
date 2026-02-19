@@ -51,6 +51,7 @@ class DiagramEditorCore {
       schemaVersion: DiagramEditorCore.SCHEMA_VERSION,
       blocks: [],
       connections: [],
+      namedStubs: [],
       metadata: {
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
@@ -87,6 +88,13 @@ class DiagramEditorCore {
     this.diagram.connections = this.diagram.connections.filter(
       conn => conn.fromBlock !== blockId && conn.toBlock !== blockId
     );
+
+    // Remove named stubs attached to this block
+    if (this.diagram.namedStubs) {
+      this.diagram.namedStubs = this.diagram.namedStubs.filter(
+        s => s.blockId !== blockId
+      );
+    }
     
     this.diagram.metadata.modified = new Date().toISOString();
     this._markDirty();
@@ -131,6 +139,73 @@ class DiagramEditorCore {
   removeConnection(connectionId) {
     this.diagram.connections = this.diagram.connections.filter(c => c.id !== connectionId);
     this.diagram.metadata.modified = new Date().toISOString();
+  }
+
+  // ----- Named stubs (net labels) -----
+
+  /**
+   * Add a named stub (net label) to a block port.
+   * Blocks sharing the same netName are implicitly connected.
+   *
+   * @param {string} netName - Net/label name (e.g. "5V", "CLK").
+   * @param {string} blockId - Block to attach the stub to.
+   * @param {string} [portSide='output'] - Side of the block.
+   * @param {string} [type='auto'] - Connection type for styling.
+   * @param {string} [direction='forward'] - Arrow direction.
+   * @returns {object|null} The created stub, or null on failure.
+   */
+  addNamedStub(netName, blockId, portSide = 'output', type = 'auto', direction = 'forward') {
+    if (!netName || !blockId) return null;
+
+    // Prevent duplicate: same block + same net + same side
+    if (!this.diagram.namedStubs) this.diagram.namedStubs = [];
+    const dup = this.diagram.namedStubs.some(
+      s => s.netName === netName && s.blockId === blockId && s.portSide === portSide
+    );
+    if (dup) return null;
+
+    const stub = {
+      id: 'stub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+      netName: netName,
+      blockId: blockId,
+      portSide: portSide,
+      type: type,
+      direction: direction
+    };
+    this.diagram.namedStubs.push(stub);
+    this.diagram.metadata.modified = new Date().toISOString();
+    this._markDirty();
+    return stub;
+  }
+
+  /**
+   * Remove a named stub by its ID.
+   * @param {string} stubId - ID of the stub to remove.
+   */
+  removeNamedStub(stubId) {
+    if (!this.diagram.namedStubs) return;
+    this.diagram.namedStubs = this.diagram.namedStubs.filter(s => s.id !== stubId);
+    this.diagram.metadata.modified = new Date().toISOString();
+    this._markDirty();
+  }
+
+  /**
+   * Get a list of unique net names currently in the diagram.
+   * @returns {string[]} Array of distinct net names.
+   */
+  getNetNames() {
+    if (!this.diagram.namedStubs) return [];
+    return [...new Set(this.diagram.namedStubs.map(s => s.netName))];
+  }
+
+  /**
+   * Get all named stubs for a given net name.
+   * @param {string} netName - The net name to look up.
+   * @returns {object[]} Array of stub objects.
+   */
+  getStubsByNet(netName) {
+    if (!this.diagram.namedStubs) return [];
+    return this.diagram.namedStubs.filter(s => s.netName === netName);
   }
 
   updateConnection(connectionId, updates) {
@@ -462,6 +537,9 @@ class DiagramEditorCore {
       // Ensure required fields have safe defaults
       if (!importedDiagram.connections) {
         importedDiagram.connections = [];
+      }
+      if (!importedDiagram.namedStubs) {
+        importedDiagram.namedStubs = [];
       }
       if (!importedDiagram.metadata) {
         importedDiagram.metadata = { created: new Date().toISOString() };
