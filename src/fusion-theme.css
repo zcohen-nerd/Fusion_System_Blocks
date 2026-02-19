@@ -74,10 +74,10 @@
   --fusion-shadow-panel: 0 2px 8px rgba(0, 0, 0, 0.35);
   --fusion-shadow-floating: 0 4px 16px rgba(0, 0, 0, 0.45);
 
-  /* Border Radius */
+  /* Border Radius — Fusion uses tight, squared corners */
   --fusion-radius-small: 2px;
-  --fusion-radius-medium: 4px;
-  --fusion-radius-large: 6px;
+  --fusion-radius-medium: 3px;
+  --fusion-radius-large: 4px;
 
   /* Border Styles */
   --fusion-border-thin: 1px;
@@ -313,25 +313,8 @@
   overflow: hidden;
 }
 
-.block-icon::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  transition: left var(--fusion-transition-slow) var(--fusion-ease-out);
-}
-
 .block-icon:hover {
-  background: var(--fusion-gradient-button-hover);
-  transform: scale(1.1) rotate(5deg);
-  box-shadow: var(--fusion-shadow-floating);
-}
-
-.block-icon:hover::before {
-  left: 100%;
+  background: var(--fusion-bg-hover);
 }
 
 /* === CONTEXT MENU === */
@@ -1001,7 +984,6 @@
 .block-group.highlighted rect:first-child {
   stroke: var(--fusion-accent, #0696D7);
   stroke-width: 2.5;
-  filter: drop-shadow(0 0 4px rgba(6, 150, 215, 0.4));
 }
 
 /* Multi-selection / lasso highlight for SVG block groups */
@@ -1011,7 +993,6 @@
 .block.highlighted path {
   stroke: var(--fusion-accent-orange, #FF6B35);
   stroke-width: 3;
-  filter: drop-shadow(0 0 4px rgba(255, 107, 53, 0.4));
 }
 
 .empty-canvas-state {

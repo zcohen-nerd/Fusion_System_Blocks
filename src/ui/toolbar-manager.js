@@ -392,7 +392,6 @@ class ToolbarManager {
       'Shift+KeyZ': { ctrl: true, shift: true, handler: () => this.handleRedo() },
       'KeyY': { ctrl: true, handler: () => this.handleRedo() },
       'KeyA': { ctrl: true, handler: () => this.handleSelectAll() },
-      'KeyC': { ctrl: true, handler: () => this.handleCopy() },
       'KeyV': { ctrl: true, handler: () => this.handlePaste() },
       'KeyD': { ctrl: true, handler: () => this.handleDuplicate() },
       'KeyF': { ctrl: true, handler: () => this.handleFocusSearch() },
@@ -403,8 +402,7 @@ class ToolbarManager {
       'Delete': { handler: () => this.handleDeleteSelected() },
       'Backspace': { handler: () => this.handleDeleteSelected() },
       'Insert': { handler: () => this.handleCreateBlock() },
-      'KeyB': { handler: () => this.handleCreateBlock() },
-      'KeyC': { handler: () => this.handleConnect() },  // bare C = connect mode
+      'KeyB': { handler: () => this.handleCreateBlock() }
       'Shift+KeyP': { shift: true, handler: () => this.handleSetConnectionType('power') },
       'Shift+KeyD': { shift: true, handler: () => this.handleSetConnectionType('data') },
       'Shift+KeyM': { shift: true, handler: () => this.handleSetConnectionType('mechanical') },
@@ -415,9 +413,22 @@ class ToolbarManager {
       'KeyM': { handler: () => this.handleToggleMinimap() }
     };
 
+    // Store shortcuts as an array per key code to allow multiple
+    // bindings (e.g. Ctrl+C for copy AND bare C for connect).
     Object.entries(shortcuts).forEach(([code, config]) => {
       this.keyboardShortcuts.set(code, config);
     });
+    // Additional bindings that share a key code with an existing entry
+    // are stored in a secondary map so the primary lookup still works.
+    this._extraShortcuts = new Map();
+    // Ctrl+C = copy (primary KeyC above is bare-C connect)
+    this._extraShortcuts.set('Ctrl+KeyC', { ctrl: true, handler: () => this.handleCopy() });
+    // Bare C = connect (when Ctrl is NOT held)
+    // Remap: primary KeyC is now unused, handled via _extraShortcuts below
+    this.keyboardShortcuts.delete('KeyB'); // will re-add in correct order
+    // Re-add bare C for connect as primary:
+    this.keyboardShortcuts.set('KeyC', { handler: () => this.handleConnect() });
+    this.keyboardShortcuts.set('KeyB', { handler: () => this.handleCreateBlock() });
 
     document.addEventListener('keydown', (e) => this.handleKeydown(e));
   }
@@ -429,12 +440,34 @@ class ToolbarManager {
       return;
     }
 
+    // Build compound keys to try (most-specific first)
+    const candidates = [];
+    if (e.shiftKey) candidates.push('Shift+' + e.code);
+    if (e.ctrlKey || e.metaKey) candidates.push('Ctrl+' + e.code);
+    candidates.push(e.code);
+
+    // Check extra shortcuts first (higher priority for Ctrl combos)
+    for (const key of candidates) {
+      const extra = this._extraShortcuts.get(key);
+      if (extra) {
+        const ctrlOk = extra.ctrl ? (e.ctrlKey || e.metaKey) : !(e.ctrlKey || e.metaKey);
+        const shiftOk = extra.shift ? e.shiftKey : !e.shiftKey;
+        const altOk = extra.alt ? e.altKey : !e.altKey;
+        if (ctrlOk && shiftOk && altOk) {
+          e.preventDefault();
+          extra.handler();
+          this.updateButtonStates();
+          return;
+        }
+      }
+    }
+
     // Try compound key with Shift modifier first, then plain code
     const compoundKey = e.shiftKey ? 'Shift+' + e.code : null;
     const shortcut = (compoundKey && this.keyboardShortcuts.get(compoundKey)) || this.keyboardShortcuts.get(e.code);
     if (!shortcut) return;
 
-    const ctrlMatch = shortcut.ctrl ? e.ctrlKey : !e.ctrlKey;
+    const ctrlMatch = shortcut.ctrl ? (e.ctrlKey || e.metaKey) : !(e.ctrlKey || e.metaKey);
     const altMatch = shortcut.alt ? e.altKey : !e.altKey;
     const shiftMatch = shortcut.shift ? e.shiftKey : !e.shiftKey;
 
@@ -994,8 +1027,8 @@ class ToolbarManager {
       position: fixed; left: ${screenX}px; top: ${screenY}px;
       background: var(--fusion-panel-bg, #2b2b2b);
       border: 1px solid var(--fusion-panel-border, #555);
-      border-radius: 6px; padding: 4px 0; z-index: 100000;
-      min-width: 170px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      border-radius: 3px; padding: 4px 0; z-index: 100000;
+      min-width: 170px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       color: var(--fusion-text-primary, #fff);
     `;
 
@@ -1062,8 +1095,8 @@ class ToolbarManager {
       position: fixed; left: ${rect.left}px; top: ${rect.bottom + 4}px;
       background: var(--fusion-panel-bg, #2b2b2b);
       border: 1px solid var(--fusion-panel-border, #555);
-      border-radius: 6px; padding: 4px 0; z-index: 100000;
-      min-width: 170px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      border-radius: 3px; padding: 4px 0; z-index: 100000;
+      min-width: 170px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       color: var(--fusion-text-primary, #fff);
     `;
 

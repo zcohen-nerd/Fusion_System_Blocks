@@ -535,12 +535,10 @@ class CommandExecuteHandler(adsk.core.CommandEventHandler):
             # Get the palette
             palette = UI.palettes.itemById("SystemBlocksPalette")
             if not palette:
-                notify_warning("Palette not found - creating it now")
                 palette = _create_palette()
 
             if palette:
                 palette.isVisible = True
-                notify_success("Palette should now be visible")
 
         except Exception as e:
             notify_error(f"Error showing palette: {str(e)}")
@@ -1989,7 +1987,9 @@ def run(context):
             _logger.info(f"Log file: {get_log_file_path()}")
             _logger.info("=" * 60)
 
-        notify_success("System Blocks add-in loaded successfully!")
+        # Startup notification removed — Fusion add-ins load silently.
+        if LOGGING_AVAILABLE:
+            _logger.info("System Blocks add-in loaded successfully!")
 
     except Exception as e:
         if LOGGING_AVAILABLE:

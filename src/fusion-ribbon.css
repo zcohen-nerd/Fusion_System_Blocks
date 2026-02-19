@@ -4,9 +4,8 @@
 
 /* === FUSION RIBBON CONTAINER === */
 .fusion-ribbon {
-  background: linear-gradient(180deg, #393939 0%, #2d2d30 100%);
+  background: #2d2d30;
   border-bottom: 1px solid #1a1a1a;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   padding: 2px 4px 4px 4px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 11px;
@@ -442,7 +441,7 @@
 
 /* === SECONDARY RIBBON BAR === */
 .ribbon-secondary {
-  background: linear-gradient(180deg, #353535 0%, #2a2a2a 100%);
+  background: #2d2d30;
   border-bottom: 1px solid #1a1a1a;
   padding: 6px 12px;
   display: flex;

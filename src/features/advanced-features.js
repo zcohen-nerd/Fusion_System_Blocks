@@ -119,6 +119,13 @@ class AdvancedFeatures {
 
   // === LASSO SELECTION ===
   startLassoSelection(startX, startY) {
+    // Clean up any stale lasso rect from a previous interrupted selection
+    if (this.lassoRect && this.lassoRect.parentNode) {
+      this.lassoRect.remove();
+    }
+    // Also remove any orphaned lasso rects left in the SVG
+    this.renderer.svg.querySelectorAll('.lasso-selection').forEach(el => el.remove());
+
     this.isLassoSelecting = true;
     this.lassoStart = { x: startX, y: startY };
     
@@ -131,6 +138,30 @@ class AdvancedFeatures {
     this.lassoRect.setAttribute('stroke-dasharray', '5,5');
     
     this.renderer.svg.appendChild(this.lassoRect);
+
+    // Fallback: if mouse is released outside the SVG, clean up the lasso
+    if (!this._lassoDocUpBound) {
+      this._lassoDocUpBound = () => {
+        if (this.isLassoSelecting) {
+          this.cancelLassoSelection();
+        }
+      };
+    }
+    document.addEventListener('mouseup', this._lassoDocUpBound);
+  }
+
+  /**
+   * Cancel and clean up lasso selection without selecting anything.
+   */
+  cancelLassoSelection() {
+    if (this.lassoRect && this.lassoRect.parentNode) {
+      this.lassoRect.remove();
+    }
+    this.lassoRect = null;
+    this.isLassoSelecting = false;
+    if (this._lassoDocUpBound) {
+      document.removeEventListener('mouseup', this._lassoDocUpBound);
+    }
   }
 
   updateLassoSelection(currentX, currentY) {
@@ -182,11 +213,16 @@ class AdvancedFeatures {
     });
     
     // Clean up
-    if (this.lassoRect) {
+    if (this.lassoRect && this.lassoRect.parentNode) {
       this.lassoRect.remove();
-      this.lassoRect = null;
     }
+    // Also remove any orphaned lasso rects
+    this.renderer.svg.querySelectorAll('.lasso-selection').forEach(el => el.remove());
+    this.lassoRect = null;
     this.isLassoSelecting = false;
+    if (this._lassoDocUpBound) {
+      document.removeEventListener('mouseup', this._lassoDocUpBound);
+    }
     return newlySelected;
   }
 
@@ -584,8 +620,8 @@ class AdvancedFeatures {
       'align-items:center;justify-content:center;background:rgba(0,0,0,0.45);';
 
     const card = document.createElement('div');
-    card.style.cssText = 'background:#1e1e2e;border:1px solid #555;border-radius:10px;' +
-      'padding:18px;width:280px;color:#ccc;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.5);';
+    card.style.cssText = 'background:#1e1e2e;border:1px solid #555;border-radius:3px;' +
+      'padding:18px;width:280px;color:#ccc;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.4);';
 
     const heading = document.createElement('div');
     heading.textContent = 'Group Color: ' + (group.name || group.id);
@@ -606,7 +642,7 @@ class AdvancedFeatures {
 
     presets.forEach(color => {
       const swatch = document.createElement('div');
-      swatch.style.cssText = 'width:36px;height:36px;border-radius:6px;cursor:pointer;' +
+      swatch.style.cssText = 'width:36px;height:36px;border-radius:3px;cursor:pointer;' +
         'border:2px solid ' + (color === selectedColor ? '#fff' : 'transparent') + ';' +
         'background:' + color + ';transition:border-color 0.15s;';
       swatch.addEventListener('click', () => {

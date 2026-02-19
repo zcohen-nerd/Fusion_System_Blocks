@@ -419,6 +419,9 @@ class SystemBlocksMain {
           features.clearSelection();
           core.clearSelection();
           this.hidePropertiesPanel();
+          // Dismiss the group-offer bar when clicking off blocks
+          const groupBar = document.getElementById('lasso-group-bar');
+          if (groupBar) groupBar.remove();
         }
         
         // Start lasso selection
@@ -651,11 +654,27 @@ class SystemBlocksMain {
             if (d < bestDist) { bestDist = d; bestPort = p.type; }
           }
 
-          const conn = core.addConnection(sourceId, targetBlock.id, type, direction);
+          // Normalize so Forward/Backward always means left-to-right.
+          // When the user starts from an input (left) port, the drawing
+          // direction is right-to-left. Swap from/to so the data model
+          // stores the connection in left-to-right order and the arrow
+          // direction label stays intuitive.
+          let fromId = sourceId;
+          let toId = targetBlock.id;
+          let fromPort = sourcePort;
+          let toPort = bestPort;
+          if (sourcePort === 'input') {
+            fromId = targetBlock.id;
+            toId = sourceId;
+            fromPort = bestPort;
+            toPort = sourcePort;
+          }
+
+          const conn = core.addConnection(fromId, toId, type, direction);
           if (conn) {
             // Store port sides on the connection for rendering
-            conn.fromPort = sourcePort;
-            conn.toPort = bestPort;
+            conn.fromPort = fromPort;
+            conn.toPort = toPort;
 
             // Invalidate the fan map so the new connection is included
             // in the offset calculation.
@@ -699,10 +718,22 @@ class SystemBlocksMain {
             if (d < bestDist) { bestDist = d; bestPort = p.type; }
           }
 
-          const conn = core.addConnection(sourceId, targetGroup.id, type, direction);
+          // Normalize so Forward/Backward always means left-to-right.
+          let gFromId = sourceId;
+          let gToId = targetGroup.id;
+          let gFromPort = sourcePort;
+          let gToPort = bestPort;
+          if (sourcePort === 'input') {
+            gFromId = targetGroup.id;
+            gToId = sourceId;
+            gFromPort = bestPort;
+            gToPort = sourcePort;
+          }
+
+          const conn = core.addConnection(gFromId, gToId, type, direction);
           if (conn) {
-            conn.fromPort = sourcePort;
-            conn.toPort = bestPort;
+            conn.fromPort = gFromPort;
+            conn.toPort = gToPort;
             renderer._cachedFanMap = null;
             renderer.renderConnection(conn);
             logger.info('Group connection created:', conn.id,
@@ -734,6 +765,9 @@ class SystemBlocksMain {
           this._toast('Stub connection cancelled', 'info');
           this.exitStubTargetMode(svg);
         }
+        // Record exit time so the immediately-following click event
+        // doesn't re-enter stub handling.
+        this._stubExitTime = performance.now();
         e.stopPropagation();
       }
 
@@ -898,6 +932,7 @@ class SystemBlocksMain {
       sourceBlock: null,
       sourcePort: null
     };
+    this._stubExitTime = 0;
 
     // =========================================================================
     // DIMENSION PICK MODE — click first block, then second block
@@ -930,6 +965,11 @@ class SystemBlocksMain {
     svg.addEventListener('click', (e) => {
       // --- Stub-target-pick mode (click path) ---
       if (this._stubTargetMode && this._stubTargetMode.active) {
+        // Skip if the mouseup handler already handled this interaction.
+        if (this._stubExitTime && performance.now() - this._stubExitTime < 300) {
+          e.stopPropagation();
+          return;
+        }
         const { x, y } = screenToSVG(e.clientX, e.clientY);
         let hitBlock = core.getBlockAt(x, y);
         if (!hitBlock) hitBlock = core.getBlockAt(x, y, 8);
@@ -1194,8 +1234,8 @@ class SystemBlocksMain {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
       background: var(--fusion-panel-bg, #2b2b2b);
       border: 2px solid var(--fusion-accent, #FF6B35);
-      border-radius: 10px; padding: 16px 20px; z-index: 100001;
-      min-width: 220px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      border-radius: 3px; padding: 16px 20px; z-index: 100001;
+      min-width: 220px; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
       color: var(--fusion-text-primary, #fff); font-family: Arial, sans-serif;
     `;
 
@@ -1427,9 +1467,9 @@ class SystemBlocksMain {
     dialog.style.cssText = `
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
       background: var(--fusion-panel-bg, #2b2b2b); color: var(--fusion-text-primary, #fff);
-      border: 2px solid var(--fusion-panel-border, #555); border-radius: 8px;
+      border: 1px solid var(--fusion-panel-border, #555); border-radius: 3px;
       padding: 20px; z-index: 100001; min-width: 360px; max-width: 480px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5); font-family: Arial, sans-serif;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4); font-family: Arial, sans-serif;
     `;
 
     const labelStyle = 'display:block; margin: 10px 0 4px; font-size:12px; color:#aaa;';
@@ -1565,10 +1605,17 @@ class SystemBlocksMain {
     const content = document.getElementById('pp-content');
     if (!panel || !content) return;
 
-    // --- Connections summary ---
+    // Track the currently-shown block so callers can refresh it later.
+    this._propertiesPanelBlockId = block.id;
+
+    // --- Connections summary (includes stubs in counts) ---
     const outgoing = core.diagram.connections.filter(c => c.fromBlock === block.id);
     const incoming = core.diagram.connections.filter(c => c.toBlock === block.id);
     const stubs = (core.diagram.namedStubs || []).filter(s => s.blockId === block.id);
+    const stubsOut = stubs.filter(s => s.portSide === 'output' || (!s.portSide && true));
+    const stubsIn  = stubs.filter(s => s.portSide === 'input');
+    const totalOut = outgoing.length + stubsOut.length;
+    const totalIn  = incoming.length + stubsIn.length;
 
     const connHtml = (list, direction) => {
       if (!list.length) return `<div style="color:#777; font-size:11px; padding:2px 0;">None</div>`;
@@ -1605,6 +1652,17 @@ class SystemBlocksMain {
         }).join('')
       : `<div style="color:#777; font-size:11px; padding:2px 0;">No attributes</div>`;
 
+    // --- Helper to build inline <select> for a property ---
+    const inlineSelect = (id, options, currentVal) => {
+      return `<select id="${id}" class="pp-inline-select">${
+        options.map(o => {
+          const val = typeof o === 'string' ? o : o.value;
+          const label = typeof o === 'string' ? o : o.label;
+          return `<option value="${_escapeHtml(val)}"${val === currentVal ? ' selected' : ''}>${_escapeHtml(label)}</option>`;
+        }).join('')
+      }</select>`;
+    };
+
     // --- Status badge class ---
     const statusSlug = (block.status || 'Placeholder').toLowerCase().replace(/\s+/g, '-');
 
@@ -1617,15 +1675,24 @@ class SystemBlocksMain {
         </div>
         <div class="pp-row">
           <span class="pp-label">Type</span>
-          <span class="pp-value">${_escapeHtml(block.type || 'Generic')}</span>
+          ${inlineSelect('pp-type', ['Generic', 'Electrical', 'Mechanical', 'Software'], block.type || 'Generic')}
         </div>
         <div class="pp-row">
           <span class="pp-label">Status</span>
-          <span class="pp-badge status-${statusSlug}">${_escapeHtml(block.status || 'Placeholder')}</span>
+          ${inlineSelect('pp-status', ['Placeholder', 'In Progress', 'Completed'], block.status || 'Placeholder')}
         </div>
         <div class="pp-row">
           <span class="pp-label">Shape</span>
-          <span class="pp-value">${_escapeHtml(block.shape || 'rectangle')}</span>
+          ${inlineSelect('pp-shape', [
+            { value: 'rectangle',     label: '▭ Rectangle' },
+            { value: 'rounded',       label: '▢ Rounded' },
+            { value: 'diamond',       label: '◇ Diamond' },
+            { value: 'circle',        label: '○ Ellipse' },
+            { value: 'hexagon',       label: '⬡ Hexagon' },
+            { value: 'parallelogram', label: '▱ Parallelogram' },
+            { value: 'cylinder',      label: '⊙ Cylinder' },
+            { value: 'triangle',      label: '△ Triangle' },
+          ], block.shape || 'rectangle')}
         </div>
       </div>
       <div class="pp-section">
@@ -1634,16 +1701,32 @@ class SystemBlocksMain {
       </div>
       <div class="pp-section">
         <div class="pp-section-title">Connections</div>
-        <div style="font-size:11px; color:#aaa; margin-bottom:4px;">Outgoing (${outgoing.length})</div>
+        <div style="font-size:11px; color:#aaa; margin-bottom:4px;">Outgoing (${totalOut})</div>
         ${connHtml(outgoing, 'out')}
-        <div style="font-size:11px; color:#aaa; margin:6px 0 4px;">Incoming (${incoming.length})</div>
+        <div style="font-size:11px; color:#aaa; margin:6px 0 4px;">Incoming (${totalIn})</div>
         ${connHtml(incoming, 'in')}
         ${stubs.length ? `<div style="font-size:11px; color:#aaa; margin:6px 0 4px;">Named Stubs (${stubs.length})</div>${stubsHtml}` : ''}
       </div>
       <button class="pp-edit-btn" id="pp-edit-btn">Edit Properties</button>
     `;
 
-    // Wire Edit button
+    // --- Wire inline select change handlers ---
+    const applyInlineChange = (prop, value) => {
+      core.updateBlock(block.id, { [prop]: value });
+      renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
+      // Refresh panel with fresh data (re-read the block)
+      const fresh = core.diagram.blocks.find(b => b.id === block.id);
+      if (fresh) this.updatePropertiesPanel(fresh, core, renderer);
+    };
+    const typeSelect = content.querySelector('#pp-type');
+    if (typeSelect) typeSelect.addEventListener('change', () => applyInlineChange('type', typeSelect.value));
+    const statusSelect = content.querySelector('#pp-status');
+    if (statusSelect) statusSelect.addEventListener('change', () => applyInlineChange('status', statusSelect.value));
+    const shapeSelect = content.querySelector('#pp-shape');
+    if (shapeSelect) shapeSelect.addEventListener('change', () => applyInlineChange('shape', shapeSelect.value));
+
+    // Wire Edit button (for full property editor with attributes)
     const editBtn = content.querySelector('#pp-edit-btn');
     if (editBtn) {
       editBtn.addEventListener('click', () => {
@@ -1665,10 +1748,19 @@ class SystemBlocksMain {
   }
 
   /**
-   * Hide the properties side panel.
+   * Hide the properties side panel (show empty state).
    */
   hidePropertiesPanel() {
     const panel = document.getElementById('properties-panel');
+    const content = document.getElementById('pp-content');
+    if (content) {
+      content.innerHTML = `
+        <div style="padding: 24px 16px; text-align: center; color: #666; font-size: 12px;">
+          <div style="font-size: 28px; margin-bottom: 8px; opacity: 0.4;">□</div>
+          <div>Select a block to view its properties</div>
+        </div>
+      `;
+    }
     if (panel) panel.classList.remove('visible');
   }
 
@@ -2527,31 +2619,57 @@ class SystemBlocksMain {
     const sourcePort = this._stubTargetMode.sourcePort || 'output';
     const sourceId = sourceBlock ? sourceBlock.id : null;
 
+    // Validate both blocks still exist in the diagram
+    if (!sourceId || !core.diagram.blocks.find(b => b.id === sourceId)) {
+      this._toast('Source block no longer exists', 'warning');
+      this.exitStubTargetMode(svg);
+      return;
+    }
+    if (!core.diagram.blocks.find(b => b.id === targetBlock.id)) {
+      this._toast('Target block no longer exists', 'warning');
+      this.exitStubTargetMode(svg);
+      return;
+    }
+
     const connType = document.getElementById('connection-type-select');
     const type = connType ? connType.value : 'auto';
     const arrowDir = document.getElementById('arrow-direction-select');
     const direction = arrowDir ? arrowDir.value : 'forward';
 
-    const conn = core.addConnection(sourceId, targetBlock.id, type, direction, { renderAsStub: true });
+    // Determine target port from spatial heuristic
+    const tw = targetBlock.width || 120;
+    const th = targetBlock.height || 80;
+    const sw = sourceBlock.width || 120;
+    const sh = sourceBlock.height || 80;
+    const srcCX = sourceBlock.x + sw / 2;
+    const srcCY = sourceBlock.y + sh / 2;
+    const tgtCX = targetBlock.x + tw / 2;
+    const tgtCY = targetBlock.y + th / 2;
+    const dx = tgtCX - srcCX;
+    const dy = tgtCY - srcCY;
+    let bestStubPort;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      bestStubPort = dx > 0 ? 'input' : 'output';
+    } else {
+      bestStubPort = dy > 0 ? 'top' : 'bottom';
+    }
+
+    // Normalize so Forward/Backward always means left-to-right.
+    let sFromId = sourceId;
+    let sToId = targetBlock.id;
+    let sFromPort = sourcePort;
+    let sToPort = bestStubPort;
+    if (sourcePort === 'input') {
+      sFromId = targetBlock.id;
+      sToId = sourceId;
+      sFromPort = bestStubPort;
+      sToPort = sourcePort;
+    }
+
+    const conn = core.addConnection(sFromId, sToId, type, direction, { renderAsStub: true });
     if (conn) {
-      conn.fromPort = sourcePort;
-      // Pick the closest target port based on relative block positions
-      const tw = targetBlock.width || 120;
-      const th = targetBlock.height || 80;
-      const sw = sourceBlock.width || 120;
-      const sh = sourceBlock.height || 80;
-      const srcCX = sourceBlock.x + sw / 2;
-      const srcCY = sourceBlock.y + sh / 2;
-      const tgtCX = targetBlock.x + tw / 2;
-      const tgtCY = targetBlock.y + th / 2;
-      // Use a simple heuristic: if target is to the right, use input port; etc.
-      const dx = tgtCX - srcCX;
-      const dy = tgtCY - srcCY;
-      if (Math.abs(dx) > Math.abs(dy)) {
-        conn.toPort = dx > 0 ? 'input' : 'output';
-      } else {
-        conn.toPort = dy > 0 ? 'top' : 'bottom';
-      }
+      conn.fromPort = sFromPort;
+      conn.toPort = sToPort;
 
       renderer.updateAllBlocks(core.diagram);
       // Re-render group boundaries (updateAllBlocks clears them)
@@ -2658,6 +2776,18 @@ class SystemBlocksMain {
     // can check _dragSaveJustFired on the correct object (not `core`).
     const coordinator = this;
     const originalUpdateBlock = core.updateBlock.bind(core);
+
+    // Track explicit saveState calls to prevent the debounced auto-save
+    // from pushing a duplicate state right after an explicit save.
+    const originalSaveState = features.saveState.bind(features);
+    let explicitSaveTime = 0;
+    features.saveState = function(label) {
+      explicitSaveTime = Date.now();
+      // Cancel any pending debounced save — the explicit save supersedes it.
+      clearTimeout(saveTimer);
+      return originalSaveState(label);
+    };
+
     core.updateBlock = function(blockId, updates) {
       const result = originalUpdateBlock(blockId, updates);
       if (result && !features.isPerformingUndoRedo) {
@@ -2667,7 +2797,12 @@ class SystemBlocksMain {
           // triggers updateBlock which would wipe the redo stack.
           // Also skip if a drag-end explicit save just fired (prevents
           // duplicate undo states for block moves).
-          if (features.redoStack.length === 0 && !coordinator._dragSaveJustFired) {
+          // Also skip if an explicit saveState was called recently (within
+          // the debounce window) — that save already captured this change.
+          const timeSinceExplicit = Date.now() - explicitSaveTime;
+          if (features.redoStack.length === 0 &&
+              !coordinator._dragSaveJustFired &&
+              timeSinceExplicit > 300) {
             features.saveState();
           }
         }, 250);
@@ -3004,8 +3139,8 @@ class SystemBlocksMain {
     bar.id = 'lasso-group-bar';
     bar.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);' +
       'display:flex;align-items:center;gap:8px;padding:6px 14px;' +
-      'background:#1e1e2e;border:1px solid #444;border-radius:8px;' +
-      'color:#ccc;font-size:13px;z-index:10010;box-shadow:0 4px 12px rgba(0,0,0,0.4);';
+      'background:#1e1e2e;border:1px solid #444;border-radius:3px;' +
+      'color:#ccc;font-size:13px;z-index:10010;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
 
     const label = document.createElement('span');
     label.textContent = blockIds.length + ' blocks selected';
@@ -3062,8 +3197,8 @@ class SystemBlocksMain {
         'align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
 
       const card = document.createElement('div');
-      card.style.cssText = 'background:#1e1e2e;border:1px solid #555;border-radius:8px;' +
-        'padding:16px;width:320px;color:#ccc;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.5);';
+      card.style.cssText = 'background:#1e1e2e;border:1px solid #555;border-radius:3px;' +
+        'padding:16px;width:320px;color:#ccc;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.4);';
 
       const heading = document.createElement('div');
       heading.textContent = title;
@@ -3150,6 +3285,19 @@ class SystemBlocksMain {
       card.appendChild(btnRow);
       overlay.appendChild(card);
       document.body.appendChild(overlay);
+
+      // Block canvas interactions (pan/zoom) while the dialog is open.
+      // The overlay covers the viewport, but wheel/middle-mouse events
+      // can still bubble in some CEF versions — stop them explicitly.
+      const blockEvent = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+      overlay.addEventListener('wheel', blockEvent, { passive: false });
+      overlay.addEventListener('mousedown', (ev) => {
+        // Allow clicks on the card/buttons; block everything else
+        if (!card.contains(ev.target)) {
+          ev.stopPropagation();
+          ev.preventDefault();
+        }
+      });
 
       // Focus input and select text
       setTimeout(() => { input.focus(); input.select(); }, 0);
@@ -3490,7 +3638,7 @@ class SystemBlocksMain {
       background: #F44336;
       color: white;
       padding: 20px;
-      border-radius: 8px;
+      border-radius: 3px;
       max-width: 400px;
       text-align: center;
       z-index: 10001;
