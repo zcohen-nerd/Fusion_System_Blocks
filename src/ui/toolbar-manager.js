@@ -1241,6 +1241,7 @@ class ToolbarManager {
     if (this.renderer && typeof this.renderer.renderAnnotation === 'function') {
       this.renderer.renderAnnotation(annotation);
     }
+    if (window.advancedFeatures) window.advancedFeatures.saveState();
     if (window.pythonInterface) {
       const labels = { text: 'Text', note: 'Note', dimension: 'Dimension', callout: 'Callout' };
       window.pythonInterface.showNotification(`${labels[type] || 'Annotation'} added`, 'success');
@@ -1473,6 +1474,7 @@ class ToolbarManager {
       });
     }
     logger.debug(`Pasted ${this._clipboard.length} block(s)`);
+    if (window.advancedFeatures) window.advancedFeatures.saveState();
     if (window.pythonInterface) {
       window.pythonInterface.showNotification(
         `Pasted ${this._clipboard.length} block(s)`, 'success'
@@ -1500,6 +1502,7 @@ class ToolbarManager {
       });
       this.renderer.renderBlock(clone);
     });
+    if (window.advancedFeatures) window.advancedFeatures.saveState();
   }
 
   handleFocusSearch() {
@@ -1514,15 +1517,10 @@ class ToolbarManager {
     const select = document.getElementById('connection-type-select');
     if (select) {
       select.value = type;
+      // dispatchEvent('change') triggers setupConnectionControlSync which
+      // already calls core.updateConnection + saveState for the selected
+      // connection. No need to duplicate that work here.
       select.dispatchEvent(new Event('change'));
-    }
-    // Also update the currently-selected connection in-place (#35)
-    if (window.SystemBlocksMain && window.SystemBlocksMain._selectedConnection) {
-      const connId = window.SystemBlocksMain._selectedConnection;
-      this.editor.updateConnection(connId, { type: type });
-      const conn = this.editor.diagram.connections.find(c => c.id === connId);
-      if (conn) this.renderer.renderConnection(conn);
-      if (window.advancedFeatures) window.advancedFeatures.saveState();
     }
   }
 

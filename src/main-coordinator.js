@@ -1912,6 +1912,7 @@ class SystemBlocksMain {
           const newType = item.getAttribute('data-set-type');
           core.updateBlock(block.id, { type: newType });
           renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+          if (window.advancedFeatures) window.advancedFeatures.saveState();
           this.hideContextMenu();
         });
       });
@@ -1923,6 +1924,7 @@ class SystemBlocksMain {
           const newStatus = item.getAttribute('data-set-status');
           core.updateBlock(block.id, { status: newStatus });
           renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+          if (window.advancedFeatures) window.advancedFeatures.saveState();
           this.hideContextMenu();
         });
       });
@@ -2883,15 +2885,16 @@ class SystemBlocksMain {
       if (result && !features.isPerformingUndoRedo) {
         clearTimeout(saveTimer);
         saveTimer = setTimeout(() => {
-          // Don't auto-save state right after an undo/redo — the restoreState
-          // triggers updateBlock which would wipe the redo stack.
-          // Also skip if a drag-end explicit save just fired (prevents
+          // Skip if a drag-end explicit save just fired (prevents
           // duplicate undo states for block moves).
           // Also skip if an explicit saveState was called recently (within
           // the debounce window) — that save already captured this change.
+          // NOTE: The isPerformingUndoRedo guard above prevents the timer
+          // from being set during undo/redo, so we don't need to check
+          // the redoStack here. Removing that guard also ensures new
+          // user actions after an undo are correctly recorded.
           const timeSinceExplicit = Date.now() - explicitSaveTime;
-          if (features.redoStack.length === 0 &&
-              !coordinator._dragSaveJustFired &&
+          if (!coordinator._dragSaveJustFired &&
               timeSinceExplicit > 300) {
             features.saveState();
           }

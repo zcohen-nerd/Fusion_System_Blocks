@@ -1208,9 +1208,22 @@ class AdvancedFeatures {
     //     most recent undo entry. This prevents multiple saveState()
     //     calls (e.g. from debounced auto-save + explicit save) from
     //     pushing duplicate entries that cause "double undo". ---
+    // Compare only user-visible data — strip volatile metadata timestamps
+    // (metadata.modified / metadata.created) that change on every
+    // updateBlock() call but don't represent a real user action.
+    const stripVolatile = (d) => {
+      const copy = Object.assign({}, d);
+      if (copy.metadata) {
+        copy.metadata = Object.assign({}, copy.metadata);
+        delete copy.metadata.modified;
+        delete copy.metadata.created;
+        delete copy.metadata.lastSaved;
+      }
+      return copy;
+    };
     if (this.undoStack.length > 0) {
       const prevDiagram = this.undoStack[this.undoStack.length - 1].diagram;
-      if (JSON.stringify(prevDiagram) === JSON.stringify(diagramSnapshot)) {
+      if (JSON.stringify(stripVolatile(prevDiagram)) === JSON.stringify(stripVolatile(diagramSnapshot))) {
         return; // Nothing changed — skip
       }
     }
