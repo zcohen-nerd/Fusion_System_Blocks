@@ -655,18 +655,25 @@ class DiagramRenderer {
     // Determine whether this is a vertical connection (top/bottom ports)
     const isVerticalFrom = (fromPort === 'top' || fromPort === 'bottom');
     const isVerticalTo   = (toPort === 'top' || toPort === 'bottom');
-    const isVertical = isVerticalFrom || isVerticalTo;
+    const isMixed = isVerticalFrom !== isVerticalTo;      // one H, one V
+    const isVertical = isVerticalFrom && isVerticalTo;    // both V
 
     // Choose path based on routing mode
     let d;
     if (this.routingMode === 'orthogonal') {
-      if (isVertical) {
+      if (isMixed) {
+        d = this._computeMixedAxisPath(fromX, fromY, toX, toY, fromPort, toPort);
+      } else if (isVertical) {
         d = this._computeVerticalOrthogonalPath(fromX, fromY, toX, toY, fromPort, toPort);
       } else {
         d = this._computeOrthogonalPath(fromX, fromY, toX, toY, connection);
       }
     } else {
-      if (isVertical) {
+      if (isMixed) {
+        // Mixed Bezier: stub horizontally from H-port, vertically from
+        // V-port, join with a smooth curve through the corner.
+        d = this._computeMixedAxisBezier(fromX, fromY, toX, toY, fromPort, toPort);
+      } else if (isVertical) {
         // Vertical Bezier: stubs go up/down then curve across
         const dy = Math.abs(toY - fromY);
         const dx = toX - fromX;
@@ -728,7 +735,7 @@ class DiagramRenderer {
     // Chromium, so render a manual reverse arrow polygon instead.
     // Appended after the path so the arrow sits visually on top.
     if (direction === 'bidirectional' || direction === 'backward') {
-      this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke, styling.strokeWidth);
+      this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke, styling.strokeWidth, fromPort);
     }
 
     // --- Waypoint handles (orthogonal mode only) ---
@@ -942,34 +949,27 @@ class DiagramRenderer {
    * block).  For orthogonal routes this means the arrow points along
    * the first segment axis rather than using a raw start→end angle.
    */
-  _addManualStartArrow(group, fromX, fromY, toX, toY, fillColor, strokeWidth = 2) {
+  _addManualStartArrow(group, fromX, fromY, toX, toY, fillColor, strokeWidth = 2, fromPort = 'output') {
     const size = 10;
 
-    // Determine the path's first-segment direction.
-    // Prefer the actual SVG path data (orthogonal routing produces L
-    // segments that differ from the straight-line angle).
-    let segDx = toX - fromX;
-    let segDy = toY - fromY;
-    const pathEl = group.querySelector('.connection-line');
-    if (pathEl) {
-      const d = pathEl.getAttribute('d') || '';
-      // Parse the second point from the path: "M x0 y0 L x1 y1 ..."
-      // or Bezier: "M x0 y0 C cx1 cy1 cx2 cy2 x1 y1"
-      const tokens = d.replace(/[MLCQZmlcqz,]/g, ' ').trim().split(/\s+/).map(Number);
-      if (tokens.length >= 4) {
-        const x1 = tokens[2];
-        const y1 = tokens[3];
-        if (!(isNaN(x1) || isNaN(y1))) {
-          segDx = x1 - fromX;
-          segDy = y1 - fromY;
-        }
-      }
+    // Derive arrow direction from the port name so the arrowhead
+    // always aligns with the port's axis, regardless of Bezier
+    // control-point positions.
+    let segAngle;
+    switch (fromPort) {
+      case 'input':
+        segAngle = Math.PI; // port faces left → path goes left
+        break;
+      case 'top':
+        segAngle = -Math.PI / 2; // port faces up → path goes up
+        break;
+      case 'bottom':
+        segAngle = Math.PI / 2; // port faces down → path goes down
+        break;
+      default: // 'output'
+        segAngle = 0; // port faces right → path goes right
+        break;
     }
-
-    // Angle of the first segment (source → first bend/control point)
-    const segAngle = Math.atan2(segDy, segDx);
-    // Arrow tip points BACKWARD (away from path direction)
-    const tipAngle = segAngle + Math.PI;
 
     const tipX = fromX;
     const tipY = fromY;
@@ -1057,6 +1057,83 @@ class DiagramRenderer {
 
     return `M ${fromX} ${fromY} L ${fromX} ${midY} ` +
            `L ${toX} ${midY} L ${toX} ${toY}`;
+  }
+
+  /**
+   * Compute an orthogonal path for mixed-axis connections where one
+   * port is horizontal (input/output) and the other is vertical
+   * (top/bottom).  Stubs extend along each port's natural axis, then
+   * join with a right-angle turn.
+   * @private
+   */
+  _computeMixedAxisPath(fromX, fromY, toX, toY, fromPort, toPort) {
+    const STUB = 20;
+
+    // Determine stub direction for each port along its own axis
+    const hDir = (port) => {
+      if (port === 'output') return 1;    // right
+      if (port === 'input')  return -1;   // left
+      return 0;
+    };
+    const vDir = (port) => {
+      if (port === 'bottom') return 1;    // down
+      if (port === 'top')    return -1;   // up
+      return 0;
+    };
+
+    const isVerticalFrom = (fromPort === 'top' || fromPort === 'bottom');
+
+    if (isVerticalFrom) {
+      // From = vertical port, To = horizontal port
+      const fDir = vDir(fromPort);                       // ±1 vertical
+      const tDir = hDir(toPort);                         // ±1 horizontal
+      const stubFromY = fromY + STUB * fDir;
+      const stubToX   = toX   + STUB * tDir;
+      // Route: vertical stub → horizontal jog → vertical span → horizontal stub into target
+      // Simple L-turn when stubs can reach the corner directly.
+      // Use the target's X for the vertical run and the source's Y for the horizontal run via
+      // a corner point at (stubToX, stubFromY).
+      return `M ${fromX} ${fromY} L ${fromX} ${stubFromY} ` +
+             `L ${stubToX} ${stubFromY} L ${stubToX} ${toY} L ${toX} ${toY}`;
+    } else {
+      // From = horizontal port, To = vertical port
+      const fDir = hDir(fromPort);                       // ±1 horizontal
+      const tDir = vDir(toPort);                         // ±1 vertical
+      const stubFromX = fromX + STUB * fDir;
+      const stubToY   = toY   + STUB * tDir;
+      // Corner at (stubFromX, stubToY)
+      return `M ${fromX} ${fromY} L ${stubFromX} ${fromY} ` +
+             `L ${stubFromX} ${stubToY} L ${toX} ${stubToY} L ${toX} ${toY}`;
+    }
+  }
+
+  /**
+   * Compute a smooth Bezier curve for mixed-axis connections.
+   * The control points extend along each port's natural axis so the
+   * curve leaves and arrives in the correct direction.
+   * @private
+   */
+  _computeMixedAxisBezier(fromX, fromY, toX, toY, fromPort, toPort) {
+    const dist = Math.hypot(toX - fromX, toY - fromY);
+    const cpLen = Math.max(40, dist * 0.35);    // control point offset
+
+    let cp1x = fromX, cp1y = fromY;
+    switch (fromPort) {
+      case 'output':  cp1x += cpLen; break;
+      case 'input':   cp1x -= cpLen; break;
+      case 'top':     cp1y -= cpLen; break;
+      case 'bottom':  cp1y += cpLen; break;
+    }
+
+    let cp2x = toX, cp2y = toY;
+    switch (toPort) {
+      case 'output':  cp2x += cpLen; break;
+      case 'input':   cp2x -= cpLen; break;
+      case 'top':     cp2y -= cpLen; break;
+      case 'bottom':  cp2y += cpLen; break;
+    }
+
+    return `M ${fromX} ${fromY} C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${toX} ${toY}`;
   }
 
   /**
@@ -1244,6 +1321,20 @@ class DiagramRenderer {
       }
     }
 
+    // Pre-compute fan offsets: group stubs by (localBlockId, portSide)
+    // so multiple stubs sharing a port side are distributed evenly.
+    const fanGroups = new Map(); // key: "blockId:portSide" → conn[]
+    crossConns.forEach(conn => {
+      const fromLocal = blockIds.has(conn.fromBlock);
+      const localBlockId = fromLocal ? conn.fromBlock : conn.toBlock;
+      const portSide = fromLocal
+        ? (conn.fromPort || 'output')
+        : (conn.toPort   || 'input');
+      const key = `${localBlockId}:${portSide}`;
+      if (!fanGroups.has(key)) fanGroups.set(key, []);
+      fanGroups.get(key).push(conn);
+    });
+
     crossConns.forEach(conn => {
       const fromLocal = blockIds.has(conn.fromBlock);
       const toLocal   = blockIds.has(conn.toBlock);
@@ -1275,23 +1366,58 @@ class DiagramRenderer {
         remoteName = findInDiagram(root) || remoteBlockId;
       }
 
-      // Position the stub on the right side of the block (outgoing)
-      // or left side (incoming)
+      // Position the stub based on the actual port side, using fan
+      // layout when multiple stubs share the same port.
       const w = localBlock.width || 120;
       const h = localBlock.height || 80;
       const stubLen = 30;
-      let startX, startY, endX, endY;
 
-      if (isOutgoing) {
-        startX = localBlock.x + w;
-        startY = localBlock.y + h / 2;
-        endX = startX + stubLen;
-        endY = startY;
-      } else {
-        startX = localBlock.x;
-        startY = localBlock.y + h / 2;
-        endX = startX - stubLen;
-        endY = startY;
+      const portSide = isOutgoing
+        ? (conn.fromPort || 'output')
+        : (conn.toPort   || 'input');
+      const fanKey = `${localBlockId}:${portSide}`;
+      const siblings = fanGroups.get(fanKey) || [conn];
+      const fanIdx = siblings.indexOf(conn);
+      const fanTotal = siblings.length;
+
+      let startX, startY, endX, endY;
+      // isStubHorizontal tracks whether the stub line extends left/right
+      // (true) or up/down (false) — used later for arrow & label placement.
+      let isStubHorizontal = true;
+
+      switch (portSide) {
+        case 'output':
+          startX = localBlock.x + w;
+          startY = localBlock.y + this._fanOffset(fanIdx, fanTotal, h);
+          endX = startX + stubLen;
+          endY = startY;
+          break;
+        case 'input':
+          startX = localBlock.x;
+          startY = localBlock.y + this._fanOffset(fanIdx, fanTotal, h);
+          endX = startX - stubLen;
+          endY = startY;
+          break;
+        case 'top':
+          startX = localBlock.x + this._fanOffset(fanIdx, fanTotal, w);
+          startY = localBlock.y;
+          endX = startX;
+          endY = startY - stubLen;
+          isStubHorizontal = false;
+          break;
+        case 'bottom':
+          startX = localBlock.x + this._fanOffset(fanIdx, fanTotal, w);
+          startY = localBlock.y + h;
+          endX = startX;
+          endY = startY + stubLen;
+          isStubHorizontal = false;
+          break;
+        default: // fallback — treat as output
+          startX = localBlock.x + w;
+          startY = localBlock.y + this._fanOffset(fanIdx, fanTotal, h);
+          endX = startX + stubLen;
+          endY = startY;
+          break;
       }
 
       // --- Connection type styling (match regular connections) ---
@@ -1333,44 +1459,76 @@ class DiagramRenderer {
       // For a stub, the "forward" tip points outward (toward remote block)
       // and the "backward" tip points inward (toward local block).
       const arrowSize = 8;
-      const drawArrowAt = (tipX, tipY, pointsRight) => {
-        const dir = pointsRight ? 1 : -1;
+      const drawArrowAt = (tipX, tipY, direction2D) => {
+        // direction2D: 'right' | 'left' | 'down' | 'up'
         const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        poly.setAttribute('points',
-          `${tipX},${tipY} ${tipX - dir * arrowSize},${tipY - arrowSize / 2} ${tipX - dir * arrowSize},${tipY + arrowSize / 2}`);
+        let pts;
+        switch (direction2D) {
+          case 'right':
+            pts = `${tipX},${tipY} ${tipX - arrowSize},${tipY - arrowSize / 2} ${tipX - arrowSize},${tipY + arrowSize / 2}`;
+            break;
+          case 'left':
+            pts = `${tipX},${tipY} ${tipX + arrowSize},${tipY - arrowSize / 2} ${tipX + arrowSize},${tipY + arrowSize / 2}`;
+            break;
+          case 'down':
+            pts = `${tipX},${tipY} ${tipX - arrowSize / 2},${tipY - arrowSize} ${tipX + arrowSize / 2},${tipY - arrowSize}`;
+            break;
+          case 'up':
+            pts = `${tipX},${tipY} ${tipX - arrowSize / 2},${tipY + arrowSize} ${tipX + arrowSize / 2},${tipY + arrowSize}`;
+            break;
+          default:
+            pts = `${tipX},${tipY} ${tipX - arrowSize},${tipY - arrowSize / 2} ${tipX - arrowSize},${tipY + arrowSize / 2}`;
+        }
+        poly.setAttribute('points', pts);
         poly.setAttribute('fill', styling.stroke);
         g.appendChild(poly);
       };
 
+      // Map port sides to arrow directions
+      const outwardDir = { output: 'right', input: 'left', top: 'up', bottom: 'down' }[portSide] || 'right';
+      const inwardDir  = { output: 'left', input: 'right', top: 'down', bottom: 'up' }[portSide] || 'left';
+
       // Determine which end gets an arrow
-      const outwardRight = isOutgoing; // outgoing stub points right
       if (direction === 'forward') {
-        // Arrow at stub tip (outward end)
-        drawArrowAt(endX, endY, outwardRight);
+        drawArrowAt(endX, endY, outwardDir);
       } else if (direction === 'backward') {
-        // Arrow at block side (inward end)
-        drawArrowAt(startX, startY, !outwardRight);
+        drawArrowAt(startX, startY, inwardDir);
       } else if (direction === 'bidirectional') {
-        drawArrowAt(endX, endY, outwardRight);
-        drawArrowAt(startX, startY, !outwardRight);
+        drawArrowAt(endX, endY, outwardDir);
+        drawArrowAt(startX, startY, inwardDir);
       }
       // direction === 'none' → no arrows
 
-      // Flag/label background
-      const labelX = isOutgoing ? endX + 4 : endX - 4;
-      const labelAnchor = isOutgoing ? 'start' : 'end';
-      const arrow = isOutgoing ? '\u2192 ' : '\u2190 ';
+      // Flag/label — position depends on horizontal vs vertical stub
+      let labelX, labelY, labelAnchor, iconX, iconY;
+      const arrowChar = isOutgoing ? '\u2192 ' : '\u2190 ';
+
+      if (isStubHorizontal) {
+        const isRight = (portSide === 'output');
+        labelX = isRight ? endX + 4 : endX - 4;
+        labelY = endY + 4;
+        labelAnchor = isRight ? 'start' : 'end';
+        iconX = labelX;
+        iconY = endY - 8;
+      } else {
+        // Vertical stub — place label beside the stub end
+        labelX = endX + 6;
+        labelY = endY + 4;
+        labelAnchor = 'start';
+        iconX = endX + 6;
+        iconY = endY - 8;
+      }
 
       // Background rect (rendered after text to size it)
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', labelX);
-      text.setAttribute('y', endY + 4);
+      text.setAttribute('y', labelY);
       text.setAttribute('font-size', '10');
       text.setAttribute('font-family', 'Arial, sans-serif');
       text.setAttribute('fill', '#FF6B35');
       text.setAttribute('font-weight', 'bold');
       text.setAttribute('text-anchor', labelAnchor);
-      text.textContent = arrow + remoteName;
+      text.textContent = arrowChar + remoteName;
 
       // Small circle at the end of stub (port indicator)
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -1382,8 +1540,8 @@ class DiagramRenderer {
 
       // 🌐 icon prefix
       const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      icon.setAttribute('x', isOutgoing ? endX + 4 : endX - 4);
-      icon.setAttribute('y', endY - 8);
+      icon.setAttribute('x', iconX);
+      icon.setAttribute('y', iconY);
       icon.setAttribute('font-size', '10');
       icon.setAttribute('text-anchor', labelAnchor);
       icon.textContent = '\uD83C\uDF10'; // 🌐

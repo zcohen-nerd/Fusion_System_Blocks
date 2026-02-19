@@ -1924,12 +1924,42 @@ class ToolbarManager {
 
     // Calculate bounding box of all blocks
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    const expand = (x, y, w, h) => {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + w);
+      maxY = Math.max(maxY, y + h);
+    };
+
     blocks.forEach(block => {
-      minX = Math.min(minX, block.x);
-      minY = Math.min(minY, block.y);
-      maxX = Math.max(maxX, block.x + (block.width || 120));
-      maxY = Math.max(maxY, block.y + (block.height || 80));
+      expand(block.x, block.y, block.width || 120, block.height || 80);
     });
+
+    // Include cross-diagram stubs, same-level stubs, and named stubs —
+    // these extend ~40px beyond the block edge and have labels that
+    // extend further.  Rather than parsing each stub, query the SVG DOM
+    // for all rendered stub/group/annotation elements and union their
+    // bounding boxes.
+    const svgEl = document.getElementById('svg-canvas');
+    if (svgEl) {
+      const selectors = [
+        '.cross-diagram-stub',
+        '.same-level-stub',
+        '.named-stub',
+        '[id^="group-boundary-"]'
+      ];
+      selectors.forEach(sel => {
+        svgEl.querySelectorAll(sel).forEach(el => {
+          try {
+            const bb = el.getBBox();
+            if (bb.width > 0 || bb.height > 0) {
+              expand(bb.x, bb.y, bb.width, bb.height);
+            }
+          } catch (_) { /* getBBox can throw on hidden elements */ }
+        });
+      });
+    }
 
     // Add generous padding (25% of content size, min 100px)
     const contentWidth = maxX - minX;

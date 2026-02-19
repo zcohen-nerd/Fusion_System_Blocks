@@ -761,12 +761,16 @@ class SystemBlocksMain {
           const connectionId = connGroup.getAttribute('data-connection-id');
           // Search current diagram first, then cross-diagram
           let connection = core.diagram.connections.find(c => c.id === connectionId);
+          let homeDiagram = null;
           if (!connection) {
             const match = this._findCrossDiagramConnection(connectionId, core);
-            if (match) connection = match.connection;
+            if (match) {
+              connection = match.connection;
+              homeDiagram = match.diagram;
+            }
           }
           if (connection) {
-            this.showConnectionContextMenu(e.clientX, e.clientY, connection, core, renderer, features);
+            this.showConnectionContextMenu(e.clientX, e.clientY, connection, core, renderer, features, homeDiagram);
             return;
           }
         }
@@ -1432,7 +1436,7 @@ class SystemBlocksMain {
     return null;
   }
 
-  showConnectionContextMenu(clientX, clientY, connection, core, renderer, features) {
+  showConnectionContextMenu(clientX, clientY, connection, core, renderer, features, homeDiagram = null) {
     this.hideContextMenu();
     this.hideConnectionContextMenu();
 
@@ -1467,6 +1471,15 @@ class SystemBlocksMain {
       // Also update via core for local connections (marks metadata modified)
       if (!isCross) {
         core.updateConnection(connection.id, updates);
+      } else if (homeDiagram) {
+        // For cross-diagram connections, also update the connection
+        // in its home diagram so changes persist across navigation.
+        const homeConn = (homeDiagram.connections || []).find(c => c.id === connection.id);
+        if (homeConn && homeConn !== connection) {
+          Object.assign(homeConn, updates);
+        }
+        // Mark home diagram modified so save picks up the change
+        homeDiagram._modified = true;
       }
       // Always full re-render so stubs reflect type/direction changes
       renderer.updateAllBlocks(core.diagram);
