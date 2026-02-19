@@ -804,16 +804,11 @@
     
     /* === Fusion LEGEND STYLES === */
     .status-legend {
-      position: absolute;
-      top: 60px;
-      right: var(--fusion-spacing-md);
       background: var(--fusion-panel-bg);
       border: 1px solid var(--fusion-panel-border);
       border-radius: var(--fusion-radius-medium);
       padding: var(--fusion-spacing-md);
       font-size: var(--fusion-font-size-small);
-      box-shadow: var(--fusion-shadow-medium);
-      z-index: 100;
       color: var(--fusion-text-primary);
     }
     
@@ -1218,18 +1213,11 @@
     
     /* === Fusion CONNECTION LEGEND === */
     .connection-legend {
-      position: absolute;
-      top: 200px;
-      right: var(--fusion-spacing-md);
       background: var(--fusion-panel-bg);
       border: 1px solid var(--fusion-panel-border);
       border-radius: var(--fusion-radius-medium);
       padding: var(--fusion-spacing-md);
       font-size: var(--fusion-font-size-normal);
-      box-shadow: var(--fusion-shadow-medium);
-      max-width: 150px;
-      max-height: 400px;
-      overflow-y: auto;
       color: var(--fusion-text-primary);
     }
     
@@ -1842,8 +1830,7 @@
         <div class="connection-controls" style="display:flex; align-items:center; gap:4px; margin-left:auto;">
           <label for="connection-type-select" style="font-size:11px; color:#999; white-space:nowrap;">Conn:</label>
           <select id="connection-type-select" class="connection-type-select" style="font-size:11px; padding:2px 4px;" title="Connection type for new connections / selected item">
-            <option value="auto" selected>Auto</option>
-            <option value="power">Power</option>
+            <option value="power" selected>Power</option>
             <option value="data">Data</option>
             <option value="mechanical">Mechanical</option>
           </select>
@@ -2520,96 +2507,7 @@
     ">
       <canvas id="minimap-canvas" width="160" height="110"></canvas>
     </div>
-    
-    <!-- Status Legend -->
-    <div class="status-legend">
-      <h4>Block Status</h4>
-      <div class="status-item">
-        <div class="status-color status-placeholder"></div>
-        <span>Placeholder</span>
-      </div>
-      <div class="status-item">
-        <div class="status-color status-planned"></div>
-        <span>Planned</span>
-      </div>
-      <div class="status-item">
-        <div class="status-color status-in-work"></div>
-        <span>In-Work</span>
-      </div>
-      <div class="status-item">
-        <div class="status-color status-implemented"></div>
-        <span>Implemented</span>
-      </div>
-      <div class="status-item">
-        <div class="status-color status-verified"></div>
-        <span>Verified</span>
-      </div>
-    </div>
-    
-    <!-- Connection Type Legend -->
-    <div class="connection-legend">
-      <h4>Connection Types</h4>
-      <div class="connection-item">
-        <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" class="connection-power" stroke-width="3"/>
-          <polygon points="30,6 26,3 26,9" class="connection-power"/>
-        </svg>
-        <span>
-          <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
-            <use href="#icon-power"/>
-          </svg>
-          Power
-        </span>
-      </div>
-      <div class="connection-item">
-        <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" class="connection-data" stroke-width="2" stroke-dasharray="8,4"/>
-          <polygon points="30,6 26,3 26,9" class="connection-data"/>
-        </svg>
-        <span>
-          <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
-            <use href="#icon-data"/>
-          </svg>
-          Data
-        </span>
-      </div>
-      <div class="connection-item">
-        <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" class="connection-mechanical" stroke-width="2" stroke-dasharray="12,6"/>
-          <line x1="30" y1="3" x2="26" y2="6" class="connection-mechanical" stroke-width="2"/>
-          <line x1="30" y1="9" x2="26" y2="6" class="connection-mechanical" stroke-width="2"/>
-        </svg>
-        <span>
-          <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
-            <use href="#icon-mechanical"/>
-          </svg>
-          Mechanical
-        </span>
-      </div>
-      
-      <h4 class="fusion-legend-section">Arrow Types</h4>
-      <div class="connection-item">
-        <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" class="connection-generic" stroke-width="2"/>
-          <polygon points="30,6 26,3 26,9" class="connection-generic"/>
-        </svg>
-        <span>→ Forward</span>
-      </div>
-      <div class="connection-item">
-        <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" class="connection-generic" stroke-width="2"/>
-          <polygon points="30,6 26,3 26,9" class="connection-generic"/>
-          <polygon points="0,6 4,3 4,9" class="connection-generic"/>
-        </svg>
-        <span>↔ Bidirectional</span>
-      </div>
-      <div class="connection-item">
-        <svg width="40" height="12" viewBox="0 0 40 12">
-          <line x1="0" y1="6" x2="30" y2="6" class="connection-generic" stroke-width="2"/>
-        </svg>
-        <span>— No Arrow</span>
-      </div>
-    </div>
+
     
     <!-- Rule Check Panel -->
     <div class="rule-panel" id="rule-panel" style="display:none;">
@@ -4727,6 +4625,97 @@
         <li>Run Validation to find orphans and incompatible interfaces.</li>
         <li>Export reports for sharing (JSON/CSV/HTML).</li>
       </ul>
+    </div>
+
+    <!-- Legend Reference -->
+    <div class="sb-section" style="display:flex; gap:16px; flex-wrap:wrap;">
+      <div class="status-legend">
+        <h4>Block Status</h4>
+        <div class="status-item">
+          <div class="status-color status-placeholder"></div>
+          <span>Placeholder</span>
+        </div>
+        <div class="status-item">
+          <div class="status-color status-planned"></div>
+          <span>Planned</span>
+        </div>
+        <div class="status-item">
+          <div class="status-color status-in-work"></div>
+          <span>In-Work</span>
+        </div>
+        <div class="status-item">
+          <div class="status-color status-implemented"></div>
+          <span>Implemented</span>
+        </div>
+        <div class="status-item">
+          <div class="status-color status-verified"></div>
+          <span>Verified</span>
+        </div>
+      </div>
+
+      <div class="connection-legend">
+        <h4>Connection Types</h4>
+        <div class="connection-item">
+          <svg width="40" height="12" viewBox="0 0 40 12">
+            <line x1="0" y1="6" x2="30" y2="6" class="connection-power" stroke-width="3"/>
+            <polygon points="30,6 26,3 26,9" class="connection-power"/>
+          </svg>
+          <span>
+            <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
+              <use href="#icon-power"/>
+            </svg>
+            Power
+          </span>
+        </div>
+        <div class="connection-item">
+          <svg width="40" height="12" viewBox="0 0 40 12">
+            <line x1="0" y1="6" x2="30" y2="6" class="connection-data" stroke-width="2" stroke-dasharray="8,4"/>
+            <polygon points="30,6 26,3 26,9" class="connection-data"/>
+          </svg>
+          <span>
+            <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
+              <use href="#icon-data"/>
+            </svg>
+            Data
+          </span>
+        </div>
+        <div class="connection-item">
+          <svg width="40" height="12" viewBox="0 0 40 12">
+            <line x1="0" y1="6" x2="30" y2="6" class="connection-mechanical" stroke-width="2" stroke-dasharray="12,6"/>
+            <line x1="30" y1="3" x2="26" y2="6" class="connection-mechanical" stroke-width="2"/>
+            <line x1="30" y1="9" x2="26" y2="6" class="connection-mechanical" stroke-width="2"/>
+          </svg>
+          <span>
+            <svg width="14" height="14" viewBox="0 0 12 12" class="connection-icon">
+              <use href="#icon-mechanical"/>
+            </svg>
+            Mechanical
+          </span>
+        </div>
+
+        <h4 class="fusion-legend-section">Arrow Types</h4>
+        <div class="connection-item">
+          <svg width="40" height="12" viewBox="0 0 40 12">
+            <line x1="0" y1="6" x2="30" y2="6" class="connection-generic" stroke-width="2"/>
+            <polygon points="30,6 26,3 26,9" class="connection-generic"/>
+          </svg>
+          <span>→ Forward</span>
+        </div>
+        <div class="connection-item">
+          <svg width="40" height="12" viewBox="0 0 40 12">
+            <line x1="0" y1="6" x2="30" y2="6" class="connection-generic" stroke-width="2"/>
+            <polygon points="30,6 26,3 26,9" class="connection-generic"/>
+            <polygon points="0,6 4,3 4,9" class="connection-generic"/>
+          </svg>
+          <span>↔ Bidirectional</span>
+        </div>
+        <div class="connection-item">
+          <svg width="40" height="12" viewBox="0 0 40 12">
+            <line x1="0" y1="6" x2="30" y2="6" class="connection-generic" stroke-width="2"/>
+          </svg>
+          <span>— No Arrow</span>
+        </div>
+      </div>
     </div>
   </section>
 

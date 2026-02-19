@@ -323,7 +323,8 @@ class SystemBlocksMain {
         const conn = core.diagram.connections.find(c => c.id === connId);
         if (conn) {
           const typeSelect = document.getElementById('connection-type-select');
-          if (typeSelect) typeSelect.value = (conn.type || 'auto').toLowerCase();
+          const connType = (conn.type || '').toLowerCase();
+          if (typeSelect && connType && connType !== 'auto') typeSelect.value = connType;
           const dirSelect = document.getElementById('arrow-direction-select');
           if (dirSelect) dirSelect.value = (conn.arrowDirection || 'forward').toLowerCase();
         }
@@ -348,7 +349,8 @@ class SystemBlocksMain {
         const stub = (core.diagram.namedStubs || []).find(s => s.id === stubId);
         if (stub) {
           const typeSelect = document.getElementById('connection-type-select');
-          if (typeSelect) typeSelect.value = (stub.type || 'auto').toLowerCase();
+          const stubType = (stub.type || '').toLowerCase();
+          if (typeSelect && stubType && stubType !== 'auto') typeSelect.value = stubType;
           const dirSelect = document.getElementById('arrow-direction-select');
           if (dirSelect) dirSelect.value = (stub.direction || 'forward').toLowerCase();
         }
