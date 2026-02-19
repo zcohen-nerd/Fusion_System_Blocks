@@ -1974,7 +1974,6 @@ class ToolbarManager {
     // viewBox maps 1:1 to pixels.  SVG defaults to preserveAspectRatio
     // "xMidYMid meet" which uniformly scales and centres the viewBox,
     // but that can clip content along one axis when the AR doesn't match.
-    const svgEl = document.getElementById('svg-canvas');
     if (svgEl) {
       const rect = svgEl.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
