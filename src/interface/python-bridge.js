@@ -214,6 +214,11 @@ class PythonInterface {
         const jsonString = typeof jsonData === 'string' ? jsonData : JSON.stringify(jsonData);
         const success = window.diagramEditor.importDiagram(jsonString);
         if (success) {
+          // Restore groups from the imported diagram model
+          if (window.advancedFeatures && typeof window.advancedFeatures._restoreGroupsFromDiagram === 'function') {
+            window.advancedFeatures._restoreGroupsFromDiagram();
+          }
+
           // Hide the empty-canvas placeholder when a diagram is loaded
           var emptyState = document.getElementById('empty-canvas-state');
           if (emptyState) emptyState.style.display = 'none';
@@ -316,6 +321,9 @@ class PythonInterface {
         
         if (responseData.diagram && window.diagramEditor) {
           window.diagramEditor.importDiagram(JSON.stringify(responseData.diagram));
+          if (window.advancedFeatures && typeof window.advancedFeatures._restoreGroupsFromDiagram === 'function') {
+            window.advancedFeatures._restoreGroupsFromDiagram();
+          }
         }
       } else {
         this.showNotification('Import failed: ' + responseData.error, 'error');

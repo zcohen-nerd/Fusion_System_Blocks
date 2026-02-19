@@ -57,6 +57,8 @@ class ValidationErrorCode(Enum):
     DUPLICATE_GROUP_ID = "DUPLICATE_GROUP_ID"
     INVALID_GROUP_BLOCK_REFERENCE = "INVALID_GROUP_BLOCK_REFERENCE"
     INVALID_GROUP_PARENT_REFERENCE = "INVALID_GROUP_PARENT_REFERENCE"
+    GROUP_BLOCK_ID_COLLISION = "GROUP_BLOCK_ID_COLLISION"
+    CIRCULAR_GROUP_PARENT = "CIRCULAR_GROUP_PARENT"
 
     # Schema errors
     INVALID_SCHEMA_VERSION = "INVALID_SCHEMA_VERSION"
@@ -241,6 +243,9 @@ def _validate_connections(graph: Graph) -> list[ValidationError]:
     """
     errors: list[ValidationError] = []
     block_ids: set[str] = {block.id for block in graph.blocks}
+    group_ids: set[str] = {g.id for g in graph.groups}
+    # Valid connection endpoints include both blocks and groups
+    valid_endpoint_ids: set[str] = block_ids | group_ids
     seen_connections: set[tuple[str, str, str, str]] = set()
 
     # Build port lookup: block_id -> set of port_ids
@@ -249,8 +254,8 @@ def _validate_connections(graph: Graph) -> list[ValidationError]:
         port_lookup[block.id] = {port.id for port in block.ports}
 
     for conn in graph.connections:
-        # Check for missing source block
-        if conn.from_block_id not in block_ids:
+        # Check for missing source block (or group)
+        if conn.from_block_id not in valid_endpoint_ids:
             errors.append(
                 ValidationError(
                     code=ValidationErrorCode.MISSING_SOURCE_BLOCK,
@@ -264,8 +269,8 @@ def _validate_connections(graph: Graph) -> list[ValidationError]:
             )
             continue  # Skip further checks for this connection
 
-        # Check for missing target block
-        if conn.to_block_id not in block_ids:
+        # Check for missing target block (or group)
+        if conn.to_block_id not in valid_endpoint_ids:
             errors.append(
                 ValidationError(
                     code=ValidationErrorCode.MISSING_TARGET_BLOCK,
@@ -508,6 +513,84 @@ def _validate_groups(graph: Graph) -> list[ValidationError]:
                     },
                 )
             )
+
+        # Check for group/block ID collisions
+        if group.id in block_ids:
+            errors.append(
+                ValidationError(
+                    code=ValidationErrorCode.GROUP_BLOCK_ID_COLLISION,
+                    message=(
+                        f"Group '{group.name}' has ID '{group.id}' "
+                        f"which collides with a block ID."
+                    ),
+                    details={"group_id": group.id},
+                )
+            )
+
+    # Detect circular parent group references (A→B→A)
+    errors.extend(_detect_group_parent_cycles(graph))
+
+    return errors
+
+
+def _detect_group_parent_cycles(graph: Graph) -> list[ValidationError]:
+    """Detect cycles in the group parent hierarchy.
+
+    A cycle occurs when following ``parent_group_id`` links eventually
+    returns to a previously visited group (e.g. A→B→A or a self-reference).
+
+    Args:
+        graph: The graph whose groups should be checked.
+
+    Returns:
+        List of validation errors for any detected cycles.
+    """
+    errors: list[ValidationError] = []
+    id_to_group: dict[str, Group] = {g.id: g for g in graph.groups}
+
+    # Build parent map (only valid parents)
+    parent_map: dict[str, str] = {}
+    for group in graph.groups:
+        pid = group.parent_group_id
+        if pid is not None and pid in id_to_group:
+            parent_map[group.id] = pid
+
+    visited: set[str] = set()
+    in_stack: set[str] = set()
+
+    def _walk(gid: str) -> None:
+        if gid in in_stack:
+            # Collect the cycle chain
+            chain = [gid]
+            cur = parent_map.get(gid)
+            while cur and cur != gid:
+                chain.append(cur)
+                cur = parent_map.get(cur)
+            chain.append(gid)
+            names = [id_to_group[c].name for c in chain if c in id_to_group]
+            errors.append(
+                ValidationError(
+                    code=ValidationErrorCode.CIRCULAR_GROUP_PARENT,
+                    message=(
+                        "Circular parent group reference detected: "
+                        + " → ".join(names)
+                    ),
+                    details={"group_ids": chain},
+                )
+            )
+            return
+        if gid in visited:
+            return
+        visited.add(gid)
+        in_stack.add(gid)
+        pid = parent_map.get(gid)
+        if pid is not None:
+            _walk(pid)
+        in_stack.discard(gid)
+
+    for gid in id_to_group:
+        if gid not in visited:
+            _walk(gid)
 
     return errors
 

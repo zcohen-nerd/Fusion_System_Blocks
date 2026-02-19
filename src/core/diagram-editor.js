@@ -51,6 +51,7 @@ class DiagramEditorCore {
       schemaVersion: DiagramEditorCore.SCHEMA_VERSION,
       blocks: [],
       connections: [],
+      groups: [],
       namedStubs: [],
       metadata: {
         created: new Date().toISOString(),
@@ -538,6 +539,9 @@ class DiagramEditorCore {
       if (!importedDiagram.connections) {
         importedDiagram.connections = [];
       }
+      if (!importedDiagram.groups) {
+        importedDiagram.groups = [];
+      }
       if (!importedDiagram.namedStubs) {
         importedDiagram.namedStubs = [];
       }
@@ -548,12 +552,14 @@ class DiagramEditorCore {
       // Apply schema migrations (0.9 → 1.0, etc.)
       DiagramEditorCore.migrateDiagram(importedDiagram);
 
-      // Sanitize connections: remove those with missing source/target IDs,
-      // or references to blocks not present in the imported diagram.
+      // Sanitize connections: remove those with missing/empty source/target IDs,
+      // or references to blocks/groups not present in the imported diagram.
       const blockIds = new Set(importedDiagram.blocks.map(b => b.id));
+      const groupIds = new Set((importedDiagram.groups || []).map(g => g.id));
       importedDiagram.connections = importedDiagram.connections.filter(c => {
         return c.fromBlock && c.toBlock &&
-               blockIds.has(c.fromBlock) && blockIds.has(c.toBlock);
+               (blockIds.has(c.fromBlock) || groupIds.has(c.fromBlock)) &&
+               (blockIds.has(c.toBlock) || groupIds.has(c.toBlock));
       });
       
       this.diagram = importedDiagram;

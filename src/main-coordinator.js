@@ -276,6 +276,32 @@ class SystemBlocksMain {
         return;
       }
 
+      // --- Group boundary click: start connection mode from group ---
+      // Only fire when clicking the boundary rect itself, not blocks inside.
+      const groupEl = e.target.closest
+        ? e.target.closest('[data-group-id]')
+        : null;
+      if (groupEl && !core.getBlockAt(x, y) && window.advancedFeatures) {
+        const groupId = groupEl.getAttribute('data-group-id');
+        const group = window.advancedFeatures.groups.get(groupId);
+        if (group && group.bounds) {
+          // Treat group as a pseudo-block for connection mode
+          const pseudoBlock = {
+            id: group.id,
+            name: group.name,
+            x: group.bounds.x,
+            y: group.bounds.y,
+            width: group.bounds.width,
+            height: group.bounds.height
+          };
+          e.preventDefault();
+          e.stopPropagation();
+          connectionStartedThisClick = true;
+          this.enterConnectionMode(pseudoBlock, core, renderer, 'output');
+          return;
+        }
+      }
+
       // --- Connection click: select / highlight a connection ---
       const connEl = e.target.closest
         ? e.target.closest('[data-connection-id]')
@@ -513,13 +539,20 @@ class SystemBlocksMain {
         let targetBlock = core.getBlockAt(x, y);
         if (!targetBlock) targetBlock = core.getBlockAt(x, y, 8);
 
-        if (targetBlock && targetBlock.id !== this._connectionMode.sourceBlock.id) {
+        // Also check if dropping on a group boundary (group-level connection)
+        let targetGroup = null;
+        if (!targetBlock && window.advancedFeatures) {
+          targetGroup = window.advancedFeatures.getGroupAtPoint(x, y);
+        }
+
+        const sourceId = this._connectionMode.sourceBlock
+          ? this._connectionMode.sourceBlock.id : null;
+
+        if (targetBlock && targetBlock.id !== sourceId) {
           const connType = document.getElementById('connection-type-select');
           const type = connType ? connType.value : 'auto';
           const arrowDir = document.getElementById('arrow-direction-select');
           const direction = arrowDir ? arrowDir.value : 'forward';
-          const sourceId = this._connectionMode.sourceBlock
-            ? this._connectionMode.sourceBlock.id : null;
 
           // Determine which port the connection originates from and
           // find the closest target port for the drop position.
@@ -561,7 +594,41 @@ class SystemBlocksMain {
             if (window.advancedFeatures) window.advancedFeatures.saveState();
           }
           this.exitConnectionMode(svg);
-        } else if (!targetBlock) {
+        } else if (targetGroup && targetGroup.id !== sourceId) {
+          // --- Dropped on a group boundary → group-level connection ---
+          const connType = document.getElementById('connection-type-select');
+          const type = connType ? connType.value : 'auto';
+          const arrowDir = document.getElementById('arrow-direction-select');
+          const direction = arrowDir ? arrowDir.value : 'forward';
+          const sourcePort = this._connectionMode.sourcePort || 'output';
+
+          // Use closest port on group boundary
+          const gb = targetGroup.bounds;
+          const gPorts = [
+            { x: gb.x,              y: gb.y + gb.height / 2, type: 'input' },
+            { x: gb.x + gb.width,   y: gb.y + gb.height / 2, type: 'output' },
+            { x: gb.x + gb.width / 2, y: gb.y,                type: 'top' },
+            { x: gb.x + gb.width / 2, y: gb.y + gb.height,    type: 'bottom' },
+          ];
+          let bestPort = 'input';
+          let bestDist = Infinity;
+          for (const p of gPorts) {
+            const d = Math.hypot(x - p.x, y - p.y);
+            if (d < bestDist) { bestDist = d; bestPort = p.type; }
+          }
+
+          const conn = core.addConnection(sourceId, targetGroup.id, type, direction);
+          if (conn) {
+            conn.fromPort = sourcePort;
+            conn.toPort = bestPort;
+            renderer.renderConnection(conn);
+            logger.info('Group connection created:', conn.id,
+              'from', this._connectionMode.sourceBlock.name || sourceId,
+              'to group', targetGroup.name || targetGroup.id);
+            if (window.advancedFeatures) window.advancedFeatures.saveState();
+          }
+          this.exitConnectionMode(svg);
+        } else if (!targetBlock && !targetGroup) {
           // --- Dropped on empty canvas: offer stub creation ---
           this._offerStubCreation(svg, core, renderer, features);
         } else {

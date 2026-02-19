@@ -198,20 +198,31 @@ class AdvancedFeatures {
     });
   }
 
-  createGroup(blockIds, groupName = 'New Group') {
+  /**
+   * Create a group and sync it to the diagram model for persistence.
+   * @param {string[]} blockIds
+   * @param {string} groupName
+   * @param {object} [opts] Optional fields: description, metadata, parentGroupId, color
+   * @returns {string} The new group ID.
+   */
+  createGroup(blockIds, groupName = 'New Group', opts = {}) {
     const groupId = 'group_' + Date.now();
     const group = {
       id: groupId,
       name: groupName,
+      description: opts.description || '',
       blocks: new Set(blockIds),
-      color: this.generateGroupColor(),
+      color: opts.color || this.generateGroupColor(),
       visible: true,
-      bounds: this.calculateGroupBounds(blockIds)
+      bounds: this.calculateGroupBounds(blockIds),
+      metadata: opts.metadata || {},
+      parentGroupId: opts.parentGroupId || null
     };
     
     this.groups.set(groupId, group);
     this.renderGroupBoundary(group);
-    this.saveState(); // For undo/redo
+    this._syncGroupsToDiagram();
+    this.saveState();
     
     return groupId;
   }
@@ -221,6 +232,11 @@ class AdvancedFeatures {
     if (group) {
       this.removeGroupBoundary(groupId);
       this.groups.delete(groupId);
+      // Clear parent references from child groups
+      this.groups.forEach(g => {
+        if (g.parentGroupId === groupId) g.parentGroupId = null;
+      });
+      this._syncGroupsToDiagram();
       this.saveState();
     }
   }
@@ -240,6 +256,7 @@ class AdvancedFeatures {
       : group.blocks;
     group.bounds = this.calculateGroupBounds(blockIds);
     this.renderGroupBoundary(group);
+    this._syncGroupsToDiagram();
     this.saveState();
     return true;
   }
@@ -265,18 +282,30 @@ class AdvancedFeatures {
       group.bounds = this.calculateGroupBounds(blockIds);
       this.renderGroupBoundary(group);
     }
+    this._syncGroupsToDiagram();
     this.saveState();
     return true;
   }
 
   /**
-   * Return non-default groups as an array of {id, name} objects.
+   * Return non-default groups as an array with full detail.
    */
   getGroupList() {
     const result = [];
     this.groups.forEach((group, groupId) => {
       if (groupId === 'default') return;
-      result.push({ id: groupId, name: group.name });
+      const blockIds = group.blocks instanceof Set
+        ? Array.from(group.blocks)
+        : (group.blocks || []);
+      result.push({
+        id: groupId,
+        name: group.name,
+        description: group.description || '',
+        blockIds,
+        metadata: group.metadata || {},
+        parentGroupId: group.parentGroupId || null,
+        color: group.color || ''
+      });
     });
     return result;
   }
@@ -291,6 +320,22 @@ class AdvancedFeatures {
         ? group.blocks
         : new Set(group.blocks);
       if (blocks.has(blockId)) return groupId;
+    }
+    return null;
+  }
+
+  /**
+   * Hit-test: return the group whose boundary rectangle contains (x, y),
+   * or null. Used to allow connecting to/from group boundaries.
+   */
+  getGroupAtPoint(x, y) {
+    for (const [groupId, group] of this.groups) {
+      if (groupId === 'default') continue;
+      const b = group.bounds;
+      if (!b) continue;
+      if (x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height) {
+        return group;
+      }
     }
     return null;
   }
@@ -316,46 +361,103 @@ class AdvancedFeatures {
     this.removeGroupBoundary(group.id);
 
     const ns = 'http://www.w3.org/2000/svg';
-    // Create a group element to hold the boundary rect and label
     const gEl = document.createElementNS(ns, 'g');
     gEl.setAttribute('id', `group-boundary-${group.id}`);
+    gEl.setAttribute('data-group-id', group.id);
+
+    // Compute nesting depth for visual inset
+    let depth = 0;
+    let pid = group.parentGroupId;
+    const seen = new Set();
+    while (pid && !seen.has(pid)) {
+      seen.add(pid);
+      const parent = this.groups.get(pid);
+      if (parent) { depth++; pid = parent.parentGroupId; }
+      else break;
+    }
+    const inset = depth * 6; // nested groups get slight padding increase
+
+    const bounds = group.bounds || { x: 0, y: 0, width: 100, height: 60 };
+    const bx = bounds.x - inset;
+    const by = bounds.y - inset;
+    const bw = bounds.width + inset * 2;
+    const bh = bounds.height + inset * 2;
 
     const boundary = document.createElementNS(ns, 'rect');
-    boundary.setAttribute('x', group.bounds.x);
-    boundary.setAttribute('y', group.bounds.y);
-    boundary.setAttribute('width', group.bounds.width);
-    boundary.setAttribute('height', group.bounds.height);
+    boundary.setAttribute('x', bx);
+    boundary.setAttribute('y', by);
+    boundary.setAttribute('width', bw);
+    boundary.setAttribute('height', bh);
     boundary.setAttribute('fill', 'none');
     boundary.setAttribute('stroke', group.color);
-    boundary.setAttribute('stroke-width', '2');
-    boundary.setAttribute('stroke-dasharray', '8,4');
+    boundary.setAttribute('stroke-width', depth > 0 ? '1.5' : '2');
+    boundary.setAttribute('stroke-dasharray', depth > 0 ? '4,3' : '8,4');
     boundary.setAttribute('rx', '8');
     gEl.appendChild(boundary);
 
     // Render group label above the boundary
+    let labelY = by - 6;
     if (group.name && group.name !== 'default') {
       const label = document.createElementNS(ns, 'text');
-      label.setAttribute('x', String(group.bounds.x + 8));
-      label.setAttribute('y', String(group.bounds.y - 6));
+      label.setAttribute('x', String(bx + 8));
+      label.setAttribute('y', String(labelY));
       label.setAttribute('fill', group.color);
       label.setAttribute('stroke', 'none');
       label.setAttribute('font-size', '12');
       label.setAttribute('font-weight', 'bold');
       label.setAttribute('font-family', 'Segoe UI, Arial, sans-serif');
       label.setAttribute('pointer-events', 'none');
-      label.textContent = group.name;
+
+      // Show parent indicator for nested groups
+      let labelText = group.name;
+      if (group.parentGroupId) {
+        const parent = this.groups.get(group.parentGroupId);
+        if (parent) labelText = parent.name + ' › ' + group.name;
+      }
+
+      // Metadata badge: show count of metadata keys
+      const metaKeys = group.metadata ? Object.keys(group.metadata) : [];
+      if (metaKeys.length > 0) {
+        labelText += '  ⚙' + metaKeys.length;
+      }
+
+      label.textContent = labelText;
       gEl.appendChild(label);
+      labelY -= 14;
     }
 
-    // Double-click on the boundary group to rename
+    // Render description below the group name
+    if (group.description) {
+      const descEl = document.createElementNS(ns, 'text');
+      descEl.setAttribute('x', String(bx + 8));
+      descEl.setAttribute('y', String(by - 6 + 14));
+      descEl.setAttribute('fill', group.color);
+      descEl.setAttribute('stroke', 'none');
+      descEl.setAttribute('font-size', '10');
+      descEl.setAttribute('font-style', 'italic');
+      descEl.setAttribute('font-family', 'Segoe UI, Arial, sans-serif');
+      descEl.setAttribute('pointer-events', 'none');
+      descEl.setAttribute('opacity', '0.8');
+      // Truncate long descriptions
+      const maxLen = 60;
+      descEl.textContent = group.description.length > maxLen
+        ? group.description.substring(0, maxLen) + '…'
+        : group.description;
+      gEl.appendChild(descEl);
+    }
+
+    // Double-click on the boundary group for a properties dialog
     gEl.style.cursor = 'pointer';
     gEl.addEventListener('dblclick', (e) => {
       e.stopPropagation();
-      const newName = prompt('Rename group:', group.name || '');
-      if (newName !== null) {
-        group.name = newName;
-        this.renderGroupBoundary(group);
-      }
+      this._showGroupPropertiesDialog(group);
+    });
+
+    // Right-click for context menu
+    gEl.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this._showGroupContextMenu(e.clientX, e.clientY, group);
     });
     
     // Insert behind blocks
@@ -388,6 +490,403 @@ class AdvancedFeatures {
   generateGroupColor() {
     const colors = ['#FF6B35', '#004E89', '#009639', '#FF9F1C', '#7209B7'];
     return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  // === GROUP PERSISTENCE ===
+
+  /**
+   * Sync the JS groups Map → diagram.groups array for JSON serialization.
+   * Called after every group mutation so the diagram model stays up-to-date.
+   */
+  _syncGroupsToDiagram() {
+    if (!this.editor.diagram) return;
+    const arr = [];
+    this.groups.forEach((group, gid) => {
+      if (gid === 'default') return;
+      const blockIds = group.blocks instanceof Set
+        ? Array.from(group.blocks)
+        : (group.blocks || []);
+      arr.push({
+        id: group.id,
+        name: group.name || '',
+        description: group.description || '',
+        blockIds: blockIds,
+        metadata: group.metadata || {},
+        parentGroupId: group.parentGroupId || null,
+        color: group.color || ''
+      });
+    });
+    this.editor.diagram.groups = arr;
+  }
+
+  /**
+   * Reconstruct the JS groups Map from diagram.groups array after load.
+   * Call this from the bridge after importDiagram() succeeds.
+   */
+  _restoreGroupsFromDiagram() {
+    // Clear existing non-default groups and their SVG boundaries
+    this.groups.forEach((group, gid) => {
+      if (gid !== 'default') {
+        this.removeGroupBoundary(gid);
+      }
+    });
+    // Keep default, wipe the rest
+    const defaultGroup = this.groups.get('default');
+    this.groups.clear();
+    if (defaultGroup) this.groups.set('default', defaultGroup);
+
+    const diagramGroups = (this.editor.diagram && this.editor.diagram.groups) || [];
+    for (const g of diagramGroups) {
+      const blockIds = g.blockIds || g.block_ids || [];
+      const group = {
+        id: g.id,
+        name: g.name || '',
+        description: g.description || '',
+        blocks: new Set(blockIds),
+        color: g.color || this.generateGroupColor(),
+        visible: true,
+        metadata: g.metadata || {},
+        parentGroupId: g.parentGroupId || g.parent_group_id || null,
+        bounds: null
+      };
+      // Compute bounds from current block positions
+      if (blockIds.length > 0) {
+        group.bounds = this.calculateGroupBounds(blockIds);
+      }
+      this.groups.set(g.id, group);
+    }
+    // Render all group boundaries
+    this.groups.forEach((group, gid) => {
+      if (gid !== 'default' && group.bounds) {
+        this.renderGroupBoundary(group);
+      }
+    });
+  }
+
+  // === GROUP CONTEXT MENU ===
+
+  /**
+   * Show a right-click context menu on a group boundary.
+   */
+  _showGroupContextMenu(clientX, clientY, group) {
+    // Remove any existing context menu
+    const existing = document.getElementById('group-context-menu');
+    if (existing) existing.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'group-context-menu';
+    Object.assign(menu.style, {
+      position: 'fixed', left: clientX + 'px', top: clientY + 'px',
+      background: '#2d2d30', border: '1px solid #3e3e42', borderRadius: '4px',
+      padding: '4px 0', zIndex: '10000', minWidth: '180px',
+      boxShadow: '0 4px 12px rgba(0,0,0,.4)', fontFamily: 'Segoe UI, sans-serif',
+      fontSize: '12px', color: '#ccc'
+    });
+
+    const addItem = (label, handler) => {
+      const item = document.createElement('div');
+      item.textContent = label;
+      Object.assign(item.style, {
+        padding: '6px 16px', cursor: 'pointer', whiteSpace: 'nowrap'
+      });
+      item.addEventListener('mouseenter', () => { item.style.background = '#094771'; });
+      item.addEventListener('mouseleave', () => { item.style.background = 'transparent'; });
+      item.addEventListener('click', () => { menu.remove(); handler(); });
+      menu.appendChild(item);
+    };
+
+    const addSep = () => {
+      const sep = document.createElement('div');
+      sep.style.borderTop = '1px solid #444';
+      sep.style.margin = '4px 0';
+      menu.appendChild(sep);
+    };
+
+    addItem('✏️ Properties…', () => this._showGroupPropertiesDialog(group));
+    addItem('🔤 Rename…', () => {
+      const newName = prompt('Rename group:', group.name || '');
+      if (newName !== null && newName.trim()) {
+        group.name = newName.trim();
+        this.renderGroupBoundary(group);
+        this._syncGroupsToDiagram();
+        this.saveState();
+      }
+    });
+
+    addSep();
+
+    // Set as child of… (nesting)
+    const otherGroups = this.getGroupList().filter(g => g.id !== group.id);
+    if (otherGroups.length > 0) {
+      addItem('📂 Set Parent Group…', () => {
+        const options = otherGroups.map(g => g.name).join(', ');
+        const choice = prompt(
+          `Set parent group for "${group.name}".\nAvailable: ${options}\n\nEnter parent group name (or leave empty to clear):`,
+          group.parentGroupId ? (this.groups.get(group.parentGroupId)?.name || '') : ''
+        );
+        if (choice === null) return;
+        if (choice.trim() === '') {
+          group.parentGroupId = null;
+        } else {
+          const parent = otherGroups.find(g => g.name === choice.trim());
+          if (parent) {
+            // Prevent circular: parent can't be self or descendant of self
+            let pid = parent.id;
+            const chain = new Set();
+            let circular = false;
+            while (pid) {
+              if (pid === group.id) { circular = true; break; }
+              if (chain.has(pid)) break;
+              chain.add(pid);
+              const p = this.groups.get(pid);
+              pid = p ? p.parentGroupId : null;
+            }
+            if (circular) {
+              alert('Cannot set parent: would create a circular reference.');
+              return;
+            }
+            group.parentGroupId = parent.id;
+          } else {
+            alert('Group not found: ' + choice.trim());
+            return;
+          }
+        }
+        this.renderGroupBoundary(group);
+        this._syncGroupsToDiagram();
+        this.saveState();
+      });
+    }
+
+    addSep();
+
+    addItem('🎨 Change Color…', () => {
+      const newColor = prompt('Group color (hex):', group.color || '#FF6B35');
+      if (newColor && /^#[0-9a-fA-F]{3,8}$/.test(newColor)) {
+        group.color = newColor;
+        this.renderGroupBoundary(group);
+        this._syncGroupsToDiagram();
+        this.saveState();
+      }
+    });
+
+    addItem('🗑️ Ungroup', () => this.ungroupBlocks(group.id));
+
+    // Dismiss on outside click
+    const dismiss = (e) => {
+      if (!menu.contains(e.target)) {
+        menu.remove();
+        document.removeEventListener('mousedown', dismiss, true);
+      }
+    };
+    setTimeout(() => document.addEventListener('mousedown', dismiss, true), 0);
+
+    document.body.appendChild(menu);
+  }
+
+  // === GROUP PROPERTIES DIALOG ===
+
+  /**
+   * Show a modal dialog for editing all group properties:
+   * name, description, color, parentGroupId, metadata key/value pairs.
+   */
+  _showGroupPropertiesDialog(group) {
+    // Remove any existing dialog
+    const existing = document.getElementById('group-props-dialog-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'group-props-dialog-overlay';
+    Object.assign(overlay.style, {
+      position: 'fixed', inset: '0', background: 'rgba(0,0,0,.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: '10001', fontFamily: 'Segoe UI, sans-serif', fontSize: '13px', color: '#ccc'
+    });
+
+    const dialog = document.createElement('div');
+    Object.assign(dialog.style, {
+      background: '#1e1e1e', border: '1px solid #3e3e42', borderRadius: '8px',
+      padding: '20px', width: '380px', maxHeight: '90vh', overflowY: 'auto',
+      boxShadow: '0 8px 32px rgba(0,0,0,.6)'
+    });
+
+    const h2 = document.createElement('h3');
+    h2.textContent = 'Group Properties';
+    h2.style.margin = '0 0 14px 0'; h2.style.color = '#e0e0e0';
+    dialog.appendChild(h2);
+
+    const inputStyle = 'background:#2d2d30;border:1px solid #3e3e42;border-radius:4px;color:#ccc;padding:6px 8px;width:100%;box-sizing:border-box;font-size:13px;';
+
+    const addField = (labelText, value, type = 'text') => {
+      const label = document.createElement('label');
+      label.textContent = labelText;
+      label.style.display = 'block';
+      label.style.marginBottom = '2px';
+      label.style.marginTop = '10px';
+      label.style.color = '#999';
+      dialog.appendChild(label);
+
+      if (type === 'textarea') {
+        const ta = document.createElement('textarea');
+        ta.style.cssText = inputStyle + 'resize:vertical;min-height:50px;';
+        ta.value = value || '';
+        dialog.appendChild(ta);
+        return ta;
+      }
+      const inp = document.createElement('input');
+      inp.type = type;
+      inp.style.cssText = inputStyle;
+      inp.value = value || '';
+      dialog.appendChild(inp);
+      return inp;
+    };
+
+    const nameInput = addField('Name', group.name);
+    const descInput = addField('Description', group.description, 'textarea');
+    const colorInput = addField('Color (hex)', group.color);
+
+    // Parent group selector
+    const parentLabel = document.createElement('label');
+    parentLabel.textContent = 'Parent Group';
+    parentLabel.style.display = 'block';
+    parentLabel.style.marginBottom = '2px';
+    parentLabel.style.marginTop = '10px';
+    parentLabel.style.color = '#999';
+    dialog.appendChild(parentLabel);
+
+    const parentSelect = document.createElement('select');
+    parentSelect.style.cssText = inputStyle;
+    const noneOpt = document.createElement('option');
+    noneOpt.value = ''; noneOpt.textContent = '(none)';
+    parentSelect.appendChild(noneOpt);
+    this.groups.forEach((g, gid) => {
+      if (gid === 'default' || gid === group.id) return;
+      const opt = document.createElement('option');
+      opt.value = gid;
+      opt.textContent = g.name || gid;
+      if (gid === group.parentGroupId) opt.selected = true;
+      parentSelect.appendChild(opt);
+    });
+    dialog.appendChild(parentSelect);
+
+    // Metadata key/value editor
+    const metaHeader = document.createElement('label');
+    metaHeader.textContent = 'Metadata';
+    metaHeader.style.display = 'block';
+    metaHeader.style.marginBottom = '4px';
+    metaHeader.style.marginTop = '14px';
+    metaHeader.style.color = '#999';
+    dialog.appendChild(metaHeader);
+
+    const metaContainer = document.createElement('div');
+    metaContainer.style.cssText = 'margin-bottom:8px;';
+    dialog.appendChild(metaContainer);
+
+    const metaPairs = Object.entries(group.metadata || {}).map(([k, v]) => ({ key: k, value: String(v) }));
+    if (metaPairs.length === 0) metaPairs.push({ key: '', value: '' });
+
+    const renderMetaRows = () => {
+      metaContainer.innerHTML = '';
+      metaPairs.forEach((pair, idx) => {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '4px';
+        row.style.marginBottom = '4px';
+
+        const ki = document.createElement('input');
+        ki.placeholder = 'key';
+        ki.value = pair.key;
+        ki.style.cssText = inputStyle + 'width:40%;';
+        ki.addEventListener('input', () => { pair.key = ki.value; });
+
+        const vi = document.createElement('input');
+        vi.placeholder = 'value';
+        vi.value = pair.value;
+        vi.style.cssText = inputStyle + 'width:50%;';
+        vi.addEventListener('input', () => { pair.value = vi.value; });
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '×'; delBtn.title = 'Remove';
+        delBtn.style.cssText = 'background:#3e3e42;border:none;color:#ccc;cursor:pointer;border-radius:4px;padding:4px 8px;font-size:14px;';
+        delBtn.addEventListener('click', () => { metaPairs.splice(idx, 1); if (metaPairs.length === 0) metaPairs.push({ key: '', value: '' }); renderMetaRows(); });
+
+        row.appendChild(ki); row.appendChild(vi); row.appendChild(delBtn);
+        metaContainer.appendChild(row);
+      });
+    };
+    renderMetaRows();
+
+    const addMetaBtn = document.createElement('button');
+    addMetaBtn.textContent = '+ Add Metadata';
+    addMetaBtn.style.cssText = 'background:#094771;border:none;color:#ccc;cursor:pointer;border-radius:4px;padding:4px 10px;font-size:12px;margin-bottom:14px;';
+    addMetaBtn.addEventListener('click', () => { metaPairs.push({ key: '', value: '' }); renderMetaRows(); });
+    dialog.appendChild(addMetaBtn);
+
+    // Button row
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:14px;';
+    const btnStyle = 'border:none;cursor:pointer;border-radius:4px;padding:6px 16px;font-size:13px;';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = btnStyle + 'background:#3e3e42;color:#ccc;';
+    cancelBtn.addEventListener('click', () => overlay.remove());
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Save';
+    saveBtn.style.cssText = btnStyle + 'background:#0e639c;color:#fff;';
+    saveBtn.addEventListener('click', () => {
+      group.name = nameInput.value.trim() || group.name;
+      group.description = descInput.value.trim();
+      const newColor = colorInput.value.trim();
+      if (/^#[0-9a-fA-F]{3,8}$/.test(newColor)) group.color = newColor;
+
+      // Parent group (with circular check)
+      const newParentId = parentSelect.value || null;
+      if (newParentId) {
+        let pid = newParentId;
+        const chain = new Set();
+        let circular = false;
+        while (pid) {
+          if (pid === group.id) { circular = true; break; }
+          if (chain.has(pid)) break;
+          chain.add(pid);
+          const p = this.groups.get(pid);
+          pid = p ? p.parentGroupId : null;
+        }
+        if (circular) {
+          alert('Cannot set parent: would create a circular reference.');
+          return;
+        }
+      }
+      group.parentGroupId = newParentId;
+
+      // Metadata
+      const newMeta = {};
+      for (const pair of metaPairs) {
+        const k = pair.key.trim();
+        if (k) newMeta[k] = pair.value;
+      }
+      group.metadata = newMeta;
+
+      this.renderGroupBoundary(group);
+      this._syncGroupsToDiagram();
+      this.saveState();
+      overlay.remove();
+    });
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(saveBtn);
+    dialog.appendChild(btnRow);
+
+    overlay.appendChild(dialog);
+
+    // Click outside to close
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    document.body.appendChild(overlay);
+    nameInput.focus();
   }
 
   // === LAYER MANAGEMENT ===

@@ -429,6 +429,8 @@ def _group_to_dict(group: Group) -> dict[str, Any]:
         "blockIds": group.block_ids,
         "metadata": group.metadata,
     }
+    if group.color:
+        result["color"] = group.color
     if group.parent_group_id is not None:
         result["parentGroupId"] = group.parent_group_id
     return result
@@ -456,6 +458,7 @@ def _parse_group(data: dict[str, Any]) -> Group:
             "parentGroupId",
             data.get("parent_group_id"),
         ),
+        color=data.get("color", ""),
     )
 
 

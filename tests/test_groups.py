@@ -811,3 +811,208 @@ class TestGraphBuilderAddRemoveBlock:
         )
         grp = graph.get_group_by_name("SoloGroup")
         assert len(grp.block_ids) == 1
+
+
+# =========================================================================
+# Enhanced group features (color, connection cleanup, new validation)
+# =========================================================================
+class TestGroupColor:
+    """Test Group color field and serialization round-trip."""
+
+    def test_color_default_empty(self):
+        """Group color defaults to empty string."""
+        group = Group(id="g1", name="Test")
+        assert group.color == ""
+
+    def test_color_custom(self):
+        """Group color can be set at construction."""
+        group = Group(id="g1", name="Test", color="#FF6B35")
+        assert group.color == "#FF6B35"
+
+    def test_color_serialization_round_trip(self):
+        """Color survives serialize → deserialize."""
+        group = Group(id="g1", name="Colored", color="#009639")
+        graph = Graph(id="g", groups=[group])
+        d = graph_to_dict(graph)
+        assert d["groups"][0]["color"] == "#009639"
+        restored = dict_to_graph(d)
+        assert restored.groups[0].color == "#009639"
+
+    def test_color_empty_not_serialized(self):
+        """Empty color is omitted from dict (conditional serialization)."""
+        group = Group(id="g1", name="NoColor", color="")
+        graph = Graph(id="g", groups=[group])
+        d = graph_to_dict(graph)
+        assert "color" not in d["groups"][0]
+
+    def test_color_missing_in_dict_defaults_empty(self):
+        """Missing color in dict defaults to empty string."""
+        data = {
+            "id": "g",
+            "blocks": [],
+            "connections": [],
+            "groups": [{"id": "g1", "name": "Test"}],
+        }
+        graph = dict_to_graph(data)
+        assert graph.groups[0].color == ""
+
+
+class TestRemoveGroupConnectionCleanup:
+    """Test that remove_group cleans up connections referencing the group."""
+
+    def test_remove_group_cleans_connections(self):
+        """Removing a group also removes connections to/from that group."""
+        b1 = Block(id="b1", name="Sensor")
+        g1 = Group(id="g1", name="Control", block_ids=["b1"])
+        conn1 = Connection(id="c1", from_block_id="b1", to_block_id="g1")
+        conn2 = Connection(id="c2", from_block_id="g1", to_block_id="b1")
+        conn3 = Connection(id="c3", from_block_id="b1", to_block_id="b1")
+        graph = Graph(
+            id="g",
+            blocks=[b1],
+            groups=[g1],
+            connections=[conn1, conn2, conn3],
+        )
+        assert len(graph.connections) == 3
+        graph.remove_group("g1")
+        # conn1 and conn2 reference g1 and should be removed
+        assert len(graph.connections) == 1
+        assert graph.connections[0].id == "c3"
+
+    def test_remove_group_no_connections_unaffected(self):
+        """Removing a group with no connections leaves others intact."""
+        b1 = Block(id="b1", name="A")
+        b2 = Block(id="b2", name="B")
+        g1 = Group(id="g1", name="G")
+        conn = Connection(id="c1", from_block_id="b1", to_block_id="b2")
+        graph = Graph(
+            id="g",
+            blocks=[b1, b2],
+            groups=[g1],
+            connections=[conn],
+        )
+        graph.remove_group("g1")
+        assert len(graph.connections) == 1
+
+
+class TestGroupBlockIdCollisionValidation:
+    """Test GROUP_BLOCK_ID_COLLISION validation."""
+
+    def test_group_id_collides_with_block_id(self):
+        """Group ID matching a block ID produces validation error."""
+        b1 = Block(id="shared_id", name="Block")
+        g1 = Group(id="shared_id", name="Group")
+        graph = Graph(id="g", blocks=[b1], groups=[g1])
+        errors = validate_graph(graph)
+        collision_errors = filter_by_code(
+            errors, ValidationErrorCode.GROUP_BLOCK_ID_COLLISION
+        )
+        assert len(collision_errors) >= 1
+        assert "shared_id" in collision_errors[0].message
+
+    def test_no_collision_when_ids_distinct(self):
+        """Distinct block and group IDs produce no collision error."""
+        b1 = Block(id="b1", name="Block")
+        g1 = Group(id="g1", name="Group")
+        graph = Graph(id="g", blocks=[b1], groups=[g1])
+        errors = validate_graph(graph)
+        collision_errors = filter_by_code(
+            errors, ValidationErrorCode.GROUP_BLOCK_ID_COLLISION
+        )
+        assert len(collision_errors) == 0
+
+
+class TestCircularGroupParentValidation:
+    """Test CIRCULAR_GROUP_PARENT validation."""
+
+    def test_direct_circular_parent(self):
+        """A→B→A circular parent reference is detected."""
+        ga = Group(id="ga", name="A", parent_group_id="gb")
+        gb = Group(id="gb", name="B", parent_group_id="ga")
+        graph = Graph(id="g", groups=[ga, gb])
+        errors = validate_graph(graph)
+        cycle_errors = filter_by_code(
+            errors, ValidationErrorCode.CIRCULAR_GROUP_PARENT
+        )
+        assert len(cycle_errors) >= 1
+
+    def test_self_referencing_parent(self):
+        """A group referencing itself as parent is detected."""
+        ga = Group(id="ga", name="A", parent_group_id="ga")
+        graph = Graph(id="g", groups=[ga])
+        errors = validate_graph(graph)
+        cycle_errors = filter_by_code(
+            errors, ValidationErrorCode.CIRCULAR_GROUP_PARENT
+        )
+        assert len(cycle_errors) >= 1
+
+    def test_longer_cycle_detected(self):
+        """A→B→C→A cycle is detected."""
+        ga = Group(id="ga", name="A", parent_group_id="gc")
+        gb = Group(id="gb", name="B", parent_group_id="ga")
+        gc = Group(id="gc", name="C", parent_group_id="gb")
+        graph = Graph(id="g", groups=[ga, gb, gc])
+        errors = validate_graph(graph)
+        cycle_errors = filter_by_code(
+            errors, ValidationErrorCode.CIRCULAR_GROUP_PARENT
+        )
+        assert len(cycle_errors) >= 1
+
+    def test_no_cycle_for_valid_hierarchy(self):
+        """Valid parent chain produces no cycle error."""
+        gp = Group(id="gp", name="Parent")
+        gc = Group(id="gc", name="Child", parent_group_id="gp")
+        ggc = Group(id="ggc", name="Grandchild", parent_group_id="gc")
+        graph = Graph(id="g", groups=[gp, gc, ggc])
+        errors = validate_graph(graph)
+        cycle_errors = filter_by_code(
+            errors, ValidationErrorCode.CIRCULAR_GROUP_PARENT
+        )
+        assert len(cycle_errors) == 0
+
+
+class TestGroupAsConnectionEndpoint:
+    """Test that group IDs are accepted as valid connection endpoints."""
+
+    def test_connection_from_block_to_group_valid(self):
+        """Connection from block to group passes validation."""
+        b1 = Block(id="b1", name="Sensor")
+        g1 = Group(id="g1", name="Control")
+        conn = Connection(id="c1", from_block_id="b1", to_block_id="g1")
+        graph = Graph(id="g", blocks=[b1], groups=[g1], connections=[conn])
+        errors = validate_graph(graph)
+        source_errors = filter_by_code(
+            errors, ValidationErrorCode.MISSING_SOURCE_BLOCK
+        )
+        target_errors = filter_by_code(
+            errors, ValidationErrorCode.MISSING_TARGET_BLOCK
+        )
+        assert len(source_errors) == 0
+        assert len(target_errors) == 0
+
+    def test_connection_between_two_groups_valid(self):
+        """Connection between two groups passes validation."""
+        g1 = Group(id="g1", name="A")
+        g2 = Group(id="g2", name="B")
+        conn = Connection(id="c1", from_block_id="g1", to_block_id="g2")
+        graph = Graph(id="g", groups=[g1, g2], connections=[conn])
+        errors = validate_graph(graph)
+        source_errors = filter_by_code(
+            errors, ValidationErrorCode.MISSING_SOURCE_BLOCK
+        )
+        target_errors = filter_by_code(
+            errors, ValidationErrorCode.MISSING_TARGET_BLOCK
+        )
+        assert len(source_errors) == 0
+        assert len(target_errors) == 0
+
+    def test_connection_to_nonexistent_endpoint_invalid(self):
+        """Connection to neither block nor group ID is flagged."""
+        b1 = Block(id="b1", name="Sensor")
+        conn = Connection(id="c1", from_block_id="b1", to_block_id="nonexistent")
+        graph = Graph(id="g", blocks=[b1], connections=[conn])
+        errors = validate_graph(graph)
+        target_errors = filter_by_code(
+            errors, ValidationErrorCode.MISSING_TARGET_BLOCK
+        )
+        assert len(target_errors) >= 1

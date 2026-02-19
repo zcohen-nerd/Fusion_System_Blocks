@@ -376,6 +376,7 @@ class Group:
     block_ids: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
     parent_group_id: str | None = None
+    color: str = ""
 
 
 @dataclass
@@ -588,9 +589,16 @@ class Graph:
         original_count = len(self.groups)
         self.groups = [g for g in self.groups if g.id != group_id]
         if len(self.groups) < original_count:
+            # Clear parent references on child groups
             for g in self.groups:
                 if g.parent_group_id == group_id:
                     g.parent_group_id = None
+            # Remove connections that reference the deleted group
+            self.connections = [
+                c for c in self.connections
+                if c.from_block_id != group_id
+                and c.to_block_id != group_id
+            ]
             return True
         return False
 

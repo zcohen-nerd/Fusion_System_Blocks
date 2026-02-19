@@ -550,11 +550,33 @@ class DiagramRenderer {
 
     const fromBlock = this.editor.diagram.blocks.find(b => b.id === connection.fromBlock);
     const toBlock = this.editor.diagram.blocks.find(b => b.id === connection.toBlock);
-    
-    if (!fromBlock || !toBlock) {
+
+    // Allow group IDs as connection endpoints — resolve to a pseudo-block
+    // using the group's boundary bounds so connections render correctly.
+    const resolveEndpoint = (block, endpointId) => {
+      if (block) return block;
+      if (window.advancedFeatures) {
+        const group = window.advancedFeatures.groups.get(endpointId);
+        if (group && group.bounds) {
+          return {
+            id: endpointId,
+            x: group.bounds.x,
+            y: group.bounds.y,
+            width: group.bounds.width,
+            height: group.bounds.height,
+            _isGroup: true
+          };
+        }
+      }
+      return null;
+    };
+    const resolvedFrom = resolveEndpoint(fromBlock, connection.fromBlock);
+    const resolvedTo = resolveEndpoint(toBlock, connection.toBlock);
+
+    if (!resolvedFrom || !resolvedTo) {
       logger.warn('renderConnection: missing block(s) for', connection.id,
-        'from:', connection.fromBlock, !!fromBlock,
-        'to:', connection.toBlock, !!toBlock);
+        'from:', connection.fromBlock, !!resolvedFrom,
+        'to:', connection.toBlock, !!resolvedTo);
       return null;
     }
 
@@ -573,10 +595,10 @@ class DiagramRenderer {
     // --- Resolve port-aware endpoints ---
     const fromPort = connection.fromPort || 'output';
     const toPort   = connection.toPort   || 'input';
-    const fromW = fromBlock.width  || 120;
-    const fromH = fromBlock.height || 80;
-    const toW   = toBlock.width    || 120;
-    const toH   = toBlock.height   || 80;
+    const fromW = resolvedFrom.width  || 120;
+    const fromH = resolvedFrom.height || 80;
+    const toW   = resolvedTo.width    || 120;
+    const toH   = resolvedTo.height   || 80;
 
     // Fan offset: distribute connections sharing the same port side
     const outConns = this.editor.diagram.connections.filter(
@@ -593,40 +615,40 @@ class DiagramRenderer {
     // Source endpoint
     switch (fromPort) {
       case 'input':
-        fromX = fromBlock.x;
-        fromY = fromBlock.y + this._fanOffset(outIdx, outConns.length, fromH);
+        fromX = resolvedFrom.x;
+        fromY = resolvedFrom.y + this._fanOffset(outIdx, outConns.length, fromH);
         break;
       case 'top':
-        fromX = fromBlock.x + this._fanOffset(outIdx, outConns.length, fromW);
-        fromY = fromBlock.y;
+        fromX = resolvedFrom.x + this._fanOffset(outIdx, outConns.length, fromW);
+        fromY = resolvedFrom.y;
         break;
       case 'bottom':
-        fromX = fromBlock.x + this._fanOffset(outIdx, outConns.length, fromW);
-        fromY = fromBlock.y + fromH;
+        fromX = resolvedFrom.x + this._fanOffset(outIdx, outConns.length, fromW);
+        fromY = resolvedFrom.y + fromH;
         break;
       default: // 'output'
-        fromX = fromBlock.x + fromW;
-        fromY = fromBlock.y + this._fanOffset(outIdx, outConns.length, fromH);
+        fromX = resolvedFrom.x + fromW;
+        fromY = resolvedFrom.y + this._fanOffset(outIdx, outConns.length, fromH);
         break;
     }
 
     // Target endpoint
     switch (toPort) {
       case 'output':
-        toX = toBlock.x + toW;
-        toY = toBlock.y + this._fanOffset(inIdx, inConns.length, toH);
+        toX = resolvedTo.x + toW;
+        toY = resolvedTo.y + this._fanOffset(inIdx, inConns.length, toH);
         break;
       case 'top':
-        toX = toBlock.x + this._fanOffset(inIdx, inConns.length, toW);
-        toY = toBlock.y;
+        toX = resolvedTo.x + this._fanOffset(inIdx, inConns.length, toW);
+        toY = resolvedTo.y;
         break;
       case 'bottom':
-        toX = toBlock.x + this._fanOffset(inIdx, inConns.length, toW);
-        toY = toBlock.y + toH;
+        toX = resolvedTo.x + this._fanOffset(inIdx, inConns.length, toW);
+        toY = resolvedTo.y + toH;
         break;
       default: // 'input'
-        toX = toBlock.x;
-        toY = toBlock.y + this._fanOffset(inIdx, inConns.length, toH);
+        toX = resolvedTo.x;
+        toY = resolvedTo.y + this._fanOffset(inIdx, inConns.length, toH);
         break;
     }
 
