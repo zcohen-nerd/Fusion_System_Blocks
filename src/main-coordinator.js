@@ -329,6 +329,7 @@ class SystemBlocksMain {
         }
         features.clearSelection();
         core.clearSelection();
+        this.hidePropertiesPanel();
         e.preventDefault();
         return;
       }
@@ -353,6 +354,7 @@ class SystemBlocksMain {
         }
         features.clearSelection();
         core.clearSelection();
+        this.hidePropertiesPanel();
         e.preventDefault();
         return;
       }
@@ -383,6 +385,7 @@ class SystemBlocksMain {
           // Multi-select mode — toggle without clearing others
           features.toggleSelection(clickedBlock.id);
           // Do NOT call core.selectBlock() here — it clears multi-select
+          this.hidePropertiesPanel();
         } else {
           // Single select
           if (!features.selectedBlocks.has(clickedBlock.id)) {
@@ -390,6 +393,7 @@ class SystemBlocksMain {
             features.addToSelection(clickedBlock.id);
           }
           core.selectBlock(clickedBlock.id);
+          this.updatePropertiesPanel(clickedBlock, core, renderer);
         }
         
         // Start drag — only when NOT in Ctrl+click multi-select
@@ -412,6 +416,7 @@ class SystemBlocksMain {
         if (!e.ctrlKey && !e.metaKey) {
           features.clearSelection();
           core.clearSelection();
+          this.hidePropertiesPanel();
         }
         
         // Start lasso selection
@@ -1042,6 +1047,7 @@ class SystemBlocksMain {
           ids.forEach(id => core.removeBlock(id));
           features.clearSelection();
           core.clearSelection();
+          this.hidePropertiesPanel();
           renderer.updateAllBlocks(core.diagram);
           if (features.updateGroupBoundaries) features.updateGroupBoundaries();
           features.saveState();
@@ -1365,6 +1371,9 @@ class SystemBlocksMain {
 
       renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
       if (window.advancedFeatures) window.advancedFeatures.saveState();
+      // Refresh the properties side panel so it reflects updated values
+      const updatedBlock = core.diagram.blocks.find(b => b.id === block.id);
+      if (updatedBlock) this.updatePropertiesPanel(updatedBlock, core, renderer);
       dialog.remove();
     });
 
@@ -1373,6 +1382,125 @@ class SystemBlocksMain {
       if (e.key === 'Escape') { cancel(); document.removeEventListener('keydown', onKey); }
     };
     document.addEventListener('keydown', onKey);
+  }
+
+  // =========================================================================
+  // PROPERTIES SIDE PANEL
+  // =========================================================================
+
+  /**
+   * Populate and show the properties side panel for the given block.
+   */
+  updatePropertiesPanel(block, core, renderer) {
+    const panel = document.getElementById('properties-panel');
+    const content = document.getElementById('pp-content');
+    if (!panel || !content) return;
+
+    // --- Connections summary ---
+    const outgoing = core.diagram.connections.filter(c => c.fromBlock === block.id);
+    const incoming = core.diagram.connections.filter(c => c.toBlock === block.id);
+    const stubs = (core.diagram.namedStubs || []).filter(s => s.blockId === block.id);
+
+    const connHtml = (list, direction) => {
+      if (!list.length) return `<div style="color:#777; font-size:11px; padding:2px 0;">None</div>`;
+      return list.map(c => {
+        const otherId = direction === 'out' ? c.toBlock : c.fromBlock;
+        const other = core.diagram.blocks.find(b => b.id === otherId);
+        const otherName = other ? _escapeHtml(other.name) : '(deleted)';
+        const typeLabel = c.connectionType || 'Signal';
+        return `<div class="pp-conn-item">
+          <span class="pp-conn-type">${_escapeHtml(typeLabel)}</span>
+          <span>${direction === 'out' ? '→' : '←'} ${otherName}</span>
+        </div>`;
+      }).join('');
+    };
+
+    const stubsHtml = stubs.length
+      ? stubs.map(s => `<div class="pp-conn-item">
+          <span class="pp-conn-type">stub</span>
+          <span>${_escapeHtml(s.netName || s.id)}</span>
+        </div>`).join('')
+      : '';
+
+    // --- Attributes ---
+    const attrs = block.attributes || {};
+    const attrKeys = Object.keys(attrs);
+    const attrRows = attrKeys.length
+      ? attrKeys.map(k => {
+          const v = attrs[k];
+          const isEmpty = v === '' || v === null || v === undefined;
+          return `<div class="pp-row">
+            <span class="pp-label">${_escapeHtml(k)}</span>
+            <span class="pp-value${isEmpty ? ' empty' : ''}">${isEmpty ? '—' : _escapeHtml(String(v))}</span>
+          </div>`;
+        }).join('')
+      : `<div style="color:#777; font-size:11px; padding:2px 0;">No attributes</div>`;
+
+    // --- Status badge class ---
+    const statusSlug = (block.status || 'Placeholder').toLowerCase().replace(/\s+/g, '-');
+
+    content.innerHTML = `
+      <div class="pp-section">
+        <div class="pp-section-title">General</div>
+        <div class="pp-row">
+          <span class="pp-label">Name</span>
+          <span class="pp-value">${_escapeHtml(block.name || '')}</span>
+        </div>
+        <div class="pp-row">
+          <span class="pp-label">Type</span>
+          <span class="pp-value">${_escapeHtml(block.type || 'Generic')}</span>
+        </div>
+        <div class="pp-row">
+          <span class="pp-label">Status</span>
+          <span class="pp-badge status-${statusSlug}">${_escapeHtml(block.status || 'Placeholder')}</span>
+        </div>
+        <div class="pp-row">
+          <span class="pp-label">Shape</span>
+          <span class="pp-value">${_escapeHtml(block.shape || 'rectangle')}</span>
+        </div>
+      </div>
+      <div class="pp-section">
+        <div class="pp-section-title">Attributes</div>
+        ${attrRows}
+      </div>
+      <div class="pp-section">
+        <div class="pp-section-title">Connections</div>
+        <div style="font-size:11px; color:#aaa; margin-bottom:4px;">Outgoing (${outgoing.length})</div>
+        ${connHtml(outgoing, 'out')}
+        <div style="font-size:11px; color:#aaa; margin:6px 0 4px;">Incoming (${incoming.length})</div>
+        ${connHtml(incoming, 'in')}
+        ${stubs.length ? `<div style="font-size:11px; color:#aaa; margin:6px 0 4px;">Named Stubs (${stubs.length})</div>${stubsHtml}` : ''}
+      </div>
+      <button class="pp-edit-btn" id="pp-edit-btn">Edit Properties</button>
+    `;
+
+    // Wire Edit button
+    const editBtn = content.querySelector('#pp-edit-btn');
+    if (editBtn) {
+      editBtn.addEventListener('click', () => {
+        const freshBlock = core.diagram.blocks.find(b => b.id === block.id);
+        if (freshBlock) this.openPropertyEditor(freshBlock, core, renderer);
+      });
+    }
+
+    // Wire close button (re-wire each time to avoid stale listeners)
+    const closeBtn = document.getElementById('pp-close-btn');
+    if (closeBtn) {
+      const freshClose = closeBtn.cloneNode(true);
+      closeBtn.parentNode.replaceChild(freshClose, closeBtn);
+      freshClose.id = 'pp-close-btn';
+      freshClose.addEventListener('click', () => this.hidePropertiesPanel());
+    }
+
+    panel.classList.add('visible');
+  }
+
+  /**
+   * Hide the properties side panel.
+   */
+  hidePropertiesPanel() {
+    const panel = document.getElementById('properties-panel');
+    if (panel) panel.classList.remove('visible');
   }
 
   // =========================================================================

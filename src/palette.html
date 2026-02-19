@@ -344,16 +344,141 @@
       overflow: hidden;
       background: var(--fusion-bg-primary);
       z-index: 1 !important;
+      display: flex;
     }
-    
+
     #svg-canvas {
-      width: 100%;
+      flex: 1;
+      min-width: 0;
       height: 100%;
       background: var(--fusion-bg-primary);
       background-image: radial-gradient(circle, var(--fusion-border-primary) 1px, transparent 1px);
       background-size: 20px 20px;
       cursor: grab;
       transition: var(--fusion-transition);
+    }
+
+    /* ========== PROPERTIES SIDE PANEL ========== */
+    #properties-panel {
+      width: 260px;
+      min-width: 220px;
+      max-width: 320px;
+      height: 100%;
+      background: var(--fusion-panel-bg, #1e1e2e);
+      border-left: 1px solid var(--fusion-border-primary, #444);
+      overflow-y: auto;
+      overflow-x: hidden;
+      font-family: var(--fusion-font-family, 'Segoe UI', Arial, sans-serif);
+      font-size: 12px;
+      color: var(--fusion-text-primary, #ccc);
+      display: none; /* hidden until a block is selected */
+      flex-shrink: 0;
+      box-sizing: border-box;
+    }
+    #properties-panel.visible {
+      display: block;
+    }
+    #properties-panel .pp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid var(--fusion-border-primary, #444);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--fusion-text-primary, #eee);
+      position: sticky;
+      top: 0;
+      background: var(--fusion-panel-bg, #1e1e2e);
+      z-index: 1;
+    }
+    #properties-panel .pp-close {
+      background: none;
+      border: none;
+      color: var(--fusion-text-secondary, #888);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    #properties-panel .pp-close:hover {
+      color: var(--fusion-text-primary, #eee);
+    }
+    #properties-panel .pp-section {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--fusion-border-primary, #333);
+    }
+    #properties-panel .pp-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--fusion-text-secondary, #888);
+      margin-bottom: 6px;
+    }
+    #properties-panel .pp-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 2px 0;
+      line-height: 1.6;
+    }
+    #properties-panel .pp-label {
+      color: var(--fusion-text-secondary, #999);
+      flex-shrink: 0;
+      margin-right: 8px;
+    }
+    #properties-panel .pp-value {
+      color: var(--fusion-text-primary, #ddd);
+      text-align: right;
+      word-break: break-word;
+      max-width: 60%;
+    }
+    #properties-panel .pp-value.empty {
+      color: var(--fusion-text-secondary, #666);
+      font-style: italic;
+    }
+    #properties-panel .pp-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      background: var(--fusion-border-primary, #444);
+      color: var(--fusion-text-primary, #ccc);
+    }
+    #properties-panel .pp-badge.status-placeholder { background: #555; }
+    #properties-panel .pp-badge.status-in-progress { background: #d4a017; color: #111; }
+    #properties-panel .pp-badge.status-completed { background: #2e7d32; color: #fff; }
+    #properties-panel .pp-conn-item {
+      padding: 3px 0;
+      font-size: 11px;
+      color: var(--fusion-text-primary, #ccc);
+    }
+    #properties-panel .pp-conn-type {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    #properties-panel .pp-edit-btn {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 6px;
+      background: var(--fusion-accent-primary, #FF6B35);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+    }
+    #properties-panel .pp-edit-btn:hover {
+      opacity: 0.85;
     }
     
     #svg-canvas:active {
@@ -2368,6 +2493,17 @@
       <g id="connections-layer"></g>
       <g id="blocks-layer"></g>
     </svg>
+
+    <!-- ========== PROPERTIES SIDE PANEL ========== -->
+    <div id="properties-panel" role="complementary" aria-label="Block properties">
+      <div class="pp-header">
+        <span>Properties</span>
+        <button class="pp-close" id="pp-close-btn" aria-label="Close properties panel" title="Close">&times;</button>
+      </div>
+      <div id="pp-content">
+        <!-- Dynamically populated when a block is selected -->
+      </div>
+    </div>
 
     <!-- ========== CANVAS MINIMAP ========== -->
     <div id="minimap-container" aria-hidden="true" style="

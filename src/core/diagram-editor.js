@@ -63,6 +63,18 @@ class DiagramEditorCore {
 
   // Core diagram operations
   addBlock(blockData) {
+    // Default attribute fields — empty slots for common engineering metadata.
+    // Users can fill these in via the property editor or side panel.
+    const defaultAttributes = {
+      'Manufacturer': '',
+      'Part Number': '',
+      'Datasheet URL': '',
+      'Rating / Specification': '',
+      'Cost': '',
+      'Lead Time': '',
+      'Notes': ''
+    };
+
     const block = {
       id: this.generateId(),
       name: blockData.name || 'New Block',
@@ -72,8 +84,16 @@ class DiagramEditorCore {
       width: blockData.width || 120,
       height: blockData.height || 80,
       status: blockData.status || 'Placeholder',
+      attributes: { ...defaultAttributes, ...(blockData.attributes || {}) },
       ...blockData
     };
+    // Ensure attributes merges defaults with any caller-supplied values
+    // (the spread above handles blockData.attributes, but if blockData
+    // also has an attributes key it would be overwritten by ...blockData,
+    // so we re-merge here to be safe)
+    if (blockData.attributes) {
+      block.attributes = { ...defaultAttributes, ...blockData.attributes };
+    }
     
     this.diagram.blocks.push(block);
     this.diagram.metadata.modified = new Date().toISOString();
