@@ -437,6 +437,17 @@ class SystemBlocksMain {
             }
           });
         }
+
+        // Re-render all stub types so they follow the moved block(s).
+        if (renderer.renderNamedStubs) {
+          renderer.renderNamedStubs(core.diagram);
+        }
+        if (renderer.renderSameLevelStubs) {
+          renderer.renderSameLevelStubs(core.diagram);
+        }
+        if (renderer.renderCrossDiagramStubs) {
+          renderer.renderCrossDiagramStubs(core.diagram);
+        }
       } else if (features.isLassoSelecting) {
         // Update lasso selection
         features.updateLassoSelection(x, y);
