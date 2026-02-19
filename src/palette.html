@@ -467,6 +467,73 @@
     #properties-panel .pp-edit-btn:hover {
       opacity: 0.85;
     }
+    /* Inline attribute editing */
+    #properties-panel .pp-attr-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 0;
+    }
+    #properties-panel .pp-attr-key-input,
+    #properties-panel .pp-attr-val-input {
+      background: var(--fusion-input-bg, #1e1e1e);
+      color: var(--fusion-text-primary, #ddd);
+      border: 1px solid var(--fusion-border-primary, #444);
+      border-radius: 2px;
+      padding: 2px 4px;
+      font-size: 11px;
+      flex: 1;
+      min-width: 0;
+    }
+    #properties-panel .pp-attr-key-input:focus,
+    #properties-panel .pp-attr-val-input:focus {
+      border-color: var(--fusion-accent, #FF6B35);
+      outline: none;
+    }
+    #properties-panel .pp-attr-del {
+      background: none;
+      border: none;
+      color: var(--fusion-text-secondary, #999);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 2px;
+      flex-shrink: 0;
+    }
+    #properties-panel .pp-attr-del:hover {
+      color: #f44;
+    }
+    #properties-panel .pp-add-attr-btn {
+      display: block;
+      width: 100%;
+      margin-top: 4px;
+      padding: 3px;
+      background: var(--fusion-input-bg, #1e1e1e);
+      color: var(--fusion-text-secondary, #aaa);
+      border: 1px dashed var(--fusion-border-primary, #444);
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 11px;
+      text-align: center;
+    }
+    #properties-panel .pp-add-attr-btn:hover {
+      color: var(--fusion-text-primary, #ddd);
+      border-color: var(--fusion-accent, #FF6B35);
+    }
+    #properties-panel .pp-name-editable {
+      cursor: text;
+    }
+    #properties-panel .pp-name-editable:hover {
+      text-decoration: underline dotted var(--fusion-accent, #FF6B35);
+    }
+    #properties-panel .pp-inline-input {
+      background: var(--fusion-input-bg, #1e1e1e);
+      color: var(--fusion-text-primary, #ddd);
+      border: 1px solid var(--fusion-accent, #FF6B35);
+      border-radius: 2px;
+      padding: 1px 4px;
+      font-size: 11px;
+      outline: none;
+    }
     
     #svg-canvas:active {
       cursor: grabbing;
@@ -2393,7 +2460,7 @@
 
     <!-- ========== CANVAS MINIMAP ========== -->
     <div id="minimap-container" aria-hidden="true" style="
-      position: fixed; bottom: 12px; right: 12px; z-index: 500;
+      position: fixed; bottom: 12px; right: 274px; z-index: 500;
       width: 160px; height: 110px;
       background: rgba(30, 30, 30, 0.85);
       border: 1px solid rgba(255,255,255,0.18);

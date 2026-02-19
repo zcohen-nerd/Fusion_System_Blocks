@@ -1204,6 +1204,17 @@ class AdvancedFeatures {
 
     const diagramSnapshot = JSON.parse(JSON.stringify(this.editor.diagram));
 
+    // --- Dedup guard: skip if the diagram snapshot is identical to the
+    //     most recent undo entry. This prevents multiple saveState()
+    //     calls (e.g. from debounced auto-save + explicit save) from
+    //     pushing duplicate entries that cause "double undo". ---
+    if (this.undoStack.length > 0) {
+      const prevDiagram = this.undoStack[this.undoStack.length - 1].diagram;
+      if (JSON.stringify(prevDiagram) === JSON.stringify(diagramSnapshot)) {
+        return; // Nothing changed — skip
+      }
+    }
+
     // Auto-detect label if not provided
     if (!label) {
       label = this._detectOperationLabel(diagramSnapshot);

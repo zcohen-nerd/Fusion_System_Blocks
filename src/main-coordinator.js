@@ -1638,19 +1638,23 @@ class SystemBlocksMain {
         </div>`).join('')
       : '';
 
-    // --- Attributes ---
+    // --- Attributes (editable inline) ---
     const attrs = block.attributes || {};
     const attrKeys = Object.keys(attrs);
-    const attrRows = attrKeys.length
-      ? attrKeys.map(k => {
-          const v = attrs[k];
-          const isEmpty = v === '' || v === null || v === undefined;
-          return `<div class="pp-row">
-            <span class="pp-label">${_escapeHtml(k)}</span>
-            <span class="pp-value${isEmpty ? ' empty' : ''}">${isEmpty ? '—' : _escapeHtml(String(v))}</span>
-          </div>`;
-        }).join('')
-      : `<div style="color:#777; font-size:11px; padding:2px 0;">No attributes</div>`;
+    const attrRows = attrKeys.map(k => {
+      const v = attrs[k];
+      const isEmpty = v === '' || v === null || v === undefined;
+      return `<div class="pp-row pp-attr-row" data-attr-key="${_escapeHtml(k)}">
+        <input class="pp-attr-key-input" value="${_escapeHtml(k)}" title="Attribute name" />
+        <input class="pp-attr-val-input" value="${isEmpty ? '' : _escapeHtml(String(v))}" placeholder="—" title="Attribute value" />
+        <button class="pp-attr-del" title="Remove attribute">&times;</button>
+      </div>`;
+    }).join('');
+
+    const attrSection = `
+      ${attrRows || '<div style="color:#777; font-size:11px; padding:2px 0;">No attributes</div>'}
+      <button id="pp-add-attr" class="pp-add-attr-btn">+ Add Attribute</button>
+    `;
 
     // --- Helper to build inline <select> for a property ---
     const inlineSelect = (id, options, currentVal) => {
@@ -1671,7 +1675,7 @@ class SystemBlocksMain {
         <div class="pp-section-title">General</div>
         <div class="pp-row">
           <span class="pp-label">Name</span>
-          <span class="pp-value">${_escapeHtml(block.name || '')}</span>
+          <span class="pp-value pp-name-editable" id="pp-name" title="Double-click to rename">${_escapeHtml(block.name || '')}</span>
         </div>
         <div class="pp-row">
           <span class="pp-label">Type</span>
@@ -1697,7 +1701,7 @@ class SystemBlocksMain {
       </div>
       <div class="pp-section">
         <div class="pp-section-title">Attributes</div>
-        ${attrRows}
+        ${attrSection}
       </div>
       <div class="pp-section">
         <div class="pp-section-title">Connections</div>
@@ -1725,6 +1729,78 @@ class SystemBlocksMain {
     if (statusSelect) statusSelect.addEventListener('change', () => applyInlineChange('status', statusSelect.value));
     const shapeSelect = content.querySelector('#pp-shape');
     if (shapeSelect) shapeSelect.addEventListener('change', () => applyInlineChange('shape', shapeSelect.value));
+
+    // --- Double-click on name to rename ---
+    const nameEl = content.querySelector('#pp-name');
+    if (nameEl) {
+      nameEl.addEventListener('dblclick', () => {
+        const currentName = block.name || '';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentName;
+        input.className = 'pp-inline-input';
+        input.style.cssText = 'width:100%;box-sizing:border-box;';
+        nameEl.textContent = '';
+        nameEl.appendChild(input);
+        input.focus();
+        input.select();
+        const commit = () => {
+          const newName = input.value.trim() || currentName;
+          core.updateBlock(block.id, { name: newName });
+          renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+          if (window.advancedFeatures) window.advancedFeatures.saveState();
+          const fresh = core.diagram.blocks.find(b => b.id === block.id);
+          if (fresh) this.updatePropertiesPanel(fresh, core, renderer);
+        };
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+          if (ev.key === 'Escape') { input.value = currentName; input.blur(); }
+        });
+      });
+    }
+
+    // --- Wire attribute inline editing ---
+    const commitAttrs = () => {
+      const newAttrs = {};
+      content.querySelectorAll('.pp-attr-row').forEach(row => {
+        const key = row.querySelector('.pp-attr-key-input').value.trim();
+        const val = row.querySelector('.pp-attr-val-input').value.trim();
+        if (key) newAttrs[key] = val;
+      });
+      core.updateBlock(block.id, { attributes: newAttrs });
+      renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
+    };
+    content.querySelectorAll('.pp-attr-key-input, .pp-attr-val-input').forEach(inp => {
+      inp.addEventListener('change', commitAttrs);
+    });
+    content.querySelectorAll('.pp-attr-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.closest('.pp-attr-row').remove();
+        commitAttrs();
+        // Refresh panel
+        const fresh = core.diagram.blocks.find(b => b.id === block.id);
+        if (fresh) this.updatePropertiesPanel(fresh, core, renderer);
+      });
+    });
+
+    // Add Attribute button
+    const addAttrBtn = content.querySelector('#pp-add-attr');
+    if (addAttrBtn) {
+      addAttrBtn.addEventListener('click', () => {
+        const currentAttrs = Object.assign({}, block.attributes || {});
+        currentAttrs[''] = '';
+        core.updateBlock(block.id, { attributes: currentAttrs });
+        const fresh = core.diagram.blocks.find(b => b.id === block.id);
+        if (fresh) this.updatePropertiesPanel(fresh, core, renderer);
+        // Focus the new empty key input
+        setTimeout(() => {
+          const rows = content.querySelectorAll('.pp-attr-key-input');
+          if (rows.length > 0) rows[rows.length - 1].focus();
+        }, 50);
+      });
+    }
 
     // Wire Edit button (for full property editor with attributes)
     const editBtn = content.querySelector('#pp-edit-btn');
@@ -2636,22 +2712,35 @@ class SystemBlocksMain {
     const arrowDir = document.getElementById('arrow-direction-select');
     const direction = arrowDir ? arrowDir.value : 'forward';
 
-    // Determine target port from spatial heuristic
+    // Determine target port by finding the closest target port to
+    // the actual source port position (not block center).
     const tw = targetBlock.width || 120;
     const th = targetBlock.height || 80;
     const sw = sourceBlock.width || 120;
     const sh = sourceBlock.height || 80;
-    const srcCX = sourceBlock.x + sw / 2;
-    const srcCY = sourceBlock.y + sh / 2;
-    const tgtCX = targetBlock.x + tw / 2;
-    const tgtCY = targetBlock.y + th / 2;
-    const dx = tgtCX - srcCX;
-    const dy = tgtCY - srcCY;
-    let bestStubPort;
-    if (Math.abs(dx) > Math.abs(dy)) {
-      bestStubPort = dx > 0 ? 'input' : 'output';
-    } else {
-      bestStubPort = dy > 0 ? 'top' : 'bottom';
+
+    // Compute source port position
+    let srcPX, srcPY;
+    switch (sourcePort) {
+      case 'input':  srcPX = sourceBlock.x;          srcPY = sourceBlock.y + sh / 2; break;
+      case 'top':    srcPX = sourceBlock.x + sw / 2;  srcPY = sourceBlock.y;          break;
+      case 'bottom': srcPX = sourceBlock.x + sw / 2;  srcPY = sourceBlock.y + sh;     break;
+      case 'output': default:
+                     srcPX = sourceBlock.x + sw;       srcPY = sourceBlock.y + sh / 2; break;
+    }
+
+    // Find closest port on target block
+    const targetPorts = [
+      { x: targetBlock.x,          y: targetBlock.y + th / 2, type: 'input' },
+      { x: targetBlock.x + tw,     y: targetBlock.y + th / 2, type: 'output' },
+      { x: targetBlock.x + tw / 2, y: targetBlock.y,          type: 'top' },
+      { x: targetBlock.x + tw / 2, y: targetBlock.y + th,     type: 'bottom' },
+    ];
+    let bestStubPort = 'input';
+    let bestDist = Infinity;
+    for (const p of targetPorts) {
+      const d = Math.hypot(srcPX - p.x, srcPY - p.y);
+      if (d < bestDist) { bestDist = d; bestStubPort = p.type; }
     }
 
     // Normalize so Forward/Backward always means left-to-right.

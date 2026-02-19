@@ -1294,6 +1294,8 @@ class ToolbarManager {
       multiIds.forEach(id => this.editor.removeBlock(id));
       if (window.advancedFeatures) window.advancedFeatures.clearSelection();
       this.renderer.updateAllBlocks(this.editor.diagram);
+      // Re-render group boundaries (updateAllBlocks clears them)
+      if (window.advancedFeatures) window.advancedFeatures.updateGroupBoundaries();
       this.editor.clearSelection();
       if (window.advancedFeatures) window.advancedFeatures.saveState();
     } else if (this.editor.selectedBlock) {
@@ -1302,6 +1304,8 @@ class ToolbarManager {
       }
       this.editor.removeBlock(this.editor.selectedBlock);
       this.renderer.updateAllBlocks(this.editor.diagram);
+      // Re-render group boundaries (updateAllBlocks clears them)
+      if (window.advancedFeatures) window.advancedFeatures.updateGroupBoundaries();
       this.editor.clearSelection();
       if (window.advancedFeatures) window.advancedFeatures.saveState();
     } else if (window.SystemBlocksMain && window.SystemBlocksMain._selectedConnection) {
@@ -1316,6 +1320,8 @@ class ToolbarManager {
       this.renderer.clearConnectionHighlights();
       window.SystemBlocksMain._selectedConnection = null;
       this.renderer.updateAllBlocks(this.editor.diagram);
+      // Re-render group boundaries (updateAllBlocks clears them)
+      if (window.advancedFeatures) window.advancedFeatures.updateGroupBoundaries();
       if (window.advancedFeatures) window.advancedFeatures.saveState();
     }
   }
