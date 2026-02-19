@@ -1541,6 +1541,13 @@ class DiagramRenderer {
     if (diagram.annotations) {
       diagram.annotations.forEach(ann => this.renderAnnotation(ann));
     }
+
+    // Re-render group boundaries (the clear at the top removes them).
+    // This centralises the fix so every caller of updateAllBlocks
+    // automatically gets group boundaries back.
+    if (window.advancedFeatures && typeof window.advancedFeatures.updateGroupBoundaries === 'function') {
+      window.advancedFeatures.updateGroupBoundaries();
+    }
   }
 
   // ---- Cross-diagram connection stubs ----
