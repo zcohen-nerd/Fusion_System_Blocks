@@ -572,8 +572,7 @@ def _detect_group_parent_cycles(graph: Graph) -> list[ValidationError]:
                 ValidationError(
                     code=ValidationErrorCode.CIRCULAR_GROUP_PARENT,
                     message=(
-                        "Circular parent group reference detected: "
-                        + " → ".join(names)
+                        "Circular parent group reference detected: " + " → ".join(names)
                     ),
                     details={"group_ids": chain},
                 )

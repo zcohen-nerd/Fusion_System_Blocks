@@ -931,9 +931,7 @@ class TestCircularGroupParentValidation:
         gb = Group(id="gb", name="B", parent_group_id="ga")
         graph = Graph(id="g", groups=[ga, gb])
         errors = validate_graph(graph)
-        cycle_errors = filter_by_code(
-            errors, ValidationErrorCode.CIRCULAR_GROUP_PARENT
-        )
+        cycle_errors = filter_by_code(errors, ValidationErrorCode.CIRCULAR_GROUP_PARENT)
         assert len(cycle_errors) >= 1
 
     def test_self_referencing_parent(self):
@@ -941,9 +939,7 @@ class TestCircularGroupParentValidation:
         ga = Group(id="ga", name="A", parent_group_id="ga")
         graph = Graph(id="g", groups=[ga])
         errors = validate_graph(graph)
-        cycle_errors = filter_by_code(
-            errors, ValidationErrorCode.CIRCULAR_GROUP_PARENT
-        )
+        cycle_errors = filter_by_code(errors, ValidationErrorCode.CIRCULAR_GROUP_PARENT)
         assert len(cycle_errors) >= 1
 
     def test_longer_cycle_detected(self):
@@ -953,9 +949,7 @@ class TestCircularGroupParentValidation:
         gc = Group(id="gc", name="C", parent_group_id="gb")
         graph = Graph(id="g", groups=[ga, gb, gc])
         errors = validate_graph(graph)
-        cycle_errors = filter_by_code(
-            errors, ValidationErrorCode.CIRCULAR_GROUP_PARENT
-        )
+        cycle_errors = filter_by_code(errors, ValidationErrorCode.CIRCULAR_GROUP_PARENT)
         assert len(cycle_errors) >= 1
 
     def test_no_cycle_for_valid_hierarchy(self):
@@ -965,9 +959,7 @@ class TestCircularGroupParentValidation:
         ggc = Group(id="ggc", name="Grandchild", parent_group_id="gc")
         graph = Graph(id="g", groups=[gp, gc, ggc])
         errors = validate_graph(graph)
-        cycle_errors = filter_by_code(
-            errors, ValidationErrorCode.CIRCULAR_GROUP_PARENT
-        )
+        cycle_errors = filter_by_code(errors, ValidationErrorCode.CIRCULAR_GROUP_PARENT)
         assert len(cycle_errors) == 0
 
 
@@ -981,12 +973,8 @@ class TestGroupAsConnectionEndpoint:
         conn = Connection(id="c1", from_block_id="b1", to_block_id="g1")
         graph = Graph(id="g", blocks=[b1], groups=[g1], connections=[conn])
         errors = validate_graph(graph)
-        source_errors = filter_by_code(
-            errors, ValidationErrorCode.MISSING_SOURCE_BLOCK
-        )
-        target_errors = filter_by_code(
-            errors, ValidationErrorCode.MISSING_TARGET_BLOCK
-        )
+        source_errors = filter_by_code(errors, ValidationErrorCode.MISSING_SOURCE_BLOCK)
+        target_errors = filter_by_code(errors, ValidationErrorCode.MISSING_TARGET_BLOCK)
         assert len(source_errors) == 0
         assert len(target_errors) == 0
 
@@ -997,12 +985,8 @@ class TestGroupAsConnectionEndpoint:
         conn = Connection(id="c1", from_block_id="g1", to_block_id="g2")
         graph = Graph(id="g", groups=[g1, g2], connections=[conn])
         errors = validate_graph(graph)
-        source_errors = filter_by_code(
-            errors, ValidationErrorCode.MISSING_SOURCE_BLOCK
-        )
-        target_errors = filter_by_code(
-            errors, ValidationErrorCode.MISSING_TARGET_BLOCK
-        )
+        source_errors = filter_by_code(errors, ValidationErrorCode.MISSING_SOURCE_BLOCK)
+        target_errors = filter_by_code(errors, ValidationErrorCode.MISSING_TARGET_BLOCK)
         assert len(source_errors) == 0
         assert len(target_errors) == 0
 
@@ -1012,7 +996,5 @@ class TestGroupAsConnectionEndpoint:
         conn = Connection(id="c1", from_block_id="b1", to_block_id="nonexistent")
         graph = Graph(id="g", blocks=[b1], connections=[conn])
         errors = validate_graph(graph)
-        target_errors = filter_by_code(
-            errors, ValidationErrorCode.MISSING_TARGET_BLOCK
-        )
+        target_errors = filter_by_code(errors, ValidationErrorCode.MISSING_TARGET_BLOCK)
         assert len(target_errors) >= 1

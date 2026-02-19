@@ -595,9 +595,9 @@ class Graph:
                     g.parent_group_id = None
             # Remove connections that reference the deleted group
             self.connections = [
-                c for c in self.connections
-                if c.from_block_id != group_id
-                and c.to_block_id != group_id
+                c
+                for c in self.connections
+                if c.from_block_id != group_id and c.to_block_id != group_id
             ]
             return True
         return False
