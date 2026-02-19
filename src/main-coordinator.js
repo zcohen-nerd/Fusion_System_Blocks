@@ -316,8 +316,41 @@ class SystemBlocksMain {
       if (connEl && !core.getBlockAt(x, y)) {
         const connId = connEl.getAttribute('data-connection-id');
         this._selectedConnection = connId;
+        this._selectedStub = null;
         renderer.clearConnectionHighlights();
         renderer.highlightConnection(connId, true);
+        // Sync ribbon dropdowns with connection properties
+        const conn = core.diagram.connections.find(c => c.id === connId);
+        if (conn) {
+          const typeSelect = document.getElementById('connection-type-select');
+          if (typeSelect) typeSelect.value = (conn.type || 'auto').toLowerCase();
+          const dirSelect = document.getElementById('arrow-direction-select');
+          if (dirSelect) dirSelect.value = (conn.arrowDirection || 'forward').toLowerCase();
+        }
+        features.clearSelection();
+        core.clearSelection();
+        e.preventDefault();
+        return;
+      }
+
+      // --- Named stub click: select / highlight a named stub ---
+      const stubEl = e.target.closest
+        ? e.target.closest('[data-stub-id]')
+        : null;
+      if (stubEl && !core.getBlockAt(x, y)) {
+        const stubId = stubEl.getAttribute('data-stub-id');
+        this._selectedStub = stubId;
+        this._selectedConnection = null;
+        renderer.clearConnectionHighlights();
+        renderer.highlightNamedStub(stubId, true);
+        // Sync ribbon dropdowns with stub properties
+        const stub = (core.diagram.namedStubs || []).find(s => s.id === stubId);
+        if (stub) {
+          const typeSelect = document.getElementById('connection-type-select');
+          if (typeSelect) typeSelect.value = (stub.type || 'auto').toLowerCase();
+          const dirSelect = document.getElementById('arrow-direction-select');
+          if (dirSelect) dirSelect.value = (stub.direction || 'forward').toLowerCase();
+        }
         features.clearSelection();
         core.clearSelection();
         e.preventDefault();
@@ -341,8 +374,9 @@ class SystemBlocksMain {
         lastClickTime = now;
         lastClickBlockId = clickedBlock.id;
 
-        // Block clicked — clear any connection selection
+        // Block clicked — clear any connection/stub selection
         this._selectedConnection = null;
+        this._selectedStub = null;
         renderer.clearConnectionHighlights();
 
         if (e.ctrlKey || e.metaKey) {
@@ -370,8 +404,9 @@ class SystemBlocksMain {
         // Empty space clicked — reset double-click tracking
         lastClickBlockId = null;
 
-        // Clear connection selection
+        // Clear connection and stub selection
         this._selectedConnection = null;
+        this._selectedStub = null;
         renderer.clearConnectionHighlights();
 
         if (!e.ctrlKey && !e.metaKey) {
@@ -612,6 +647,9 @@ class SystemBlocksMain {
             conn.fromPort = sourcePort;
             conn.toPort = bestPort;
 
+            // Invalidate the fan map so the new connection is included
+            // in the offset calculation.
+            renderer._cachedFanMap = null;
             // Re-render ALL connections touching these blocks so fan
             // offsets recalculate correctly (not just the new one).
             core.diagram.connections.forEach(c => {
@@ -655,6 +693,7 @@ class SystemBlocksMain {
           if (conn) {
             conn.fromPort = sourcePort;
             conn.toPort = bestPort;
+            renderer._cachedFanMap = null;
             renderer.renderConnection(conn);
             logger.info('Group connection created:', conn.id,
               'from', this._connectionMode.sourceBlock.name || sourceId,
@@ -917,6 +956,9 @@ class SystemBlocksMain {
           ? this._connectionMode.sourceBlock.id : null;
         const conn = core.addConnection(sourceId, targetBlock.id, type, direction);
         if (conn) {
+          // Invalidate the fan map so the new connection is included
+          // in the offset calculation.
+          renderer._cachedFanMap = null;
           // Re-render ALL connections touching these blocks so fan
           // offsets recalculate correctly (not just the new one).
           core.diagram.connections.forEach(c => {
@@ -1011,6 +1053,17 @@ class SystemBlocksMain {
           e.preventDefault();
           core.removeConnection(this._selectedConnection.id);
           this._selectedConnection = null;
+          renderer.clearConnectionHighlights();
+          renderer.updateAllBlocks(core.diagram);
+          if (features.updateGroupBoundaries) features.updateGroupBoundaries();
+          features.saveState();
+          return;
+        }
+        // Delete selected named stub
+        if (this._selectedStub) {
+          e.preventDefault();
+          if (core.removeNamedStub) core.removeNamedStub(this._selectedStub);
+          this._selectedStub = null;
           renderer.clearConnectionHighlights();
           renderer.updateAllBlocks(core.diagram);
           if (features.updateGroupBoundaries) features.updateGroupBoundaries();
@@ -1966,6 +2019,7 @@ class SystemBlocksMain {
 
     const conn = core.addConnection(sourceBlock.id, target.block.id, type, direction);
     if (conn) {
+      renderer._cachedFanMap = null;
       renderer.renderConnection(conn);
       // Re-render cross-diagram stubs so the new connection shows its flag
       renderer.renderCrossDiagramStubs(core.diagram);
@@ -2756,16 +2810,42 @@ class SystemBlocksMain {
       listEl.style.cssText = 'max-height:150px;overflow-y:auto;margin-top:6px;';
       card.appendChild(listEl);
 
+      // Track keyboard-highlighted suggestion index (-1 = none)
+      let highlightedIdx = -1;
+      let currentMatches = [];
+
+      const clearHighlight = () => {
+        const items = listEl.children;
+        for (let i = 0; i < items.length; i++) {
+          items[i].style.background = 'transparent';
+        }
+      };
+
+      const applyHighlight = (idx) => {
+        clearHighlight();
+        if (idx >= 0 && idx < listEl.children.length) {
+          listEl.children[idx].style.background = '#3a3a5e';
+          // Scroll into view if needed
+          listEl.children[idx].scrollIntoView({ block: 'nearest' });
+        }
+      };
+
       const renderSuggestions = (filter) => {
         listEl.innerHTML = '';
+        highlightedIdx = -1;
         const lf = (filter || '').toLowerCase();
-        const matches = suggestions.filter(s => s.toLowerCase().includes(lf));
-        matches.forEach(s => {
+        currentMatches = suggestions.filter(s => s.toLowerCase().includes(lf));
+        currentMatches.forEach((s, idx) => {
           const item = document.createElement('div');
           item.textContent = s;
           item.style.cssText = 'padding:4px 8px;cursor:pointer;border-radius:3px;';
-          item.addEventListener('mouseenter', () => { item.style.background = '#3a3a5e'; });
-          item.addEventListener('mouseleave', () => { item.style.background = 'transparent'; });
+          item.addEventListener('mouseenter', () => {
+            highlightedIdx = idx;
+            applyHighlight(idx);
+          });
+          item.addEventListener('mouseleave', () => {
+            item.style.background = 'transparent';
+          });
           item.addEventListener('click', () => {
             input.value = s;
             renderSuggestions(s);
@@ -2802,9 +2882,36 @@ class SystemBlocksMain {
       // Focus input and select text
       setTimeout(() => { input.focus(); input.select(); }, 0);
 
-      // Enter key submits, Escape cancels
+      // Keyboard navigation: arrows, Enter, Escape
       input.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Enter') { ev.preventDefault(); overlay.remove(); resolve(input.value); }
+        if (ev.key === 'ArrowDown') {
+          ev.preventDefault();
+          if (currentMatches.length > 0) {
+            highlightedIdx = (highlightedIdx + 1) % currentMatches.length;
+            applyHighlight(highlightedIdx);
+          }
+          return;
+        }
+        if (ev.key === 'ArrowUp') {
+          ev.preventDefault();
+          if (currentMatches.length > 0) {
+            highlightedIdx = highlightedIdx <= 0
+              ? currentMatches.length - 1
+              : highlightedIdx - 1;
+            applyHighlight(highlightedIdx);
+          }
+          return;
+        }
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          // If a suggestion is highlighted, use it; otherwise use typed text
+          if (highlightedIdx >= 0 && highlightedIdx < currentMatches.length) {
+            input.value = currentMatches[highlightedIdx];
+          }
+          overlay.remove();
+          resolve(input.value);
+          return;
+        }
         if (ev.key === 'Escape') { ev.preventDefault(); overlay.remove(); resolve(null); }
       });
     });

@@ -458,6 +458,20 @@ class AdvancedFeatures {
     boundary.setAttribute('rx', '8');
     gEl.appendChild(boundary);
 
+    // Wide invisible hit area around the boundary so it's easier to click
+    const hitRect = document.createElementNS(ns, 'rect');
+    hitRect.setAttribute('x', bx - 6);
+    hitRect.setAttribute('y', by - 6);
+    hitRect.setAttribute('width', bw + 12);
+    hitRect.setAttribute('height', bh + 12);
+    hitRect.setAttribute('fill', 'transparent');
+    hitRect.setAttribute('stroke', 'transparent');
+    hitRect.setAttribute('stroke-width', '12');
+    hitRect.setAttribute('rx', '10');
+    hitRect.setAttribute('pointer-events', 'stroke');
+    hitRect.setAttribute('cursor', 'pointer');
+    gEl.appendChild(hitRect);
+
     // Render group label above the boundary
     let labelY = by - 6;
     if (group.name && group.name !== 'default') {

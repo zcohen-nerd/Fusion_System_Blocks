@@ -1078,21 +1078,21 @@ class DiagramRenderer {
     const size = 10;
 
     // The arrow should point INTO the block along the port axis.
-    // For an 'input' port (left edge), the path approaches from the
-    // left, so the arrow points right (into the block).
+    // segAngle is the direction the arrow tip faces (into the block).
+    // The base extends opposite (awayAngle = segAngle + π).
     let segAngle;
     switch (toPort) {
       case 'output':
-        segAngle = 0; // port is on the right → arrow points right (into block from left is wrong; path arrives from left, arrow tip at right edge pointing right means pointing away)
+        segAngle = Math.PI; // port on right edge → arrow points left (into block)
         break;
       case 'top':
-        segAngle = -Math.PI / 2; // arrow points up into the block
+        segAngle = Math.PI / 2; // port on top edge → arrow points down (into block)
         break;
       case 'bottom':
-        segAngle = Math.PI / 2; // arrow points down into the block
+        segAngle = -Math.PI / 2; // port on bottom edge → arrow points up (into block)
         break;
       default: // 'input'
-        segAngle = Math.PI; // arrow points left into the block
+        segAngle = 0; // port on left edge → arrow points right (into block)
         break;
     }
 
@@ -1453,9 +1453,9 @@ class DiagramRenderer {
     this.connectionElements.forEach((group, id) => {
       this.highlightConnection(id, false);
     });
-    // Also clear any highlighted cross-diagram and same-level stubs
+    // Also clear any highlighted cross-diagram, same-level, and named stubs
     if (this.svg) {
-      this.svg.querySelectorAll('.cross-diagram-stub[data-highlighted], .same-level-stub[data-highlighted]').forEach(g => {
+      this.svg.querySelectorAll('.cross-diagram-stub[data-highlighted], .same-level-stub[data-highlighted], .named-stub[data-highlighted]').forEach(g => {
         const stubLines = g.querySelectorAll('line');
         const stubLine = stubLines.length > 1 ? stubLines[1] : stubLines[0];
         if (stubLine) {
@@ -1464,6 +1464,31 @@ class DiagramRenderer {
         }
         g.removeAttribute('data-highlighted');
       });
+    }
+  }
+
+  /**
+   * Highlight or un-highlight a named stub by its stub ID.
+   */
+  highlightNamedStub(stubId, highlight = true) {
+    if (!this.svg) return;
+    const group = this.svg.querySelector(`.named-stub[data-stub-id="${stubId}"]`);
+    if (!group) return;
+
+    const stubLines = group.querySelectorAll('line');
+    const stubLine = stubLines.length > 1 ? stubLines[1] : stubLines[0];
+    if (!stubLine) return;
+
+    if (highlight) {
+      stubLine.setAttribute('data-orig-stroke', stubLine.getAttribute('stroke'));
+      stubLine.setAttribute('data-orig-width', stubLine.getAttribute('stroke-width'));
+      stubLine.setAttribute('stroke-width', '4');
+      stubLine.setAttribute('stroke', '#FFD700');
+      group.setAttribute('data-highlighted', 'true');
+    } else {
+      stubLine.setAttribute('stroke', stubLine.getAttribute('data-orig-stroke') || '#666');
+      stubLine.setAttribute('stroke-width', stubLine.getAttribute('data-orig-width') || '2');
+      group.removeAttribute('data-highlighted');
     }
   }
 
@@ -2059,7 +2084,7 @@ class DiagramRenderer {
       const stubLen = 30;
 
       // Fan offset (unified)
-      const slot = this._lookupFanSlot(fanMap, stub.blockId, portSide, 'named', stub.id);
+      const slot = this._lookupFanSlot(fanMap, stub.blockId, portSide, 'named-stub', stub.id);
       const fanIdx = slot.index;
       const fanTotal = slot.total;
 
