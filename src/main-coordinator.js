@@ -497,7 +497,6 @@ class SystemBlocksMain {
             }
           }
         });
-        }
       } else if (features.isLassoSelecting) {
         // Update lasso selection
         features.updateLassoSelection(x, y);
