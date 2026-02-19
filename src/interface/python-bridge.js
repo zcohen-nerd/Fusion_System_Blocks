@@ -219,6 +219,15 @@ class PythonInterface {
             window.advancedFeatures._restoreGroupsFromDiagram();
           }
 
+          // Reset undo/redo stacks so the loaded diagram becomes the
+          // new baseline.  Without this, the first undo would jump
+          // back to the pre-load empty canvas.
+          if (window.advancedFeatures) {
+            window.advancedFeatures.undoStack = [];
+            window.advancedFeatures.redoStack = [];
+            window.advancedFeatures.saveState('Open diagram');
+          }
+
           // Hide the empty-canvas placeholder when a diagram is loaded
           var emptyState = document.getElementById('empty-canvas-state');
           if (emptyState) emptyState.style.display = 'none';
@@ -323,6 +332,12 @@ class PythonInterface {
           window.diagramEditor.importDiagram(JSON.stringify(responseData.diagram));
           if (window.advancedFeatures && typeof window.advancedFeatures._restoreGroupsFromDiagram === 'function') {
             window.advancedFeatures._restoreGroupsFromDiagram();
+          }
+          // Reset undo/redo stacks so the imported diagram is the baseline
+          if (window.advancedFeatures) {
+            window.advancedFeatures.undoStack = [];
+            window.advancedFeatures.redoStack = [];
+            window.advancedFeatures.saveState('Import diagram');
           }
         }
       } else {

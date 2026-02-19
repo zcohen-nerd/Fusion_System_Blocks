@@ -508,6 +508,10 @@ class ToolbarManager {
         if (window.advancedFeatures._hierarchyStack) {
           window.advancedFeatures._hierarchyStack = [];
         }
+        // Reset undo/redo so the empty diagram is the new baseline
+        window.advancedFeatures.undoStack = [];
+        window.advancedFeatures.redoStack = [];
+        window.advancedFeatures.saveState('New diagram');
       }
       this.renderer.updateAllBlocks(this.editor.diagram);
       this._updateBreadcrumb();
@@ -991,6 +995,7 @@ class ToolbarManager {
 
       this.renderer.renderBlock(newBlock);
       this.editor.selectBlock(newBlock.id);
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
 
       // Hide the empty-canvas overlay once a block exists
       const emptyState = document.getElementById('empty-canvas-state');
@@ -2204,6 +2209,7 @@ class ToolbarManager {
       });
       this.renderer.renderBlock(newBlock);
       this.editor.selectBlock(newBlock.id);
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
       const emptyState = document.getElementById('empty-canvas-state');
       if (emptyState) emptyState.classList.add('hidden');
 

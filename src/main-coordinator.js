@@ -621,11 +621,11 @@ class SystemBlocksMain {
         let targetBlock = core.getBlockAt(x, y);
         if (!targetBlock) targetBlock = core.getBlockAt(x, y, 8);
 
-        // Also check if dropping on a group boundary (group-level connection)
-        let targetGroup = null;
-        if (!targetBlock && window.advancedFeatures) {
-          targetGroup = window.advancedFeatures.getGroupAtPoint(x, y);
-        }
+        // NOTE: group-boundary connections removed from drag-drop path.
+        // Dropping on empty space inside a group should offer stub creation,
+        // same as empty space elsewhere.  Group connections can still be
+        // created via the context menu.
+        const targetGroup = null;
 
         const sourceId = this._connectionMode.sourceBlock
           ? this._connectionMode.sourceBlock.id : null;
@@ -1422,6 +1422,7 @@ class SystemBlocksMain {
       if (newName && newName !== block.name) {
         core.updateBlock(block.id, { name: newName });
         renderer.renderBlock(core.diagram.blocks.find(b => b.id === block.id));
+        if (window.advancedFeatures) window.advancedFeatures.saveState();
         // Re-render stub connections so labels reflect the new name
         if (renderer.renderSameLevelStubs) {
           renderer.renderSameLevelStubs(core.diagram);
