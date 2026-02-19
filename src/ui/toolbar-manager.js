@@ -402,7 +402,7 @@ class ToolbarManager {
       'Delete': { handler: () => this.handleDeleteSelected() },
       'Backspace': { handler: () => this.handleDeleteSelected() },
       'Insert': { handler: () => this.handleCreateBlock() },
-      'KeyB': { handler: () => this.handleCreateBlock() }
+      'KeyB': { handler: () => this.handleCreateBlock() },
       'Shift+KeyP': { shift: true, handler: () => this.handleSetConnectionType('power') },
       'Shift+KeyD': { shift: true, handler: () => this.handleSetConnectionType('data') },
       'Shift+KeyM': { shift: true, handler: () => this.handleSetConnectionType('mechanical') },
