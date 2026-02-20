@@ -835,8 +835,12 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
             "#fabed4",
             "#469990",
         ]
-        unique_nets = sorted({str(s.get("netName", "")) for s in named_stubs if s.get("netName")})
-        net_colors = {n: net_palette[i % len(net_palette)] for i, n in enumerate(unique_nets)}
+        unique_nets = sorted(
+            {str(s.get("netName", "")) for s in named_stubs if s.get("netName")}
+        )
+        net_colors = {
+            n: net_palette[i % len(net_palette)] for i, n in enumerate(unique_nets)
+        }
 
         for stub in named_stubs:
             block = id_to_block.get(stub.get("blockId", ""))
@@ -854,7 +858,11 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
             stub_type = (stub.get("type") or "auto").lower()
             style = conn_styles.get(stub_type, default_conn_style)
             explicit_type = stub_type != "auto"
-            stroke = style["stroke"] if explicit_type else net_colors.get(net_name, style["stroke"])
+            stroke = (
+                style["stroke"]
+                if explicit_type
+                else net_colors.get(net_name, style["stroke"])
+            )
             stroke_w = style["width"]
             dash = style["dash"] or "4,2"
 
@@ -896,9 +904,16 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
             direction = (stub.get("direction") or "forward").lower()
             is_horizontal = port_side in {"input", "output"}
 
-            def _stub_arrow(points_outward: bool, tip_x: float, tip_y: float) -> None:
+            def _stub_arrow(
+                points_outward: bool,
+                tip_x: float,
+                tip_y: float,
+                *,
+                horizontal: bool,
+                color: str,
+            ) -> None:
                 arrow_size = 8
-                if is_horizontal:
+                if horizontal:
                     d = 1 if points_outward else -1
                     p = (
                         f"{tip_x},{tip_y} "
@@ -912,21 +927,47 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
                         f"{tip_x - arrow_size / 2},{tip_y - d * arrow_size} "
                         f"{tip_x + arrow_size / 2},{tip_y - d * arrow_size}"
                     )
-                parts.append(f'<polygon points="{p}" fill="{stroke}"/>')
+                parts.append(f'<polygon points="{p}" fill="{color}"/>')
 
             outward = port_side in {"output", "bottom"}
             if direction == "backward":
-                _stub_arrow(not outward, x1, y1)
+                _stub_arrow(
+                    not outward,
+                    x1,
+                    y1,
+                    horizontal=is_horizontal,
+                    color=stroke,
+                )
             elif direction == "bidirectional":
-                _stub_arrow(outward, x2, y2)
-                _stub_arrow(not outward, x1, y1)
+                _stub_arrow(
+                    outward,
+                    x2,
+                    y2,
+                    horizontal=is_horizontal,
+                    color=stroke,
+                )
+                _stub_arrow(
+                    not outward,
+                    x1,
+                    y1,
+                    horizontal=is_horizontal,
+                    color=stroke,
+                )
             else:  # forward/default
-                _stub_arrow(outward, x2, y2)
+                _stub_arrow(
+                    outward,
+                    x2,
+                    y2,
+                    horizontal=is_horizontal,
+                    color=stroke,
+                )
 
             # Label placement mirrors renderer orientation
             label_offset = 4
             if is_horizontal:
-                label_x = x2 + label_offset if port_side == "output" else x2 - label_offset
+                label_x = (
+                    x2 + label_offset if port_side == "output" else x2 - label_offset
+                )
                 label_y = y2 + 4
                 anchor = "start" if port_side == "output" else "end"
             else:

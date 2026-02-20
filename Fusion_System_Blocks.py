@@ -25,7 +25,6 @@ from fsb_core.bridge_actions import BridgeAction, BridgeEvent
 from fsb_core.delta import apply_patch, is_trivial_patch
 from fsb_core.requirements import validate_requirements
 from fsb_core.serialization import dict_to_graph
-from fsb_core.validation import get_error_summary, validate_graph
 from fsb_core.version_control import SnapshotStore
 
 # Import logging utilities
@@ -175,10 +174,9 @@ def save_diagram_json(json_data: str | dict) -> bool:
         # Normalise: accept both dict and str so callers from the
         # JS bridge (which may pass either type) never crash.
         if isinstance(json_data, dict):
-            diagram = json_data
             json_data = json.dumps(json_data)
         else:
-            diagram = json.loads(json_data)
+            json.loads(json_data)
 
         root_comp = get_root_component()
         if not root_comp:
