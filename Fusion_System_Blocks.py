@@ -289,7 +289,11 @@ def _save_doc_index(index: list[dict[str, str]]) -> None:
     attrs.add(ATTR_GROUP, "docIndex", json.dumps(index))
 
 
-def save_named_diagram(label: str, json_data: str | dict) -> bool:
+def save_named_diagram(
+    label: str,
+    json_data: str | dict,
+    slug: str | None = None,
+) -> bool:
     """Save a diagram under a user-chosen name.
 
     Args:
@@ -303,13 +307,13 @@ def save_named_diagram(label: str, json_data: str | dict) -> bool:
     if isinstance(json_data, dict):
         json_data = json.dumps(json_data)
     try:
-        slug = _slug_from_label(label)
+        resolved_slug = _slug_from_label(slug) if slug else _slug_from_label(label)
         root_comp = get_root_component()
         if not root_comp:
             notify_error("No active design found")
             return False
 
-        attr_name = _doc_attr_name(slug)
+        attr_name = _doc_attr_name(resolved_slug)
         attrs = root_comp.attributes
         # Remove existing attribute with same name
         for attr in attrs:
@@ -321,12 +325,18 @@ def save_named_diagram(label: str, json_data: str | dict) -> bool:
         # Update manifest
         index = list_named_diagrams()
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        entry = next((e for e in index if e["slug"] == slug), None)
+        entry = next((e for e in index if e["slug"] == resolved_slug), None)
         if entry:
             entry["modified"] = now
             entry["label"] = label
         else:
-            index.append({"slug": slug, "label": label, "modified": now})
+            index.append(
+                {
+                    "slug": resolved_slug,
+                    "label": label,
+                    "modified": now,
+                }
+            )
         _save_doc_index(index)
         return True
     except Exception as e:
@@ -779,11 +789,31 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
 
     def _handle_save_named_diagram(self, data: dict[str, Any]) -> dict[str, Any]:
         """Save diagram under a user-chosen name."""
-        label = data.get("label", "Untitled")
+        slug = str(data.get("slug", "") or "").strip()
+        label = str(data.get("label", "") or "").strip()
         json_data = data.get("diagram", "{}")
-        ok = save_named_diagram(label, json_data)
+
+        # If caller passed only slug (regular Save on an opened named doc),
+        # recover the existing label from the manifest.
+        if not label and slug:
+            docs = list_named_diagrams()
+            existing = next((d for d in docs if d.get("slug") == slug), None)
+            label = existing.get("label", slug) if existing else slug
+        if not label:
+            label = "Untitled"
+
+        resolved_slug = _slug_from_label(slug) if slug else _slug_from_label(label)
+        ok = save_named_diagram(label, json_data, slug=resolved_slug)
         if ok:
-            return {"success": True, "documents": list_named_diagrams()}
+            # Keep the default open/load slot in sync with the latest saved
+            # named document so plain "Open" returns the newest content.
+            save_diagram_json(json_data)
+            return {
+                "success": True,
+                "documents": list_named_diagrams(),
+                "slug": resolved_slug,
+                "label": label,
+            }
         return {"success": False, "error": "Save failed"}
 
     def _handle_load_named_diagram(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -795,7 +825,15 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
                 diagram = json.loads(json_str)
             except json.JSONDecodeError:
                 diagram = diagram_data.create_empty_diagram()
-            return {"success": True, "diagram": diagram}
+            docs = list_named_diagrams()
+            existing = next((d for d in docs if d.get("slug") == slug), None)
+            label = existing.get("label", slug) if existing else slug
+            return {
+                "success": True,
+                "diagram": diagram,
+                "slug": slug,
+                "label": label,
+            }
         return {"success": False, "error": "Document not found"}
 
     def _handle_delete_named_diagram(self, data: dict[str, Any]) -> dict[str, Any]:

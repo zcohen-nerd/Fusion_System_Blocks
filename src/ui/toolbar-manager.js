@@ -520,6 +520,9 @@ class ToolbarManager {
     if (confirm('Create new diagram? Unsaved changes will be lost.')) {
       this.editor.diagram = this.editor.createEmptyDiagram();
       this.editor.clearSelection();
+      if (window.pythonInterface && window.pythonInterface.clearActiveNamedDocument) {
+        window.pythonInterface.clearActiveNamedDocument();
+      }
       // Clear all groups so labels don't persist into the new document
       if (window.advancedFeatures) {
         window.advancedFeatures.groups.clear();

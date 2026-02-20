@@ -35,6 +35,7 @@ class PythonInterface {
     this.messageQueue = [];
     this.pendingRequests = new Map();
     this.requestId = 0;
+    this.activeNamedDocument = null;
 
     this.initializeInterface();
   }
@@ -361,6 +362,42 @@ class PythonInterface {
     const silent = options.silent || false;
     const forceFull = options.forceFull || false;
 
+    // If a named document is currently active, Save should overwrite that
+    // named document (not just the default diagram slot).
+    if (this.activeNamedDocument && this.activeNamedDocument.slug) {
+      const diagramJson = window.diagramEditor.exportDiagram();
+      const payload = {
+        slug: this.activeNamedDocument.slug,
+        label: this.activeNamedDocument.label,
+        diagram: diagramJson
+      };
+      return this.sendMessage(BridgeAction.SAVE_NAMED_DIAGRAM, payload, true)
+        .then(response => {
+          if (response.success) {
+            window.diagramEditor.markSaved();
+            try { localStorage.removeItem('fsb_recovery_backup'); } catch (_) {}
+            if (!silent) {
+              this.showNotification('Document saved successfully', 'success');
+            }
+            if (response.slug) {
+              this.activeNamedDocument = {
+                slug: response.slug,
+                label: response.label || this.activeNamedDocument.label || response.slug
+              };
+            }
+          } else {
+            throw new Error(response.error || 'Save failed');
+          }
+          return response;
+        })
+        .catch(error => {
+          if (!silent) {
+            this.showNotification('Failed to save diagram: ' + error.message, 'error');
+          }
+          throw error;
+        });
+    }
+
     // Try delta-save: send only the diff instead of the full diagram.
     var delta = !forceFull ? window.diagramEditor.getDelta() : null;
     if (delta !== null && delta.length > 0) {
@@ -417,6 +454,7 @@ class PythonInterface {
         }
         if (response.diagram) {
           this.handleLoadDiagram(response.diagram);
+          this.activeNamedDocument = null;
         } else {
           this.showNotification('No saved diagram found', 'info');
         }
@@ -535,6 +573,10 @@ class PythonInterface {
     return this.sendMessage(BridgeAction.SAVE_NAMED_DIAGRAM, { label, diagram: diagramJson }, true)
       .then(response => {
         if (response.success) {
+          this.activeNamedDocument = {
+            slug: response.slug || null,
+            label: response.label || label
+          };
           this.showNotification('Saved as "' + label + '"', 'success');
         } else {
           throw new Error(response.error || 'Save As failed');
@@ -553,6 +595,10 @@ class PythonInterface {
       .then(response => {
         if (response.success && response.diagram) {
           this.handleLoadDiagram(response.diagram);
+          this.activeNamedDocument = {
+            slug: response.slug || slug,
+            label: response.label || slug
+          };
         } else {
           throw new Error(response.error || 'Load failed');
         }
@@ -577,6 +623,10 @@ class PythonInterface {
         this.showNotification('Failed to delete: ' + error.message, 'error');
         throw error;
       });
+  }
+
+  clearActiveNamedDocument() {
+    this.activeNamedDocument = null;
   }
 
   // === REQUIREMENTS & VERSION CONTROL (Issue #31) ===
