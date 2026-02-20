@@ -161,9 +161,9 @@ def get_root_component() -> adsk.fusion.Component | None:
 def save_diagram_json(json_data: str | dict) -> bool:
     """Save diagram JSON to Fusion attributes.
 
-    Validates the diagram using the fsb_core library before saving.
-    Validation errors are advisory — they show warnings but do not
-    block the save to allow work-in-progress persistence.
+    Does NOT validate on save — validation is only triggered by the
+    explicit "Validate" / "Check Rules" button.  This lets users persist
+    work-in-progress freely without being interrupted by warnings.
 
     Args:
         json_data: JSON string or already-parsed dict of the diagram.
@@ -179,21 +179,6 @@ def save_diagram_json(json_data: str | dict) -> bool:
             json_data = json.dumps(json_data)
         else:
             diagram = json.loads(json_data)
-
-        # Core library validation (advisory — does not block save)
-        graph = dict_to_graph(diagram)
-        validation_errors = validate_graph(graph)
-
-        if validation_errors:
-            error_summary = get_error_summary(validation_errors)
-            _show_validation_errors_dialog(validation_errors)
-            # Log warnings but do NOT block save — let the user persist
-            # their work-in-progress and fix issues later.
-            if LOGGING_AVAILABLE:
-                _logger.warning(
-                    "Saving diagram despite validation warnings:\n%s",
-                    error_summary,
-                )
 
         root_comp = get_root_component()
         if not root_comp:
