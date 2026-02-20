@@ -550,7 +550,7 @@ def generate_bom_csv(diagram: dict[str, Any]) -> str:
 
     bom = generate_living_bom(diagram)
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = csv.writer(output, lineterminator="\n")
     writer.writerow(
         [
             "Block",
@@ -691,7 +691,7 @@ def generate_connection_matrix_csv(diagram: dict[str, Any]) -> str:
             matrix[from_name][to_name] += 1
 
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = csv.writer(output, lineterminator="\n")
     writer.writerow([""] + names)  # header
     for row_name in names:
         writer.writerow([row_name] + [matrix[row_name][col] for col in names])
@@ -714,6 +714,7 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
     diagram = _normalize_connections(diagram)
     blocks = diagram.get("blocks", [])
     connections = diagram.get("connections", [])
+    named_stubs = diagram.get("namedStubs", [])
 
     if not blocks:
         return (
@@ -818,6 +819,127 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
         )
         # Arrowhead in connection colour
         _add_arrowhead(parts, x1, y1, x2, y2)
+
+    # ---- Draw named stubs (net-label stubs) ----
+    if named_stubs:
+        # Palette mirrors renderer fallback ordering
+        net_palette = [
+            "#e6194b",
+            "#3cb44b",
+            "#4363d8",
+            "#f58231",
+            "#911eb4",
+            "#42d4f4",
+            "#f032e6",
+            "#bfef45",
+            "#fabed4",
+            "#469990",
+        ]
+        unique_nets = sorted({str(s.get("netName", "")) for s in named_stubs if s.get("netName")})
+        net_colors = {n: net_palette[i % len(net_palette)] for i, n in enumerate(unique_nets)}
+
+        for stub in named_stubs:
+            block = id_to_block.get(stub.get("blockId", ""))
+            if not block:
+                continue
+
+            block_w = block.get("width", default_w)
+            block_h = block.get("height", default_h)
+            port_side = (stub.get("portSide") or "output").lower()
+            net_name = str(stub.get("netName", "")).strip()
+            if not net_name:
+                continue
+
+            # Match renderer behavior: explicit type color wins; auto uses net color
+            stub_type = (stub.get("type") or "auto").lower()
+            style = conn_styles.get(stub_type, default_conn_style)
+            explicit_type = stub_type != "auto"
+            stroke = style["stroke"] if explicit_type else net_colors.get(net_name, style["stroke"])
+            stroke_w = style["width"]
+            dash = style["dash"] or "4,2"
+
+            # Place stubs on the same sides as renderer (without fan offset)
+            stub_len = 30
+            if port_side == "input":
+                x1 = block.get("x", 0)
+                y1 = block.get("y", 0) + block_h / 2
+                x2 = x1 - stub_len
+                y2 = y1
+            elif port_side == "top":
+                x1 = block.get("x", 0) + block_w / 2
+                y1 = block.get("y", 0)
+                x2 = x1
+                y2 = y1 - stub_len
+            elif port_side == "bottom":
+                x1 = block.get("x", 0) + block_w / 2
+                y1 = block.get("y", 0) + block_h
+                x2 = x1
+                y2 = y1 + stub_len
+            else:  # output/default
+                x1 = block.get("x", 0) + block_w
+                y1 = block.get("y", 0) + block_h / 2
+                x2 = x1 + stub_len
+                y2 = y1
+
+            parts.append(
+                f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
+                f'stroke="{stroke}" stroke-width="{stroke_w}" '
+                f'stroke-dasharray="{dash}"/>'
+            )
+
+            # Diamond marker at stub end
+            ds = 5
+            points = f"{x2},{y2 - ds} {x2 + ds},{y2} {x2},{y2 + ds} {x2 - ds},{y2}"
+            parts.append(f'<polygon points="{points}" fill="{stroke}"/>')
+
+            # Arrow direction (forward/backward/bidirectional)
+            direction = (stub.get("direction") or "forward").lower()
+            is_horizontal = port_side in {"input", "output"}
+
+            def _stub_arrow(points_outward: bool, tip_x: float, tip_y: float) -> None:
+                arrow_size = 8
+                if is_horizontal:
+                    d = 1 if points_outward else -1
+                    p = (
+                        f"{tip_x},{tip_y} "
+                        f"{tip_x - d * arrow_size},{tip_y - arrow_size / 2} "
+                        f"{tip_x - d * arrow_size},{tip_y + arrow_size / 2}"
+                    )
+                else:
+                    d = 1 if points_outward else -1
+                    p = (
+                        f"{tip_x},{tip_y} "
+                        f"{tip_x - arrow_size / 2},{tip_y - d * arrow_size} "
+                        f"{tip_x + arrow_size / 2},{tip_y - d * arrow_size}"
+                    )
+                parts.append(f'<polygon points="{p}" fill="{stroke}"/>')
+
+            outward = port_side in {"output", "bottom"}
+            if direction == "backward":
+                _stub_arrow(not outward, x1, y1)
+            elif direction == "bidirectional":
+                _stub_arrow(outward, x2, y2)
+                _stub_arrow(not outward, x1, y1)
+            else:  # forward/default
+                _stub_arrow(outward, x2, y2)
+
+            # Label placement mirrors renderer orientation
+            label_offset = 4
+            if is_horizontal:
+                label_x = x2 + label_offset if port_side == "output" else x2 - label_offset
+                label_y = y2 + 4
+                anchor = "start" if port_side == "output" else "end"
+            else:
+                label_x = x2 + label_offset
+                label_y = y2 + (12 if port_side == "bottom" else -4)
+                anchor = "start"
+
+            parts.append(
+                f'<text x="{label_x}" y="{label_y}" '
+                f'font-size="10" font-family="Arial, sans-serif" '
+                f'fill="{stroke}" font-weight="bold" text-anchor="{anchor}">'
+                f"{_esc(net_name)}</text>"
+            )
 
     # ---- Draw blocks ----
     for b in blocks:
@@ -1105,17 +1227,17 @@ def generate_pdf_report(
         pdf.set_font(f_bold, size)
         pdf.set_color(0, 0.47, 0.83)  # accent blue
         pdf.draw_text(margin, y, text)
-        return y + size + 6
+        return y + size + 10
 
     def _body(y: float, text: str, size: float = 9) -> float:
         pdf.set_font(f_regular, size)
         pdf.set_color(0.13, 0.13, 0.13)
         pdf.draw_text(margin, y, text)
-        return y + size + 5
+        return y + size + 8
 
     def _table_header(y: float, cols: list[tuple[str, float]]) -> float:
         """Draw a table header row and return the new y."""
-        row_h = 18
+        row_h = 22
         # Header background
         pdf.set_color(0, 0.47, 0.83)
         pdf.draw_rect(margin, y, usable_w, row_h, fill=True)
@@ -1124,14 +1246,14 @@ def generate_pdf_report(
         pdf.set_color(1, 1, 1)
         cx = margin + 4
         for label, col_w in cols:
-            pdf.draw_text(cx, y + 5, label)
+            pdf.draw_text(cx, y + 8, label)
             cx += col_w
         return y + row_h
 
     def _table_row(
         y: float, values: list[str], col_widths: list[float], *, alt: bool = False
     ) -> float:
-        row_h = 16
+        row_h = 19
         if alt:
             pdf.set_color(0.96, 0.96, 0.96)
             pdf.draw_rect(margin, y, usable_w, row_h, fill=True)
@@ -1140,7 +1262,7 @@ def generate_pdf_report(
         cx = margin + 4
         for val, cw in zip(values, col_widths):
             # Conservative truncation: ~5pt per char avoids column bleeding
-            pdf.draw_text(cx, y + 4, _pdf_truncate(val, int(cw / 5)))
+            pdf.draw_text(cx, y + 7, _pdf_truncate(val, int(cw / 5)))
             cx += cw
         return y + row_h
 
@@ -1177,7 +1299,7 @@ def generate_pdf_report(
     y += 12
 
     y = _body(y, f"Generated: {timestamp}")
-    y += 8
+    y += 12
 
     # Summary table
     y = _heading(y, "Summary")
@@ -1186,7 +1308,7 @@ def generate_pdf_report(
     cw_s = [c[1] for c in cols_summary]
     y = _table_row(y, ["Total Blocks", str(len(blocks))], cw_s)
     y = _table_row(y, ["Total Connections", str(len(connections))], cw_s, alt=True)
-    y += 12
+    y += 16
 
     # Status breakdown
     y = _heading(y, "Status Breakdown")
@@ -1196,7 +1318,7 @@ def generate_pdf_report(
     for i, (status, count) in enumerate(status_counts.items()):
         y = _check_page_break(y)
         y = _table_row(y, [status, str(count)], cw_st, alt=i % 2 == 1)
-    y += 12
+    y += 16
 
     # Rule check results
     y = _check_page_break(y, 80)
@@ -1208,7 +1330,7 @@ def generate_pdf_report(
             y = _body(y, f"[{icon}] {r['message']}")
     else:
         y = _body(y, "All rule checks passed.")
-    y += 12
+    y += 16
 
     _finish_page_with_footer(y)
 
@@ -1282,7 +1404,7 @@ def generate_pdf_report(
         pdf.new_page()
         y = margin
         y = _heading(y, "Diagram Visualisation")
-        y += 4
+        y += 8
 
         # Compute block bounding box
         default_w_b, default_h_b = 160, 80
@@ -1502,7 +1624,7 @@ def pin_map_csv(diagram: dict[str, Any]) -> str:
     from .core import find_block_by_id
 
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = csv.writer(output, lineterminator="\n")
 
     # Header
     writer.writerow(
@@ -1729,7 +1851,7 @@ def export_report_files(
                 with open(filepath, "wb") as fb:
                     fb.write(content)
             else:
-                with open(filepath, "w", encoding="utf-8") as fh:
+                with open(filepath, "w", encoding="utf-8", newline="") as fh:
                     fh.write(content)
             results[key] = str(filepath)
         except Exception as exc:  # noqa: BLE001
