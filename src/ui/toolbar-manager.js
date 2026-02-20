@@ -443,11 +443,9 @@ class ToolbarManager {
     // Ctrl+C = copy (primary KeyC above is bare-C connect)
     this._extraShortcuts.set('Ctrl+KeyC', { ctrl: true, handler: () => this.handleCopy() });
     // Bare C = connect (when Ctrl is NOT held)
-    // Remap: primary KeyC is now unused, handled via _extraShortcuts below
-    this.keyboardShortcuts.delete('KeyB'); // will re-add in correct order
-    // Re-add bare C for connect as primary:
+    // Re-add bare C for connect as primary.
+    // Keep existing KeyB binding (quick-pick) intact.
     this.keyboardShortcuts.set('KeyC', { handler: () => this.handleConnect() });
-    this.keyboardShortcuts.set('KeyB', { handler: () => this.handleCreateBlock() });
 
     document.addEventListener('keydown', (e) => this.handleKeydown(e));
   }
