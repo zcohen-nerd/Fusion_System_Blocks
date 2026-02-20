@@ -402,7 +402,26 @@ class ToolbarManager {
       'Delete': { handler: () => this.handleDeleteSelected() },
       'Backspace': { handler: () => this.handleDeleteSelected() },
       'Insert': { handler: () => this.handleCreateBlock() },
-      'KeyB': { handler: () => this.handleCreateBlock() },
+      'KeyB': { handler: () => {
+        // B opens the keyboard-driven quick-pick menu (B → G/E/M/S)
+        // which lives on the coordinator because it needs canvas-local state.
+        if (window.SystemBlocksMain && window.SystemBlocksMain._showQuickBlockMenu) {
+          const coord = window.SystemBlocksMain;
+          const core = coord.modules.get('core');
+          const renderer = coord.modules.get('renderer');
+          const features = coord.modules.get('features');
+          const svg = document.getElementById('svg-canvas');
+          if (core && renderer && features && svg) {
+            // Skip if connection or stub mode is active
+            if (coord._connectionMode && coord._connectionMode.active) return;
+            if (coord._stubTargetMode && coord._stubTargetMode.active) return;
+            coord._showQuickBlockMenu(core, renderer, features, svg);
+            return;
+          }
+        }
+        // Fallback to toolbar dropdown
+        this.handleCreateBlock();
+      }},
       'Shift+KeyP': { shift: true, handler: () => this.handleSetConnectionType('power') },
       'Shift+KeyD': { shift: true, handler: () => this.handleSetConnectionType('data') },
       'Shift+KeyM': { shift: true, handler: () => this.handleSetConnectionType('mechanical') },
