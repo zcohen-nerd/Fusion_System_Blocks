@@ -787,6 +787,8 @@ class ToolbarManager {
       const success = window.advancedFeatures.undo();
       if (!success) {
         logger.debug('Nothing to undo');
+      } else if (window.SystemBlocksMain) {
+        window.SystemBlocksMain._updateMinimap();
       }
     }
   }
@@ -796,6 +798,8 @@ class ToolbarManager {
       const success = window.advancedFeatures.redo();
       if (!success) {
         logger.debug('Nothing to redo');
+      } else if (window.SystemBlocksMain) {
+        window.SystemBlocksMain._updateMinimap();
       }
     }
   }

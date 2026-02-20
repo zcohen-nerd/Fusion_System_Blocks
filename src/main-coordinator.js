@@ -1061,69 +1061,15 @@ class SystemBlocksMain {
       }
 
       // --- Keyboard shortcuts (skip when focused in an input/textarea) ---
+      // NOTE: Most shortcuts are handled by ToolbarManager.setupKeyboardShortcuts().
+      // Only shortcuts that need access to coordinator-local state live here.
+      // Do NOT duplicate shortcuts that ToolbarManager already handles
+      // (Ctrl+Z, Ctrl+Y, Delete, Ctrl+D, Ctrl+A, B, etc.) — both handlers
+      // fire on the same keydown event, causing double-execution.
       const activeTag = document.activeElement ? document.activeElement.tagName : '';
       if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
 
-      // Ctrl+Shift+N — New block at center of viewport
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'N') {
-        e.preventDefault();
-        const vb = svg.viewBox.baseVal;
-        const cx = vb.x + vb.width / 2;
-        const cy = vb.y + vb.height / 2;
-        const snapped = core.snapToGrid(cx - 60, cy - 40);
-        const newBlock = core.addBlock({
-          name: 'New Block',
-          type: 'auto',
-          x: snapped.x,
-          y: snapped.y
-        });
-        renderer.renderBlock(newBlock);
-        core.selectBlock(newBlock.id);
-        setTimeout(() => this.startInlineEdit(newBlock, svg, core, renderer), 50);
-        return;
-      }
-
-      // Delete / Backspace — delete selected blocks
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        const sel = features.selectedBlocks;
-        if (sel && sel.size > 0) {
-          e.preventDefault();
-          const ids = Array.from(sel);
-          ids.forEach(id => core.removeBlock(id));
-          features.clearSelection();
-          core.clearSelection();
-          this.hidePropertiesPanel();
-          renderer.updateAllBlocks(core.diagram);
-          if (features.updateGroupBoundaries) features.updateGroupBoundaries();
-          features.saveState();
-          this._updateMinimap();
-          return;
-        }
-        // Delete selected connection
-        if (this._selectedConnection) {
-          e.preventDefault();
-          core.removeConnection(this._selectedConnection.id);
-          this._selectedConnection = null;
-          renderer.clearConnectionHighlights();
-          renderer.updateAllBlocks(core.diagram);
-          if (features.updateGroupBoundaries) features.updateGroupBoundaries();
-          features.saveState();
-          return;
-        }
-        // Delete selected named stub
-        if (this._selectedStub) {
-          e.preventDefault();
-          if (core.removeNamedStub) core.removeNamedStub(this._selectedStub);
-          this._selectedStub = null;
-          renderer.clearConnectionHighlights();
-          renderer.updateAllBlocks(core.diagram);
-          if (features.updateGroupBoundaries) features.updateGroupBoundaries();
-          features.saveState();
-          return;
-        }
-      }
-
-      // Ctrl+G — group selected blocks
+      // Ctrl+G — group selected blocks (unique to coordinator)
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'g') {
         const sel = features.selectedBlocks;
         if (sel && sel.size >= 2) {
@@ -1135,77 +1081,6 @@ class SystemBlocksMain {
             this._toast('Created group "' + (name || 'Group') + '"', 'success');
           }
         }
-        return;
-      }
-
-      // Ctrl+D — duplicate selected blocks
-      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-        const sel = features.selectedBlocks;
-        if (sel && sel.size > 0) {
-          e.preventDefault();
-          features.clearSelection();
-          Array.from(sel).forEach(id => {
-            const orig = core.diagram.blocks.find(b => b.id === id);
-            if (!orig) return;
-            const dup = core.addBlock({
-              name: (orig.name || 'Block') + ' (copy)',
-              type: orig.type || 'auto',
-              x: (orig.x || 0) + 30,
-              y: (orig.y || 0) + 30,
-              width: orig.width,
-              height: orig.height,
-              shape: orig.shape,
-              status: orig.status
-            });
-            renderer.renderBlock(dup);
-            features.addToSelection(dup.id);
-          });
-          features.saveState();
-          this._updateMinimap();
-        }
-        return;
-      }
-
-      // Ctrl+Z — undo
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
-        if (features.undo) {
-          e.preventDefault();
-          features.undo();
-          renderer.updateAllBlocks(core.diagram);
-          if (features.updateGroupBoundaries) features.updateGroupBoundaries();
-          this._updateMinimap();
-        }
-        return;
-      }
-
-      // Ctrl+Shift+Z or Ctrl+Y — redo
-      if (((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Z') ||
-          ((e.ctrlKey || e.metaKey) && e.key === 'y')) {
-        if (features.redo) {
-          e.preventDefault();
-          features.redo();
-          renderer.updateAllBlocks(core.diagram);
-          if (features.updateGroupBoundaries) features.updateGroupBoundaries();
-          this._updateMinimap();
-        }
-        return;
-      }
-
-      // Ctrl+A — select all blocks
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-        e.preventDefault();
-        core.diagram.blocks.forEach(b => features.addToSelection(b.id));
-        return;
-      }
-
-      // B — open block creation quick-pick menu
-      if (e.key === 'b' || e.key === 'B') {
-        if (e.ctrlKey || e.metaKey || e.altKey) return; // don't hijack Ctrl+B etc.
-        // Only fire when nothing else is active
-        if (this._connectionMode && this._connectionMode.active) return;
-        if (this._stubTargetMode && this._stubTargetMode.active) return;
-        e.preventDefault();
-        this._showQuickBlockMenu(core, renderer, features, svg);
         return;
       }
     });
