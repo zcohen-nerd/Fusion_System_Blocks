@@ -516,7 +516,7 @@ class AdvancedFeatures {
       label.setAttribute('y', String(labelY));
       label.setAttribute('fill', group.color);
       label.setAttribute('stroke', 'none');
-      label.setAttribute('font-size', '12');
+      label.setAttribute('font-size', '14');
       label.setAttribute('font-weight', 'bold');
       label.setAttribute('font-family', 'Segoe UI, Arial, sans-serif');
       label.setAttribute('pointer-events', 'none');
@@ -546,7 +546,7 @@ class AdvancedFeatures {
       descEl.setAttribute('y', String(by - 6 + 14));
       descEl.setAttribute('fill', group.color);
       descEl.setAttribute('stroke', 'none');
-      descEl.setAttribute('font-size', '10');
+      descEl.setAttribute('font-size', '12');
       descEl.setAttribute('font-style', 'italic');
       descEl.setAttribute('font-family', 'Segoe UI, Arial, sans-serif');
       descEl.setAttribute('pointer-events', 'none');

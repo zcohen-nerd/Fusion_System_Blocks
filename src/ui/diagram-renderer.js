@@ -323,7 +323,7 @@ class DiagramRenderer {
     // Word-wrap the label into multiple lines that fit the block width.
     // SVG <text> doesn't support native wrapping, so we use <tspan> elements.
     const label = block.name || 'Block';
-    const fontSize = 12;
+    const fontSize = 14;
     text.setAttribute('font-size', String(fontSize));
     const words = label.split(/\s+/);
     const lines = [];
@@ -428,10 +428,10 @@ class DiagramRenderer {
     const indicator = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     indicator.setAttribute('cx', (block.width || 120) - 10);
     indicator.setAttribute('cy', 10);
-    indicator.setAttribute('r', 6);
+    indicator.setAttribute('r', 7);
     indicator.setAttribute('fill', colors[status] || colors['Placeholder']);
     indicator.setAttribute('stroke', 'rgba(0,0,0,0.3)');
-    indicator.setAttribute('stroke-width', '1');
+    indicator.setAttribute('stroke-width', '1.5');
     
     blockGroup.appendChild(indicator);
 
@@ -460,7 +460,7 @@ class DiagramRenderer {
       label.setAttribute('text-anchor', 'middle');
       label.setAttribute('fill', '#ffffff');
       label.setAttribute('stroke', 'none');
-      label.setAttribute('font-size', '9');
+      label.setAttribute('font-size', '11');
       label.setAttribute('font-family', 'Arial, sans-serif');
       label.setAttribute('font-weight', 'bold');
       label.setAttribute('pointer-events', 'none');
@@ -508,10 +508,10 @@ class DiagramRenderer {
       const port = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       port.setAttribute('cx', cx);
       port.setAttribute('cy', cy);
-      port.setAttribute('r', 6);
+      port.setAttribute('r', 7);
       port.setAttribute('fill', '#fff');
       port.setAttribute('stroke', '#FF6B35');
-      port.setAttribute('stroke-width', '2');
+      port.setAttribute('stroke-width', '2.5');
       port.setAttribute('class', 'connection-port');
       port.setAttribute('data-block-id', block.id);
       port.setAttribute('data-port-type', portType);
@@ -868,12 +868,12 @@ class DiagramRenderer {
    */
   getConnectionStyling(connType) {
     const styles = {
-      'power':      { stroke: '#dc3545', strokeWidth: 3, dashArray: null },
-      'data':       { stroke: '#007bff', strokeWidth: 2, dashArray: '8,4' },
-      'electrical': { stroke: '#dc3545', strokeWidth: 3, dashArray: null }, // alias → power
-      'mechanical': { stroke: '#6c757d', strokeWidth: 2, dashArray: '12,6' }
+      'power':      { stroke: '#dc3545', strokeWidth: 3.5, dashArray: null },
+      'data':       { stroke: '#007bff', strokeWidth: 2.5, dashArray: '8,4' },
+      'electrical': { stroke: '#dc3545', strokeWidth: 3.5, dashArray: null }, // alias → power
+      'mechanical': { stroke: '#6c757d', strokeWidth: 2.5, dashArray: '12,6' }
     };
-    return styles[connType] || { stroke: '#666', strokeWidth: 2, dashArray: null };
+    return styles[connType] || { stroke: '#666', strokeWidth: 2.5, dashArray: null };
   }
 
   // ---- Smart alignment snap guides ----
@@ -1018,7 +1018,7 @@ class DiagramRenderer {
    * the first segment axis rather than using a raw start→end angle.
    */
   _addManualStartArrow(group, fromX, fromY, toX, toY, fillColor, strokeWidth = 2, fromPort = 'output') {
-    const size = 10;
+    const size = 12;
 
     // Derive arrow direction from the port name so the arrowhead
     // always aligns with the port's axis, regardless of Bezier
@@ -1075,7 +1075,7 @@ class DiagramRenderer {
    * @param {string}      toPort    Target port name.
    */
   _addManualEndArrow(group, toX, toY, fromX, fromY, fillColor, strokeWidth = 2, toPort = 'input') {
-    const size = 10;
+    const size = 12;
 
     // The arrow should point INTO the block along the port axis.
     // segAngle is the direction the arrow tip faces (into the block).
@@ -1803,7 +1803,7 @@ class DiagramRenderer {
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', labelX);
       text.setAttribute('y', labelY);
-      text.setAttribute('font-size', '10');
+      text.setAttribute('font-size', '12');
       text.setAttribute('font-family', 'Arial, sans-serif');
       text.setAttribute('fill', '#FF6B35');
       text.setAttribute('font-weight', 'bold');
@@ -1814,7 +1814,7 @@ class DiagramRenderer {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', endX);
       circle.setAttribute('cy', endY);
-      circle.setAttribute('r', '3');
+      circle.setAttribute('r', '4');
       circle.setAttribute('fill', '#FF6B35');
       g.appendChild(circle);
 
@@ -1822,7 +1822,7 @@ class DiagramRenderer {
       const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       icon.setAttribute('x', iconX);
       icon.setAttribute('y', iconY);
-      icon.setAttribute('font-size', '10');
+      icon.setAttribute('font-size', '12');
       icon.setAttribute('text-anchor', labelAnchor);
       icon.textContent = '\uD83C\uDF10'; // 🌐
       g.appendChild(icon);
@@ -2029,7 +2029,7 @@ class DiagramRenderer {
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', labelX);
     text.setAttribute('y', labelY);
-    text.setAttribute('font-size', '10');
+    text.setAttribute('font-size', '12');
     text.setAttribute('font-family', 'Arial, sans-serif');
     text.setAttribute('fill', styling.stroke);
     text.setAttribute('font-weight', 'bold');
@@ -2229,7 +2229,7 @@ class DiagramRenderer {
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', labelX);
       text.setAttribute('y', labelY);
-      text.setAttribute('font-size', '10');
+      text.setAttribute('font-size', '12');
       text.setAttribute('font-family', 'Arial, sans-serif');
       text.setAttribute('fill', netColor);
       text.setAttribute('font-weight', 'bold');
@@ -2242,10 +2242,10 @@ class DiagramRenderer {
       if (netCount > 1) {
         const countText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         const countX = isHorizontal ? labelX : labelX;
-        const countY = labelY + 11;
+        const countY = labelY + 13;
         countText.setAttribute('x', countX);
         countText.setAttribute('y', countY);
-        countText.setAttribute('font-size', '8');
+        countText.setAttribute('font-size', '10');
         countText.setAttribute('font-family', 'Arial, sans-serif');
         countText.setAttribute('fill', netColor);
         countText.setAttribute('font-style', 'italic');
@@ -2299,7 +2299,7 @@ class DiagramRenderer {
         const txt = document.createElementNS(ns, 'text');
         txt.setAttribute('x', x);
         txt.setAttribute('y', y + 14);
-        txt.setAttribute('font-size', '12');
+        txt.setAttribute('font-size', '14');
         txt.setAttribute('fill', '#ccc');
         txt.setAttribute('font-family', 'Segoe UI, sans-serif');
         txt.textContent = annotation.text;
@@ -2321,7 +2321,7 @@ class DiagramRenderer {
         const txt = document.createElementNS(ns, 'text');
         txt.setAttribute('x', x + 8);
         txt.setAttribute('y', y + 18);
-        txt.setAttribute('font-size', '11');
+        txt.setAttribute('font-size', '13');
         txt.setAttribute('fill', '#333');
         txt.setAttribute('font-family', 'Segoe UI, sans-serif');
         // Word-wrap approximation
@@ -2329,7 +2329,7 @@ class DiagramRenderer {
         lines.forEach((line, i) => {
           const tspan = document.createElementNS(ns, 'tspan');
           tspan.setAttribute('x', x + 8);
-          tspan.setAttribute('dy', i === 0 ? '0' : '14');
+          tspan.setAttribute('dy', i === 0 ? '0' : '16');
           tspan.textContent = line;
           txt.appendChild(tspan);
         });
@@ -2377,10 +2377,10 @@ class DiagramRenderer {
         const mx = (ax + bx) / 2;
         const my = (ay + by) / 2;
         const bg = document.createElementNS(ns, 'rect');
-        bg.setAttribute('x', mx - 20);
-        bg.setAttribute('y', my - 10);
-        bg.setAttribute('width', '40');
-        bg.setAttribute('height', '16');
+        bg.setAttribute('x', mx - 24);
+        bg.setAttribute('y', my - 12);
+        bg.setAttribute('width', '48');
+        bg.setAttribute('height', '20');
         bg.setAttribute('rx', '3');
         bg.setAttribute('fill', '#263238');
         bg.setAttribute('stroke', '#4fc3f7');
@@ -2388,9 +2388,9 @@ class DiagramRenderer {
         g.appendChild(bg);
         const txt = document.createElementNS(ns, 'text');
         txt.setAttribute('x', mx);
-        txt.setAttribute('y', my + 3);
+        txt.setAttribute('y', my + 4);
         txt.setAttribute('text-anchor', 'middle');
-        txt.setAttribute('font-size', '10');
+        txt.setAttribute('font-size', '12');
         txt.setAttribute('fill', '#4fc3f7');
         txt.setAttribute('font-family', 'Segoe UI, sans-serif');
         txt.textContent = label;
@@ -2413,7 +2413,7 @@ class DiagramRenderer {
         txt.setAttribute('x', x + w / 2);
         txt.setAttribute('y', y + h / 2 + 4);
         txt.setAttribute('text-anchor', 'middle');
-        txt.setAttribute('font-size', '11');
+        txt.setAttribute('font-size', '13');
         txt.setAttribute('fill', '#fff');
         txt.setAttribute('font-family', 'Segoe UI, sans-serif');
         txt.textContent = annotation.text;

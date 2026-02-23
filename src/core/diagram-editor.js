@@ -81,8 +81,8 @@ class DiagramEditorCore {
       type: blockData.type || 'Generic',
       x: blockData.x || 100,
       y: blockData.y || 100,
-      width: blockData.width || 120,
-      height: blockData.height || 80,
+      width: blockData.width || 160,
+      height: blockData.height || 100,
       status: blockData.status || 'Placeholder',
       attributes: { ...defaultAttributes, ...(blockData.attributes || {}) },
       ...blockData

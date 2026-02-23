@@ -1362,8 +1362,8 @@ class ToolbarManager {
     if (blocks.length === 0) return;
     const cols = Math.max(1, Math.ceil(Math.sqrt(blocks.length)));
     blocks.forEach((block, i) => {
-      block.x = 50 + (i % cols) * 160;
-      block.y = 50 + Math.floor(i / cols) * 120;
+      block.x = 50 + (i % cols) * 200;
+      block.y = 50 + Math.floor(i / cols) * 150;
     });
     this.editor.diagram.metadata.modified = new Date().toISOString();
     this.renderer.updateAllBlocks(this.editor.diagram);
