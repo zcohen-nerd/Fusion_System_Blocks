@@ -65,7 +65,8 @@ class ToolbarManager {
       'go-up': 'btn-go-up',
       'drill-down': 'btn-drill-down',
       'create-child': 'btn-create-child',
-      'history': 'btn-history'
+      'history': 'btn-history',
+      'help': 'btn-help'
     };
 
     this.initializeToolbar();
@@ -107,6 +108,7 @@ class ToolbarManager {
     'btn-go-up':           { title: 'Navigate Up', detail: 'Return to the parent diagram from a child block diagram.' },
     'btn-drill-down':      { title: 'Drill Down', detail: 'Open the child diagram of the selected block.' },
     'btn-create-child':    { title: 'Create Child', detail: 'Create a new child diagram inside the selected block.' },
+    'btn-help':            { title: 'Help', detail: 'Open the help guide with usage instructions and tips.', shortcut: 'F1' },
   };
 
   /**
@@ -362,6 +364,9 @@ class ToolbarManager {
     this.addButtonListener('snap-grid', () => this.handleToggleSnapGrid());
     this.addButtonListener('minimap', () => this.handleToggleMinimap());
     this.addButtonListener('routing-mode', () => this.handleToggleRoutingMode());
+
+    // Help
+    this.addButtonListener('help', () => this.handleShowHelp());
   }
 
   addButtonListener(buttonId, handler) {
@@ -429,7 +434,8 @@ class ToolbarManager {
       'Shift+ArrowDown': { ctrl: true, shift: true, handler: () => this.handleDrillDown() },
       'Shift+KeyN': { ctrl: true, shift: true, handler: () => this.handleCreateChild() },
       'Shift+Slash': { shift: true, handler: () => this.handleShowShortcuts() },  // ? key
-      'KeyM': { handler: () => this.handleToggleMinimap() }
+      'KeyM': { handler: () => this.handleToggleMinimap() },
+      'F1': { handler: () => this.handleShowHelp() }
     };
 
     // Store shortcuts as an array per key code to allow multiple
@@ -509,6 +515,22 @@ class ToolbarManager {
       });
       // Close button
       const closeBtn = document.getElementById('shortcuts-close');
+      if (closeBtn) closeBtn.addEventListener('click', () => overlay.style.display = 'none');
+    }
+  }
+
+  // ---- F1 Help dialog ----
+  handleShowHelp() {
+    const overlay = document.getElementById('help-overlay');
+    if (!overlay) return;
+    const isOpen = overlay.style.display !== 'none';
+    overlay.style.display = isOpen ? 'none' : 'flex';
+    if (!overlay._wired) {
+      overlay._wired = true;
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.style.display = 'none';
+      });
+      const closeBtn = document.getElementById('help-close');
       if (closeBtn) closeBtn.addEventListener('click', () => overlay.style.display = 'none');
     }
   }

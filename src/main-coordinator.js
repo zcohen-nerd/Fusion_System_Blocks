@@ -159,6 +159,13 @@ class SystemBlocksMain {
     let dragOffset = { x: 0, y: 0 };
     let dragMoved = false; // tracks whether block actually moved during drag
 
+    // --- Block resize state ---
+    let resizingBlock = null;   // block object being resized
+    let resizeHandle = null;    // 'nw','n','ne','e','se','s','sw','w'
+    let resizeStart = null;     // { x, y, bx, by, bw, bh } at mousedown
+    const MIN_BLOCK_W = 60;
+    const MIN_BLOCK_H = 40;
+
     // Track whether a connection mode was JUST entered in this mousedown,
     // so the corresponding mouseup doesn't immediately complete/exit it.
     let connectionStartedThisClick = false;
@@ -232,6 +239,33 @@ class SystemBlocksMain {
 
       // Only handle primary (left) button for selection/drag.
       if (e.button !== 0) return;
+
+      // --- Resize handle click detection ---
+      let handleEl = e.target.closest
+        ? e.target.closest('.resize-handle')
+        : null;
+      if (!handleEl && e.target.getAttribute &&
+          e.target.getAttribute('class') &&
+          e.target.getAttribute('class').indexOf('resize-handle') !== -1) {
+        handleEl = e.target;
+      }
+      if (handleEl && handleEl.getAttribute('data-block-id')) {
+        const blockId = handleEl.getAttribute('data-block-id');
+        const block = core.diagram.blocks.find(b => b.id === blockId);
+        if (block) {
+          const { x: sx, y: sy } = screenToSVG(e.clientX, e.clientY);
+          resizingBlock = block;
+          resizeHandle = handleEl.getAttribute('data-resize-handle');
+          resizeStart = {
+            x: sx, y: sy,
+            bx: block.x, by: block.y,
+            bw: block.width || 120, bh: block.height || 80
+          };
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      }
 
       // Do not start drag/select while in connection drawing mode
       if (this._connectionMode && this._connectionMode.active) return;
@@ -439,7 +473,60 @@ class SystemBlocksMain {
       // Track last known SVG-space mouse position for keyboard-triggered
       // actions (e.g. B-key block creation at cursor location).
       this._lastMouseSVG = { x, y };
-      
+
+      // --- Block resize drag ---
+      if (resizingBlock && resizeStart) {
+        const dx = x - resizeStart.x;
+        const dy = y - resizeStart.y;
+        let newX = resizeStart.bx;
+        let newY = resizeStart.by;
+        let newW = resizeStart.bw;
+        let newH = resizeStart.bh;
+
+        const h = resizeHandle;
+        // Horizontal
+        if (h === 'w' || h === 'nw' || h === 'sw') {
+          newW = Math.max(MIN_BLOCK_W, resizeStart.bw - dx);
+          newX = resizeStart.bx + (resizeStart.bw - newW);
+        } else if (h === 'e' || h === 'ne' || h === 'se') {
+          newW = Math.max(MIN_BLOCK_W, resizeStart.bw + dx);
+        }
+        // Vertical
+        if (h === 'n' || h === 'nw' || h === 'ne') {
+          newH = Math.max(MIN_BLOCK_H, resizeStart.bh - dy);
+          newY = resizeStart.by + (resizeStart.bh - newH);
+        } else if (h === 's' || h === 'sw' || h === 'se') {
+          newH = Math.max(MIN_BLOCK_H, resizeStart.bh + dy);
+        }
+
+        // Snap to grid
+        const snapped = core.snapToGrid(newX, newY);
+        newX = snapped.x;
+        newY = snapped.y;
+        newW = Math.round(newW / core.gridSize) * core.gridSize;
+        newH = Math.round(newH / core.gridSize) * core.gridSize;
+        if (newW < MIN_BLOCK_W) newW = MIN_BLOCK_W;
+        if (newH < MIN_BLOCK_H) newH = MIN_BLOCK_H;
+
+        core.updateBlock(resizingBlock.id, { x: newX, y: newY, width: newW, height: newH });
+        const updated = core.diagram.blocks.find(b => b.id === resizingBlock.id);
+        if (updated) {
+          resizingBlock = updated;
+          renderer.renderBlock(updated);
+        }
+        // Re-render connections attached to this block
+        core.diagram.connections.forEach(conn => {
+          if (conn.fromBlock === resizingBlock.id || conn.toBlock === resizingBlock.id) {
+            renderer.renderConnection(conn);
+          }
+        });
+        // Re-render stubs
+        if (renderer.renderNamedStubs) renderer.renderNamedStubs(core.diagram);
+        if (renderer.renderSameLevelStubs) renderer.renderSameLevelStubs(core.diagram);
+        e.preventDefault();
+        return;
+      }
+
       if (draggedBlock) {
         // Drag block — if block is part of multi-selection, move ALL selected
         const gridPos = core.snapToGrid(x - dragOffset.x, y - dragOffset.y);
@@ -576,6 +663,15 @@ class SystemBlocksMain {
     svg.addEventListener('mouseup', (e) => {
       // Clear alignment snap guides on drag end
       renderer.clearSnapGuides();
+
+      // --- End block resize ---
+      if (resizingBlock && resizeStart) {
+        features.saveState();
+        this._updateMinimap();
+        resizingBlock = null;
+        resizeHandle = null;
+        resizeStart = null;
+      }
 
       if (draggedBlock) {
         // End block drag — save state only if block actually moved

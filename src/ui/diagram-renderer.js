@@ -372,12 +372,62 @@ class DiagramRenderer {
     // Add connection port dots (left = input, right = output)
     this.addConnectionPorts(blockGroup, block);
 
+    // Add resize handles (visible only when selected)
+    if (this.editor.selectedBlock === block.id) {
+      this.addResizeHandles(blockGroup, block);
+    }
+
     // Add to blocks layer and cache
     const target = this.blocksLayer || this.svg;
     target.appendChild(blockGroup);
     this.blockElements.set(block.id, blockGroup);
 
     return blockGroup;
+  }
+
+  /**
+   * Add resize corner handles to the block group.
+   * Handles are small squares at each corner, visible when the block is selected.
+   */
+  addResizeHandles(blockGroup, block) {
+    const w = block.width || 120;
+    const h = block.height || 80;
+    const handleSize = 8;
+    const half = handleSize / 2;
+
+    const corners = [
+      { x: -half,       y: -half,       cursor: 'nwse-resize', handle: 'nw' },
+      { x: w - half,    y: -half,       cursor: 'nesw-resize', handle: 'ne' },
+      { x: -half,       y: h - half,    cursor: 'nesw-resize', handle: 'sw' },
+      { x: w - half,    y: h - half,    cursor: 'nwse-resize', handle: 'se' },
+    ];
+
+    // Side midpoint handles
+    const sides = [
+      { x: w / 2 - half, y: -half,       cursor: 'ns-resize', handle: 'n' },
+      { x: w / 2 - half, y: h - half,    cursor: 'ns-resize', handle: 's' },
+      { x: -half,         y: h / 2 - half, cursor: 'ew-resize', handle: 'w' },
+      { x: w - half,      y: h / 2 - half, cursor: 'ew-resize', handle: 'e' },
+    ];
+
+    const allHandles = corners.concat(sides);
+
+    allHandles.forEach(({ x, y, cursor, handle }) => {
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x);
+      rect.setAttribute('y', y);
+      rect.setAttribute('width', handleSize);
+      rect.setAttribute('height', handleSize);
+      rect.setAttribute('fill', '#ffffff');
+      rect.setAttribute('stroke', '#FF6B35');
+      rect.setAttribute('stroke-width', '1.5');
+      rect.setAttribute('class', 'resize-handle');
+      rect.setAttribute('data-resize-handle', handle);
+      rect.setAttribute('data-block-id', block.id);
+      rect.setAttribute('pointer-events', 'all');
+      rect.style.cursor = cursor;
+      blockGroup.appendChild(rect);
+    });
   }
 
   getBlockStyling(block) {
