@@ -57,13 +57,24 @@ def validate_diagram(diagram: dict[str, Any]) -> tuple[bool, Optional[str]]:
     """
     # If jsonschema is not available, do basic validation only
     if not JSONSCHEMA_AVAILABLE:
-        # Basic validation: check required keys exist
+        # Basic validation: check required keys and types
         if not isinstance(diagram, dict):
             return False, "Diagram must be a dictionary"
         if "blocks" not in diagram:
             return False, "Diagram must have 'blocks' key"
+        if not isinstance(diagram.get("blocks"), list):
+            return False, "Diagram 'blocks' must be an array"
         if "connections" not in diagram:
             return False, "Diagram must have 'connections' key"
+        if not isinstance(diagram.get("connections"), list):
+            return False, "Diagram 'connections' must be an array"
+        # Validate links within each block
+        for block in diagram["blocks"]:
+            if not isinstance(block, dict):
+                return False, "Each block must be a dictionary"
+            is_valid, error = validate_links(block)
+            if not is_valid:
+                return False, error
         return True, None
 
     try:

@@ -137,7 +137,7 @@ class DiagramEditorCore {
     if (exists) return null;
 
     const connection = {
-      id: 'conn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+      id: this.generateEntityId('conn'),
       fromBlock: fromBlockId,
       toBlock: toBlockId,
       type: connectionType,
@@ -160,6 +160,7 @@ class DiagramEditorCore {
   removeConnection(connectionId) {
     this.diagram.connections = this.diagram.connections.filter(c => c.id !== connectionId);
     this.diagram.metadata.modified = new Date().toISOString();
+    this._markDirty();
   }
 
   // ----- Named stubs (net labels) -----
@@ -186,7 +187,7 @@ class DiagramEditorCore {
     if (dup) return null;
 
     const stub = {
-      id: 'stub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+      id: this.generateEntityId('stub'),
       netName: netName,
       blockId: blockId,
       portSide: portSide,
@@ -422,8 +423,15 @@ class DiagramEditorCore {
   }
 
   // Utility functions
+  generateEntityId(prefix) {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return prefix + '_' + crypto.randomUUID();
+    }
+    return prefix + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
+  }
+
   generateId() {
-    return 'block_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    return this.generateEntityId('block');
   }
 
   getBlockAt(x, y, tolerance = 0) {

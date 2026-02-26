@@ -3,13 +3,7 @@
   const q = (sel) => document.querySelector(sel);
   const qa = (sel) => Array.from(document.querySelectorAll(sel));
 
-  function _escapeHtml(text) {
-    return String(text)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
+  // _escapeHtml is provided by utils/html-utils.js (loaded before this module)
 
   const tabs = [
     { id: 'home' },

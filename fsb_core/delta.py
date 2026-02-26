@@ -183,15 +183,19 @@ def _diff_list_by_index(
     path: str,
     ops: list[dict[str, Any]],
 ) -> None:
-    max_len = max(len(old), len(new))
-    for i in range(max_len):
-        child_path = f"{path}/{i}"
-        if i >= len(old):
-            ops.append({"op": "add", "path": child_path, "value": new[i]})
-        elif i >= len(new):
-            ops.append({"op": "remove", "path": child_path})
-        else:
-            _diff(old[i], new[i], child_path, ops)
+    min_len = min(len(old), len(new))
+
+    # Compare overlapping elements
+    for i in range(min_len):
+        _diff(old[i], new[i], f"{path}/{i}", ops)
+
+    # Add new elements (ascending order is correct for sequential inserts)
+    for i in range(min_len, len(new)):
+        ops.append({"op": "add", "path": f"{path}/{i}", "value": new[i]})
+
+    # Remove extra elements in REVERSE order to avoid index shifting
+    for i in range(len(old) - 1, min_len - 1, -1):
+        ops.append({"op": "remove", "path": f"{path}/{i}"})
 
 
 def _apply_op(doc: Any, op: dict[str, Any]) -> None:

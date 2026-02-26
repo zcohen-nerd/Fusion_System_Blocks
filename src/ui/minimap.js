@@ -227,23 +227,43 @@ class Minimap {
   _bindEvents() {
     var self = this;
 
-    this.container.addEventListener('mousedown', function (e) {
+    this._onContainerMouseDown = function (e) {
       e.preventDefault();
       e.stopPropagation();
       self._dragging = true;
       self._panToMinimapPoint(e);
-    });
+    };
 
-    // mousemove — only pan while dragging inside the minimap
-    document.addEventListener('mousemove', function (e) {
+    this._onDocMouseMove = function (e) {
       if (!self._dragging) return;
       e.preventDefault();
       self._panToMinimapPoint(e);
-    });
+    };
 
-    document.addEventListener('mouseup', function () {
+    this._onDocMouseUp = function () {
       self._dragging = false;
-    });
+    };
+
+    this.container.addEventListener('mousedown', this._onContainerMouseDown);
+    document.addEventListener('mousemove', this._onDocMouseMove);
+    document.addEventListener('mouseup', this._onDocMouseUp);
+  }
+
+  /** Remove all event listeners to prevent memory leaks. */
+  destroy() {
+    if (this._rafId) {
+      cancelAnimationFrame(this._rafId);
+      this._rafId = null;
+    }
+    if (this._onContainerMouseDown && this.container) {
+      this.container.removeEventListener('mousedown', this._onContainerMouseDown);
+    }
+    if (this._onDocMouseMove) {
+      document.removeEventListener('mousemove', this._onDocMouseMove);
+    }
+    if (this._onDocMouseUp) {
+      document.removeEventListener('mouseup', this._onDocMouseUp);
+    }
   }
 }
 

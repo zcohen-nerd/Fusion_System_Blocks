@@ -560,7 +560,7 @@ class BlockTemplateSystem {
         category: template.category,
         x: basePosition.x + component.position.x,
         y: basePosition.y + component.position.y,
-        status: 'Planned',
+        status: 'Placeholder',
         role: component.role,
         templateId: templateId,
         templateIndex: index,
@@ -580,12 +580,14 @@ class BlockTemplateSystem {
       
       connections.push({
         id: `conn_${sourceBlock.id}_${targetBlock.id}`,
-        source: sourceBlock.id,
-        target: targetBlock.id,
+        fromBlock: sourceBlock.id,
+        toBlock: targetBlock.id,
         sourceInterface: conn.from.interface,
         targetInterface: conn.to.interface,
         type: conn.type,
-        fromTemplate: true
+        fromTemplate: true,
+        from: conn.from,
+        to: conn.to
       });
     });
 

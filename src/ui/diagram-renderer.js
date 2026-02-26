@@ -2374,8 +2374,24 @@ class DiagramRenderer {
         txt.setAttribute('font-size', '13');
         txt.setAttribute('fill', '#333');
         txt.setAttribute('font-family', 'Segoe UI, sans-serif');
-        // Word-wrap approximation
-        const lines = annotation.text.match(/.{1,22}/g) || [annotation.text];
+        // Word-wrap: split on whitespace, respecting the note width
+        const fontSize = 13;
+        const charWidth = fontSize * 0.6;
+        const maxTextWidth = (w || 120) - 16; // 8px padding each side
+        const words = (annotation.text || '').split(/\s+/);
+        const lines = [];
+        let currentLine = '';
+        words.forEach(word => {
+          const testLine = currentLine ? currentLine + ' ' + word : word;
+          if (testLine.length * charWidth > maxTextWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        });
+        if (currentLine) lines.push(currentLine);
+        if (lines.length === 0) lines.push(annotation.text || '');
         lines.forEach((line, i) => {
           const tspan = document.createElementNS(ns, 'tspan');
           tspan.setAttribute('x', x + 8);

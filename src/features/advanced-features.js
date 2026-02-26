@@ -245,7 +245,9 @@ class AdvancedFeatures {
    * @returns {string} The new group ID.
    */
   createGroup(blockIds, groupName = 'New Group', opts = {}) {
-    const groupId = 'group_' + Date.now();
+    const groupId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? 'group_' + crypto.randomUUID()
+      : 'group_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
     const group = {
       id: groupId,
       name: groupName,
@@ -275,6 +277,12 @@ class AdvancedFeatures {
       this.groups.forEach(g => {
         if (g.parentGroupId === groupId) g.parentGroupId = null;
       });
+      // Remove connections that reference the deleted group
+      if (this.editor.diagram) {
+        this.editor.diagram.connections = this.editor.diagram.connections.filter(
+          c => c.fromBlock !== groupId && c.toBlock !== groupId
+        );
+      }
       this._syncGroupsToDiagram();
       this.saveState();
     }
@@ -1221,9 +1229,13 @@ class AdvancedFeatures {
       }
       return copy;
     };
+    // Compute a fingerprint of user-visible state once, then compare
+    // against the cached fingerprint from the previous entry instead of
+    // re-serializing both old and new states on every call.
+    const fingerprint = JSON.stringify(stripVolatile(diagramSnapshot));
     if (this.undoStack.length > 0) {
-      const prevDiagram = this.undoStack[this.undoStack.length - 1].diagram;
-      if (JSON.stringify(stripVolatile(prevDiagram)) === JSON.stringify(stripVolatile(diagramSnapshot))) {
+      const prev = this.undoStack[this.undoStack.length - 1];
+      if (prev._fingerprint === fingerprint) {
         return; // Nothing changed — skip
       }
     }
@@ -1239,7 +1251,8 @@ class AdvancedFeatures {
       groups: cloneMap(this.groups),
       layers: cloneMap(this.layers),
       label: label,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      _fingerprint: fingerprint
     };
     
     this.undoStack.push(state);
@@ -1345,11 +1358,21 @@ class AdvancedFeatures {
       this.addToSelection(blockId);
     });
     
-    // Restore groups
-    this.groups = new Map(state.groups);
+    // Deep-clone groups so restoring doesn't share mutable objects
+    // with the stored undo state (prevents corruption on later edits).
+    const cloneMap = (map) => {
+      const copy = new Map();
+      map.forEach((value, key) => {
+        const obj = Object.assign({}, value);
+        if (value.blocks instanceof Set) obj.blocks = new Set(value.blocks);
+        copy.set(key, obj);
+      });
+      return copy;
+    };
+    this.groups = cloneMap(state.groups);
     
-    // Restore layers
-    this.layers = new Map(state.layers);
+    // Restore layers (deep-clone)
+    this.layers = cloneMap(state.layers);
     
     // Update visuals
     this.renderer.updateAllBlocks(this.editor.diagram);

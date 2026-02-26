@@ -95,8 +95,8 @@ class FusionAdapter:
             design = adsk.fusion.Design.cast(self._app.activeProduct)
             if design:
                 return design.rootComponent
-        except Exception:
-            pass
+        except Exception as exc:
+            self.show_warning(f"Unable to access active design: {exc}")
         return None
 
     def load_graph(self) -> Graph | None:
@@ -117,8 +117,8 @@ class FusionAdapter:
                 if attr.groupName == ATTR_GROUP and attr.name == ATTR_NAME:
                     data = json.loads(attr.value)
                     return dict_to_graph(data)
-        except Exception:
-            pass
+        except Exception as exc:
+            self.show_warning(f"Unable to load diagram data: {exc}")
 
         return None
 
@@ -139,11 +139,15 @@ class FusionAdapter:
             self.show_error("No active design found")
             return False
 
-        # Validate before saving
+        # Validate before saving — warn but don't block on validation issues.
+        # Users must be able to save work-in-progress diagrams even if
+        # they have minor validation warnings (e.g. missing ports).
         errors = validate_graph(graph)
         if errors:
-            self.show_validation_errors(errors)
-            return False
+            summary = get_error_summary(errors)
+            self.show_warning(
+                f"Diagram saved with {len(errors)} validation warning(s):\n\n{summary}"
+            )
 
         try:
             # Serialize graph

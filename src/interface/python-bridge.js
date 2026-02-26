@@ -37,6 +37,9 @@ class PythonInterface {
     this.requestId = 0;
     this.activeNamedDocument = null;
 
+    /** Timeout in ms for pending request-response round-trips. */
+    this.REQUEST_TIMEOUT_MS = 30000;
+
     this.initializeInterface();
   }
 
@@ -74,8 +77,8 @@ class PythonInterface {
           }
         }
 
-        // Default: execute data as JavaScript snippet
-        new Function(data)();
+        // Reject unrecognized actions — never execute arbitrary strings as code
+        logger.warn(`Unrecognized action '${action}' — ignoring payload`);
       } catch (e) {
         logger.error('fusionJavaScriptHandler error for action ' + action + ':', e);
       }
@@ -135,7 +138,14 @@ class PythonInterface {
 
     if (expectResponse) {
       return new Promise((resolve, reject) => {
-        this.pendingRequests.set(message.id, { resolve, reject });
+        const timeoutId = setTimeout(() => {
+          const pending = this.pendingRequests.get(message.id);
+          if (pending) {
+            this.pendingRequests.delete(message.id);
+            reject(new Error(`Request '${message.action}' timed out after ${this.REQUEST_TIMEOUT_MS}ms`));
+          }
+        }, this.REQUEST_TIMEOUT_MS);
+        this.pendingRequests.set(message.id, { resolve, reject, timeoutId });
         this._sendMessageToPython(message, true);
       });
     }
@@ -157,6 +167,7 @@ class PythonInterface {
         const resolvePending = (rawResponse) => {
           const pending = this.pendingRequests.get(message.id);
           if (!pending) return;
+          if (pending.timeoutId) clearTimeout(pending.timeoutId);
           try {
             const parsed = rawResponse ? JSON.parse(rawResponse) : {};
             pending.resolve(parsed);
@@ -170,6 +181,7 @@ class PythonInterface {
         const rejectPending = (error) => {
           const pending = this.pendingRequests.get(message.id);
           if (pending) {
+            if (pending.timeoutId) clearTimeout(pending.timeoutId);
             pending.reject(error);
             this.pendingRequests.delete(message.id);
           }
@@ -197,6 +209,7 @@ class PythonInterface {
       if (expectResponse) {
         const pending = this.pendingRequests.get(message.id);
         if (pending) {
+          if (pending.timeoutId) clearTimeout(pending.timeoutId);
           pending.reject(error);
           this.pendingRequests.delete(message.id);
         }

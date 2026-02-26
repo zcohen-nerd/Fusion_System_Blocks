@@ -1063,19 +1063,26 @@ class ToolbarManager {
   }
 
   /**
-   * Show block type dropdown positioned at arbitrary screen coordinates.
-   * Used by context menu "Add Block" so the dropdown appears near the
-   * right-click location rather than near the ribbon button.
+   * Shared helper that creates and positions a block-type dropdown menu.
+   * Both public dropdown methods delegate to this to avoid duplication.
+   *
+   * @param {number} posX - Fixed CSS left position (px).
+   * @param {number} posY - Fixed CSS top position (px).
+   * @param {Function} callback - Called with the chosen type name.
+   * @param {Object} [options]
+   * @param {boolean} [options.clampToViewport=false] - Reposition if clipped.
+   * @param {Element} [options.excludeTarget] - Extra element to exclude from
+   *   outside-click dismissal (e.g. the toolbar button).
+   * @private
    */
-  showBlockTypeDropdownAt(screenX, screenY, callback) {
-    // Remove any existing dropdown
+  _renderBlockTypeDropdown(posX, posY, callback, options = {}) {
     const existing = document.getElementById('block-type-dropdown');
     if (existing) existing.remove();
 
     const dropdown = document.createElement('div');
     dropdown.id = 'block-type-dropdown';
     dropdown.style.cssText = `
-      position: fixed; left: ${screenX}px; top: ${screenY}px;
+      position: fixed; left: ${posX}px; top: ${posY}px;
       background: var(--fusion-panel-bg, #2b2b2b);
       border: 1px solid var(--fusion-panel-border, #555);
       border-radius: 3px; padding: 4px 0; z-index: 100000;
@@ -1089,6 +1096,9 @@ class ToolbarManager {
       { name: 'Mechanical', icon: '\u2699\uFE0F' },
       { name: 'Software',   icon: '\uD83D\uDCBB' }
     ];
+
+    const cleanupListener = () =>
+      document.removeEventListener('mousedown', outsideClick);
 
     types.forEach(t => {
       const item = document.createElement('div');
@@ -1108,22 +1118,24 @@ class ToolbarManager {
 
     document.body.appendChild(dropdown);
 
-    // Clamp to viewport
-    requestAnimationFrame(() => {
-      const rect = dropdown.getBoundingClientRect();
-      if (rect.right > window.innerWidth) {
-        dropdown.style.left = (screenX - rect.width) + 'px';
-      }
-      if (rect.bottom > window.innerHeight) {
-        dropdown.style.top = (screenY - rect.height) + 'px';
-      }
-    });
+    // Clamp to viewport when requested (e.g. context-menu placement)
+    if (options.clampToViewport) {
+      requestAnimationFrame(() => {
+        const rect = dropdown.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+          dropdown.style.left = (posX - rect.width) + 'px';
+        }
+        if (rect.bottom > window.innerHeight) {
+          dropdown.style.top = (posY - rect.height) + 'px';
+        }
+      });
+    }
 
     // Close on outside click
-    const cleanupListener = () =>
-      document.removeEventListener('mousedown', outsideClick);
+    const excludeTarget = options.excludeTarget || null;
     const outsideClick = (e) => {
-      if (!dropdown.contains(e.target)) {
+      if (!dropdown.contains(e.target) &&
+          (!excludeTarget || e.target !== excludeTarget)) {
         dropdown.remove();
         cleanupListener();
       }
@@ -1131,61 +1143,24 @@ class ToolbarManager {
     setTimeout(() => document.addEventListener('mousedown', outsideClick), 0);
   }
 
-  showBlockTypeDropdown(callback) {
-    // Remove any existing dropdown
-    const existing = document.getElementById('block-type-dropdown');
-    if (existing) existing.remove();
+  /**
+   * Show block type dropdown positioned at arbitrary screen coordinates.
+   * Used by context menu "Add Block" so the dropdown appears near the
+   * right-click location rather than near the ribbon button.
+   */
+  showBlockTypeDropdownAt(screenX, screenY, callback) {
+    this._renderBlockTypeDropdown(screenX, screenY, callback, {
+      clampToViewport: true
+    });
+  }
 
+  showBlockTypeDropdown(callback) {
     const btn = document.getElementById(this.buttonIdMap['block']);
     if (!btn) { callback('Generic'); return; }
     const rect = btn.getBoundingClientRect();
-
-    const dropdown = document.createElement('div');
-    dropdown.id = 'block-type-dropdown';
-    dropdown.style.cssText = `
-      position: fixed; left: ${rect.left}px; top: ${rect.bottom + 4}px;
-      background: var(--fusion-panel-bg, #2b2b2b);
-      border: 1px solid var(--fusion-panel-border, #555);
-      border-radius: 3px; padding: 4px 0; z-index: 100000;
-      min-width: 170px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      color: var(--fusion-text-primary, #fff);
-    `;
-
-    const types = [
-      { name: 'Generic',    icon: '\u2B1C' },
-      { name: 'Electrical', icon: '\u26A1' },
-      { name: 'Mechanical', icon: '\u2699\uFE0F' },
-      { name: 'Software',   icon: '\uD83D\uDCBB' }
-    ];
-
-    types.forEach(t => {
-      const item = document.createElement('div');
-      item.textContent = t.icon + '  ' + t.name;
-      item.style.cssText = 'padding: 8px 16px; cursor: pointer; font-size: 13px;';
-      item.addEventListener('mouseenter', () =>
-        item.style.background = 'var(--fusion-hover-bg, #3a3a3a)');
-      item.addEventListener('mouseleave', () =>
-        item.style.background = '');
-      item.addEventListener('click', () => {
-        dropdown.remove();
-        cleanupListener();
-        callback(t.name);
-      });
-      dropdown.appendChild(item);
+    this._renderBlockTypeDropdown(rect.left, rect.bottom + 4, callback, {
+      excludeTarget: btn
     });
-
-    document.body.appendChild(dropdown);
-
-    // Close on outside click
-    const cleanupListener = () =>
-      document.removeEventListener('mousedown', outsideClick);
-    const outsideClick = (e) => {
-      if (!dropdown.contains(e.target) && e.target !== btn) {
-        dropdown.remove();
-        cleanupListener();
-      }
-    };
-    setTimeout(() => document.addEventListener('mousedown', outsideClick), 0);
   }
 
   handleConnect() {
@@ -1271,8 +1246,11 @@ class ToolbarManager {
       cx = vb.x + vb.width / 2;
       cy = vb.y + vb.height / 2;
     }
+    const annotationId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? 'ann_' + crypto.randomUUID()
+      : 'ann_' + Date.now() + '_' + Math.random().toString(36).substr(2, 16);
     const annotation = {
-      id: 'ann_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+      id: annotationId,
       type,
       text,
       x: cx - 60,
@@ -1641,33 +1619,31 @@ class ToolbarManager {
     // --- Drag-to-move via title bar ---
     const header = document.getElementById('rule-panel-header');
     if (header) {
-      let dragging = false;
       let offsetX = 0;
       let offsetY = 0;
 
+      const onMouseMove = (e) => {
+        // Switch from centered transform to explicit top/left
+        panel.style.transform = 'none';
+        panel.style.top = (e.clientY - offsetY) + 'px';
+        panel.style.left = (e.clientX - offsetX) + 'px';
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        header.style.cursor = 'grab';
+      };
+
       header.addEventListener('mousedown', (e) => {
         if (e.target.tagName === 'BUTTON') return; // don't drag on close btn
-        dragging = true;
         const rect = panel.getBoundingClientRect();
         offsetX = e.clientX - rect.left;
         offsetY = e.clientY - rect.top;
         header.style.cursor = 'grabbing';
         e.preventDefault();
-      });
-
-      document.addEventListener('mousemove', (e) => {
-        if (!dragging) return;
-        // Switch from centered transform to explicit top/left
-        panel.style.transform = 'none';
-        panel.style.top = (e.clientY - offsetY) + 'px';
-        panel.style.left = (e.clientX - offsetX) + 'px';
-      });
-
-      document.addEventListener('mouseup', () => {
-        if (dragging) {
-          dragging = false;
-          header.style.cursor = 'grab';
-        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
       });
     }
   }

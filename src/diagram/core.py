@@ -71,8 +71,8 @@ def create_connection(
     from_block_id: str,
     to_block_id: str,
     protocol: str = "data",
-    from_interface: str = None,
-    to_interface: str = None,
+    from_interface: Optional[str] = None,
+    to_interface: Optional[str] = None,
 ) -> dict[str, Any]:
     """Create a new connection between two blocks."""
     connection = {

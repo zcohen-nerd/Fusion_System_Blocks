@@ -21,13 +21,7 @@ var logger = window.getSystemBlocksLogger
       error: () => {}
     };
 
-function _escapeHtml(text) {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+// _escapeHtml is provided by utils/html-utils.js (loaded before this module)
 
 // Module loading is handled by <script> tags in palette.html.
 // The coordinator expects the following globals to be available:
@@ -1450,6 +1444,13 @@ class SystemBlocksMain {
       background: #1e1e1e; color: #fff; font-size: 13px; box-sizing: border-box;
     `;
     const selectStyle = inputStyle;
+    const normalizeStatus = (status) => {
+      if (status === 'In Progress') return 'In-Work';
+      if (status === 'Completed') return 'Implemented';
+      return status || 'Placeholder';
+    };
+    const statusOptions = ['Placeholder', 'Planned', 'In-Work', 'Implemented', 'Verified'];
+    const currentStatus = normalizeStatus(block.status);
 
     // Build attributes key-value rows
     const attrs = block.attributes || {};
@@ -1470,9 +1471,7 @@ class SystemBlocksMain {
       </select>
       <label style="${labelStyle}">Status</label>
       <select id="prop-status" style="${selectStyle}">
-        <option value="Placeholder" ${block.status === 'Placeholder' ? 'selected' : ''}>Placeholder</option>
-        <option value="In Progress" ${block.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-        <option value="Completed"   ${block.status === 'Completed'   ? 'selected' : ''}>Completed</option>
+        ${statusOptions.map(s => `<option value="${s}" ${currentStatus === s ? 'selected' : ''}>${s}</option>`).join('')}
       </select>
       <label style="${labelStyle}">Shape</label>
       <select id="prop-shape" style="${selectStyle}">
@@ -1510,7 +1509,15 @@ class SystemBlocksMain {
     document.body.appendChild(dialog);
 
     // --- Wire events ---
-    const cancel = () => dialog.remove();
+    let dialogKeydownHandler = null;
+    const closeDialog = () => {
+      if (dialogKeydownHandler) {
+        document.removeEventListener('keydown', dialogKeydownHandler);
+      }
+      dialog.remove();
+    };
+
+    const cancel = () => closeDialog();
     dialog.querySelector('#prop-cancel').addEventListener('click', cancel);
 
     // Delete attribute row buttons
@@ -1555,14 +1562,14 @@ class SystemBlocksMain {
       // Refresh the properties side panel so it reflects updated values
       const updatedBlock = core.diagram.blocks.find(b => b.id === block.id);
       if (updatedBlock) this.updatePropertiesPanel(updatedBlock, core, renderer);
-      dialog.remove();
+      closeDialog();
     });
 
     // Close on Escape
-    const onKey = (e) => {
-      if (e.key === 'Escape') { cancel(); document.removeEventListener('keydown', onKey); }
+    dialogKeydownHandler = (e) => {
+      if (e.key === 'Escape') cancel();
     };
-    document.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', dialogKeydownHandler);
   }
 
   // =========================================================================
@@ -1639,8 +1646,16 @@ class SystemBlocksMain {
       }</select>`;
     };
 
+    const normalizeStatus = (status) => {
+      if (status === 'In Progress') return 'In-Work';
+      if (status === 'Completed') return 'Implemented';
+      return status || 'Placeholder';
+    };
+    const statusOptions = ['Placeholder', 'Planned', 'In-Work', 'Implemented', 'Verified'];
+    const currentStatus = normalizeStatus(block.status);
+
     // --- Status badge class ---
-    const statusSlug = (block.status || 'Placeholder').toLowerCase().replace(/\s+/g, '-');
+    const statusSlug = currentStatus.toLowerCase().replace(/\s+/g, '-');
 
     content.innerHTML = `
       <div class="pp-section">
@@ -1655,7 +1670,7 @@ class SystemBlocksMain {
         </div>
         <div class="pp-row">
           <span class="pp-label">Status</span>
-          ${inlineSelect('pp-status', ['Placeholder', 'In Progress', 'Completed'], block.status || 'Placeholder')}
+          ${inlineSelect('pp-status', statusOptions, currentStatus)}
         </div>
         <div class="pp-row">
           <span class="pp-label">Shape</span>
@@ -2193,8 +2208,8 @@ class SystemBlocksMain {
     this._ctxAction(freshMenu, 'ctx-conn-delete', () => {
       this.hideConnectionContextMenu();
       if (window.advancedFeatures) window.advancedFeatures.saveState();
-      // Remove from the current diagram
-      core.diagram.connections = core.diagram.connections.filter(c => c.id !== connection.id);
+      // Remove from the current diagram via core method (marks dirty + updates metadata)
+      core.removeConnection(connection.id);
       // Also purge from hierarchy stack snapshots and child diagrams
       this._purgeConnectionFromAllSources(connection.id, core);
       this._selectedConnection = null;
@@ -2351,7 +2366,7 @@ class SystemBlocksMain {
     if (netBlocks.length > 1) {
       const deleteNetItem = document.createElement('div');
       deleteNetItem.className = 'fusion-context-menu-item danger';
-      deleteNetItem.innerHTML = '<span class="ctx-icon">⛔</span> Delete Entire Net "' + netName + '" (' + netBlocks.length + ')';
+      deleteNetItem.innerHTML = '<span class="ctx-icon">⛔</span> Delete Entire Net "' + _escapeHtml(netName) + '" (' + netBlocks.length + ')';
       deleteNetItem.addEventListener('click', () => {
         menu.remove();
         const ok = confirm('Delete all ' + netBlocks.length + ' stubs on net "' + netName + '"?');
@@ -3101,10 +3116,10 @@ class SystemBlocksMain {
       let match;
       arrowPattern.lastIndex = 0;
       while ((match = arrowPattern.exec(line)) !== null) {
-        const [, fromId, , , toId] = match;
+        const [, fromId, arrowType, , toId] = match;
         if (!nodeMap.has(fromId)) nodeMap.set(fromId, { id: fromId, label: fromId });
         if (!nodeMap.has(toId)) nodeMap.set(toId, { id: toId, label: toId });
-        connections.push({ from: fromId, to: toId });
+        connections.push({ from: fromId, to: toId, arrowType: arrowType });
       }
     }
 
@@ -3116,7 +3131,7 @@ class SystemBlocksMain {
         type: 'Generic',
         x: xPos,
         y: yPos,
-        status: 'placeholder'
+        status: 'Placeholder'
       });
       if (block) {
         renderer.renderBlock(block);
@@ -3126,12 +3141,21 @@ class SystemBlocksMain {
       if (xPos > 700) { xPos = 100; yPos += 120; }
     }
 
+    // Map Mermaid arrow styles to Fusion connection types
+    const arrowTypeMap = {
+      '==>': 'power',     // thick arrow → power
+      '-->': 'signal',    // standard arrow → signal
+      '-.->': 'data',     // dotted arrow → data
+      '---': 'mechanical' // line (no arrow) → mechanical
+    };
+
     // Create connections
     for (const conn of connections) {
       const fromId = blockIdMap.get(conn.from);
       const toId = blockIdMap.get(conn.to);
       if (fromId && toId) {
-        const c = core.addConnection(fromId, toId, 'power');
+        const connType = arrowTypeMap[conn.arrowType] || 'auto';
+        const c = core.addConnection(fromId, toId, connType);
         if (c) renderer.renderConnection(c);
       }
     }
@@ -3159,7 +3183,7 @@ class SystemBlocksMain {
         type: type || 'Generic',
         x: parseFloat(xStr) || 100 + imported * 160,
         y: parseFloat(yStr) || 100,
-        status: (status || 'placeholder').toLowerCase()
+        status: status || 'Placeholder'
       });
       if (block) {
         renderer.renderBlock(block);
@@ -3646,8 +3670,8 @@ class SystemBlocksMain {
             if (editor && typeof editor.importDiagram === 'function') {
               editor.importDiagram(data.diagram);
               var renderer = window.diagramRenderer;
-              if (renderer && typeof renderer.renderAll === 'function') {
-                renderer.renderAll();
+              if (renderer && typeof renderer.updateAllBlocks === 'function') {
+                renderer.updateAllBlocks(editor.diagram);
               }
               if (window.pythonInterface) {
                 window.pythonInterface.showNotification('Diagram recovered from backup', 'success');

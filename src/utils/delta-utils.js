@@ -191,7 +191,31 @@ var DeltaUtils = (function () {
   }
 
   function _deepEqual(a, b) {
-    return JSON.stringify(a) === JSON.stringify(b);
+    if (a === b) return true;
+    if (a == null || b == null) return a === b;
+    if (typeof a !== typeof b) return false;
+
+    if (Array.isArray(a)) {
+      if (!Array.isArray(b) || a.length !== b.length) return false;
+      for (var i = 0; i < a.length; i++) {
+        if (!_deepEqual(a[i], b[i])) return false;
+      }
+      return true;
+    }
+
+    if (typeof a === 'object') {
+      var keysA = Object.keys(a);
+      var keysB = Object.keys(b);
+      if (keysA.length !== keysB.length) return false;
+      for (var k = 0; k < keysA.length; k++) {
+        var key = keysA[k];
+        if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
+        if (!_deepEqual(a[key], b[key])) return false;
+      }
+      return true;
+    }
+
+    return false;
   }
 
   function _union(a, b) {
