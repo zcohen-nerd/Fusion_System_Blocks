@@ -921,7 +921,11 @@ class DiagramRenderer {
       'power':      { stroke: '#dc3545', strokeWidth: 3.5, dashArray: null },
       'data':       { stroke: '#007bff', strokeWidth: 2.5, dashArray: '8,4' },
       'electrical': { stroke: '#dc3545', strokeWidth: 3.5, dashArray: null }, // alias → power
-      'mechanical': { stroke: '#6c757d', strokeWidth: 2.5, dashArray: '12,6' }
+      'signal':     { stroke: '#ff9800', strokeWidth: 2.5, dashArray: '6,3' },
+      'mechanical': { stroke: '#6c757d', strokeWidth: 2.5, dashArray: '12,6' },
+      'software':   { stroke: '#9c27b0', strokeWidth: 2.5, dashArray: '4,4' },
+      'optical':    { stroke: '#00bcd4', strokeWidth: 2.5, dashArray: '2,4' },
+      'thermal':    { stroke: '#e65100', strokeWidth: 3,   dashArray: '8,3,2,3' }
     };
     return styles[connType] || { stroke: '#666', strokeWidth: 2.5, dashArray: null };
   }
@@ -2610,12 +2614,13 @@ class DiagramRenderer {
     g.addEventListener('dblclick', (e) => {
       e.stopPropagation();
       if (annotation.type === 'dimension') return; // dimensions auto-compute text
-      const newText = prompt('Edit annotation:', annotation.text || '');
-      if (newText !== null) {
-        annotation.text = newText;
-        this.renderAnnotation(annotation);
-        if (this.editor) this.editor._markDirty();
-      }
+      _fusionPrompt('Edit annotation:', annotation.text || '').then(newText => {
+        if (newText !== null) {
+          annotation.text = newText;
+          this.renderAnnotation(annotation);
+          if (this.editor) this.editor._markDirty();
+        }
+      });
     });
 
     // --- DELETE key ---

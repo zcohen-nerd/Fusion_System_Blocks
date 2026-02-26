@@ -24,7 +24,7 @@
     }
     
     .block-type-menu {
-      z-index: 99999 !important;
+      z-index: var(--z-dropdown, 300) !important;
     }
     
     /* === Fusion BASE STYLES === */
@@ -78,7 +78,7 @@
       padding: var(--fusion-spacing-xs);
       background: var(--fusion-bg-secondary);
       position: relative;
-      z-index: 100000 !important;
+      z-index: var(--z-toolbar, 200) !important;
     }
     
     .toolbar button {
@@ -435,8 +435,10 @@
       color: var(--fusion-text-primary, #ccc);
     }
     #properties-panel .pp-badge.status-placeholder { background: #555; }
-    #properties-panel .pp-badge.status-in-progress { background: #d4a017; color: #111; }
-    #properties-panel .pp-badge.status-completed { background: #2e7d32; color: #fff; }
+    #properties-panel .pp-badge.status-planned { background: #2196f3; color: #fff; }
+    #properties-panel .pp-badge.status-in-work { background: #d4a017; color: #111; }
+    #properties-panel .pp-badge.status-implemented { background: #2e7d32; color: #fff; }
+    #properties-panel .pp-badge.status-verified { background: #00897b; color: #fff; }
     #properties-panel .pp-conn-item {
       padding: 3px 0;
       font-size: 11px;
@@ -863,7 +865,7 @@
       font-family: var(--fusion-font-family);
       font-weight: 400;
       pointer-events: none;
-      z-index: 1000;
+      z-index: var(--z-tooltip, 400);
       box-shadow: var(--fusion-shadow-medium);
       max-width: 300px;
       word-wrap: break-word;
@@ -1082,7 +1084,7 @@
       border: 1px solid var(--fusion-panel-border, #555);
       border-radius: var(--fusion-radius-small);
       box-shadow: var(--fusion-shadow-medium);
-      z-index: 5000;
+      z-index: var(--z-panel, 700);
       display: none;
       flex-direction: column;
       overflow: hidden;
@@ -1226,7 +1228,7 @@
       padding: var(--fusion-spacing-md);
       font-size: var(--fusion-font-size-small);
       box-shadow: var(--fusion-shadow-medium);
-      z-index: 10001;
+      z-index: var(--z-panel, 700);
       max-width: 380px;
       min-width: 300px;
       max-height: 420px;
@@ -1293,7 +1295,7 @@
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0.55);
-      z-index: 200000;
+      z-index: var(--z-overlay, 800);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1804,7 +1806,9 @@
           <div class="filter-buttons">
             <button id="filter-all" class="fusion-button filter-btn active" title="Show all blocks">All</button>
             <button id="filter-placeholder" class="fusion-button filter-btn" title="Show only Placeholder blocks">Placeholder</button>
-            <button id="filter-implemented" class="fusion-button filter-btn" title="Show only Implemented blocks">Implemented</button>
+            <button id="filter-planned" class="fusion-button filter-btn" title="Show only Planned blocks">Planned</button>
+            <button id="filter-in-work" class="fusion-button filter-btn" title="Show only In-Work blocks">In-Work</button>
+            <button id="filter-implemented" class="fusion-button filter-btn" title="Show only Implemented / Verified blocks">Implemented</button>
           </div>
         </div>
         
@@ -1813,7 +1817,11 @@
           <select id="connection-type-select" class="connection-type-select" style="font-size:11px; padding:2px 4px;" title="Connection type for new connections / selected item">
             <option value="power" selected>Power</option>
             <option value="data">Data</option>
+            <option value="signal">Signal</option>
             <option value="mechanical">Mechanical</option>
+            <option value="software">Software</option>
+            <option value="optical">Optical</option>
+            <option value="thermal">Thermal</option>
           </select>
           <select id="arrow-direction-select" class="connection-type-select" style="font-size:11px; padding:2px 4px;" title="Arrow direction for new connections / selected item">
             <option value="forward" selected>Forward</option>
@@ -2577,8 +2585,8 @@
   </div>
 
   <!-- ========== LOADING SPINNER OVERLAY ========== -->
-  <div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:250000;
-    display:none;align-items:center;justify-content:center;flex-direction:column;">
+  <div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:var(--z-loading, 1100);
+    align-items:center;justify-content:center;flex-direction:column;">
     <div style="width:48px;height:48px;border:4px solid rgba(255,255,255,0.2);border-top:4px solid var(--fusion-accent,#0078d4);
       border-radius:50%;animation:fsb-spin 0.8s linear infinite;"></div>
     <div id="loading-message" style="margin-top:14px;color:#fff;font-size:13px;font-family:Arial,sans-serif;">Loading…</div>
@@ -2808,7 +2816,7 @@
   </div>
 
   <!-- ========== BLOCK CONTEXT MENU ========== -->
-  <div id="block-context-menu" class="fusion-context-menu" style="position:fixed; z-index:1000000;">
+  <div id="block-context-menu" class="fusion-context-menu" style="position:fixed; z-index:var(--z-context-menu, 1000);">
     <!-- Block-specific items -->
     <div id="ctx-rename" class="fusion-context-menu-item" data-needs-block>
       <span class="ctx-icon">✏️</span> Rename
@@ -2888,7 +2896,7 @@
     </div>
   </div>
   <!-- Connection context menu (right-click a connection line) -->
-  <div id="connection-context-menu" class="fusion-context-menu" style="position:fixed; z-index:1000000;">
+  <div id="connection-context-menu" class="fusion-context-menu" style="position:fixed; z-index:var(--z-context-menu, 1000);">
     <div class="fusion-context-menu-item has-submenu">
       <span class="ctx-icon">🔌</span> Type
       <span class="ctx-arrow">▸</span>
@@ -2896,7 +2904,11 @@
         <div class="fusion-context-menu-item" data-conn-type="auto">Auto</div>
         <div class="fusion-context-menu-item" data-conn-type="power">⚡ Power</div>
         <div class="fusion-context-menu-item" data-conn-type="data">📡 Data</div>
+        <div class="fusion-context-menu-item" data-conn-type="signal">📶 Signal</div>
         <div class="fusion-context-menu-item" data-conn-type="mechanical">🔩 Mechanical</div>
+        <div class="fusion-context-menu-item" data-conn-type="software">💻 Software</div>
+        <div class="fusion-context-menu-item" data-conn-type="optical">🔦 Optical</div>
+        <div class="fusion-context-menu-item" data-conn-type="thermal">🌡️ Thermal</div>
       </div>
     </div>
     <div class="fusion-context-menu-item has-submenu">
@@ -2937,7 +2949,7 @@
   <div id="import-dialog" role="dialog" aria-modal="true" aria-labelledby="import-dialog-title"
        style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
                                   background: var(--fusion-panel-bg, #2b2b2b); border: 1px solid var(--fusion-panel-border, #555); 
-                                  padding: 20px; z-index: 10000; min-width: 500px; color: var(--fusion-text-primary, #ffffff); 
+                                  padding: 20px; z-index: var(--z-modal, 900); min-width: 500px; color: var(--fusion-text-primary, #ffffff); 
                                   border-radius: 3px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
     <h3 id="import-dialog-title" style="color: var(--fusion-text-primary, #ffffff); margin-top: 0;">Import Diagram</h3>
     
@@ -2992,302 +3004,19 @@
   
   <!-- Dialog Overlay -->
   <div id="dialog-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                                   background: rgba(0,0,0,0.5); z-index: 9999;"></div>
+                                   background: rgba(0,0,0,0.5); z-index: var(--z-overlay, 800);"></div>
   
-  <!-- ========== Fusion KEYBOARD SHORTCUTS & ACCESSIBILITY - PHASE 3 ========== -->
+  <!-- ========== Fusion KEYBOARD SHORTCUTS & ACCESSIBILITY ========== -->
+  <!-- Legacy FusionKeyboardManager and initRibbonTooltips removed.
+       All keyboard shortcuts are handled by ToolbarManager.setupKeyboardShortcuts().
+       All tooltips are handled by ToolbarManager._initTwoTierTooltips(). -->
+  </script>
   <script>
-    // Professional Keyboard Shortcuts System
-    class FusionKeyboardManager {
-      constructor() {
-        this.shortcuts = {
-          // File Operations
-          'Ctrl+N': () => this.triggerAction('btn-new', 'New Diagram'),
-          'Ctrl+S': () => this.triggerAction('btn-save', 'Save Diagram'),
-          'Ctrl+O': () => this.triggerAction('btn-load', 'Load Diagram'),
-          
-          // Edit Operations
-          'Ctrl+Z': () => this.triggerAction('btn-undo', 'Undo'),
-          'Ctrl+Y': () => this.triggerAction('btn-redo', 'Redo'),
-          'Ctrl+Shift+Z': () => this.triggerAction('btn-redo', 'Redo'),
-          
-          // Navigation
-          'Ctrl+F': () => this.focusSearch(),
-          'Escape': () => this.clearSelection(),
-          'Delete': () => this.deleteSelected(),
-          'Backspace': () => this.deleteSelected(),
-          
-          // Hierarchy Navigation
-          'Ctrl+Up': () => this.triggerAction('btn-go-up', 'Go Up'),
-          'Ctrl+Down': () => this.triggerAction('btn-drill-down', 'Drill Down'),
-          'Ctrl+Shift+N': () => this.triggerAction('btn-create-child', 'Create Child'),
-          
-          // Block Operations
-          'Ctrl+A': () => this.selectAll(),
-          'Ctrl+D': () => this.duplicateSelected(),
-          'Insert': () => this.triggerAction('btn-add-block-ribbon', 'Add Block'),
-          
-          // View Controls
-          'Ctrl+0': () => this.resetZoom(),
-          'Ctrl+=': () => this.zoomIn(),
-          'Ctrl+-': () => this.zoomOut(),
-          
-          // Connection Types (with Shift)
-          'Shift+P': () => this.setConnectionType('power'),
-          'Shift+D': () => this.setConnectionType('data'),
-          'Shift+E': () => this.setConnectionType('electrical'),
-          'Shift+M': () => this.setConnectionType('mechanical'),
-        };
-        
-        this.init();
-      }
-      
-      init() {
-        document.addEventListener('keydown', (e) => this.handleKeydown(e));
-        this.createKeyboardHints();
-        this.setupAccessibility();
-      }
-      
-      handleKeydown(e) {
-        // Don't handle shortcuts when typing in inputs
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
-          if (e.key === 'Escape') {
-            e.target.blur();
-          }
-          return;
-        }
-        
-        const key = this.getShortcutKey(e);
-        const handler = this.shortcuts[key];
-        
-        if (handler) {
-          e.preventDefault();
-          handler();
-          this.showKeyboardFeedback(key);
-        }
-      }
-      
-      getShortcutKey(e) {
-        const parts = [];
-        if (e.ctrlKey) parts.push('Ctrl');
-        if (e.shiftKey) parts.push('Shift');
-        if (e.altKey) parts.push('Alt');
-        
-        let key = e.key;
-        if (key === ' ') key = 'Space';
-        parts.push(key);
-        
-        return parts.join('+');
-      }
-      
-      triggerAction(buttonId, actionName) {
-        const button = document.getElementById(buttonId);
-        if (button && !button.disabled) {
-          button.click();
-          this.showToast(`${actionName} (Keyboard Shortcut)`);
-        } else if (button && button.disabled) {
-          this.showToast(`${actionName} not available`, 'warning');
-        }
-      }
-      
-      focusSearch() {
-        const searchInput = document.getElementById('search-input');
-        if (searchInput) {
-          searchInput.focus();
-          searchInput.select();
-          this.showToast('Search focused (Ctrl+F)');
-        }
-      }
-      
-      clearSelection() {
-        // Clear any selections
-        document.querySelectorAll('.block.selected').forEach(block => {
-          block.classList.remove('selected');
-        });
-        this.showToast('Selection cleared');
-      }
-      
-      selectAll() {
-        document.querySelectorAll('.block').forEach(block => {
-          block.classList.add('selected');
-        });
-        this.showToast('All blocks selected (Ctrl+A)');
-      }
-      
-      deleteSelected() {
-        const selected = document.querySelectorAll('.block.selected');
-        if (selected.length > 0) {
-          // Add deletion animation before removing
-          selected.forEach(block => {
-            block.style.animation = 'blockDisappear 0.3s ease-in forwards';
-            setTimeout(() => block.remove(), 300);
-          });
-          this.showToast(`Deleted ${selected.length} block(s)`);
-        }
-      }
-      
-      setConnectionType(type) {
-        const select = document.getElementById('connection-type-select');
-        if (select) {
-          select.value = type;
-          select.dispatchEvent(new Event('change'));
-          this.showToast(`Connection type: ${type.charAt(0).toUpperCase() + type.slice(1)}`);
-        }
-      }
-      
-      showKeyboardFeedback(shortcut) {
-        // Visual feedback for keyboard shortcuts
-        const feedback = document.createElement('div');
-        feedback.className = 'keyboard-feedback';
-        feedback.textContent = shortcut;
-        feedback.style.cssText = `
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          background: rgba(0,123,204,0.9);
-          color: white;
-          padding: 8px 16px;
-          border-radius: 4px;
-          font-family: var(--fusion-font-family);
-          font-size: 14px;
-          font-weight: 500;
-          z-index: 10000;
-          opacity: 0;
-          animation: shortcutFeedback 0.8s ease-out;
-        `;
-        
-        document.body.appendChild(feedback);
-        setTimeout(() => feedback.remove(), 800);
-      }
-      
-      showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `fusion-toast ${type}`;
-        toast.textContent = message;
-        toast.style.cssText = `
-          position: fixed;
-          bottom: 20px;
-          right: 20px;
-          background: var(--fusion-panel-bg);
-          color: var(--fusion-text-primary);
-          border: 1px solid var(--fusion-panel-border);
-          padding: 12px 16px;
-          border-radius: var(--fusion-radius-medium);
-          font-family: var(--fusion-font-family);
-          font-size: var(--fusion-font-size-normal);
-          box-shadow: var(--fusion-shadow-medium);
-          z-index: 10000;
-          opacity: 0;
-          transform: translateY(20px);
-          animation: toastSlideIn 0.3s ease-out forwards;
-        `;
-        
-        if (type === 'warning') {
-          toast.style.borderColor = 'var(--fusion-status-warning)';
-          toast.style.background = 'var(--fusion-status-warning-bg)';
-        }
-        
-        document.body.appendChild(toast);
-        setTimeout(() => {
-          toast.style.animation = 'toastSlideOut 0.3s ease-in forwards';
-          setTimeout(() => toast.remove(), 300);
-        }, 2000);
-      }
-      
-      createKeyboardHints() {
-        const hints = document.createElement('div');
-        hints.className = 'keyboard-hint';
-        hints.innerHTML = `
-          <div>Press <kbd>Ctrl+K</kbd> to show all shortcuts</div>
-        `;
-        document.body.appendChild(hints);
-        
-        // Show hints on first load, then hide
-        setTimeout(() => hints.classList.add('show'), 1000);
-        setTimeout(() => hints.classList.remove('show'), 4000);
-      }
-      
-      setupAccessibility() {
-        // Add ARIA labels and keyboard navigation
-        document.querySelectorAll('.block').forEach((block, index) => {
-          block.setAttribute('tabindex', '0');
-          block.setAttribute('role', 'button');
-          block.setAttribute('aria-label', `Block ${index + 1}`);
-        });
-        
-        // Enhanced focus management
-        document.addEventListener('focusin', (e) => {
-          if (e.target.classList.contains('block')) {
-            e.target.style.outline = '2px solid var(--fusion-accent-blue)';
-            e.target.style.outlineOffset = '2px';
-          }
-        });
-        
-        document.addEventListener('focusout', (e) => {
-          if (e.target.classList.contains('block')) {
-            e.target.style.outline = '';
-            e.target.style.outlineOffset = '';
-          }
-        });
-      }
-    }
-    
-    // Initialize keyboard manager when DOM is ready — only if the modular
-    // ToolbarManager has NOT already registered its own shortcuts, to avoid
-    // double-firing Delete, Escape, Ctrl+Z, etc.
-    // NOTE: The modular system sets window._systemBlocksInitialized = true
-    // asynchronously, so we defer the check until the next microtask.
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => {
-        if (!window._systemBlocksInitialized) {
-          window.fusionKeyboard = new FusionKeyboardManager();
-        }
-      }, 500);
-    });
-    
     // Visual debug function
     function debugLog(message) {
       // Debug logging disabled for clean interface
 
     }
-
-    // ── Custom Tooltip for Ribbon Buttons ─────────────────────────
-    // Fusion CEF does not display native title-attribute tooltips.
-    // This creates a lightweight floating tooltip on hover.
-    (function initRibbonTooltips() {
-      const tip = document.createElement('div');
-      tip.className = 'ribbon-tooltip';
-      document.body.appendChild(tip);
-
-      let hideTimer = null;
-      const SHOW_DELAY = 400; // ms before tooltip appears
-      let showTimer = null;
-
-      function show(btn) {
-        const text = btn.getAttribute('title');
-        if (!text) return;
-        tip.textContent = text;
-        const rect = btn.getBoundingClientRect();
-        tip.style.left = Math.max(4, rect.left + rect.width / 2 - tip.offsetWidth / 2) + 'px';
-        tip.style.top  = (rect.bottom + 4) + 'px';
-        tip.style.display = 'block';
-      }
-
-      document.addEventListener('mouseover', (e) => {
-        const btn = e.target.closest('.ribbon-button-large, .ribbon-button-small');
-        if (!btn || !btn.getAttribute('title')) return;
-        clearTimeout(hideTimer);
-        clearTimeout(showTimer);
-        showTimer = setTimeout(() => show(btn), SHOW_DELAY);
-      });
-
-      document.addEventListener('mouseout', (e) => {
-        const btn = e.target.closest('.ribbon-button-large, .ribbon-button-small');
-        if (!btn) return;
-        clearTimeout(showTimer);
-        hideTimer = setTimeout(() => { tip.style.display = 'none'; }, 80);
-      });
-    })();
   </script>
   
   <!-- Add CSS for new animations -->
@@ -3364,7 +3093,7 @@
       border-radius: var(--fusion-radius-small);
       box-shadow: var(--fusion-shadow-medium);
       overflow-y: auto;
-      z-index: 999999 !important;
+      z-index: var(--z-dropdown, 300) !important;
       opacity: 0;
       visibility: hidden;
       transition: opacity var(--fusion-transition-fast);
@@ -4480,7 +4209,7 @@
       border-bottom: 1px solid var(--fusion-border-primary);
       position: sticky;
       top: 0;
-      z-index: 10000;
+      z-index: var(--z-fixed, 500);
     }
 
     .sb-tabbar .sb-tab {
@@ -4543,7 +4272,7 @@
       box-shadow: none;
     }
 
-    .sb-panel.show { display: block; opacity: 1; transform: translateY(0); z-index: 200000; }
+    .sb-panel.show { display: block; opacity: 1; transform: translateY(0); z-index: var(--z-panel, 700); }
 
     .sb-section {
       margin-bottom: var(--fusion-spacing-lg);
@@ -4612,7 +4341,7 @@
       background: var(--fusion-gradient-primary);
       border-top: 1px solid var(--fusion-border-primary);
       box-shadow: var(--fusion-shadow-light);
-      z-index: 10000;
+      z-index: var(--z-fixed, 500);
     }
 
     .pill {
@@ -4717,6 +4446,34 @@
             </svg>
             Mechanical
           </span>
+        </div>
+        <div class="connection-item">
+          <svg width="40" height="12" viewBox="0 0 40 12">
+            <line x1="0" y1="6" x2="30" y2="6" stroke="#ff9800" stroke-width="2.5" stroke-dasharray="6,3"/>
+            <polygon points="30,6 26,3 26,9" fill="#ff9800"/>
+          </svg>
+          <span>📶 Signal</span>
+        </div>
+        <div class="connection-item">
+          <svg width="40" height="12" viewBox="0 0 40 12">
+            <line x1="0" y1="6" x2="30" y2="6" stroke="#9c27b0" stroke-width="2.5" stroke-dasharray="4,4"/>
+            <polygon points="30,6 26,3 26,9" fill="#9c27b0"/>
+          </svg>
+          <span>💻 Software</span>
+        </div>
+        <div class="connection-item">
+          <svg width="40" height="12" viewBox="0 0 40 12">
+            <line x1="0" y1="6" x2="30" y2="6" stroke="#00bcd4" stroke-width="2.5" stroke-dasharray="2,4"/>
+            <polygon points="30,6 26,3 26,9" fill="#00bcd4"/>
+          </svg>
+          <span>🔦 Optical</span>
+        </div>
+        <div class="connection-item">
+          <svg width="40" height="12" viewBox="0 0 40 12">
+            <line x1="0" y1="6" x2="30" y2="6" stroke="#e65100" stroke-width="3" stroke-dasharray="8,3,2,3"/>
+            <polygon points="30,6 26,3 26,9" fill="#e65100"/>
+          </svg>
+          <span>🌡️ Thermal</span>
         </div>
 
         <h4 class="fusion-legend-section">Arrow Types</h4>
@@ -4913,7 +4670,7 @@
         var toast = document.createElement('div');
         toast.textContent = message;
         toast.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);' +
-          'padding:12px 24px;border-radius:3px;color:white;font-size:14px;z-index:99999;' +
+          'padding:12px 24px;border-radius:3px;color:white;font-size:14px;z-index:var(--z-notification, 600);' +
           'pointer-events:none;transition:opacity 0.3s;' +
           'background:' + (type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3');
         document.body.appendChild(toast);

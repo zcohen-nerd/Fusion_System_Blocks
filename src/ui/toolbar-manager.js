@@ -537,7 +537,8 @@ class ToolbarManager {
 
   // Button action handlers
   handleNewDiagram() {
-    if (confirm('Create new diagram? Unsaved changes will be lost.')) {
+    _fusionConfirm('Create new diagram? Unsaved changes will be lost.').then(ok => {
+      if (!ok) return;
       this.editor.diagram = this.editor.createEmptyDiagram();
       this.editor.clearSelection();
       if (window.pythonInterface && window.pythonInterface.clearActiveNamedDocument) {
@@ -557,7 +558,7 @@ class ToolbarManager {
       }
       this.renderer.updateAllBlocks(this.editor.diagram);
       this._updateBreadcrumb();
-    }
+    });
   }
 
   handleSave() {
@@ -579,17 +580,21 @@ class ToolbarManager {
   handleLoad() {
     try {
       // Warn about unsaved changes before loading a new diagram
-      if (this.editor && typeof this.editor.hasUnsavedChanges === 'function' && this.editor.hasUnsavedChanges()) {
-        if (!confirm('You have unsaved changes. Load a new diagram anyway?')) {
-          return;
+      const doLoad = () => {
+        if (window.pythonInterface) {
+          if (window.showLoadingSpinner) window.showLoadingSpinner('Loading diagram\u2026');
+          window.pythonInterface.loadDiagram()
+            .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
+        } else {
+          logger.error('Load failed: Python interface not available');
         }
-      }
-      if (window.pythonInterface) {
-        if (window.showLoadingSpinner) window.showLoadingSpinner('Loading diagram\u2026');
-        window.pythonInterface.loadDiagram()
-          .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
+      };
+      if (this.editor && typeof this.editor.hasUnsavedChanges === 'function' && this.editor.hasUnsavedChanges()) {
+        _fusionConfirm('You have unsaved changes. Load a new diagram anyway?').then(ok => {
+          if (ok) doLoad();
+        });
       } else {
-        logger.error('Load failed: Python interface not available');
+        doLoad();
       }
     } catch (error) {
       if (window.hideLoadingSpinner) window.hideLoadingSpinner();
@@ -687,14 +692,15 @@ class ToolbarManager {
           // Decode any HTML entities that may have been escaped by the backend
           const rawLabel = String(doc.label || '');
           const decodedLabel = rawLabel.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-          if (confirm('Delete "' + decodedLabel + '"?')) {
+          _fusionConfirm('Delete "' + decodedLabel + '"?').then(ok => {
+            if (!ok) return;
             window.pythonInterface.deleteNamedDiagram(doc.slug).then(() => {
               item.remove();
               if (listContainer.children.length === 0) {
                 listContainer.innerHTML = '<div style="text-align:center;color:#999;padding:16px;">No saved documents.</div>';
               }
             });
-          }
+          });
         });
 
         listContainer.appendChild(item);
@@ -1086,7 +1092,7 @@ class ToolbarManager {
       position: fixed; left: ${posX}px; top: ${posY}px;
       background: var(--fusion-panel-bg, #2b2b2b);
       border: 1px solid var(--fusion-panel-border, #555);
-      border-radius: 3px; padding: 4px 0; z-index: 100000;
+      border-radius: 3px; padding: 4px 0; z-index: var(--z-dropdown, 300);
       min-width: 170px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       color: var(--fusion-text-primary, #fff);
     `;
@@ -1189,15 +1195,17 @@ class ToolbarManager {
   }
 
   handleAddText() {
-    const text = prompt('Enter text annotation:');
-    if (!text) return;
-    this._addAnnotation('text', text);
+    _fusionPrompt('Enter text annotation:').then(text => {
+      if (!text) return;
+      this._addAnnotation('text', text);
+    });
   }
 
   handleAddNote() {
-    const text = prompt('Enter note text:');
-    if (!text) return;
-    this._addAnnotation('note', text);
+    _fusionPrompt('Enter note text:').then(text => {
+      if (!text) return;
+      this._addAnnotation('note', text);
+    });
   }
 
   handleAddDimension() {
@@ -1207,8 +1215,10 @@ class ToolbarManager {
       const blockA = this.editor.diagram.blocks.find(b => b.id === ids[0]);
       const blockB = this.editor.diagram.blocks.find(b => b.id === ids[1]);
       if (blockA && blockB) {
-        const label = prompt('Dimension label (leave blank for auto):', '');
-        this._addAnnotation('dimension', label || '', { refBlockA: ids[0], refBlockB: ids[1] });
+        _fusionPrompt('Dimension label (leave blank for auto):', '').then(label => {
+          if (label === null) return;
+          this._addAnnotation('dimension', label || '', { refBlockA: ids[0], refBlockB: ids[1] });
+        });
         return;
       }
     }
@@ -1221,11 +1231,12 @@ class ToolbarManager {
   }
 
   handleAddCallout() {
-    const text = prompt('Enter callout text:');
-    if (!text) return;
-    // If a block is selected, point the callout at it
-    const targetBlockId = this.editor.selectedBlock || null;
-    this._addAnnotation('callout', text, { targetBlockId });
+    _fusionPrompt('Enter callout text:').then(text => {
+      if (!text) return;
+      // If a block is selected, point the callout at it
+      const targetBlockId = this.editor.selectedBlock || null;
+      this._addAnnotation('callout', text, { targetBlockId });
+    });
   }
 
   /**
@@ -1408,8 +1419,9 @@ class ToolbarManager {
     if (!window.advancedFeatures || !window.advancedFeatures.hasSelection()) return;
     const ids = window.advancedFeatures.getSelectedBlocks();
     if (ids.length < 1) return;
-    const name = prompt('Group name:', 'Group') || 'Group';
-    window.advancedFeatures.createGroup(ids, name);
+    _fusionPrompt('Group name:', 'Group').then(name => {
+      window.advancedFeatures.createGroup(ids, name || 'Group');
+    });
   }
 
   handleUngroup() {

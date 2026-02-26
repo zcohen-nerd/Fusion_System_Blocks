@@ -894,14 +894,15 @@ class SystemBlocksMain {
             // Second block picked — create the dimension
             const firstId = this._dimensionMode.firstBlock.id;
             const secondId = hitBlock.id;
-            const label = prompt('Dimension label (leave blank for auto):', '');
-            if (window.toolbarManager) {
-              window.toolbarManager._addAnnotation('dimension', label || '', {
-                refBlockA: firstId,
-                refBlockB: secondId,
-              });
-            }
-            this.exitDimensionMode(svg);
+            _fusionPrompt('Dimension label (leave blank for auto):', '').then(label => {
+              if (label !== null && window.toolbarManager) {
+                window.toolbarManager._addAnnotation('dimension', label || '', {
+                  refBlockA: firstId,
+                  refBlockB: secondId,
+                });
+              }
+              this.exitDimensionMode(svg);
+            });
           }
           e.stopPropagation();
         }
@@ -1165,11 +1166,12 @@ class SystemBlocksMain {
         if (sel && sel.size >= 2) {
           e.preventDefault();
           const blockIds = Array.from(sel);
-          const name = prompt('Group name:', 'Group');
-          if (name !== null) {
-            features.createGroup(blockIds, name || 'Group');
-            this._toast('Created group "' + (name || 'Group') + '"', 'success');
-          }
+          _fusionPrompt('Group name:', 'Group').then(name => {
+            if (name !== null) {
+              features.createGroup(blockIds, name || 'Group');
+              this._toast('Created group "' + (name || 'Group') + '"', 'success');
+            }
+          });
         }
         return;
       }
@@ -1199,7 +1201,7 @@ class SystemBlocksMain {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
       background: var(--fusion-panel-bg, #2b2b2b);
       border: 2px solid var(--fusion-accent, #FF6B35);
-      border-radius: 3px; padding: 16px 20px; z-index: 100001;
+      border-radius: 3px; padding: 16px 20px; z-index: var(--z-modal, 900);
       min-width: 220px; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
       color: var(--fusion-text-primary, #fff); font-family: Arial, sans-serif;
     `;
@@ -1434,7 +1436,7 @@ class SystemBlocksMain {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
       background: var(--fusion-panel-bg, #2b2b2b); color: var(--fusion-text-primary, #fff);
       border: 1px solid var(--fusion-panel-border, #555); border-radius: 3px;
-      padding: 20px; z-index: 100001; min-width: 360px; max-width: 480px;
+      padding: 20px; z-index: var(--z-modal, 900); min-width: 360px; max-width: 480px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.4); font-family: Arial, sans-serif;
     `;
 
@@ -2257,7 +2259,7 @@ class SystemBlocksMain {
     menu = document.createElement('div');
     menu.id = 'named-stub-context-menu';
     menu.className = 'fusion-context-menu show';
-    menu.style.cssText = 'position:fixed;z-index:1000000;left:' + clientX + 'px;top:' + clientY + 'px;';
+    menu.style.cssText = 'position:fixed;z-index:var(--z-context-menu, 1000);left:' + clientX + 'px;top:' + clientY + 'px;';
 
     // Rename option
     const renameItem = document.createElement('div');
@@ -2265,14 +2267,15 @@ class SystemBlocksMain {
     renameItem.innerHTML = '<span class="ctx-icon">✏️</span> Rename Net…';
     renameItem.addEventListener('click', () => {
       menu.remove();
-      const newName = prompt('Rename net "' + netName + '" to:', netName);
-      if (!newName || !newName.trim() || newName.trim() === netName) return;
-      // Rename all stubs with this net name
-      const stubs = core.getStubsByNet ? core.getStubsByNet(netName) : [];
-      stubs.forEach(s => { s.netName = newName.trim(); });
-      renderer.updateAllBlocks(core.diagram);
-      if (features) features.saveState();
-      this._toast('Renamed net to "' + newName.trim() + '"', 'success');
+      _fusionPrompt('Rename net "' + netName + '" to:', netName).then(newName => {
+        if (!newName || !newName.trim() || newName.trim() === netName) return;
+        // Rename all stubs with this net name
+        const stubs = core.getStubsByNet ? core.getStubsByNet(netName) : [];
+        stubs.forEach(s => { s.netName = newName.trim(); });
+        renderer.updateAllBlocks(core.diagram);
+        if (features) features.saveState();
+        this._toast('Renamed net to "' + newName.trim() + '"', 'success');
+      });
     });
     menu.appendChild(renameItem);
 
@@ -2369,14 +2372,15 @@ class SystemBlocksMain {
       deleteNetItem.innerHTML = '<span class="ctx-icon">⛔</span> Delete Entire Net "' + _escapeHtml(netName) + '" (' + netBlocks.length + ')';
       deleteNetItem.addEventListener('click', () => {
         menu.remove();
-        const ok = confirm('Delete all ' + netBlocks.length + ' stubs on net "' + netName + '"?');
-        if (!ok) return;
-        // Remove all stubs in this net
-        const toRemove = netBlocks.map(s => s.id);
-        toRemove.forEach(id => core.removeNamedStub(id));
-        renderer.updateAllBlocks(core.diagram);
-        if (features) features.saveState();
-        this._toast('Deleted net "' + netName + '"', 'success');
+        _fusionConfirm('Delete all ' + netBlocks.length + ' stubs on net "' + netName + '"?').then(ok => {
+          if (!ok) return;
+          // Remove all stubs in this net
+          const toRemove = netBlocks.map(s => s.id);
+          toRemove.forEach(id => core.removeNamedStub(id));
+          renderer.updateAllBlocks(core.diagram);
+          if (features) features.saveState();
+          this._toast('Deleted net "' + netName + '"', 'success');
+        });
       });
       menu.appendChild(deleteNetItem);
     }
@@ -2449,36 +2453,37 @@ class SystemBlocksMain {
     const lines = candidates.map((e, i) =>
       `${i + 1}. [${e.path}] ${e.block.name || e.block.id} (${e.block.type || 'generic'})`
     );
-    const choice = prompt(
+    _fusionPrompt(
       'Connect [' + (sourceBlock.name || sourceBlock.id) + '] to which block?\n\n' +
       lines.join('\n') +
       '\n\nEnter number:',
       '1'
-    );
-    if (!choice) return;
-    const idx = parseInt(choice, 10) - 1;
-    if (isNaN(idx) || idx < 0 || idx >= candidates.length) return;
+    ).then(choice => {
+      if (!choice) return;
+      const idx = parseInt(choice, 10) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= candidates.length) return;
 
-    const target = candidates[idx];
-    const connType = document.getElementById('connection-type-select');
-    const type = connType ? connType.value : 'data';
-    const dirSelect = document.getElementById('arrow-direction-select');
-    const direction = dirSelect ? dirSelect.value : 'forward';
+      const target = candidates[idx];
+      const connType = document.getElementById('connection-type-select');
+      const type = connType ? connType.value : 'data';
+      const dirSelect = document.getElementById('arrow-direction-select');
+      const direction = dirSelect ? dirSelect.value : 'forward';
 
-    const conn = core.addConnection(sourceBlock.id, target.block.id, type, direction);
-    if (conn) {
-      renderer._cachedFanMap = null;
-      renderer.renderConnection(conn);
-      // Re-render cross-diagram stubs so the new connection shows its flag
-      renderer.renderCrossDiagramStubs(core.diagram);
-      if (features) features.saveState();
-      if (window.pythonInterface) {
-        window.pythonInterface.showNotification(
-          `Connected to "${target.block.name || target.block.id}" (${target.path})`,
-          'success'
-        );
+      const conn = core.addConnection(sourceBlock.id, target.block.id, type, direction);
+      if (conn) {
+        renderer._cachedFanMap = null;
+        renderer.renderConnection(conn);
+        // Re-render cross-diagram stubs so the new connection shows its flag
+        renderer.renderCrossDiagramStubs(core.diagram);
+        if (features) features.saveState();
+        if (window.pythonInterface) {
+          window.pythonInterface.showNotification(
+            `Connected to "${target.block.name || target.block.id}" (${target.path})`,
+            'success'
+          );
+        }
       }
-    }
+    });
   }
 
   /**
@@ -2897,12 +2902,14 @@ class SystemBlocksMain {
     const searchInput = document.getElementById('search-input');
     const filterAll = document.getElementById('filter-all');
     const filterPlaceholder = document.getElementById('filter-placeholder');
+    const filterPlanned = document.getElementById('filter-planned');
+    const filterInWork = document.getElementById('filter-in-work');
     const filterImplemented = document.getElementById('filter-implemented');
 
     if (!searchInput) return;
 
     // Current filter state
-    let activeFilter = 'all'; // 'all' | 'placeholder' | 'implemented'
+    let activeFilter = 'all'; // 'all' | 'placeholder' | 'planned' | 'in-work' | 'implemented'
 
     const applyFilters = () => {
       const query = searchInput.value.trim().toLowerCase();
@@ -2929,6 +2936,8 @@ class SystemBlocksMain {
           const blockStatus = (block.status || 'Placeholder').toLowerCase();
           if (activeFilter === 'implemented') {
             statusMatch = blockStatus === 'implemented' || blockStatus === 'verified';
+          } else if (activeFilter === 'in-work') {
+            statusMatch = blockStatus === 'in-work' || blockStatus === 'in progress';
           } else {
             statusMatch = blockStatus === activeFilter.toLowerCase();
           }
@@ -2964,6 +2973,8 @@ class SystemBlocksMain {
 
     if (filterAll) filterAll.addEventListener('click', () => setActiveFilter('all', filterAll));
     if (filterPlaceholder) filterPlaceholder.addEventListener('click', () => setActiveFilter('placeholder', filterPlaceholder));
+    if (filterPlanned) filterPlanned.addEventListener('click', () => setActiveFilter('planned', filterPlanned));
+    if (filterInWork) filterInWork.addEventListener('click', () => setActiveFilter('in-work', filterInWork));
     if (filterImplemented) filterImplemented.addEventListener('click', () => setActiveFilter('implemented', filterImplemented));
 
     // Additional status filter buttons (#43) — wire any extra filter
@@ -3241,7 +3252,7 @@ class SystemBlocksMain {
     bar.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);' +
       'display:flex;align-items:center;gap:8px;padding:6px 14px;' +
       'background:#1e1e2e;border:1px solid #444;border-radius:3px;' +
-      'color:#ccc;font-size:13px;z-index:10010;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
+      'color:#ccc;font-size:13px;z-index:var(--z-notification, 600);box-shadow:0 2px 6px rgba(0,0,0,0.3);';
 
     const label = document.createElement('span');
     label.textContent = blockIds.length + ' blocks selected';
@@ -3252,12 +3263,13 @@ class SystemBlocksMain {
     groupBtn.style.cssText = 'padding:4px 12px;border:none;border-radius:4px;' +
       'background:#4fc3f7;color:#111;font-weight:600;cursor:pointer;font-size:13px;';
     groupBtn.addEventListener('click', () => {
-      const name = prompt('Group name:', 'Group');
-      if (name !== null) {
-        features.createGroup(blockIds, name || 'Group');
-        this._toast('Created group "' + (name || 'Group') + '"', 'success');
-      }
-      bar.remove();
+      _fusionPrompt('Group name:', 'Group').then(name => {
+        if (name !== null) {
+          features.createGroup(blockIds, name || 'Group');
+          this._toast('Created group "' + (name || 'Group') + '"', 'success');
+        }
+        bar.remove();
+      });
     });
     bar.appendChild(groupBtn);
 
@@ -3294,7 +3306,7 @@ class SystemBlocksMain {
 
       const overlay = document.createElement('div');
       overlay.id = 'autocomplete-dialog';
-      overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;' +
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:var(--z-overlay, 800);display:flex;' +
         'align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
 
       const card = document.createElement('div');
@@ -3582,7 +3594,7 @@ class SystemBlocksMain {
       border-radius: 4px;
       font-size: 12px;
       font-weight: bold;
-      z-index: 10000;
+      z-index: var(--z-notification, 600);
       opacity: 0;
       transition: opacity 0.3s ease;
     `;
@@ -3742,7 +3754,7 @@ class SystemBlocksMain {
       border-radius: 3px;
       max-width: 400px;
       text-align: center;
-      z-index: 10001;
+      z-index: var(--z-notification, 600);
       box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     `;
     

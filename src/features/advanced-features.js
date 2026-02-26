@@ -624,7 +624,7 @@ class AdvancedFeatures {
 
     const overlay = document.createElement('div');
     overlay.id = 'group-color-picker';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;' +
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:var(--z-overlay, 800);display:flex;' +
       'align-items:center;justify-content:center;background:rgba(0,0,0,0.45);';
 
     const card = document.createElement('div');
@@ -842,13 +842,14 @@ class AdvancedFeatures {
 
     addItem('✏️ Properties…', () => this._showGroupPropertiesDialog(group));
     addItem('🔤 Rename…', () => {
-      const newName = prompt('Rename group:', group.name || '');
-      if (newName !== null && newName.trim()) {
-        group.name = newName.trim();
-        this.renderGroupBoundary(group);
-        this._syncGroupsToDiagram();
-        this.saveState();
-      }
+      _fusionPrompt('Rename group:', group.name || '').then(newName => {
+        if (newName !== null && newName.trim()) {
+          group.name = newName.trim();
+          this.renderGroupBoundary(group);
+          this._syncGroupsToDiagram();
+          this.saveState();
+        }
+      });
     });
 
     addSep();
@@ -858,40 +859,41 @@ class AdvancedFeatures {
     if (otherGroups.length > 0) {
       addItem('📂 Set Parent Group…', () => {
         const options = otherGroups.map(g => g.name).join(', ');
-        const choice = prompt(
-          `Set parent group for "${group.name}".\nAvailable: ${options}\n\nEnter parent group name (or leave empty to clear):`,
+        _fusionPrompt(
+          'Set parent group for "' + group.name + '".\nAvailable: ' + options + '\n\nEnter parent group name (or leave empty to clear):',
           group.parentGroupId ? (this.groups.get(group.parentGroupId)?.name || '') : ''
-        );
-        if (choice === null) return;
-        if (choice.trim() === '') {
-          group.parentGroupId = null;
-        } else {
-          const parent = otherGroups.find(g => g.name === choice.trim());
-          if (parent) {
-            // Prevent circular: parent can't be self or descendant of self
-            let pid = parent.id;
-            const chain = new Set();
-            let circular = false;
-            while (pid) {
-              if (pid === group.id) { circular = true; break; }
-              if (chain.has(pid)) break;
-              chain.add(pid);
-              const p = this.groups.get(pid);
-              pid = p ? p.parentGroupId : null;
-            }
-            if (circular) {
-              alert('Cannot set parent: would create a circular reference.');
+        ).then(choice => {
+          if (choice === null) return;
+          if (choice.trim() === '') {
+            group.parentGroupId = null;
+          } else {
+            const parent = otherGroups.find(g => g.name === choice.trim());
+            if (parent) {
+              // Prevent circular: parent can't be self or descendant of self
+              let pid = parent.id;
+              const chain = new Set();
+              let circular = false;
+              while (pid) {
+                if (pid === group.id) { circular = true; break; }
+                if (chain.has(pid)) break;
+                chain.add(pid);
+                const p = this.groups.get(pid);
+                pid = p ? p.parentGroupId : null;
+              }
+              if (circular) {
+                _fusionAlert('Cannot set parent: would create a circular reference.');
+                return;
+              }
+              group.parentGroupId = parent.id;
+            } else {
+              _fusionAlert('Group not found: ' + choice.trim());
               return;
             }
-            group.parentGroupId = parent.id;
-          } else {
-            alert('Group not found: ' + choice.trim());
-            return;
           }
-        }
-        this.renderGroupBoundary(group);
-        this._syncGroupsToDiagram();
-        this.saveState();
+          this.renderGroupBoundary(group);
+          this._syncGroupsToDiagram();
+          this.saveState();
+        });
       });
     }
 
@@ -1087,7 +1089,7 @@ class AdvancedFeatures {
           pid = p ? p.parentGroupId : null;
         }
         if (circular) {
-          alert('Cannot set parent: would create a circular reference.');
+          _fusionAlert('Cannot set parent: would create a circular reference.');
           return;
         }
       }

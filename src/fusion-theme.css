@@ -148,16 +148,20 @@
 
   /* === Z-INDEX SCALE === */
   --z-canvas: 1;
-  --z-blocks: 10;
   --z-connections: 5;
+  --z-blocks: 10;
   --z-legend: 100;
-  --z-toolbar: 200;
   --z-secondary-toolbar: 150;
+  --z-toolbar: 200;
   --z-dropdown: 300;
   --z-tooltip: 400;
-  --z-notification: 500;
-  --z-modal: 600;
-  --z-overlay: 550;
+  --z-fixed: 500;
+  --z-notification: 600;
+  --z-panel: 700;
+  --z-overlay: 800;
+  --z-modal: 900;
+  --z-context-menu: 1000;
+  --z-loading: 1100;
 }
 
 /* === BLOCK STYLING === */
