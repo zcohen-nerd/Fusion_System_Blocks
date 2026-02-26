@@ -861,8 +861,11 @@ class PythonInterface {
           // Clear previous
           if (window.diagramRenderer) {
             window.diagramRenderer.clearConnectionHighlights();
-            window.diagramEditor.diagram.blocks.forEach(b =>
-              window.diagramRenderer.highlightBlock(b.id, false));
+            const diagram = window.diagramEditor && window.diagramEditor.diagram;
+            if (diagram && Array.isArray(diagram.blocks)) {
+              diagram.blocks.forEach(b =>
+                window.diagramRenderer.highlightBlock(b.id, false));
+            }
           }
           // Highlight relevant items
           blockIds.forEach(bid => {

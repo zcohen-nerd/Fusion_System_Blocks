@@ -685,7 +685,8 @@ class ToolbarManager {
         item.querySelector('.doc-delete-btn').addEventListener('click', (e) => {
           e.stopPropagation();
           // Decode any HTML entities that may have been escaped by the backend
-          const decodedLabel = doc.label.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+          const rawLabel = String(doc.label || '');
+          const decodedLabel = rawLabel.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
           if (confirm('Delete "' + decodedLabel + '"?')) {
             window.pythonInterface.deleteNamedDiagram(doc.slug).then(() => {
               item.remove();

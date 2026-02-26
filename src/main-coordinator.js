@@ -2324,7 +2324,7 @@ class SystemBlocksMain {
       const sideItem = document.createElement('div');
       sideItem.className = 'fusion-context-menu-item';
       const curSide = stub.portSide || 'output';
-      sideItem.innerHTML = '<span class="ctx-icon">📐</span> Port Side: ' + curSide;
+      sideItem.innerHTML = '<span class="ctx-icon">📐</span> Port Side: ' + _escapeHtml(curSide);
       sideItem.addEventListener('click', () => {
         menu.remove();
         const sides = ['output', 'input', 'top', 'bottom'];
@@ -2344,7 +2344,7 @@ class SystemBlocksMain {
       const typeItem = document.createElement('div');
       typeItem.className = 'fusion-context-menu-item';
       const curType = stub.type || 'auto';
-      typeItem.innerHTML = '<span class="ctx-icon">🎨</span> Type: ' + curType;
+      typeItem.innerHTML = '<span class="ctx-icon">🎨</span> Type: ' + _escapeHtml(curType);
       typeItem.addEventListener('click', () => {
         menu.remove();
         const types = ['auto', 'power', 'data', 'signal', 'mechanical', 'software', 'optical', 'thermal'];
@@ -2910,15 +2910,28 @@ class SystemBlocksMain {
       const svg = document.getElementById('svg-canvas');
       if (!svg) return;
 
+      const escapeForAttrSelector = (value) => {
+        const str = String(value);
+        if (window.CSS && typeof window.CSS.escape === 'function') {
+          return window.CSS.escape(str);
+        }
+        return str.replace(/["\\]/g, '\\$&');
+      };
+
       blocks.forEach(block => {
-        const group = svg.querySelector(`g[data-block-id="${block.id}"]`);
+        const safeBlockId = escapeForAttrSelector(block.id);
+        const group = svg.querySelector(`g[data-block-id="${safeBlockId}"]`);
         if (!group) return;
 
         // Filter by status — matches the 5 canonical statuses (case-insensitive)
         let statusMatch = true;
         if (activeFilter !== 'all') {
           const blockStatus = (block.status || 'Placeholder').toLowerCase();
-          statusMatch = blockStatus === activeFilter.toLowerCase();
+          if (activeFilter === 'implemented') {
+            statusMatch = blockStatus === 'implemented' || blockStatus === 'verified';
+          } else {
+            statusMatch = blockStatus === activeFilter.toLowerCase();
+          }
         }
 
         // Filter by search text (match name, type, or status)
