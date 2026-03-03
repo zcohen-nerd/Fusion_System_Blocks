@@ -80,6 +80,12 @@ class DiagramRenderer {
   setupGrid() {
     // Create grid pattern
     const defs = this.svg.querySelector('defs') || this.svg.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'defs'));
+
+    // Remove any existing grid pattern to avoid duplicates on re-init
+    const existingGrid = defs.querySelector('#grid');
+    if (existingGrid) {
+      existingGrid.remove();
+    }
     
     this.gridPattern = document.createElementNS('http://www.w3.org/2000/svg', 'pattern');
     this.gridPattern.setAttribute('id', 'grid');
@@ -147,6 +153,40 @@ class DiagramRenderer {
 
       filter.appendChild(feDropShadow);
       defs.appendChild(filter);
+    }
+
+    // Port glow filters for connection-mode snap highlighting
+    if (!defs.querySelector('#port-glow-orange')) {
+      const glowOrange = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+      glowOrange.setAttribute('id', 'port-glow-orange');
+      glowOrange.setAttribute('x', '-50%');
+      glowOrange.setAttribute('y', '-50%');
+      glowOrange.setAttribute('width', '200%');
+      glowOrange.setAttribute('height', '200%');
+      const feOrange = document.createElementNS('http://www.w3.org/2000/svg', 'feDropShadow');
+      feOrange.setAttribute('dx', '0');
+      feOrange.setAttribute('dy', '0');
+      feOrange.setAttribute('stdDeviation', '3');
+      feOrange.setAttribute('flood-color', '#FF6B35');
+      feOrange.setAttribute('flood-opacity', '0.8');
+      glowOrange.appendChild(feOrange);
+      defs.appendChild(glowOrange);
+    }
+    if (!defs.querySelector('#port-glow-blue')) {
+      const glowBlue = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+      glowBlue.setAttribute('id', 'port-glow-blue');
+      glowBlue.setAttribute('x', '-50%');
+      glowBlue.setAttribute('y', '-50%');
+      glowBlue.setAttribute('width', '200%');
+      glowBlue.setAttribute('height', '200%');
+      const feBlue = document.createElementNS('http://www.w3.org/2000/svg', 'feDropShadow');
+      feBlue.setAttribute('dx', '0');
+      feBlue.setAttribute('dy', '0');
+      feBlue.setAttribute('stdDeviation', '3');
+      feBlue.setAttribute('flood-color', '#2196F3');
+      feBlue.setAttribute('flood-opacity', '0.8');
+      glowBlue.appendChild(feBlue);
+      defs.appendChild(glowBlue);
     }
   }
 
@@ -247,6 +287,12 @@ class DiagramRenderer {
   }
 
   renderBlock(block) {
+    // Guard against null/undefined/incomplete block data
+    if (!block || !block.id) {
+      logger.warn('renderBlock: skipping invalid block', block);
+      return null;
+    }
+
     const existing = this.blockElements.get(block.id);
     if (existing) {
       existing.remove();
@@ -255,7 +301,16 @@ class DiagramRenderer {
     const blockGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     blockGroup.setAttribute('class', 'block');
     blockGroup.setAttribute('data-block-id', block.id);
-    blockGroup.setAttribute('transform', `translate(${block.x}, ${block.y})`);
+    // Apply position, and rotation if non-zero (rotates around block centre)
+    const rotation = block.rotation || 0;
+    if (rotation) {
+      const cx = (block.width || 120) / 2;
+      const cy = (block.height || 80) / 2;
+      blockGroup.setAttribute('transform',
+        `translate(${block.x}, ${block.y}) rotate(${rotation}, ${cx}, ${cy})`);
+    } else {
+      blockGroup.setAttribute('transform', `translate(${block.x}, ${block.y})`);
+    }
 
     // Transparent hit rect ensures pointer events fire consistently across
     // the entire block area (prevents gaps between child SVG elements).
@@ -282,6 +337,13 @@ class DiagramRenderer {
     const mainShape = shape.firstChild;
     mainShape.setAttribute('fill', styling.fill);
     mainShape.setAttribute('stroke', styling.stroke);
+    // Apply status-driven opacity and stroke width overrides
+    if (styling.fillOpacity != null) {
+      mainShape.setAttribute('fill-opacity', String(styling.fillOpacity));
+    }
+    if (styling.strokeWidth != null) {
+      mainShape.setAttribute('stroke-width', String(styling.strokeWidth));
+    }
     mainShape.setAttribute('filter', 'url(#drop-shadow)');
     
     blockGroup.appendChild(shape);
@@ -587,9 +649,33 @@ class DiagramRenderer {
     createPort(w / 2, h, 'bottom');
   }
 
+  /**
+   * Invalidate the cached fan-map so it is rebuilt on next use.
+   * Call this whenever connections or named stubs are added or removed.
+   */
+  invalidateFanMapCache() {
+    this._cachedFanMap = null;
+  }
+
   renderConnection(connection) {
+    // Invalidate fan-map cache when topology may have changed (connection
+    // added or removed since the cache was built). We detect this by
+    // checking whether the connection being rendered exists in the cache.
+    if (this._cachedFanMap) {
+      const fromPort = connection.fromPort || 'output';
+      const key = connection.fromBlock + ':' + fromPort;
+      const entry = this._cachedFanMap.get(key);
+      if (!entry || !entry.items.find(i => i.id === connection.id)) {
+        this._cachedFanMap = null;
+      }
+    }
+
     const existing = this.connectionElements.get(connection.id);
     if (existing) {
+      // Abort any active drag listeners registered by the old group
+      if (existing._abortController) {
+        existing._abortController.abort();
+      }
       existing.remove();
     }
 
@@ -636,12 +722,6 @@ class DiagramRenderer {
 
     // --- Arrow direction ---
     const direction = (connection.arrowDirection || 'forward').toLowerCase();
-    // Use a type-specific arrowhead marker so the arrowhead colour
-    // matches the connection line colour.
-    const markerSuffix = ['power', 'data', 'mechanical'].includes(connType)
-      ? '-' + connType : (connType === 'electrical' ? '-power' : '');
-    const fwdMarker = `url(#arrowhead${markerSuffix})`;
-
     // --- Resolve port-aware endpoints ---
     const fromPort = connection.fromPort || 'output';
     const toPort   = connection.toPort   || 'input';
@@ -704,15 +784,34 @@ class DiagramRenderer {
         break;
     }
 
+    // Apply block rotation to connection endpoints so ports follow
+    // the block's visual orientation.
+    if (resolvedFrom.rotation) {
+      const rp = this._applyPortRotation(fromX, fromY, resolvedFrom);
+      fromX = rp.x;
+      fromY = rp.y;
+    }
+    if (resolvedTo.rotation) {
+      const rp = this._applyPortRotation(toX, toY, resolvedTo);
+      toX = rp.x;
+      toY = rp.y;
+    }
+
     // Determine whether this is a vertical connection (top/bottom ports)
     const isVerticalFrom = (fromPort === 'top' || fromPort === 'bottom');
     const isVerticalTo   = (toPort === 'top' || toPort === 'bottom');
     const isMixed = isVerticalFrom !== isVerticalTo;      // one H, one V
     const isVertical = isVerticalFrom && isVerticalTo;    // both V
 
+    // Effective routing mode: per-connection override > global
+    const effectiveMode = connection.routeMode || this.routingMode;
+
     // Choose path based on routing mode
     let d;
-    if (this.routingMode === 'orthogonal') {
+    if (effectiveMode === 'straight') {
+      // Straight line — no routing, direct point-to-point
+      d = `M ${fromX} ${fromY} L ${toX} ${toY}`;
+    } else if (effectiveMode === 'orthogonal') {
       if (isMixed) {
         d = this._computeMixedAxisPath(fromX, fromY, toX, toY, fromPort, toPort);
       } else if (isVertical) {
@@ -784,15 +883,33 @@ class DiagramRenderer {
       this._addManualStartArrow(group, fromX, fromY, toX, toY, styling.stroke, styling.strokeWidth, fromPort);
     }
 
+    // --- Connection label rendering ---
+    this._renderConnectionLabel(group, connection, path, fromX, fromY, toX, toY);
+
     // --- Waypoint handles (orthogonal mode only) ---
-    if (this.routingMode === 'orthogonal' && connection.waypoints && connection.waypoints.length > 0) {
+    if (effectiveMode === 'orthogonal' && connection.waypoints && connection.waypoints.length > 0) {
       this._renderWaypointHandles(group, connection);
     }
 
-    // --- Double-click to add a waypoint (orthogonal mode only) ---
+    // --- Double-click: edit label (primary), or add waypoint (orthogonal) ---
     group.addEventListener('dblclick', (e) => {
-      if (this.routingMode !== 'orthogonal') return;
       e.stopPropagation();
+      // If click is on the label group itself, always start label edit
+      const labelHit = e.target.closest
+        ? e.target.closest('.connection-label-group')
+        : null;
+      if (labelHit || !connection.label) {
+        // Start inline label editing
+        this._startConnectionLabelEdit(connection, group, path, fromX, fromY, toX, toY);
+        return;
+      }
+      // Otherwise, add a waypoint in orthogonal mode
+      const connEffectiveMode = connection.routeMode || this.routingMode;
+      if (connEffectiveMode !== 'orthogonal') {
+        // In non-orthogonal mode, dblclick always edits label
+        this._startConnectionLabelEdit(connection, group, path, fromX, fromY, toX, toY);
+        return;
+      }
       const svgPt = this._clientToSVG(e.clientX, e.clientY);
       if (!svgPt) return;
       if (!connection.waypoints) connection.waypoints = [];
@@ -809,6 +926,8 @@ class DiagramRenderer {
       ? this.connectionsLayer
       : (this.svg.querySelector('#connections-layer') || this.svg);
     target.appendChild(group);
+    // Attach AbortController so drag listeners can be cleaned on re-render
+    group._abortController = new AbortController();
     this.connectionElements.set(connection.id, group);
 
     logger.debug('renderConnection: rendered', connection.id,
@@ -816,6 +935,247 @@ class DiagramRenderer {
       'path:', d.substring(0, 60) + '...');
 
     return group;
+  }
+
+  // =========================================================================
+  // CONNECTION LABEL HELPERS
+  // =========================================================================
+
+  /**
+   * Compute a point at a given ratio (0–1) along an SVG <path>.
+   * Falls back to linear interpolation between from/to when
+   * getTotalLength / getPointAtLength are unavailable (e.g. detached paths).
+   */
+  _getPointOnPath(pathEl, ratio, fromX, fromY, toX, toY) {
+    try {
+      const len = pathEl.getTotalLength();
+      if (len > 0) {
+        const pt = pathEl.getPointAtLength(len * ratio);
+        return { x: pt.x, y: pt.y };
+      }
+    } catch (_) { /* fallback */ }
+    // Linear fallback
+    return {
+      x: fromX + (toX - fromX) * ratio,
+      y: fromY + (toY - fromY) * ratio
+    };
+  }
+
+  /**
+   * Render a label on a connection path. The label is positioned at the
+   * midpoint of the path (or at `connection.labelOffset` if set, a
+   * 0–1 ratio along the path). The label consists of a semi-transparent
+   * background <rect> behind a <text> element.
+   */
+  _renderConnectionLabel(group, connection, pathEl, fromX, fromY, toX, toY) {
+    // Support both top-level properties (JS native) and attributes dict
+    // (Python round-trip) for label storage.
+    const attrs = connection.attributes || {};
+    const labelText = connection.label || attrs.label || '';
+    if (!labelText) return;
+
+    const offset = (typeof connection.labelOffset === 'number')
+      ? connection.labelOffset
+      : (typeof attrs.labelOffset === 'number' ? attrs.labelOffset : 0.5);
+    const midPt = this._getPointOnPath(pathEl, offset, fromX, fromY, toX, toY);
+
+    // User-draggable Y offset stored as labelOffsetY (pixels in SVG space)
+    const dyUser = (typeof connection.labelOffsetY === 'number')
+      ? connection.labelOffsetY
+      : (typeof attrs.labelOffsetY === 'number' ? attrs.labelOffsetY : 0);
+
+    const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    labelGroup.setAttribute('class', 'connection-label-group');
+    labelGroup.setAttribute('data-connection-id', connection.id);
+
+    // Background rect (sized after text is measured)
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bg.setAttribute('class', 'connection-label-bg');
+    bg.setAttribute('rx', '3');
+    bg.setAttribute('ry', '3');
+    labelGroup.appendChild(bg);
+
+    // Text element
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('class', 'connection-label-text');
+    text.setAttribute('x', String(midPt.x));
+    text.setAttribute('y', String(midPt.y + dyUser));
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'central');
+    text.setAttribute('font-size', '11');
+    text.setAttribute('font-family', 'Arial, sans-serif');
+    text.setAttribute('fill', '#fff');
+    text.setAttribute('stroke', 'none');
+    text.setAttribute('pointer-events', 'auto');
+    text.setAttribute('cursor', 'move');
+    text.textContent = labelText;
+    labelGroup.appendChild(text);
+
+    group.appendChild(labelGroup);
+
+    // Measure text and size the background — use requestAnimationFrame
+    // so the DOM is laid out and getBBox returns correct dimensions.
+    requestAnimationFrame(() => {
+      try {
+        const bbox = text.getBBox();
+        const pad = 4;
+        bg.setAttribute('x', String(bbox.x - pad));
+        bg.setAttribute('y', String(bbox.y - pad));
+        bg.setAttribute('width', String(bbox.width + pad * 2));
+        bg.setAttribute('height', String(bbox.height + pad * 2));
+      } catch (_) { /* not in DOM yet */ }
+    });
+
+    // --- Label dragging (reposition along path + perpendicular offset) ---
+    let dragging = false;
+    let startY = 0;
+    let startDyUser = dyUser;
+
+    labelGroup.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      dragging = true;
+      startY = e.clientY;
+      startDyUser = (typeof connection.labelOffsetY === 'number')
+        ? connection.labelOffsetY : 0;
+
+      const onMove = (ev) => {
+        if (!dragging) return;
+        const svgPt = this._clientToSVG(ev.clientX, ev.clientY);
+        if (!svgPt) return;
+
+        // Compute closest ratio on path for the X (along-path) position
+        try {
+          const len = pathEl.getTotalLength();
+          if (len > 0) {
+            // Binary-search for the closest point on the path
+            let bestRatio = 0.5;
+            let bestDist = Infinity;
+            for (let r = 0; r <= 1; r += 0.02) {
+              const p = pathEl.getPointAtLength(len * r);
+              const d = Math.hypot(svgPt.x - p.x, svgPt.y - p.y);
+              if (d < bestDist) { bestDist = d; bestRatio = r; }
+            }
+            connection.labelOffset = Math.round(bestRatio * 100) / 100;
+          }
+        } catch (_) { /* keep current offset */ }
+
+        // Perpendicular offset (Y drag in screen space)
+        const ctm = this.svg ? this.svg.getScreenCTM() : null;
+        const scale = ctm ? ctm.a : 1;
+        connection.labelOffsetY = startDyUser + (ev.clientY - startY) / scale;
+
+        // Update label position without full re-render
+        const newMid = this._getPointOnPath(
+          pathEl, connection.labelOffset, fromX, fromY, toX, toY);
+        text.setAttribute('x', String(newMid.x));
+        text.setAttribute('y', String(newMid.y + connection.labelOffsetY));
+        try {
+          const bbox = text.getBBox();
+          const pad = 4;
+          bg.setAttribute('x', String(bbox.x - pad));
+          bg.setAttribute('y', String(bbox.y - pad));
+          bg.setAttribute('width', String(bbox.width + pad * 2));
+          bg.setAttribute('height', String(bbox.height + pad * 2));
+        } catch (_) { /* */ }
+      };
+
+      const onUp = () => {
+        dragging = false;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        // Persist
+        if (this.editor) {
+          this.editor.updateConnection(connection.id, {
+            labelOffset: connection.labelOffset,
+            labelOffsetY: connection.labelOffsetY
+          });
+        }
+        if (window.advancedFeatures) window.advancedFeatures.saveState();
+      };
+
+      // Use AbortController signal so these are cleaned on re-render
+      const signal = group._abortController ? group._abortController.signal : undefined;
+      document.addEventListener('mousemove', onMove, { signal });
+      document.addEventListener('mouseup', onUp, { signal });
+    });
+  }  /**
+   * Start an inline text editor for a connection label.
+   * Creates a foreignObject with an <input> overlaid on the connection.
+   */
+  _startConnectionLabelEdit(connection, group, pathEl, fromX, fromY, toX, toY) {
+    if (!this.svg) return;
+    // Prevent multiple editors
+    if (this.svg.querySelector('.connection-label-editor')) return;
+
+    const offset = (typeof connection.labelOffset === 'number')
+      ? connection.labelOffset : 0.5;
+    const midPt = this._getPointOnPath(pathEl, offset, fromX, fromY, toX, toY);
+    const dyUser = (typeof connection.labelOffsetY === 'number')
+      ? connection.labelOffsetY : 0;
+
+    const inputW = 140;
+    const inputH = 26;
+
+    const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+    fo.setAttribute('x', String(midPt.x - inputW / 2));
+    fo.setAttribute('y', String(midPt.y + dyUser - inputH / 2));
+    fo.setAttribute('width', String(inputW));
+    fo.setAttribute('height', String(inputH));
+    fo.setAttribute('class', 'connection-label-editor');
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = connection.label || '';
+    input.placeholder = 'Label…';
+    input.style.cssText = `
+      width: 100%; height: 100%; border: 2px solid #2196F3;
+      border-radius: 4px; text-align: center; font-size: 11px;
+      font-family: Arial, sans-serif; outline: none;
+      padding: 2px 4px; box-sizing: border-box;
+      background: #1e1e1e; color: #fff;
+    `;
+
+    fo.appendChild(input);
+    this.svg.appendChild(fo);
+
+    // Prevent events from bubbling to canvas
+    const stop = (e) => { e.stopPropagation(); };
+    fo.addEventListener('mousedown', stop);
+    fo.addEventListener('mouseup', stop);
+    fo.addEventListener('click', stop);
+    fo.addEventListener('dblclick', stop);
+    fo.addEventListener('pointerdown', stop);
+    input.addEventListener('mousedown', stop);
+
+    input.focus();
+    input.select();
+
+    const commit = () => {
+      const newLabel = input.value.trim();
+      connection.label = newLabel || '';
+      if (this.editor) {
+        this.editor.updateConnection(connection.id, { label: connection.label });
+      }
+      if (fo.parentNode) fo.remove();
+      this.renderConnection(connection);
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') {
+        if (fo.parentNode) fo.remove();
+      }
+      e.stopPropagation();
+    });
+
+    input.addEventListener('blur', () => {
+      // Small delay so click-away doesn't race with commit
+      setTimeout(() => {
+        if (fo.parentNode) commit();
+      }, 100);
+    });
   }
 
   /**
@@ -872,15 +1232,10 @@ class DiagramRenderer {
           if (!pt) return;
           wp.x = pt.x;
           wp.y = pt.y;
+          // Update only the handle position — avoid full re-render flicker.
+          // The connection path updates on mouseup.
           handle.setAttribute('cx', pt.x);
           handle.setAttribute('cy', pt.y);
-          // Live re-route the path (lightweight — just update d attribute)
-          const pathD = this._computeOrthogonalPath(
-            parseFloat(group.querySelector('.connection-line')?.getAttribute('d')?.split(' ')[1]) || 0,
-            0, 0, 0, connection
-          );
-          // Full re-render for accurate routing
-          this.renderConnection(connection);
         };
 
         const onUp = () => {
@@ -891,11 +1246,14 @@ class DiagramRenderer {
           if (this.editor) {
             this.editor.updateConnection(connection.id, { waypoints: connection.waypoints });
           }
+          // Full re-render only once on drop for accurate arrowheads/labels
           this.renderConnection(connection);
         };
 
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
+        // Use AbortController signal so these are cleaned on re-render
+        const signal = group._abortController ? group._abortController.signal : undefined;
+        document.addEventListener('mousemove', onMove, { signal });
+        document.addEventListener('mouseup', onUp, { signal });
       });
 
       // --- Right-click to remove waypoint ---
@@ -940,12 +1298,42 @@ class DiagramRenderer {
     this.clearSnapGuides();
     if (!this.guidesLayer || !guides || guides.length === 0) return;
 
+    // Color scheme per guide type
+    const GUIDE_COLORS = {
+      center:  '#00BFFF',  // cyan / deep-sky-blue — center alignment
+      edge:    '#FF6B35',  // orange — edge alignment
+      spacing: '#AB47BC',  // purple — equal spacing
+    };
+    const GUIDE_DASH = {
+      center:  '6,3',
+      edge:    '4,3',
+      spacing: '3,3',
+    };
+
     // De-duplicate guides that are very close to each other
     const seen = new Set();
     for (const g of guides) {
-      const key = g.axis + ':' + Math.round(g.pos);
+      // Handle spacing labels (rendered as SVG text)
+      if (g.axis === 'spacing-label') {
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', g.x);
+        txt.setAttribute('y', g.y);
+        txt.setAttribute('fill', GUIDE_COLORS.spacing);
+        txt.setAttribute('font-size', '10');
+        txt.setAttribute('font-family', 'sans-serif');
+        txt.setAttribute('text-anchor', 'middle');
+        txt.setAttribute('pointer-events', 'none');
+        txt.textContent = g.label;
+        this.guidesLayer.appendChild(txt);
+        continue;
+      }
+
+      const key = g.axis + ':' + Math.round(g.pos) + ':' + (g.type || '');
       if (seen.has(key)) continue;
       seen.add(key);
+
+      const color = GUIDE_COLORS[g.type] || GUIDE_COLORS.edge;
+      const dash  = GUIDE_DASH[g.type]  || GUIDE_DASH.edge;
 
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       if (g.axis === 'v') {
@@ -959,9 +1347,9 @@ class DiagramRenderer {
         line.setAttribute('x2', g.to);
         line.setAttribute('y2', g.pos);
       }
-      line.setAttribute('stroke', '#FF6B35');
-      line.setAttribute('stroke-width', '1');
-      line.setAttribute('stroke-dasharray', '4,3');
+      line.setAttribute('stroke', color);
+      line.setAttribute('stroke-width', g.type === 'center' ? '1.2' : '1');
+      line.setAttribute('stroke-dasharray', dash);
       line.setAttribute('pointer-events', 'none');
       this.guidesLayer.appendChild(line);
     }
@@ -1056,9 +1444,47 @@ class DiagramRenderer {
   _fanOffset(index, total, blockHeight) {
     if (total <= 1) return blockHeight / 2;
     const margin = 10;
-    const usable = blockHeight - 2 * margin;
+    const usable = Math.max(0, blockHeight - 2 * margin);
+    // If block is too small for margins, place all connections at center
+    if (usable === 0) return blockHeight / 2;
     const step = usable / (total - 1);
     return margin + index * step;
+  }
+
+  /**
+   * Rotate a local port offset (relative to block top-left) around
+   * the block centre, then convert back to world coordinates.
+   *
+   * Used so connection endpoints follow block rotation.
+   *
+   * @param {number} worldX  Raw world X computed by the port switch.
+   * @param {number} worldY  Raw world Y computed by the port switch.
+   * @param {object} block   Block object (needs x, y, width, height, rotation).
+   * @returns {{x: number, y: number}}  Rotated world coordinate.
+   */
+  _applyPortRotation(worldX, worldY, block) {
+    const rot = block.rotation || 0;
+    if (rot === 0) return { x: worldX, y: worldY };
+
+    const w = block.width  || 120;
+    const h = block.height || 80;
+    const cx = w / 2;
+    const cy = h / 2;
+
+    // Convert world → local (relative to block top-left)
+    let lx = worldX - block.x;
+    let ly = worldY - block.y;
+
+    // Rotate around centre
+    const rad = (rot * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const dx = lx - cx;
+    const dy = ly - cy;
+    lx = cx + dx * cos - dy * sin;
+    ly = cy + dx * sin + dy * cos;
+
+    return { x: block.x + lx, y: block.y + ly };
   }
 
   /**
@@ -1175,16 +1601,39 @@ class DiagramRenderer {
   }
 
   /**
-   * Compute an orthogonal (Manhattan) SVG path string for a connection.
-   * Delegates to the OrthogonalRouter engine for obstacle avoidance.
+   * Lazily create and return the OrthogonalRouter instance.
+   * Shared by all orthogonal path helpers so corner-rounding is consistent.
+   * @returns {OrthogonalRouter|null}
    * @private
    */
-  _computeOrthogonalPath(fromX, fromY, toX, toY, connection) {
+  _ensureRouter() {
     if (!this._orthogonalRouter) {
       this._orthogonalRouter = typeof OrthogonalRouter !== 'undefined'
         ? new OrthogonalRouter()
         : null;
     }
+    return this._orthogonalRouter;
+  }
+
+  /**
+   * Round corners of an orthogonal path string if a router is available.
+   * Falls back to the raw path when OrthogonalRouter is not loaded.
+   * @param {string} pathD  SVG path with M/L commands.
+   * @returns {string}
+   * @private
+   */
+  _roundPath(pathD) {
+    const router = this._ensureRouter();
+    return router ? router.roundCorners(pathD) : pathD;
+  }
+
+  /**
+   * Compute an orthogonal (Manhattan) SVG path string for a connection.
+   * Delegates to the OrthogonalRouter engine for obstacle avoidance.
+   * @private
+   */
+  _computeOrthogonalPath(fromX, fromY, toX, toY, connection) {
+    this._ensureRouter();
     if (!this._orthogonalRouter) {
       // Fallback if router not loaded — simple 3-segment path
       const midX = (fromX + toX) / 2;
@@ -1196,9 +1645,10 @@ class DiagramRenderer {
       blocks, connection.fromBlock, connection.toBlock
     );
     const waypoints = connection.waypoints || [];
-    return this._orthogonalRouter.computePath(
+    const rawPath = this._orthogonalRouter.computePath(
       fromX, fromY, toX, toY, obstacles, waypoints
     );
+    return this._orthogonalRouter.roundCorners(rawPath);
   }
 
   /**
@@ -1225,7 +1675,8 @@ class DiagramRenderer {
 
     if (facingEachOther) {
       const midY = (fromY + toY) / 2;
-      return `M ${fromX} ${fromY} L ${fromX} ${midY} L ${toX} ${midY} L ${toX} ${toY}`;
+      const rawPath = `M ${fromX} ${fromY} L ${fromX} ${midY} L ${toX} ${midY} L ${toX} ${toY}`;
+      return this._roundPath(rawPath);
     }
 
     // General case: ports face the same direction or away from each other.
@@ -1237,8 +1688,9 @@ class DiagramRenderer {
           : Math.min(stubFromY, stubToY) - STUB)
       : (stubFromY + stubToY) / 2;
 
-    return `M ${fromX} ${fromY} L ${fromX} ${midY} ` +
+    const rawPath = `M ${fromX} ${fromY} L ${fromX} ${midY} ` +
            `L ${toX} ${midY} L ${toX} ${toY}`;
+    return this._roundPath(rawPath);
   }
 
   /**
@@ -1275,8 +1727,9 @@ class DiagramRenderer {
       // Simple L-turn when stubs can reach the corner directly.
       // Use the target's X for the vertical run and the source's Y for the horizontal run via
       // a corner point at (stubToX, stubFromY).
-      return `M ${fromX} ${fromY} L ${fromX} ${stubFromY} ` +
+      const rawPath = `M ${fromX} ${fromY} L ${fromX} ${stubFromY} ` +
              `L ${stubToX} ${stubFromY} L ${stubToX} ${toY} L ${toX} ${toY}`;
+      return this._roundPath(rawPath);
     } else {
       // From = horizontal port, To = vertical port
       const fDir = hDir(fromPort);                       // ±1 horizontal
@@ -1284,8 +1737,9 @@ class DiagramRenderer {
       const stubFromX = fromX + STUB * fDir;
       const stubToY   = toY   + STUB * tDir;
       // Corner at (stubFromX, stubToY)
-      return `M ${fromX} ${fromY} L ${stubFromX} ${fromY} ` +
+      const rawPath = `M ${fromX} ${fromY} L ${stubFromX} ${fromY} ` +
              `L ${stubFromX} ${stubToY} L ${toX} ${stubToY} L ${toX} ${toY}`;
+      return this._roundPath(rawPath);
     }
   }
 
@@ -1552,7 +2006,12 @@ class DiagramRenderer {
 
     // Clear existing renders
     this.blockElements.forEach(element => element.remove());
-    this.connectionElements.forEach(element => element.remove());
+    this.connectionElements.forEach(element => {
+      if (element && element._abortController) {
+        element._abortController.abort();
+      }
+      element.remove();
+    });
     this.blockElements.clear();
     this.connectionElements.clear();
     // Clear annotation elements
@@ -1994,6 +2453,17 @@ class DiagramRenderer {
         break;
     }
 
+    // Apply block rotation to stub anchor point
+    if (block.rotation) {
+      const rp = this._applyPortRotation(startX, startY, block);
+      const dx = rp.x - startX;
+      const dy = rp.y - startY;
+      startX = rp.x;
+      startY = rp.y;
+      endX += dx;
+      endY += dy;
+    }
+
     const isHorizontal = (portSide === 'output' || portSide === 'input');
 
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -2191,6 +2661,17 @@ class DiagramRenderer {
           endX = startX + stubLen;
           endY = startY;
           break;
+      }
+
+      // Apply block rotation to named-stub anchor point
+      if (block.rotation) {
+        const rp = this._applyPortRotation(startX, startY, block);
+        const dx = rp.x - startX;
+        const dy = rp.y - startY;
+        startX = rp.x;
+        startY = rp.y;
+        endX += dx;
+        endY += dy;
       }
 
       const isHorizontal = (portSide === 'output' || portSide === 'input');
@@ -2583,6 +3064,9 @@ class DiagramRenderer {
         annStartX = annotation.x || 0;
         annStartY = annotation.y || 0;
       }
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
     });
 
     // --- DRAG on mousemove ---
@@ -2594,27 +3078,27 @@ class DiagramRenderer {
       const dy = svgPt.y - dragStartY;
       annotation.x = annStartX + dx;
       annotation.y = annStartY + dy;
-      // Re-render to reflect new position
-      this.renderAnnotation(annotation);
+      // Move the group via transform — avoids destroying event listeners
+      g.setAttribute('transform', `translate(${dx}, ${dy})`);
     };
     const onMouseUp = () => {
       if (isDraggingAnn) {
         isDraggingAnn = false;
+        // Full re-render once on drop to finalize the position in DOM
+        this.renderAnnotation(annotation);
         if (this.editor) this.editor._markDirty();
       }
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
-    g.addEventListener('mousedown', () => {
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-    });
-
     // --- DOUBLE-CLICK to edit text ---
     g.addEventListener('dblclick', (e) => {
       e.stopPropagation();
       if (annotation.type === 'dimension') return; // dimensions auto-compute text
-      _fusionPrompt('Edit annotation:', annotation.text || '').then(newText => {
+      const promptFn = typeof _fusionPrompt === 'function'
+        ? _fusionPrompt
+        : (msg, def) => Promise.resolve(window.prompt(msg, def));
+      promptFn('Edit annotation:', annotation.text || '').then(newText => {
         if (newText !== null) {
           annotation.text = newText;
           this.renderAnnotation(annotation);
@@ -2628,7 +3112,7 @@ class DiagramRenderer {
     // selected state via _selectedAnnotation.
     if (!this._annotationDeleteListenerInstalled) {
       this._annotationDeleteListenerInstalled = true;
-      document.addEventListener('keydown', (e) => {
+      this._annotationKeydownHandler = (e) => {
         if ((e.key === 'Delete' || e.key === 'Backspace') && this._selectedAnnotation) {
           // Don't delete if an input / textarea is focused
           const active = document.activeElement;
@@ -2648,7 +3132,8 @@ class DiagramRenderer {
           this._annotationElements.delete(annId);
           this._selectedAnnotation = null;
         }
-      });
+      };
+      document.addEventListener('keydown', this._annotationKeydownHandler);
     }
   }
 
@@ -2693,12 +3178,16 @@ class DiagramRenderer {
     const blockElement = this.blockElements.get(blockId);
     if (!blockElement) return;
 
-    const currentTransform = blockElement.getAttribute('transform');
+    const currentTransform = blockElement.getAttribute('transform') || '';
     const startMatch = currentTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
     if (!startMatch) return;
 
     const startX = parseFloat(startMatch[1]);
     const startY = parseFloat(startMatch[2]);
+
+    // Preserve any rotation or other transforms beyond translate
+    const rotateMatch = currentTransform.match(/rotate\([^)]+\)/);
+    const rotateSuffix = rotateMatch ? ' ' + rotateMatch[0] : '';
     
     const startTime = performance.now();
     
@@ -2712,7 +3201,7 @@ class DiagramRenderer {
       const currentX = startX + (newX - startX) * easedProgress;
       const currentY = startY + (newY - startY) * easedProgress;
       
-      blockElement.setAttribute('transform', `translate(${currentX}, ${currentY})`);
+      blockElement.setAttribute('transform', `translate(${currentX}, ${currentY})${rotateSuffix}`);
       
       if (progress < 1) {
         requestAnimationFrame(animate);
@@ -2720,6 +3209,32 @@ class DiagramRenderer {
     };
     
     requestAnimationFrame(animate);
+  }
+
+  /**
+   * Clean up global event listeners to prevent memory leaks.
+   * Call this when the renderer is no longer needed.
+   */
+  destroy() {
+    if (this._annotationKeydownHandler) {
+      document.removeEventListener('keydown', this._annotationKeydownHandler);
+      this._annotationKeydownHandler = null;
+      this._annotationDeleteListenerInstalled = false;
+    }
+    // Cancel any pending batched render
+    if (this._connRenderRaf) {
+      cancelAnimationFrame(this._connRenderRaf);
+      this._connRenderRaf = null;
+    }
+    // Abort any active drag listeners on connections
+    this.connectionElements.forEach(group => {
+      if (group._abortController) group._abortController.abort();
+    });
+    // Clear element caches to release DOM references
+    this.blockElements.clear();
+    this.connectionElements.clear();
+    this._cachedFanMap = null;
+    this._selectedAnnotation = null;
   }
 }
 

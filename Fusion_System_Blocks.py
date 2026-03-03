@@ -550,17 +550,23 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             if LOGGING_AVAILABLE:
                 _logger.debug(f"HTML event received: action='{action}'")
 
-            # Validate action against the shared enum to catch JS/Python mismatches early
             try:
-                BridgeAction(action)
+                action_enum = BridgeAction(action)
             except ValueError:
                 if LOGGING_AVAILABLE:
                     _logger.warning(
                         f"Action '{action}' is not in BridgeAction enum — "
                         "update fsb_core/bridge_actions.py and src/types/bridge-actions.js"
                     )
+                htmlArgs.returnData = json.dumps(
+                    {
+                        "success": False,
+                        "error": f"Unknown action: {action}",
+                    }
+                )
+                return
 
-            handler_name = f"_handle_{action}"
+            handler_name = f"_handle_{action_enum.value}"
             if hasattr(self, handler_name):
                 handler = getattr(self, handler_name)
                 response = handler(data)
@@ -607,6 +613,54 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             diagram_dict = diagram_data.create_empty_diagram()
         return {"success": True, "diagram": diagram_dict}
 
+    def _validate_patch_ops(self, patch: list[Any]) -> str | None:
+        """Validate patch operation structure and allowed target roots.
+
+        Returns an error string when invalid, otherwise ``None``.
+        """
+        allowed_ops = {"add", "remove", "replace"}
+        allowed_roots = {
+            "blocks",
+            "connections",
+            "groups",
+            "namedStubs",
+            "metadata",
+        }
+
+        for idx, op in enumerate(patch):
+            if not isinstance(op, dict):
+                return f"Invalid patch op at index {idx}: expected object"
+
+            operation = op.get("op")
+            path = op.get("path")
+
+            if operation not in allowed_ops:
+                return f"Invalid patch op at index {idx}: unsupported op '{operation}'"
+
+            if not isinstance(path, str) or not path.startswith("/"):
+                return f"Invalid patch op at index {idx}: path must start with '/'"
+
+            parts = [part for part in path.split("/") if part]
+            if not parts:
+                return (
+                    f"Invalid patch op at index {idx}: root-path operations "
+                    "are not allowed"
+                )
+
+            if parts[0] not in allowed_roots:
+                return (
+                    f"Invalid patch op at index {idx}: root '{parts[0]}' "
+                    "is not patchable"
+                )
+
+            if operation in {"add", "replace"} and "value" not in op:
+                return (
+                    f"Invalid patch op at index {idx}: '{operation}' "
+                    "requires 'value'"
+                )
+
+        return None
+
     def _handle_apply_delta(self, data: dict[str, Any]) -> dict[str, Any]:
         """Apply a JSON-Patch delta to the persisted diagram.
 
@@ -618,6 +672,13 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         return early.
         """
         patch = data.get("patch", [])
+        if not isinstance(patch, list):
+            return {"success": False, "error": "Patch must be a list of operations"}
+
+        validation_error = self._validate_patch_ops(patch)
+        if validation_error:
+            return {"success": False, "error": validation_error}
+
         if is_trivial_patch(patch):
             return {"success": True, "patched": False}
 

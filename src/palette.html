@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <title>System Blocks</title>
@@ -13,6 +13,8 @@
       --fusion-text-secondary: #d0d0d0 !important;
       --fusion-transition-fast: 0.1s !important;
       --fusion-transition: 0.2s !important;
+      --fusion-sidebar-width: 200px;
+      --fusion-panel-width: 260px;
     }
     
     .block.selected {
@@ -31,10 +33,12 @@
     html, body { 
       height: 100%; 
       margin: 0; 
+      padding-bottom: 34px; /* reserve space for the fixed status bar */
       font-family: var(--fusion-font-family);
       background: var(--fusion-bg-primary);
       color: var(--fusion-text-primary);
       overflow: hidden;
+      box-sizing: border-box;
     }
     
     /* === MILESTONE 10: ENHANCED HEADER STYLING === */
@@ -320,6 +324,192 @@
       display: flex;
     }
 
+    /* ========== SHAPE PALETTE SIDEBAR (Issue #180) ========== */
+    .shape-palette-wrapper {
+      width: var(--fusion-sidebar-width, 200px);
+      min-width: 160px;
+      max-width: 260px;
+      height: 100%;
+      background: var(--fusion-bg-secondary, #1e1e2e);
+      border-right: 1px solid var(--fusion-border-primary, #444);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+      transition: width 0.2s ease, min-width 0.2s ease;
+      box-sizing: border-box;
+    }
+    .shape-palette-wrapper.sp-hidden {
+      width: 0;
+      min-width: 0;
+      border-right: none;
+      overflow: hidden;
+    }
+    .shape-palette-wrapper.sp-hidden > * {
+      display: none;
+    }
+
+    .sp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--fusion-border-primary, #444);
+      flex-shrink: 0;
+    }
+    .sp-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--fusion-text-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .sp-toggle-btn {
+      background: none;
+      border: none;
+      color: var(--fusion-text-secondary);
+      cursor: pointer;
+      font-size: 10px;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    .sp-toggle-btn:hover {
+      background: var(--fusion-button-hover, #3a3a4a);
+      color: var(--fusion-text-primary);
+    }
+
+    .sp-search-box {
+      padding: 6px 8px;
+      flex-shrink: 0;
+    }
+    .sp-search-input {
+      width: 100%;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-family: var(--fusion-font-family);
+      background: var(--fusion-input-bg, #2d2d3d);
+      color: var(--fusion-text-primary);
+      border: 1px solid var(--fusion-border-primary, #444);
+      border-radius: var(--fusion-radius-small, 4px);
+      outline: none;
+      box-sizing: border-box;
+    }
+    .sp-search-input:focus {
+      border-color: var(--fusion-accent-blue, #0078d4);
+      box-shadow: 0 0 0 1px var(--fusion-accent-blue, #0078d4);
+    }
+    .sp-search-input::placeholder {
+      color: var(--fusion-text-secondary, #888);
+    }
+
+    .sp-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-bottom: 8px;
+    }
+
+    .sp-category {
+      border-bottom: 1px solid var(--fusion-border-light, #333);
+    }
+    .sp-category-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      padding: 7px 10px;
+      background: none;
+      border: none;
+      color: var(--fusion-text-primary);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--fusion-font-family);
+      text-align: left;
+    }
+    .sp-category-header:hover {
+      background: var(--fusion-button-hover, #2a2a3a);
+    }
+    .sp-cat-icon {
+      font-size: 13px;
+      width: 18px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .sp-cat-label {
+      flex: 1;
+    }
+    .sp-cat-count {
+      font-size: 10px;
+      color: var(--fusion-text-secondary, #888);
+      background: var(--fusion-bg-tertiary, #2d2d3d);
+      padding: 1px 6px;
+      border-radius: 8px;
+      min-width: 16px;
+      text-align: center;
+    }
+    .sp-cat-chevron {
+      font-size: 10px;
+      color: var(--fusion-text-secondary, #888);
+      width: 12px;
+      text-align: center;
+    }
+
+    .sp-subcategory-label {
+      padding: 4px 10px 2px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--fusion-text-secondary, #888);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .sp-items-grid {
+      padding: 2px 6px 6px;
+    }
+
+    .sp-shape-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 6px;
+      border-radius: var(--fusion-radius-small, 4px);
+      cursor: grab;
+      transition: background 0.15s;
+      user-select: none;
+    }
+    .sp-shape-item:hover {
+      background: var(--fusion-button-hover, #2a2a3a);
+    }
+    .sp-shape-item:active,
+    .sp-shape-item.sp-dragging {
+      cursor: grabbing;
+      opacity: 0.6;
+    }
+    .sp-shape-thumb {
+      flex-shrink: 0;
+    }
+    .sp-shape-label {
+      font-size: 11px;
+      color: var(--fusion-text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Canvas drop visual feedback */
+    #svg-canvas.sp-drop-active {
+      outline: 2px dashed var(--fusion-accent-blue, #0078d4);
+      outline-offset: -2px;
+    }
+
+    /* Responsive: hide palette on very narrow screens */
+    @media (max-width: 700px) {
+      .shape-palette-wrapper {
+        display: none;
+      }
+    }
+
     #svg-canvas {
       flex: 1;
       min-width: 0;
@@ -331,9 +521,102 @@
       transition: var(--fusion-transition);
     }
 
+    /* ========== PAGE TABS BAR ========== */
+    .page-tabs-bar {
+      position: absolute;
+      bottom: 0;
+      left: var(--fusion-sidebar-width, 200px);
+      right: var(--fusion-panel-width, 260px);
+      height: 30px;
+      display: flex;
+      align-items: center;
+      background: var(--fusion-bg-secondary, #1a1a2e);
+      border-top: 1px solid var(--fusion-border-primary, #444);
+      z-index: 200;
+      padding: 0 4px;
+      gap: 2px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      user-select: none;
+    }
+    .page-tabs-bar::-webkit-scrollbar { height: 3px; }
+    .page-tabs-bar::-webkit-scrollbar-thumb { background: var(--fusion-border-primary); border-radius: 2px; }
+    .page-tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+    }
+    .page-tab {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      color: var(--fusion-text-secondary, #aaa);
+      background: transparent;
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, color 0.15s;
+    }
+    .page-tab:hover {
+      background: var(--fusion-bg-tertiary, #2a2a3e);
+      color: var(--fusion-text-primary, #eee);
+    }
+    .page-tab.active {
+      background: var(--fusion-bg-primary, #12121a);
+      color: var(--fusion-text-primary, #eee);
+      border-color: var(--fusion-border-primary, #444);
+      font-weight: 600;
+    }
+    .page-tab .page-tab-close {
+      display: none;
+      font-size: 10px;
+      width: 14px;
+      height: 14px;
+      line-height: 14px;
+      text-align: center;
+      border-radius: 3px;
+      color: var(--fusion-text-secondary, #aaa);
+      cursor: pointer;
+    }
+    .page-tab:hover .page-tab-close,
+    .page-tab.active .page-tab-close {
+      display: inline-block;
+    }
+    .page-tab .page-tab-close:hover {
+      background: var(--fusion-danger, #dc3545);
+      color: #fff;
+    }
+    .page-tab-add {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--fusion-text-secondary, #aaa);
+      background: transparent;
+      border: 1px dashed var(--fusion-border-primary, #444);
+      border-radius: 4px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .page-tab-add:hover {
+      background: var(--fusion-bg-tertiary, #2a2a3e);
+      color: var(--fusion-accent, #64b5f6);
+      border-color: var(--fusion-accent, #64b5f6);
+    }
+
     /* ========== PROPERTIES SIDE PANEL ========== */
     #properties-panel {
-      width: 260px;
+      width: var(--fusion-panel-width, 260px);
       min-width: 220px;
       max-width: 320px;
       height: 100%;
@@ -544,8 +827,48 @@
     /* ========== CONTEXT MENU ========== */
 
     /* Connection port dots — visible on block hover */
-    .block:hover .connection-port { opacity: 1 !important; transition: opacity 0.15s; }
+    .connection-port {
+      transition: opacity 0.15s ease, r 0.15s ease, fill 0.12s ease,
+                  stroke 0.12s ease, stroke-width 0.12s ease;
+    }
+    .block:hover .connection-port { opacity: 1 !important; }
     .connection-port:hover { fill: var(--fusion-accent-blue, #2196F3) !important; r: 7; cursor: crosshair; }
+
+    /* --- Connection-mode port states (drag-to-connect) --- */
+    /* When connection mode is active, reveal all ports at low opacity */
+    .connection-mode-active .block .connection-port {
+      opacity: 0.45 !important;
+    }
+    /* Source port stays fully lit */
+    .connection-port.port-source {
+      opacity: 1 !important;
+      fill: #FF6B35 !important;
+      stroke: #fff !important;
+      stroke-width: 3 !important;
+      r: 9 !important;
+      filter: url(#port-glow-orange);
+    }
+    /* Ports on the source block are dimmed (self-connect not allowed) */
+    .connection-port.port-invalid {
+      opacity: 0.15 !important;
+      fill: #666 !important;
+      stroke: #444 !important;
+      cursor: not-allowed !important;
+    }
+    /* Target port the cursor is snapping to */
+    .connection-port.port-snap {
+      opacity: 1 !important;
+      fill: #2196F3 !important;
+      stroke: #fff !important;
+      stroke-width: 3 !important;
+      r: 10 !important;
+      filter: url(#port-glow-blue);
+      cursor: crosshair;
+    }
+    /* Temp line while dragging — ensure it stays on top */
+    .connection-temp-line {
+      pointer-events: none;
+    }
 
     /* Resize handle styling */
     .resize-handle { transition: fill 0.1s, stroke 0.1s; }
@@ -645,30 +968,18 @@
       fill: var(--fusion-bg-tertiary);
     }
     
-    /* Child Indicator Icon - Professional SVG Icon */
-    .block.has-child::after {
-      content: "";
-      position: absolute;
-      bottom: 4px;
-      right: 4px;
-      width: 14px;
-      height: 14px;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffc107'%3E%3Cpath d='M10 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z'/%3E%3C/svg%3E");
-      background-size: contain;
-      background-repeat: no-repeat;
-      opacity: 0.9;
-      transition: opacity var(--fusion-transition-fast);
-    }
-    
-    .block.has-child:hover::after {
-      opacity: 1;
-    }
+    /*
+     * Child Indicator Icon
+     * NOTE: Removed ::after pseudo-element — SVG elements (<g>, <rect>, etc.)
+     * do not support CSS pseudo-elements. The child indicator is rendered as a
+     * separate SVG element by the diagram renderer instead.
+     */
     
     /* Enhanced Typography - Professional Text Rendering */
     .block-text,
     .block > text,
     g.block > text {
-      fill: #333333 !important;        /* dark text on light block backgrounds */
+      fill: #333333;                   /* default dark text — overridden by inline fill attribute per block */
       stroke: none !important;         /* prevent inherited stroke from parent .block group */
       font-family: var(--fusion-font-family);
       font-weight: 500;
@@ -799,7 +1110,32 @@
       stroke-width: 2;
       stroke-dasharray: 8,4;
     }
-    
+
+    /* ========== CONNECTION LABELS ========== */
+    .connection-label-group {
+      pointer-events: auto;
+      cursor: move;
+    }
+    .connection-label-bg {
+      fill: rgba(30, 30, 30, 0.82);
+      stroke: rgba(255, 255, 255, 0.15);
+      stroke-width: 1;
+    }
+    .connection-label-text {
+      fill: #ffffff;
+      font-size: 11px;
+      font-family: Arial, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .connection-label-group:hover .connection-label-bg {
+      fill: rgba(33, 150, 243, 0.25);
+      stroke: rgba(33, 150, 243, 0.6);
+    }
+    .connection-label-group:hover .connection-label-text {
+      fill: #90CAF9;
+    }
+
     /* Port Styling */
     .port {
       fill: var(--fusion-accent-blue);
@@ -907,7 +1243,7 @@
     /* ========== Fusion ENHANCED INTERACTIVE ELEMENTS - PHASE 2 ========== */
     
     /* Enhanced Canvas with Grid Pattern */
-    #canvas {
+    #canvas-container {
       background: 
         radial-gradient(circle at 20px 20px, rgba(150,150,150,0.15) 1px, transparent 1px);
       background-size: 20px 20px;
@@ -1037,27 +1373,12 @@
       }
     }
     
-    /* Block Selection Ripple Effect */
-    .block.selecting::before {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0;
-      height: 0;
-      background: rgba(0, 123, 204, 0.2);
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      animation: ripple 0.6s ease-out;
-    }
-    
-    @keyframes ripple {
-      to {
-        width: 120%;
-        height: 120%;
-        opacity: 0;
-      }
-    }
+    /*
+     * Block Selection Ripple Effect
+     * NOTE: Removed ::before pseudo-element — SVG elements (<g>) do not
+     * support CSS pseudo-elements. Selection feedback is provided via
+     * stroke/fill changes on the SVG shape instead.
+     */
     
     /* Block group hover — no decorative animation */
     .block-group:hover .block {
@@ -1587,6 +1908,10 @@
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-undo"/></svg></div>
                   <span>History</span>
                 </button>
+                <button id="btn-format-painter" class="ribbon-button-small" disabled title="Format Painter — Copy style from selected block and apply to others (Ctrl+Shift+C / Ctrl+Shift+V)">
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-format-painter"/></svg></div>
+                  <span>Format</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1605,6 +1930,10 @@
                 <button id="btn-connect" class="ribbon-button-small" title="Connect — Draw a connection between two blocks (C)">
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-link"/></svg></div>
                   <span>Connect</span>
+                </button>
+                <button id="btn-block-types" class="ribbon-button-small" title="Block Types — Browse available block types (T)">
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-types"/></svg></div>
+                  <span>Types</span>
                 </button>
                 <button id="btn-add-text" class="ribbon-button-small" title="Add Text — Coming soon">
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-text"/></svg></div>
@@ -1685,12 +2014,24 @@
                   <span>Center</span>
                 </button>
                 <button id="btn-align-right" class="ribbon-button-small" disabled title="Align selected blocks to right edge">
-                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-align-left"/></svg></div>
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-align-right"/></svg></div>
                   <span>Right</span>
                 </button>
-                <button id="btn-distribute-h" class="ribbon-button-small" disabled title="Distribute selected blocks horizontally">
+                <button id="btn-distribute-h" class="ribbon-button-small" disabled title="Distribute selected blocks horizontally with equal spacing">
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-distribute"/></svg></div>
-                  <span>Distribute</span>
+                  <span>Distribute H</span>
+                </button>
+                <button id="btn-distribute-v" class="ribbon-button-small" disabled title="Distribute selected blocks vertically with equal spacing">
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-distribute-v"/></svg></div>
+                  <span>Distribute V</span>
+                </button>
+                <button id="btn-match-width" class="ribbon-button-small" disabled title="Set all selected blocks to the same width">
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-match-width"/></svg></div>
+                  <span>Match W</span>
+                </button>
+                <button id="btn-match-height" class="ribbon-button-small" disabled title="Set all selected blocks to the same height">
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-match-height"/></svg></div>
+                  <span>Match H</span>
                 </button>
               </div>
             </div>
@@ -1728,6 +2069,10 @@
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-hash"/></svg></div>
                   <span>Grid</span>
                 </button>
+                <button id="btn-zoom-selection" class="ribbon-button-small" title="Zoom to Selection (Ctrl+Shift+1)">
+                  <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-zoom"/></svg></div>
+                  <span>Selection</span>
+                </button>
                 <button id="btn-zoom-in" class="ribbon-button-small" title="Zoom In">
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-zoom"/></svg></div>
                   <span>Zoom In</span>
@@ -1745,6 +2090,10 @@
                 <button id="btn-routing-mode" class="ribbon-button-small" title="Toggle orthogonal routing" aria-label="Toggle Orthogonal Routing">
                   <div class="ribbon-icon-small"><svg viewBox="0 0 12 12" fill="currentColor"><use href="#icon-zoom"/></svg></div>
                   <span>Ortho</span>
+                </button>
+                <button id="btn-theme-toggle" class="ribbon-button-small" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
+                  <div class="ribbon-icon-small">🌙</div>
+                  <span>Theme</span>
                 </button>
               </div>
             </div>
@@ -1851,6 +2200,21 @@
   </nav>
 
   <div id="canvas-container">
+    <!-- Block Type Dropdown Menu (for AdvancedBlockTypeManager) -->
+    <div id="block-type-menu" class="block-type-menu" role="listbox" aria-label="Block type selection"></div>
+
+    <!-- ========== SHAPE PALETTE SIDEBAR (Issue #180) ========== -->
+    <div id="shape-palette-wrapper" class="shape-palette-wrapper">
+      <div class="sp-header">
+        <span class="sp-title">Shapes</span>
+        <button id="sp-toggle-btn" class="sp-toggle-btn" title="Toggle shape palette" aria-label="Toggle shape palette">◀</button>
+      </div>
+      <div class="sp-search-box">
+        <input id="shape-palette-search" type="search" class="sp-search-input" placeholder="Search shapes…" aria-label="Search shapes" />
+      </div>
+      <div id="shape-palette" class="sp-body" role="list" aria-label="Drag shapes onto the canvas"></div>
+    </div>
+
     <!-- Empty canvas state indicator -->
     <div id="empty-canvas-state" class="empty-canvas-state">
       <svg class="empty-canvas-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -1858,7 +2222,7 @@
         <path d="M18 24h12M24 18v12"/>
       </svg>
       <h3>No blocks yet</h3>
-      <p>Click <strong>Block</strong> in the ribbon or use keyboard shortcut to add your first block</p>
+      <p>Drag a shape from the <strong>Shapes</strong> panel, click <strong>Block</strong> in the ribbon, or use a keyboard shortcut</p>
       <button id="btn-add-first-block" class="fusion-button primary" aria-label="Add your first block">
         <svg viewBox="0 0 12 12" fill="currentColor" width="14" height="14"><use href="#icon-add"/></svg>
         Add Block
@@ -1909,6 +2273,14 @@
                 refX="0" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
           <polygon points="10 0, 0 3.5, 10 7" fill="#6c757d" />
         </marker>
+
+        <!-- Port glow effects for drag-to-connect -->
+        <filter id="port-glow-orange" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#FF6B35" flood-opacity="0.7"/>
+        </filter>
+        <filter id="port-glow-blue" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#2196F3" flood-opacity="0.7"/>
+        </filter>
 
         <!-- ========== Fusion PROFESSIONAL ICON DEFINITIONS - PHASE 3 ========== -->
         
@@ -2409,12 +2781,44 @@
           <rect x="3" y="3" width="6" height="2" rx="0.5" fill="currentColor" opacity="0.7"/>
           <rect x="4" y="7" width="4" height="2" rx="0.5" fill="currentColor" opacity="0.7"/>
         </g>
+
+        <g id="icon-align-right">
+          <path d="M10 2v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <rect x="3" y="3" width="5" height="2" rx="0.5" fill="currentColor" opacity="0.7"/>
+          <rect x="5" y="7" width="3" height="2" rx="0.5" fill="currentColor" opacity="0.7"/>
+        </g>
         
         <g id="icon-distribute">
           <rect x="2" y="4" width="2" height="4" rx="0.3" fill="currentColor" opacity="0.7"/>
           <rect x="5" y="4" width="2" height="4" rx="0.3" fill="currentColor" opacity="0.7"/>
           <rect x="8" y="4" width="2" height="4" rx="0.3" fill="currentColor" opacity="0.7"/>
           <path d="M2 3h8M2 9h8" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </g>
+
+        <g id="icon-distribute-v">
+          <rect x="4" y="2" width="4" height="2" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <rect x="4" y="5" width="4" height="2" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <rect x="4" y="8" width="4" height="2" rx="0.3" fill="currentColor" opacity="0.7"/>
+          <path d="M3 2v8M9 2v8" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </g>
+
+        <g id="icon-match-width">
+          <rect x="2" y="4" width="8" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M1 6h2M9 6h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          <path d="M2 3v6M10 3v6" stroke="currentColor" stroke-width="0.8" stroke-dasharray="1 1"/>
+        </g>
+
+        <g id="icon-match-height">
+          <rect x="4" y="2" width="4" height="8" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M6 1v2M6 9v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          <path d="M3 2h6M3 10h6" stroke="currentColor" stroke-width="0.8" stroke-dasharray="1 1"/>
+        </g>
+
+        <g id="icon-format-painter">
+          <rect x="1" y="2" width="4" height="3" rx="0.5" fill="currentColor" opacity="0.6"/>
+          <path d="M5 3.5h2v1H5z" fill="currentColor"/>
+          <rect x="6.5" y="3" width="1.5" height="7" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <rect x="6.5" y="8" width="1.5" height="2" rx="0.3" fill="currentColor" opacity="0.8"/>
         </g>
         
         <!-- View -->
@@ -2462,6 +2866,13 @@
           <rect x="7" y="7" width="2" height="2" rx="0.2" fill="currentColor" opacity="0.5"/>
         </g>
         
+        <g id="icon-types">
+          <rect x="2" y="2" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="7" y="2" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="2" y="7" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="7" y="7" width="3" height="3" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        </g>
+        
         <g id="icon-bulk">
           <path d="M2 4h3v3H2zM7 4h3v3H7zM2 8h3v2H2zM7 8h3v2H7z" fill="currentColor" opacity="0.5"/>
           <path d="M4 2L6 4 8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2476,6 +2887,14 @@
       <g id="connections-layer"></g>
       <g id="blocks-layer"></g>
     </svg>
+
+    <!-- ========== PAGE TABS BAR ========== -->
+    <div id="page-tabs-bar" class="page-tabs-bar" role="tablist" aria-label="Diagram pages">
+      <div id="page-tabs" class="page-tabs">
+        <!-- Tabs rendered dynamically -->
+      </div>
+      <button id="page-tab-add" class="page-tab-add" title="Add new page" aria-label="Add page">+</button>
+    </div>
 
     <!-- ========== PROPERTIES SIDE PANEL ========== -->
     <div id="properties-panel" role="complementary" aria-label="Block properties">
@@ -2570,11 +2989,11 @@
       <h3 style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:22px;" aria-hidden="true">&#9888;</span> <span id="recovery-title">Recover Unsaved Work?</span>
       </h3>
-      <p style="margin:8px 0 16px;font-size:12px;color:var(--text-secondary,#ccc);line-height:1.5;">
+      <p style="margin:8px 0 16px;font-size:12px;color:var(--fusion-text-secondary,#ccc);line-height:1.5;">
         A previous session was not saved properly. An auto-backup of your diagram was found.
         Would you like to recover it?
       </p>
-      <p id="recovery-timestamp" style="margin:0 0 16px;font-size:11px;color:var(--text-secondary,#999);">
+      <p id="recovery-timestamp" style="margin:0 0 16px;font-size:11px;color:var(--fusion-text-secondary,#999);">
         Backup saved at: —
       </p>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
@@ -2609,6 +3028,19 @@
     };
   </script>
 
+  <!-- ========== COMMAND PALETTE ========== -->
+  <div id="command-palette-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:var(--z-modal,900);" role="dialog" aria-modal="true" aria-label="Command Palette">
+    <div id="command-palette" style="position:absolute;top:15%;left:50%;transform:translateX(-50%);width:520px;max-width:90vw;background:var(--fusion-bg-secondary,#383838);border:1px solid var(--fusion-border-secondary,#555);border-radius:6px;box-shadow:var(--fusion-shadow-floating);overflow:hidden;">
+      <input id="command-palette-input" type="text" placeholder="Type a command or block name…"
+        autocomplete="off" spellcheck="false" role="combobox" aria-label="Command palette" aria-expanded="true" aria-controls="command-palette-results"
+        style="width:100%;padding:12px 16px;background:var(--fusion-input-bg,#2d2d30);border:none;border-bottom:1px solid var(--fusion-border-primary,#464646);color:var(--fusion-text-primary,#f0f0f0);font-size:14px;font-family:var(--fusion-font-family);outline:none;box-sizing:border-box;" />
+      <div id="command-palette-results" role="listbox" aria-label="Command results" style="max-height:340px;overflow-y:auto;"></div>
+      <div style="padding:4px 12px;font-size:11px;color:var(--fusion-text-disabled,#909090);border-top:1px solid var(--fusion-border-primary,#464646);display:flex;gap:12px;">
+        <span>↑↓ navigate</span><span>↵ select</span><span>Esc close</span>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== KEYBOARD SHORTCUTS HELP ========== -->
   <div id="shortcuts-overlay" class="fusion-modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
     <div class="fusion-modal" style="min-width:420px;max-width:560px;max-height:80vh;overflow-y:auto;">
@@ -2641,6 +3073,10 @@
         <table style="width:100%;border-collapse:collapse;"><tbody>
           <tr><td style="padding:2px 6px;"><kbd>B</kbd> / <kbd>Insert</kbd></td><td>Add Block</td></tr>
           <tr><td style="padding:2px 6px;"><kbd>C</kbd></td><td>Connect Mode</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>R</kbd></td><td>Rotate Block 90°</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+K</kbd></td><td>Command Palette</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+Shift+C</kbd></td><td>Copy Style (Format Painter)</td></tr>
+          <tr><td style="padding:2px 6px;"><kbd>Ctrl+Shift+V</kbd></td><td>Paste Style</td></tr>
         </tbody></table>
 
         <h4 style="margin:10px 0 4px;color:var(--fusion-accent);font-size:13px;">Navigate</h4>
@@ -2788,6 +3224,16 @@
         <label style="display:block;padding:4px 0;font-size:13px;cursor:pointer;">
           <input type="checkbox" id="exp-pdf"> PDF Report (.pdf)
         </label>
+        <!-- PDF page size selector (shown when PDF checked) -->
+        <div id="exp-pdf-options" style="display:none;margin-left:24px;padding:4px 0;">
+          <label style="font-size:11px;color:var(--fusion-text-secondary);">Page size:
+            <select id="exp-pdf-page-size" class="fusion-input" style="font-size:11px;padding:2px 4px;margin-left:4px;">
+              <option value="A4" selected>A4 (210 × 297 mm)</option>
+              <option value="Letter">Letter (8.5 × 11 in)</option>
+              <option value="A3">A3 (297 × 420 mm)</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <!-- Quick-select buttons -->
@@ -2816,9 +3262,9 @@
   </div>
 
   <!-- ========== BLOCK CONTEXT MENU ========== -->
-  <div id="block-context-menu" class="fusion-context-menu" style="position:fixed; z-index:var(--z-context-menu, 1000);">
+  <div id="block-context-menu" class="fusion-context-menu" role="menu" aria-label="Block context menu" style="position:fixed; z-index:var(--z-context-menu, 1000);">
     <!-- Block-specific items -->
-    <div id="ctx-rename" class="fusion-context-menu-item" data-needs-block>
+    <div id="ctx-rename" class="fusion-context-menu-item" role="menuitem" data-needs-block>
       <span class="ctx-icon">✏️</span> Rename
       <span class="ctx-shortcut">Dbl-click</span>
     </div>
@@ -2861,6 +3307,11 @@
       </div>
     </div>
     <div class="fusion-context-menu-separator" data-needs-block></div>
+    <div id="ctx-rotate" class="fusion-context-menu-item" data-needs-block>
+      <span class="ctx-icon">🔄</span> Rotate 90°
+      <span class="ctx-shortcut">R</span>
+    </div>
+    <div class="fusion-context-menu-separator" data-needs-block></div>
     <div id="ctx-connect-from" class="fusion-context-menu-item" data-needs-block>
       <span class="ctx-icon">🔗</span> Connect to…
       <span class="ctx-shortcut">C</span>
@@ -2896,7 +3347,7 @@
     </div>
   </div>
   <!-- Connection context menu (right-click a connection line) -->
-  <div id="connection-context-menu" class="fusion-context-menu" style="position:fixed; z-index:var(--z-context-menu, 1000);">
+  <div id="connection-context-menu" class="fusion-context-menu" role="menu" aria-label="Connection context menu" style="position:fixed; z-index:var(--z-context-menu, 1000);">
     <div class="fusion-context-menu-item has-submenu">
       <span class="ctx-icon">🔌</span> Type
       <span class="ctx-arrow">▸</span>
@@ -2922,6 +3373,20 @@
       </div>
     </div>
     <div class="fusion-context-menu-separator"></div>
+    <div class="fusion-context-menu-item has-submenu">
+      <span class="ctx-icon">🔀</span> Route Mode
+      <span class="ctx-arrow">▸</span>
+      <div class="fusion-context-submenu">
+        <div class="fusion-context-menu-item" data-conn-route-mode="">🌐 Global Default</div>
+        <div class="fusion-context-menu-item" data-conn-route-mode="bezier">〰️ Bezier</div>
+        <div class="fusion-context-menu-item" data-conn-route-mode="orthogonal">📐 Orthogonal</div>
+        <div class="fusion-context-menu-item" data-conn-route-mode="straight">📏 Straight</div>
+      </div>
+    </div>
+    <div class="fusion-context-menu-separator"></div>
+    <div id="ctx-conn-edit-label" class="fusion-context-menu-item">
+      <span class="ctx-icon">🏷️</span> Edit Label
+    </div>
     <div id="ctx-conn-toggle-stub" class="fusion-context-menu-item">
       <span class="ctx-icon">⊟</span> Toggle Stub Display
     </div>
@@ -2935,6 +3400,18 @@
     </div>
   </div>
 
+  <!-- ========== FLOATING ACTION BAR ========== -->
+  <div id="floating-action-bar" class="fusion-action-bar" role="toolbar" aria-label="Block actions">
+    <button class="fusion-action-bar-btn" id="fab-delete" title="Delete (Del)" aria-label="Delete block">🗑️</button>
+    <button class="fusion-action-bar-btn" id="fab-duplicate" title="Duplicate (Ctrl+D)" aria-label="Duplicate block">📋</button>
+    <span class="fusion-action-bar-sep"></span>
+    <button class="fusion-action-bar-btn" id="fab-status" title="Cycle Status" aria-label="Change status">📊</button>
+    <button class="fusion-action-bar-btn" id="fab-connect" title="Connect (C)" aria-label="Connect to…">🔗</button>
+    <button class="fusion-action-bar-btn" id="fab-rotate" title="Rotate 90° (R)" aria-label="Rotate block">🔄</button>
+    <span class="fusion-action-bar-sep"></span>
+    <button class="fusion-action-bar-btn" id="fab-properties" title="Properties" aria-label="Edit properties">⚙️</button>
+  </div>
+
   <!-- Undo History Panel -->
   <div id="history-panel" class="history-panel">
     <div class="history-panel-header">
@@ -2946,11 +3423,8 @@
     </div>
   </div>
 
-  <div id="import-dialog" role="dialog" aria-modal="true" aria-labelledby="import-dialog-title"
-       style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                                  background: var(--fusion-panel-bg, #2b2b2b); border: 1px solid var(--fusion-panel-border, #555); 
-                                  padding: 20px; z-index: var(--z-modal, 900); min-width: 500px; color: var(--fusion-text-primary, #ffffff); 
-                                  border-radius: 3px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+  <div id="import-overlay" class="fusion-modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="import-dialog-title">
+  <div id="import-dialog" class="fusion-modal" style="min-width:500px;">
     <h3 id="import-dialog-title" style="color: var(--fusion-text-primary, #ffffff); margin-top: 0;">Import Diagram</h3>
     
     <div style="margin-bottom: 15px;">
@@ -3001,10 +3475,7 @@
                                         border-radius: 4px; cursor: pointer; font-weight: 500;">Import</button>
     </div>
   </div>
-  
-  <!-- Dialog Overlay -->
-  <div id="dialog-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                                   background: rgba(0,0,0,0.5); z-index: var(--z-overlay, 800);"></div>
+  </div><!-- end import-overlay -->
   
   <!-- ========== Fusion KEYBOARD SHORTCUTS & ACCESSIBILITY ========== -->
   <!-- Legacy FusionKeyboardManager and initRibbonTooltips removed.
@@ -3552,13 +4023,7 @@
       }
       
       setupKeyboardShortcuts() {
-        // Add to existing keyboard manager
-        if (window.fusionKeyboard) {
-          window.fusionKeyboard.shortcuts['Shift+B'] = () => this.toggleBlockTypeMenu();
-          window.fusionKeyboard.shortcuts['Ctrl+Shift+1'] = () => this.quickSelectType('microcontroller-arduino');
-          window.fusionKeyboard.shortcuts['Ctrl+Shift+2'] = () => this.quickSelectType('microcontroller-esp32');
-          window.fusionKeyboard.shortcuts['Ctrl+Shift+P'] = () => this.quickSelectType('power-supply-linear');
-        }
+        // Keyboard shortcuts are handled by ToolbarManager — no-op here.
       }
       
       toggleBlockTypeMenu() {
@@ -3572,6 +4037,7 @@
       openBlockTypeMenu() {
         // Position the dropdown based on button location
         const blockTypeBtn = document.getElementById('btn-block-types');
+        if (!blockTypeBtn) return;
         const btnRect = blockTypeBtn.getBoundingClientRect();
         
         // Position dropdown below the button
@@ -3579,7 +4045,8 @@
         this.blockTypeMenu.style.left = btnRect.left + 'px';
         
         this.blockTypeMenu.classList.add('show');
-        document.querySelector('.block-type-dropdown').classList.add('open');
+        const dd = document.querySelector('.block-type-dropdown');
+        if (dd) dd.classList.add('open');
         this.isMenuOpen = true;
         
         // Focus first item for keyboard navigation
@@ -3593,15 +4060,17 @@
       
       closeBlockTypeMenu() {
         this.blockTypeMenu.classList.remove('show');
-        document.querySelector('.block-type-dropdown').classList.remove('open');
+        const dd = document.querySelector('.block-type-dropdown');
+        if (dd) dd.classList.remove('open');
         this.isMenuOpen = false;
       }
       
       selectBlockType(blockType) {
         paletteLogger.debug('selectBlockType called with:', blockType);
         
-        // Check if editor is ready
-        if (!window.editor || !window.editor.isInitialized) {
+        // Check if editor is ready — use window.diagramEditor (the correct global)
+        const editor = window.diagramEditor;
+        if (!editor || !editor.isInitialized) {
           paletteLogger.warn('Editor not ready yet');
           this.showToast('Editor not ready - please wait a moment and try again', 'warning');
           return;
@@ -3634,11 +4103,13 @@
         }
         
         if (typeInfo) {
+          const safeName = _escapeHtml(typeInfo.name || '');
+          const safeIcon = _escapeHtml(typeInfo.icon || (isTemplate ? 'template' : 'block-advanced'));
           blockTypeBtn.innerHTML = `
             <svg width="16" height="16" viewBox="0 0 12 12">
-              <use href="#icon-${typeInfo.icon || (isTemplate ? 'template' : 'block-advanced')}"/>
+              <use href="#icon-${safeIcon}"/>
             </svg>
-            ${typeInfo.name}
+            ${safeName}
             <svg width="12" height="12" viewBox="0 0 12 12" class="dropdown-arrow">
               <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -3654,7 +4125,7 @@
           this.createSpecializedBlock(blockType);
         }
         
-        this.showToast(`${isTemplate ? 'Created template' : 'Selected'}: ${typeInfo?.name || blockType}`, 'info');
+        this.showToast(`${isTemplate ? 'Created template' : 'Selected'}: ${(typeInfo && typeInfo.name) || blockType}`, 'info');
       }
       
       quickSelectType(blockType) {
@@ -3678,26 +4149,52 @@
         const canvas = document.getElementById('svg-canvas');
         const blocksLayer = document.getElementById('blocks-layer');
         const connectionsLayer = document.getElementById('connections-layer');
-        
-        // Create all blocks from template
-        const createdBlockElements = [];
-        templateResult.blocks.forEach((block, index) => {
-          const blockElement = this.addBlockToCanvas(block, true);
-          createdBlockElements.push(blockElement);
-          
-          // Add template-specific styling
-          blockElement.classList.add('template-block');
-          blockElement.setAttribute('data-template', templateId);
-          blockElement.style.setProperty('--template-color', templateResult.template.color);
+
+        // Route template block creation through the proper addBlock API
+        const editor = window.diagramEditor;
+        const renderer = window.diagramRenderer;
+
+        // Create all blocks from template via the canonical path
+        const createdBlocks = [];
+        templateResult.blocks.forEach((block) => {
+          if (editor) {
+            const newBlock = editor.addBlock({
+              name: block.name,
+              type: block.type || 'Generic',
+              x: block.x,
+              y: block.y,
+              width: block.width || 120,
+              height: block.height || 80,
+              status: block.status || 'Planned',
+              attributes: block.attributes || {},
+              interfaces: block.interfaces || []
+            });
+            if (newBlock) createdBlocks.push(newBlock);
+          }
         });
-        
-        // Create connections between blocks
-        templateResult.connections.forEach(conn => {
-          this.createTemplateConnection(conn, createdBlockElements);
-        });
+
+        // Create connections between template blocks via the editor
+        if (editor && createdBlocks.length > 0) {
+          templateResult.connections.forEach(conn => {
+            const srcBlock = createdBlocks[conn.from.component];
+            const tgtBlock = createdBlocks[conn.to.component];
+            if (srcBlock && tgtBlock) {
+              editor.addConnection({
+                fromBlock: srcBlock.id,
+                toBlock: tgtBlock.id,
+                type: conn.type || 'data'
+              });
+            }
+          });
+        }
+
+        // Re-render everything once so the new blocks appear correctly
+        if (renderer && editor) {
+          renderer.updateAllBlocks(editor.diagram);
+        }
         
         // Show template information
-        this.showTemplateInfo(templateResult.template, templateResult.blocks.length);
+        this.showTemplateInfo(templateResult.template, createdBlocks.length);
         
         // Add template completion animation
         setTimeout(() => {
@@ -3720,111 +4217,75 @@
         }
         
         if (!typeInfo) return;
-        
-        // Create specialized block with full specifications
-        const block = {
-          id: window.editor ? window.editor.generateId() : this.generateBlockId(),
-          name: typeInfo.name,
-          type: blockType,
-          category: typeInfo.category,
-          x: 150 + Math.random() * 300,
-          y: 150 + Math.random() * 200,
-          width: 120,
-          height: 60,
-          status: 'Planned',
-          links: [],
-          attributes: {
-            specifications: typeInfo.specifications,
-            description: typeInfo.description
-          },
-          interfaces: (typeInfo.interfaces && typeInfo.interfaces.length > 0) ? 
-            typeInfo.interfaces.map((iface, index) => {
-              // Ensure interface has the correct structure for rendering
-              return {
-                id: window.editor ? window.editor.generateId() : `${this.generateBlockId()}_${iface.id || iface.name}`,
-                name: iface.name,
-                kind: iface.kind || iface.type || 'data',
-                direction: iface.direction || 'input',
-                port: {
-                  side: iface.side || (iface.direction === 'output' ? 'right' : 'left'),
-                  index: iface.index !== undefined ? iface.index : index
-                },
-                params: iface.params || {}
-              };
-            }) : 
-            // Fallback to standard interfaces if none provided
-            [
-              {
-                id: window.editor ? window.editor.generateId() : `${this.generateBlockId()}_vcc`,
-                name: 'VCC',
-                kind: 'power',
-                direction: 'input',
-                port: { side: 'left', index: 0 },
-                params: {}
-              },
-              {
-                id: window.editor ? window.editor.generateId() : `${this.generateBlockId()}_gnd`,
-                name: 'GND', 
-                kind: 'power',
-                direction: 'input',
-                port: { side: 'left', index: 1 },
-                params: {}
-              },
-              {
-                id: window.editor ? window.editor.generateId() : `${this.generateBlockId()}_out`,
-                name: 'OUT',
-                kind: 'data',
-                direction: 'output', 
-                port: { side: 'right', index: 0 },
-                params: {}
-              }
-            ],
-          pinout: typeInfo.pinout || null,
-          visualStyle: {
-            color: typeInfo.color,
-            icon: typeInfo.icon
-          },
-          _isNewBlock: true  // Flag for animation
-        };
-        
-        // Add specialized block directly to avoid interface conflicts
-        if (window.editor) {
-          try {
-            paletteLogger.debug('Creating specialized block:', typeInfo.name);
-            
-            // Save state for undo
-            window.editor.saveState();
-            
-            // Snap position to grid
-            const snappedPos = window.editor.snapPointToGrid(block.x, block.y);
-            block.x = snappedPos.x;
-            block.y = snappedPos.y;
-            
-            // Add the complete block directly to the diagram
-            paletteLogger.debug('Adding block to diagram. Current block count:', window.editor.diagram.blocks.length);
-            window.editor.diagram.blocks.push(block);
-            paletteLogger.debug('Block added. New block count:', window.editor.diagram.blocks.length);
-            paletteLogger.debug('Block structure:', block);
-            
-            // Render the diagram to show the new block with proper event listeners
-            paletteLogger.debug('Rendering diagram...');
-            window.editor.renderDiagram();
-            paletteLogger.debug('Diagram rendered successfully');
 
-            paletteLogger.debug('Specialized block created and rendered successfully');
-          } catch (error) {
-            paletteLogger.error('Error creating specialized block:', error);
-            this.showToast('Error creating block: ' + error.message, 'error');
-          }
-        } else {
-          paletteLogger.error('window.editor is not available');
+        // Use the canonical editor global
+        const editor = window.diagramEditor;
+        const renderer = window.diagramRenderer;
+        if (!editor) {
+          paletteLogger.error('window.diagramEditor is not available');
           this.showToast('Editor not ready - please try again', 'error');
+          return;
         }
+
+        // Build interfaces list
+        const interfaces = (typeInfo.interfaces && typeInfo.interfaces.length > 0)
+          ? typeInfo.interfaces.map((iface, index) => ({
+              name: iface.name,
+              kind: iface.kind || iface.type || 'data',
+              direction: iface.direction || 'input',
+              port: {
+                side: iface.side || (iface.direction === 'output' ? 'right' : 'left'),
+                index: iface.index !== undefined ? iface.index : index
+              },
+              params: iface.params || {}
+            }))
+          : [
+              { name: 'VCC', kind: 'power', direction: 'input',  port: { side: 'left',  index: 0 }, params: {} },
+              { name: 'GND', kind: 'power', direction: 'input',  port: { side: 'left',  index: 1 }, params: {} },
+              { name: 'OUT', kind: 'data',  direction: 'output', port: { side: 'right', index: 0 }, params: {} }
+            ];
+
+        try {
+          paletteLogger.debug('Creating specialized block:', typeInfo.name);
+
+          // Route through the proper addBlock API so the block is tracked,
+          // serialised, and rendered with full event wiring.
+          const snappedPos = editor.snapPointToGrid(
+            150 + Math.random() * 300,
+            150 + Math.random() * 200
+          );
+
+          const newBlock = editor.addBlock({
+            name: typeInfo.name,
+            type: blockType,
+            x: snappedPos.x,
+            y: snappedPos.y,
+            width: 120,
+            height: 60,
+            status: 'Planned',
+            attributes: {
+              specifications: typeInfo.specifications || '',
+              description: typeInfo.description || ''
+            },
+            interfaces: interfaces
+          });
+
+          if (newBlock && renderer) {
+            renderer.renderBlock(newBlock);
+            renderer.updateAllBlocks(editor.diagram);
+          }
+
+          paletteLogger.debug('Specialized block created via addBlock successfully');
+        } catch (error) {
+          paletteLogger.error('Error creating specialized block:', error);
+          this.showToast('Error creating block: ' + error.message, 'error');
+        }
+
         this.showToast(`Created ${typeInfo.name}`, 'info');
-        
+
         // Show specifications tooltip
         setTimeout(() => {
-          this.showBlockSpecifications(block);
+          this.showBlockSpecifications({ name: typeInfo.name, type: blockType, attributes: { specifications: typeInfo.specifications } });
         }, 500);
       }
       
@@ -3988,7 +4449,7 @@
             <div class="spec-section">
               <h5>Mechanical Properties</h5>
               ${Object.entries(typeInfo.mechanicalProperties).map(([key, value]) => 
-                `<div><strong>${key}:</strong> ${value}</div>`
+                `<div><strong>${_escapeHtml(key)}:</strong> ${_escapeHtml(value)}</div>`
               ).join('')}
             </div>
           `;
@@ -4000,7 +4461,7 @@
             <div class="spec-section">
               <h5>Software Properties</h5>
               ${Object.entries(typeInfo.softwareProperties).map(([key, value]) => 
-                `<div><strong>${key}:</strong> ${value}</div>`
+                `<div><strong>${_escapeHtml(key)}:</strong> ${_escapeHtml(value)}</div>`
               ).join('')}
             </div>
           `;
@@ -4012,18 +4473,18 @@
             <div class="spec-section">
               <h5>Algorithms</h5>
               ${Object.entries(typeInfo.algorithms).map(([key, value]) => 
-                `<div><strong>${key}:</strong> ${value}</div>`
+                `<div><strong>${_escapeHtml(key)}:</strong> ${_escapeHtml(value)}</div>`
               ).join('')}
             </div>
           `;
         }
         
         tooltip.innerHTML = `
-          <h4>${block.name} Specifications</h4>
+          <h4>${_escapeHtml(block.name)} Specifications</h4>
           <div class="spec-section">
             <h5>General Specifications</h5>
             ${Object.entries(block.attributes.specifications).map(([key, value]) => 
-              `<div><strong>${key}:</strong> ${value}</div>`
+              `<div><strong>${_escapeHtml(key)}:</strong> ${_escapeHtml(value)}</div>`
             ).join('')}
           </div>
           ${mechanicalPropsHtml}
@@ -4058,11 +4519,11 @@
         this.currentPreview = document.createElement('div');
         this.currentPreview.className = 'tooltip info show';
         this.currentPreview.innerHTML = `
-          <h4>${typeInfo.name}</h4>
-          <p>${typeInfo.description}</p>
+          <h4>${_escapeHtml(typeInfo.name)}</h4>
+          <p>${_escapeHtml(typeInfo.description)}</p>
           <div class="spec-preview">
             ${Object.entries(typeInfo.specifications).slice(0, 3).map(([key, value]) => 
-              `<div><strong>${key}:</strong> ${value}</div>`
+              `<div><strong>${_escapeHtml(key)}:</strong> ${_escapeHtml(value)}</div>`
             ).join('')}
           </div>
         `;
@@ -4150,16 +4611,16 @@
         const info = document.createElement('div');
         info.className = 'tooltip template-info show';
         info.innerHTML = `
-          <h4>🎯 ${template.name}</h4>
-          <p>${template.description}</p>
+          <h4>🎯 ${_escapeHtml(template.name)}</h4>
+          <p>${_escapeHtml(template.description)}</p>
           <div class="template-stats">
-            <div><strong>Components:</strong> ${blockCount}</div>
-            <div><strong>Category:</strong> ${template.category}</div>
-            <div><strong>Type:</strong> ${template.subcategory}</div>
+            <div><strong>Components:</strong> ${_escapeHtml(String(blockCount))}</div>
+            <div><strong>Category:</strong> ${_escapeHtml(template.category)}</div>
+            <div><strong>Type:</strong> ${_escapeHtml(template.subcategory)}</div>
           </div>
           <div class="template-specs">
-            ${Object.entries(template.specifications).map(([key, value]) => 
-              `<div><strong>${key}:</strong> ${value}</div>`
+            ${Object.entries(template.specifications || {}).map(([key, value]) => 
+              `<div><strong>${_escapeHtml(key)}:</strong> ${_escapeHtml(String(value))}</div>`
             ).join('')}
           </div>
         `;
@@ -4184,6 +4645,14 @@
     // Initialize Advanced Block Type Manager
     document.addEventListener('DOMContentLoaded', () => {
       window.blockTypeManager = new AdvancedBlockTypeManager();
+
+      // Apply ARIA roles to context-menu items and submenus
+      document.querySelectorAll('.fusion-context-menu-item').forEach(el => {
+        if (!el.getAttribute('role')) el.setAttribute('role', 'menuitem');
+      });
+      document.querySelectorAll('.fusion-context-submenu').forEach(el => {
+        el.setAttribute('role', 'menu');
+      });
     });
   </script>
 
@@ -4630,10 +5099,12 @@
   <script src="./utils/logger.js"></script>
   <script src="./utils/html-utils.js"></script>
   <script src="./utils/delta-utils.js"></script>
+  <script src="./utils/pdf-export.js"></script>
   <script src="./core/diagram-editor.js"></script>
   <script src="./core/orthogonal-router.js"></script>
   <script src="./ui/diagram-renderer.js"></script>
   <script src="./ui/minimap.js"></script>
+  <script src="./ui/shape-palette.js"></script>
   <script src="./ui/toolbar-manager.js"></script>
   <script src="./features/advanced-features.js"></script>
   <script src="./interface/python-bridge.js"></script>

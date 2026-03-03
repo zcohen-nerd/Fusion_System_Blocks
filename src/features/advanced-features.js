@@ -14,9 +14,10 @@
  */
 
 class AdvancedFeatures {
-  constructor(editorCore, renderer) {
+  constructor(editorCore, renderer, abortSignal) {
     this.editor = editorCore;
     this.renderer = renderer;
+    this._abortSignal = abortSignal || null;
     
     // Multi-selection
     this.selectedBlocks = new Set();
@@ -57,17 +58,25 @@ class AdvancedFeatures {
 
   // === MULTI-SELECTION SYSTEM ===
   setupMultiSelection() {
+    const opts = this._abortSignal ? { signal: this._abortSignal } : undefined;
+
     document.addEventListener('keydown', (e) => {
       if (e.ctrlKey || e.metaKey) {
         this.isMultiSelectMode = true;
       }
-    });
+    }, opts);
 
     document.addEventListener('keyup', (e) => {
       if (!e.ctrlKey && !e.metaKey) {
         this.isMultiSelectMode = false;
       }
-    });
+    }, opts);
+
+    // Clear multi-select state when the window loses focus (e.g. Alt-Tab)
+    // to prevent the mode from getting stuck when keyup fires elsewhere.
+    window.addEventListener('blur', () => {
+      this.isMultiSelectMode = false;
+    }, opts);
   }
 
   addToSelection(blockId) {
@@ -460,6 +469,12 @@ class AdvancedFeatures {
       }
     });
     
+    // Guard: if no valid blocks were found, return a zero-size bounds
+    // instead of NaN (Infinity - Infinity).
+    if (minX === Infinity || maxX === -Infinity) {
+      return { x: 0, y: 0, width: 0, height: 0 };
+    }
+
     return { x: minX - 10, y: minY - 10, width: maxX - minX + 20, height: maxY - minY + 20 };
   }
 
@@ -1396,9 +1411,10 @@ class AdvancedFeatures {
   jumpToState(targetIndex) {
     // Build combined timeline: [...undoStack]
     // Current state is undoStack[undoStack.length - 1]
+    const totalStates = this.undoStack.length + this.redoStack.length;
+    if (targetIndex < 0 || targetIndex >= totalStates) return;
     const currentIndex = this.undoStack.length - 1;
     if (targetIndex === currentIndex) return;
-    if (targetIndex < 0) return;
 
     this.isPerformingUndoRedo = true;
 

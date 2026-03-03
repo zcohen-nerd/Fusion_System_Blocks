@@ -31,7 +31,10 @@ JavaScript side (applying a patch received from Python)::
 from __future__ import annotations
 
 import copy
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def compute_patch(
@@ -152,11 +155,18 @@ def _diff_list_by_id(
     old_map = {item["id"]: (i, item) for i, item in enumerate(old)}
     new_map = {item["id"]: (i, item) for i, item in enumerate(new)}
 
-    # Removed items
-    for item_id in old_map:
-        if item_id not in new_map:
-            idx = old_map[item_id][0]
-            ops.append({"op": "remove", "path": f"{path}/{idx}"})
+    # Removed items — iterate in reverse index order so that earlier
+    # removals don't shift the indices of later ones.
+    removed_indices = sorted(
+        (
+            old_map[item_id][0]
+            for item_id in old_map
+            if item_id not in new_map
+        ),
+        reverse=True,
+    )
+    for idx in removed_indices:
+        ops.append({"op": "remove", "path": f"{path}/{idx}"})
 
     # Added items
     for item_id in new_map:
@@ -170,11 +180,13 @@ def _diff_list_by_id(
                 }
             )
 
-    # Modified items (compare by matching id)
+    # Modified items (compare by matching id) — use the *new* index
+    # so sub-patch paths target the correct element in the final list
+    # (after removals and additions have shifted positions).
     for item_id in old_map:
         if item_id in new_map:
-            old_idx = old_map[item_id][0]
-            _diff(old_map[item_id][1], new_map[item_id][1], f"{path}/{old_idx}", ops)
+            new_idx = new_map[item_id][0]
+            _diff(old_map[item_id][1], new_map[item_id][1], f"{path}/{new_idx}", ops)
 
 
 def _diff_list_by_index(
@@ -216,14 +228,32 @@ def _apply_op(doc: Any, op: dict[str, Any]) -> None:
 
     final_key = path_parts[-1]
 
+    _known_ops = {"add", "remove", "replace"}
+    if operation not in _known_ops:
+        raise ValueError(
+            f"Unknown patch operation '{operation}'. "
+            f"Supported operations: {', '.join(sorted(_known_ops))}"
+        )
+
     if isinstance(target, list):
         idx = int(final_key)
         if operation == "add":
+            if idx < 0 or idx > len(target):
+                raise IndexError(
+                    f"Patch add index {idx} out of range for list of length {len(target)}"
+                )
             target.insert(idx, op["value"])
         elif operation == "remove":
-            if idx < len(target):
-                target.pop(idx)
+            if idx < 0 or idx >= len(target):
+                raise IndexError(
+                    f"Patch remove index {idx} out of range for list of length {len(target)}"
+                )
+            target.pop(idx)
         elif operation == "replace":
+            if idx < 0 or idx >= len(target):
+                raise IndexError(
+                    f"Patch replace index {idx} out of range for list of length {len(target)}"
+                )
             target[idx] = op["value"]
     else:
         if operation == "add":

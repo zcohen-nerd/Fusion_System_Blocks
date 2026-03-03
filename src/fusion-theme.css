@@ -408,6 +408,88 @@
 
 /* === LOADING STATES === */
 
+/* === FLOATING ACTION BAR === */
+
+.fusion-action-bar {
+  position: fixed;
+  display: none;
+  z-index: var(--z-tooltip);
+  background: var(--fusion-bg-primary);
+  border: 1px solid var(--fusion-border-secondary);
+  border-radius: var(--fusion-radius-medium);
+  box-shadow: var(--fusion-shadow-medium);
+  padding: 4px;
+  gap: 2px;
+  flex-direction: row;
+  align-items: center;
+  pointer-events: auto;
+  transform: translateX(-50%); /* center horizontally on anchor point */
+  white-space: nowrap;
+}
+
+.fusion-action-bar.show {
+  display: inline-flex;
+}
+
+.fusion-action-bar::after {
+  /* downward-pointing arrow */
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--fusion-border-secondary);
+}
+
+.fusion-action-bar::before {
+  /* inner arrow (matches background) */
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--fusion-bg-primary);
+  z-index: 1;
+}
+
+.fusion-action-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--fusion-radius-small);
+  background: transparent;
+  color: var(--fusion-text-primary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  transition: background var(--fusion-transition-fast) var(--fusion-ease-out),
+              color var(--fusion-transition-fast) var(--fusion-ease-out);
+}
+
+.fusion-action-bar-btn:hover {
+  background: var(--fusion-bg-hover);
+  color: var(--fusion-accent-blue);
+}
+
+.fusion-action-bar-btn.danger:hover {
+  background: rgba(229, 57, 53, 0.15);
+  color: var(--fusion-status-error);
+}
+
+.fusion-action-bar-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--fusion-border-primary);
+  margin: 0 2px;
+}
+
+/* === LOADING STATES === */
+
 .fusion-loader {
   display: inline-flex;
   align-items: center;
@@ -1056,6 +1138,61 @@
 }
 
 /* Focus-visible outlines for keyboard navigation */
+
+/* === COMMAND PALETTE === */
+.cmd-palette-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--fusion-text-primary);
+  border-left: 3px solid transparent;
+  transition: background var(--fusion-transition-fast) var(--fusion-ease-out);
+}
+.cmd-palette-item:hover,
+.cmd-palette-item.active {
+  background: var(--fusion-bg-hover);
+  border-left-color: var(--fusion-accent-blue);
+}
+.cmd-palette-item .cmd-icon {
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.cmd-palette-item .cmd-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmd-palette-item .cmd-label mark {
+  background: var(--fusion-accent-blue);
+  color: #fff;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.cmd-palette-item .cmd-shortcut {
+  font-size: 11px;
+  color: var(--fusion-text-disabled);
+  flex-shrink: 0;
+}
+.cmd-palette-item .cmd-category {
+  font-size: 10px;
+  color: var(--fusion-text-disabled);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.cmd-palette-empty {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--fusion-text-disabled);
+  font-size: 13px;
+}
+
+/* Focus-visible outlines for keyboard navigation */
 :focus-visible {
   outline: 2px solid var(--fusion-accent-blue, #007acc);
   outline-offset: 2px;
@@ -1068,6 +1205,95 @@ button:focus-visible,
   outline: 2px solid var(--fusion-accent-blue, #007acc);
   outline-offset: 1px;
   border-radius: 3px;
+}
+
+/* ============================
+   LIGHT THEME
+   Apply .theme-light on <body> to switch all CSS variables.
+   ============================ */
+.theme-light {
+  /* Primary Colors */
+  --fusion-bg-primary: #f5f5f5;
+  --fusion-bg-secondary: #e8e8e8;
+  --fusion-bg-tertiary: #dedede;
+  --fusion-bg-hover: #d0d0d0;
+  --fusion-bg-active: #0078d4;
+  --fusion-bg-disabled: #ebebeb;
+
+  /* Text Colors */
+  --fusion-text-primary: #1e1e1e;
+  --fusion-text-secondary: #3e3e3e;
+  --fusion-text-disabled: #a0a0a0;
+  --fusion-text-inverse: #ffffff;
+
+  /* Border Colors */
+  --fusion-border-primary: #c8c8c8;
+  --fusion-border-secondary: #b0b0b0;
+  --fusion-border-light: #d8d8d8;
+  --fusion-border-focus: #0078d4;
+  --fusion-border-hover: #999999;
+
+  /* Accent Colors (kept vibrant for contrast on light bg) */
+  --fusion-accent-blue: #0078d4;
+  --fusion-accent-blue-dark: #005a9e;
+  --fusion-accent-blue-light: #1e88e5;
+  --fusion-accent-orange: #e06600;
+  --fusion-accent-green: #388e3c;
+  --fusion-accent-red: #d32f2f;
+  --fusion-accent-yellow: #f9a825;
+
+  /* Component-specific Colors */
+  --fusion-button-bg: #e0e0e0;
+  --fusion-button-hover: #d4d4d4;
+  --fusion-button-active: #0078d4;
+  --fusion-button-border: #b0b0b0;
+
+  --fusion-input-bg: #ffffff;
+  --fusion-input-border: #b0b0b0;
+  --fusion-input-focus: #0078d4;
+
+  --fusion-panel-bg: #e8e8e8;
+  --fusion-panel-border: #c8c8c8;
+
+  /* Shadows — softer for light theme */
+  --fusion-shadow-light: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --fusion-shadow-medium: 0 2px 6px rgba(0, 0, 0, 0.12);
+  --fusion-shadow-heavy: 0 4px 12px rgba(0, 0, 0, 0.16);
+  --fusion-shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+  --fusion-shadow-button: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --fusion-shadow-panel: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --fusion-shadow-floating: 0 4px 16px rgba(0, 0, 0, 0.18);
+
+  /* Status Colors — slightly darker for readability on light bg */
+  --fusion-status-placeholder: #757575;
+  --fusion-status-placeholder-bg: rgba(117, 117, 117, 0.1);
+  --fusion-status-planned: #0277bd;
+  --fusion-status-planned-bg: rgba(2, 119, 189, 0.1);
+  --fusion-status-in-work: #f57f17;
+  --fusion-status-in-work-bg: rgba(245, 127, 23, 0.1);
+  --fusion-status-implemented: #2e7d32;
+  --fusion-status-implemented-bg: rgba(46, 125, 50, 0.1);
+  --fusion-status-verified: #004d40;
+  --fusion-status-verified-bg: rgba(0, 77, 64, 0.12);
+  --fusion-status-error: #c62828;
+  --fusion-status-error-bg: rgba(198, 40, 40, 0.1);
+  --fusion-status-warning: #e65100;
+  --fusion-status-warning-bg: rgba(230, 81, 0, 0.1);
+  --fusion-status-success: #2e7d32;
+  --fusion-status-success-bg: rgba(46, 125, 50, 0.1);
+
+  /* Icon Colors */
+  --fusion-icon-primary: #424242;
+  --fusion-icon-secondary: #757575;
+  --fusion-icon-accent: #0078d4;
+
+  /* Gradients */
+  --fusion-gradient-primary: #f5f5f5;
+  --fusion-gradient-secondary: #e8e8e8;
+  --fusion-gradient-button: #e0e0e0;
+  --fusion-gradient-button-hover: #d4d4d4;
+  --fusion-gradient-active: #0078d4;
+  --fusion-gradient-subtle: rgba(0, 0, 0, 0.02);
 }
 
 /* High-contrast mode support */

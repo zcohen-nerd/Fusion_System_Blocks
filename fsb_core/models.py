@@ -228,6 +228,7 @@ class Block:
         block_type: Category/type of the block (e.g., "MCU", "Sensor").
         x: Horizontal position in the diagram.
         y: Vertical position in the diagram.
+        rotation: Rotation angle in degrees (0, 90, 180, 270).
         status: Current lifecycle status.
         ports: List of ports (connection points) on this block.
         attributes: Key-value pairs for block-specific properties.
@@ -240,6 +241,7 @@ class Block:
     block_type: str = "Generic"
     x: int = 0
     y: int = 0
+    rotation: int = 0
     status: BlockStatus = BlockStatus.PLACEHOLDER
     ports: list[Port] = field(default_factory=list)
     attributes: dict[str, Any] = field(default_factory=dict)
@@ -309,6 +311,9 @@ class Connection:
         to_block_id: ID of the destination block.
         to_port_id: ID of the destination port on the destination block.
         kind: Protocol or type of connection (e.g., "I2C", "SPI", "power").
+        route_mode: Per-connection routing mode override. ``None`` uses the
+            global diagram routing mode.  Valid values: ``"straight"``,
+            ``"bezier"``, ``"orthogonal"``, or ``None``.
         attributes: Additional connection-specific properties.
     """
 
@@ -318,7 +323,22 @@ class Connection:
     to_block_id: str = ""
     to_port_id: str | None = None
     kind: str = "data"
+    route_mode: str | None = None
     attributes: dict[str, Any] = field(default_factory=dict)
+
+    #: Allowed per-connection routing mode overrides.
+    VALID_ROUTE_MODES: tuple[str, ...] = field(
+        default=("straight", "bezier", "orthogonal"),
+        init=False,
+        repr=False,
+        compare=False,
+    )
+
+    def __post_init__(self) -> None:
+        """Validate route_mode after initialization."""
+        if self.route_mode is not None:
+            if self.route_mode not in self.VALID_ROUTE_MODES:
+                self.route_mode = None
 
 
 @dataclass
@@ -380,6 +400,30 @@ class Group:
 
 
 @dataclass
+class Page:
+    """Represents a single page within a multi-page diagram.
+
+    Each page has its own independent set of blocks, connections,
+    groups, and named stubs. Cross-page references use named stubs.
+
+    Attributes:
+        id: Unique identifier for this page.
+        name: Human-readable page name (e.g., "Power Distribution").
+        blocks: List of blocks on this page.
+        connections: List of connections on this page.
+        groups: List of groups on this page.
+        named_stubs: List of named stubs on this page.
+    """
+
+    id: str = field(default_factory=generate_id)
+    name: str = "Page 1"
+    blocks: list[Block] = field(default_factory=list)
+    connections: list[Connection] = field(default_factory=list)
+    groups: list[Group] = field(default_factory=list)
+    named_stubs: list[NamedStub] = field(default_factory=list)
+
+
+@dataclass
 class Graph:
     """Represents a complete system block diagram.
 
@@ -396,6 +440,7 @@ class Graph:
         groups: List of all groups in the diagram.
         metadata: Additional diagram metadata.
         requirements: System-level requirements / budget constraints.
+        pages: Optional list of pages for multi-page diagrams.
     """
 
     id: str = field(default_factory=generate_id)
@@ -407,6 +452,7 @@ class Graph:
     named_stubs: list[NamedStub] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
     requirements: list[Requirement] = field(default_factory=list)
+    pages: list[Page] = field(default_factory=list)
 
     def add_block(self, block: Block) -> None:
         """Add a block to the graph.
@@ -522,6 +568,10 @@ class Graph:
                 for c in self.connections
                 if c.from_block_id != block_id and c.to_block_id != block_id
             ]
+            # Remove the block from any groups that reference it
+            for group in self.groups:
+                if block_id in group.block_ids:
+                    group.block_ids.remove(block_id)
             return True
         return False
 

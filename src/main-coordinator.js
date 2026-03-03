@@ -33,6 +33,17 @@ class SystemBlocksMain {
     this.modules = new Map();
     this.isInitialized = false;
     this.moduleLoadPromises = [];
+
+    // AbortController for tearing down event listeners on reinitialize
+    this._abortController = new AbortController();
+
+    // Multi-page state
+    this._pages = [];
+    this._activePageIndex = 0;
+    this._windowResizeHandler = null;
+    this._beforeUnloadHandler = null;
+    this._pageTabEventsBound = false;
+    this._pageTabEventsTarget = null;
     
     logger.info('=== System Blocks Editor Starting ===');
     this.initialize();
@@ -89,7 +100,8 @@ class SystemBlocksMain {
     logger.debug('Initializing advanced features...');
     this.modules.set('features', new AdvancedFeatures(
       this.modules.get('core'),
-      this.modules.get('renderer')
+      this.modules.get('renderer'),
+      this._abortController.signal
     ));
     
     // Python interface is already initialized globally
@@ -101,6 +113,26 @@ class SystemBlocksMain {
       const minimapInst = new Minimap(this.modules.get('core'));
       this.modules.set('minimap', minimapInst);
       window.minimapInstance = minimapInst;
+    }
+
+    // Initialize shape palette sidebar (Issue #180)
+    if (typeof ShapePalette !== 'undefined') {
+      logger.debug('Initializing shape palette...');
+      const palette = new ShapePalette(
+        this.modules.get('core'),
+        this.modules.get('renderer')
+      );
+      this.modules.set('shapePalette', palette);
+      window.shapePalette = palette;
+
+      // Wire toggle button
+      const toggleBtn = document.getElementById('sp-toggle-btn');
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+          palette.toggle();
+          toggleBtn.textContent = palette.visible ? '\u25C0' : '\u25B6';
+        });
+      }
     }
 
     logger.info('All modules initialized successfully');
@@ -147,6 +179,14 @@ class SystemBlocksMain {
       logger.error('SVG canvas not found!');
       return;
     }
+
+    // Abort signal — listeners registered with this signal are automatically
+    // removed when _abortController.abort() is called in reinitialize().
+    const _sig = { signal: this._abortController.signal };
+
+    /** Shorthand: add event listener with automatic abort-signal support. */
+    const _on = (el, event, handler, opts) =>
+      el.addEventListener(event, handler, { ..._sig, ...opts });
 
     let lastMousePos = { x: 0, y: 0 };
     let draggedBlock = null;
@@ -226,7 +266,7 @@ class SystemBlocksMain {
     };
 
     // Mouse down - start drag or selection
-    svg.addEventListener('mousedown', (e) => {
+    _on(svg, 'mousedown', (e) => {
       // Track mouse position for ALL buttons so middle-button pan
       // (handled in mousemove, e.buttons === 4) has a valid origin.
       lastMousePos = { x: e.clientX, y: e.clientY };
@@ -416,6 +456,7 @@ class SystemBlocksMain {
           features.toggleSelection(clickedBlock.id);
           // Do NOT call core.selectBlock() here — it clears multi-select
           this.hidePropertiesPanel();
+          this.hideFloatingActionBar(); // no bar during multi-select
         } else {
           // Single select
           if (!features.selectedBlocks.has(clickedBlock.id)) {
@@ -424,6 +465,7 @@ class SystemBlocksMain {
           }
           core.selectBlock(clickedBlock.id);
           this.updatePropertiesPanel(clickedBlock, core, renderer);
+          this.showFloatingActionBar(clickedBlock, core, renderer, features);
         }
         
         // Start drag — only when NOT in Ctrl+click multi-select
@@ -447,6 +489,7 @@ class SystemBlocksMain {
           features.clearSelection();
           core.clearSelection();
           this.hidePropertiesPanel();
+          this.hideFloatingActionBar();
           // Dismiss the group-offer bar when clicking off blocks
           const groupBar = document.getElementById('lasso-group-bar');
           if (groupBar) groupBar.remove();
@@ -458,7 +501,7 @@ class SystemBlocksMain {
     });
     
     // Mouse move - drag or lasso
-    svg.addEventListener('mousemove', (e) => {
+    _on(svg, 'mousemove', (e) => {
       const currentTime = performance.now();
       if (currentTime - core.lastMouseMoveTime < core.mouseMoveThreshold) return;
       core.lastMouseMoveTime = currentTime;
@@ -561,6 +604,12 @@ class SystemBlocksMain {
         const updatedDragged = core.diagram.blocks.find(bl => bl.id === draggedBlock.id);
         if (updatedDragged) draggedBlock = updatedDragged;
 
+        // Keep floating action bar tracking the dragged block
+        if (this._fabBlock && updatedDragged && updatedDragged.id === this._fabBlock.id) {
+          this._fabBlock = updatedDragged;
+          this._positionFloatingActionBar();
+        }
+
         // Re-render connections attached to any moved block using batched
         // scheduling to avoid per-pixel re-renders during fast drags.
         // In orthogonal mode, re-render ALL connections because any moved
@@ -648,13 +697,14 @@ class SystemBlocksMain {
         
         core.panBy(deltaX, deltaY);
         this._updateMinimap();
+        this._positionFloatingActionBar(); // reposition on pan
         
         lastMousePos = { x: e.clientX, y: e.clientY };
       }
     });
     
     // Mouse up - end drag or selection, AND complete connections
-    svg.addEventListener('mouseup', (e) => {
+    _on(svg, 'mouseup', (e) => {
       // Clear alignment snap guides on drag end
       renderer.clearSnapGuides();
 
@@ -728,20 +778,27 @@ class SystemBlocksMain {
 
           // Determine which port the connection originates from and
           // find the closest target port for the drop position.
+          // If the user snapped to a specific port during drag, use that.
           const sourcePort = this._connectionMode.sourcePort || 'output';
-          const tw = targetBlock.width || 120;
-          const th = targetBlock.height || 80;
-          const targetPorts = [
-            { x: targetBlock.x,          y: targetBlock.y + th / 2, type: 'input' },
-            { x: targetBlock.x + tw,     y: targetBlock.y + th / 2, type: 'output' },
-            { x: targetBlock.x + tw / 2, y: targetBlock.y,          type: 'top' },
-            { x: targetBlock.x + tw / 2, y: targetBlock.y + th,     type: 'bottom' },
-          ];
-          let bestPort = 'input';
-          let bestDist = Infinity;
-          for (const p of targetPorts) {
-            const d = Math.hypot(x - p.x, y - p.y);
-            if (d < bestDist) { bestDist = d; bestPort = p.type; }
+          let bestPort;
+          if (this._connectionMode.snappedPort &&
+              this._connectionMode.snappedPort.blockId === targetBlock.id) {
+            bestPort = this._connectionMode.snappedPort.type;
+          } else {
+            const tw = targetBlock.width || 120;
+            const th = targetBlock.height || 80;
+            const targetPorts = [
+              { x: targetBlock.x,          y: targetBlock.y + th / 2, type: 'input' },
+              { x: targetBlock.x + tw,     y: targetBlock.y + th / 2, type: 'output' },
+              { x: targetBlock.x + tw / 2, y: targetBlock.y,          type: 'top' },
+              { x: targetBlock.x + tw / 2, y: targetBlock.y + th,     type: 'bottom' },
+            ];
+            bestPort = 'input';
+            let bestDist = Infinity;
+            for (const p of targetPorts) {
+              const d = Math.hypot(x - p.x, y - p.y);
+              if (d < bestDist) { bestDist = d; bestPort = p.type; }
+            }
           }
 
           // Normalize so Forward/Backward always means left-to-right.
@@ -912,15 +969,20 @@ class SystemBlocksMain {
       connectionStartedThisClick = false;
     });
     
-    // Mouse wheel - zoom
-    svg.addEventListener('wheel', (e) => {
+    // Mouse wheel - zoom (smooth focal-point zoom centered on cursor)
+    _on(svg, 'wheel', (e) => {
       e.preventDefault();
       
       const { x: centerX, y: centerY } = screenToSVG(e.clientX, e.clientY);
       
-      const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
-      core.zoomAt(zoomFactor, centerX, centerY);
+      if (core.smoothZoomAt) {
+        core.smoothZoomAt(e.deltaY, centerX, centerY);
+      } else {
+        const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
+        core.zoomAt(zoomFactor, centerX, centerY);
+      }
       this._updateMinimap();
+      this._positionFloatingActionBar(); // reposition on zoom
     });
 
     // =========================================================================
@@ -928,7 +990,7 @@ class SystemBlocksMain {
     // The manual detection in mousedown is the primary path; this fires
     // as a backup in browsers where native dblclick works on SVG.
     // =========================================================================
-    svg.addEventListener('dblclick', (e) => {
+    _on(svg, 'dblclick', (e) => {
       // Suppress rename if we just exited connection mode (click → dblclick)
       if (this._connectionModeExitTime &&
           performance.now() - this._connectionModeExitTime < 500) {
@@ -946,7 +1008,7 @@ class SystemBlocksMain {
     // =========================================================================
     // RIGHT-CLICK — context menu
     // =========================================================================
-    svg.addEventListener('contextmenu', (e) => {
+    _on(svg, 'contextmenu', (e) => {
       e.preventDefault();
 
       const { x, y } = screenToSVG(e.clientX, e.clientY);
@@ -990,7 +1052,7 @@ class SystemBlocksMain {
     // Do NOT hide when clicking inside — otherwise the menu becomes
     // display:none before the click event fires on the menu item,
     // preventing all context menu actions from executing.
-    document.addEventListener('mousedown', (e) => {
+    _on(document, 'mousedown', (e) => {
       if (e.button === 0) {
         const menu = document.getElementById('block-context-menu');
         if (!menu || !menu.contains(e.target)) {
@@ -1009,6 +1071,9 @@ class SystemBlocksMain {
     this._connectionMode = {
       active: false,
       sourceBlock: null,
+      sourcePortEl: null,
+      snappedPort: null,
+      snappedPortEl: null,
       tempLine: null
     };
     this._connectionModeExitTime = 0;
@@ -1034,11 +1099,65 @@ class SystemBlocksMain {
       tempLine: null
     };
 
-    svg.addEventListener('mousemove', (e) => {
+    _on(svg, 'mousemove', (e) => {
       if (this._connectionMode.active && this._connectionMode.tempLine) {
         const { x, y } = screenToSVG(e.clientX, e.clientY);
-        this._connectionMode.tempLine.setAttribute('x2', x);
-        this._connectionMode.tempLine.setAttribute('y2', y);
+
+        // --- Port snap detection ---
+        const SNAP_RADIUS = 25;
+        const sourceId = this._connectionMode.sourceBlock
+          ? this._connectionMode.sourceBlock.id : null;
+        let nearestPort = null;
+        let nearestDist = Infinity;
+
+        for (let i = core.diagram.blocks.length - 1; i >= 0; i--) {
+          const block = core.diagram.blocks[i];
+          if (block.id === sourceId) continue; // skip source block
+          const w = block.width || 120;
+          const h = block.height || 80;
+          const ports = [
+            { x: block.x,         y: block.y + h / 2, type: 'input',  blockId: block.id },
+            { x: block.x + w,     y: block.y + h / 2, type: 'output', blockId: block.id },
+            { x: block.x + w / 2, y: block.y,          type: 'top',    blockId: block.id },
+            { x: block.x + w / 2, y: block.y + h,      type: 'bottom', blockId: block.id },
+          ];
+          for (const p of ports) {
+            const d = Math.hypot(x - p.x, y - p.y);
+            if (d < SNAP_RADIUS && d < nearestDist) {
+              nearestDist = d;
+              nearestPort = p;
+            }
+          }
+        }
+
+        // Update snap highlight — remove old, apply new
+        const prevSnap = this._connectionMode.snappedPortEl;
+        if (prevSnap) {
+          prevSnap.classList.remove('port-snap');
+          this._connectionMode.snappedPortEl = null;
+          this._connectionMode.snappedPort = null;
+        }
+
+        if (nearestPort) {
+          // Find the DOM element for the target port
+          const portEl = svg.querySelector(
+            '.connection-port[data-block-id="' + nearestPort.blockId +
+            '"][data-port-type="' + nearestPort.type + '"]'
+          );
+          if (portEl) {
+            portEl.classList.add('port-snap');
+            this._connectionMode.snappedPortEl = portEl;
+          }
+          this._connectionMode.snappedPort = nearestPort;
+
+          // Snap the temp line endpoint to the port position
+          this._connectionMode.tempLine.setAttribute('x2', nearestPort.x);
+          this._connectionMode.tempLine.setAttribute('y2', nearestPort.y);
+        } else {
+          // Free-follow the cursor
+          this._connectionMode.tempLine.setAttribute('x2', x);
+          this._connectionMode.tempLine.setAttribute('y2', y);
+        }
       }
       // Update dimension pick temp line
       if (this._dimensionMode.active && this._dimensionMode.tempLine) {
@@ -1053,7 +1172,7 @@ class SystemBlocksMain {
     // in others (Fusion CEF) it doesn't. The mouseup handler above is
     // the primary path. The addConnection() duplicate guard prevents
     // double-creation if both fire.
-    svg.addEventListener('click', (e) => {
+    _on(svg, 'click', (e) => {
       // --- Stub-target-pick mode (click path) ---
       if (this._stubTargetMode && this._stubTargetMode.active) {
         // Skip if the mouseup handler already handled this interaction.
@@ -1095,8 +1214,46 @@ class SystemBlocksMain {
         const direction = arrowDir ? arrowDir.value : 'forward';
         const sourceId = this._connectionMode.sourceBlock
           ? this._connectionMode.sourceBlock.id : null;
-        const conn = core.addConnection(sourceId, targetBlock.id, type, direction);
+        const sourcePort = this._connectionMode.sourcePort || 'output';
+
+        // Use snapped port if available, otherwise find closest
+        let bestPort;
+        if (this._connectionMode.snappedPort &&
+            this._connectionMode.snappedPort.blockId === targetBlock.id) {
+          bestPort = this._connectionMode.snappedPort.type;
+        } else {
+          const tw = targetBlock.width || 120;
+          const th = targetBlock.height || 80;
+          const tPorts = [
+            { x: targetBlock.x,          y: targetBlock.y + th / 2, type: 'input' },
+            { x: targetBlock.x + tw,     y: targetBlock.y + th / 2, type: 'output' },
+            { x: targetBlock.x + tw / 2, y: targetBlock.y,          type: 'top' },
+            { x: targetBlock.x + tw / 2, y: targetBlock.y + th,     type: 'bottom' },
+          ];
+          bestPort = 'input';
+          let bestDist = Infinity;
+          for (const p of tPorts) {
+            const d = Math.hypot(x - p.x, y - p.y);
+            if (d < bestDist) { bestDist = d; bestPort = p.type; }
+          }
+        }
+
+        // Normalize direction (input port = right-to-left → swap)
+        let fromId = sourceId;
+        let toId = targetBlock.id;
+        let fromPort = sourcePort;
+        let toPort = bestPort;
+        if (sourcePort === 'input') {
+          fromId = targetBlock.id;
+          toId = sourceId;
+          fromPort = bestPort;
+          toPort = sourcePort;
+        }
+
+        const conn = core.addConnection(fromId, toId, type, direction);
         if (conn) {
+          conn.fromPort = fromPort;
+          conn.toPort = toPort;
           // Invalidate the fan map so the new connection is included
           // in the offset calculation.
           renderer._cachedFanMap = null;
@@ -1122,7 +1279,7 @@ class SystemBlocksMain {
     });
 
     // Escape to cancel connection mode, stub-target-pick, or dimension mode
-    document.addEventListener('keydown', (e) => {
+    _on(document, 'keydown', (e) => {
       if (e.key === 'Escape' && this._stubTargetMode.active) {
         this._toast('Stub connection cancelled', 'info');
         this.exitStubTargetMode(svg);
@@ -1136,13 +1293,24 @@ class SystemBlocksMain {
       }
       // Escape closes open modal dialogs
       if (e.key === 'Escape') {
-        const importDialog = document.getElementById('import-dialog');
-        const overlay = document.getElementById('dialog-overlay');
-        if (importDialog && importDialog.style.display !== 'none') {
-          importDialog.style.display = 'none';
-          if (overlay) overlay.style.display = 'none';
-          e.preventDefault();
-          return;
+        const overlayIds = [
+          'command-palette-overlay',
+          'export-overlay',
+          'help-overlay',
+          'shortcuts-overlay',
+          'import-overlay',
+          'open-doc-overlay',
+          'save-as-overlay',
+          'recovery-overlay',
+          'loading-overlay'
+        ];
+        for (const overlayId of overlayIds) {
+          const overlay = document.getElementById(overlayId);
+          if (overlay && window.getComputedStyle(overlay).display !== 'none') {
+            overlay.style.display = 'none';
+            e.preventDefault();
+            return;
+          }
         }
         const historyPanel = document.getElementById('history-panel');
         if (historyPanel && historyPanel.classList.contains('show')) {
@@ -1159,6 +1327,16 @@ class SystemBlocksMain {
       // fire on the same keydown event, causing double-execution.
       const activeTag = document.activeElement ? document.activeElement.tagName : '';
       if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
+
+      const modalOpen = !!document.querySelector('.fusion-dialog-overlay') ||
+        Array.from(document.querySelectorAll('.fusion-modal-overlay')).some(
+          el => window.getComputedStyle(el).display !== 'none'
+        ) ||
+        ['command-palette-overlay', 'loading-overlay'].some(id => {
+          const el = document.getElementById(id);
+          return !!el && window.getComputedStyle(el).display !== 'none';
+        });
+      if (modalOpen) return;
 
       // Ctrl+G — group selected blocks (unique to coordinator)
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'g') {
@@ -1184,6 +1362,12 @@ class SystemBlocksMain {
    * @private
    */
   _showQuickBlockMenu(core, renderer, features, svg) {
+    // Tear down any previous invocation's listener before rebuilding
+    if (this._quickBlockCleanup) {
+      this._quickBlockCleanup();
+      this._quickBlockCleanup = null;
+    }
+
     // Remove any existing menu
     const existing = document.getElementById('quick-block-menu');
     if (existing) existing.remove();
@@ -1253,7 +1437,11 @@ class SystemBlocksMain {
     const cleanup = () => {
       menu.remove();
       document.removeEventListener('keydown', onKey, true);
+      document.removeEventListener('mousedown', this._quickBlockOutsideClick);
+      this._quickBlockOutsideClick = null;
+      this._quickBlockCleanup = null;
     };
+    this._quickBlockCleanup = cleanup;
 
     const pickCategory = (cat) => {
       cleanup();
@@ -1321,14 +1509,13 @@ class SystemBlocksMain {
 
     document.addEventListener('keydown', onKey, true);
 
-    // Close on outside click
-    const outsideClick = (e) => {
+    // Close on outside click — store reference so cleanup() can remove it
+    this._quickBlockOutsideClick = (e) => {
       if (!menu.contains(e.target)) {
         cleanup();
-        document.removeEventListener('mousedown', outsideClick);
       }
     };
-    setTimeout(() => document.addEventListener('mousedown', outsideClick), 0);
+    setTimeout(() => document.addEventListener('mousedown', this._quickBlockOutsideClick), 0);
   }
 
   // =========================================================================
@@ -1341,7 +1528,8 @@ class SystemBlocksMain {
 
     // Hide the original SVG text element so it doesn't overlap the input
     const blockGroup = svg.querySelector(`g[data-block-id="${block.id}"]`);
-    const textEl = blockGroup ? blockGroup.querySelector('text') : null;
+    if (!blockGroup) return; // Block not rendered yet
+    const textEl = blockGroup.querySelector('text');
     if (textEl) textEl.style.display = 'none';
 
     // Create a foreignObject to host an HTML input over the block
@@ -1384,7 +1572,10 @@ class SystemBlocksMain {
     input.focus();
     input.select();
 
+    let committed = false;
     const commit = () => {
+      if (committed) return;
+      committed = true;
       const newName = input.value.trim();
       if (newName && newName !== block.name) {
         core.updateBlock(block.id, { name: newName });
@@ -1604,7 +1795,7 @@ class SystemBlocksMain {
         const otherId = direction === 'out' ? c.toBlock : c.fromBlock;
         const other = core.diagram.blocks.find(b => b.id === otherId);
         const otherName = other ? _escapeHtml(other.name) : '(deleted)';
-        const typeLabel = c.connectionType || 'Signal';
+        const typeLabel = c.type || 'Signal';
         return `<div class="pp-conn-item">
           <span class="pp-conn-type">${_escapeHtml(typeLabel)}</span>
           <span>${direction === 'out' ? '→' : '←'} ${otherName}</span>
@@ -1834,6 +2025,7 @@ class SystemBlocksMain {
   // =========================================================================
   showContextMenu(clientX, clientY, block, core, renderer, features) {
     this.hideContextMenu();
+    this.hideFloatingActionBar(); // dismiss action bar when context menu opens
 
     const menu = document.getElementById('block-context-menu');
     if (!menu) return;
@@ -1870,10 +2062,18 @@ class SystemBlocksMain {
         renderer.updateAllBlocks(core.diagram);
         this._updateMinimap();
         core.clearSelection();
+        this.hidePropertiesPanel();
         if (window.advancedFeatures) {
           window.advancedFeatures.removeFromSelection(block.id);
           window.advancedFeatures.saveState();
         }
+      });
+
+      this._ctxAction(freshMenu, 'ctx-rotate', () => {
+        this.hideContextMenu();
+        core.rotateBlock(block.id);
+        renderer.updateAllBlocks(core.diagram);
+        if (window.advancedFeatures) window.advancedFeatures.saveState();
       });
 
       this._ctxAction(freshMenu, 'ctx-connect-from', () => {
@@ -2055,6 +2255,464 @@ class SystemBlocksMain {
   }
 
   // =========================================================================
+  // FLOATING ACTION BAR
+  // =========================================================================
+
+  /**
+   * Show the floating action bar above a selected block.
+   * @param {Object} block - The selected block data ({id, x, y, width, height}).
+   * @param {Object} core - DiagramEditorCore instance.
+   * @param {Object} renderer - DiagramRenderer instance.
+   * @param {Object} features - AdvancedFeatures instance.
+   */
+  showFloatingActionBar(block, core, renderer, features) {
+    const fab = document.getElementById('floating-action-bar');
+    if (!fab || !block) return;
+
+    // Store references for repositioning and action wiring
+    this._fabBlock = block;
+    this._fabCore = core;
+    this._fabRenderer = renderer;
+    this._fabFeatures = features;
+
+    // Wire button handlers (clone to remove old listeners)
+    const freshFab = fab.cloneNode(true);
+    fab.parentNode.replaceChild(freshFab, fab);
+
+    this._fabAction(freshFab, 'fab-delete', () => {
+      core.removeBlock(block.id);
+      renderer.updateAllBlocks(core.diagram);
+      this.hideFloatingActionBar();
+      features.clearSelection();
+      core.clearSelection();
+      features.saveState();
+    });
+
+    this._fabAction(freshFab, 'fab-duplicate', () => {
+      const orig = core.diagram.blocks.find(b => b.id === block.id);
+      if (!orig) return;
+      const step = core.gridSize || 20;
+      const newBlock = core.addBlock({
+        name: (orig.name || 'Block') + ' (copy)',
+        type: orig.type || 'Generic',
+        x: orig.x + step,
+        y: orig.y + step,
+        width: orig.width,
+        height: orig.height,
+        status: orig.status,
+        shape: orig.shape,
+        rotation: orig.rotation || 0,
+        attributes: orig.attributes ? { ...orig.attributes } : undefined
+      });
+      if (newBlock) {
+        renderer.renderBlock(newBlock);
+        renderer.updateAllBlocks(core.diagram);
+        features.clearSelection();
+        features.addToSelection(newBlock.id);
+        core.selectBlock(newBlock.id);
+        this._fabBlock = newBlock;
+        this._positionFloatingActionBar(freshFab);
+        features.saveState();
+      }
+    });
+
+    this._fabAction(freshFab, 'fab-status', () => {
+      const statuses = ['Placeholder', 'Planned', 'In-Work', 'Implemented', 'Verified'];
+      const current = block.status || 'Placeholder';
+      const idx = statuses.indexOf(current);
+      const next = statuses[(idx + 1) % statuses.length];
+      core.updateBlock(block.id, { status: next });
+      renderer.renderBlock(block, core.diagram.connections);
+      features.saveState();
+    });
+
+    this._fabAction(freshFab, 'fab-connect', () => {
+      this.hideFloatingActionBar();
+      this.enterConnectionMode(block, core, renderer);
+    });
+
+    this._fabAction(freshFab, 'fab-rotate', () => {
+      core.rotateBlock(block.id);
+      renderer.updateAllBlocks(core.diagram);
+      this._positionFloatingActionBar(freshFab);
+      features.saveState();
+    });
+
+    this._fabAction(freshFab, 'fab-properties', () => {
+      this.hideFloatingActionBar();
+      this.openPropertyEditor(block, core, renderer);
+    });
+
+    freshFab.classList.add('show');
+    this._positionFloatingActionBar(freshFab);
+  }
+
+  /**
+   * Hide the floating action bar.
+   */
+  hideFloatingActionBar() {
+    const fab = document.getElementById('floating-action-bar');
+    if (fab) fab.classList.remove('show');
+    this._fabBlock = null;
+  }
+
+  /**
+   * Position the floating action bar above the centre of the target block.
+   * @param {HTMLElement} [fab] - Optional action bar element (avoids DOM lookup).
+   */
+  _positionFloatingActionBar(fab) {
+    fab = fab || document.getElementById('floating-action-bar');
+    const block = this._fabBlock;
+    if (!fab || !block) return;
+
+    const svg = document.getElementById('svg-canvas');
+    if (!svg) return;
+
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+
+    const bw = block.width || 120;
+    // Block centre-top in SVG coords
+    const svgCenterX = block.x + bw / 2;
+    const svgTopY = block.y;
+
+    // Convert SVG → screen coords
+    const screenX = ctm.a * svgCenterX + ctm.c * svgTopY + ctm.e;
+    const screenY = ctm.b * svgCenterX + ctm.d * svgTopY + ctm.f;
+
+    // Position above the block with a small gap (bar uses transform: translateX(-50%))
+    const GAP = 12; // px gap between bar and block
+    fab.style.left = screenX + 'px';
+    fab.style.top  = (screenY - GAP) + 'px';
+
+    // Adjust upward by the bar's height so the arrow points just above the block
+    const barRect = fab.getBoundingClientRect();
+    fab.style.top = (screenY - GAP - barRect.height) + 'px';
+
+    // Clamp to viewport edges
+    const vw = window.innerWidth;
+    const barLeft = screenX - barRect.width / 2;
+    if (barLeft < 4) {
+      fab.style.left = (barRect.width / 2 + 4) + 'px';
+    } else if (barLeft + barRect.width > vw - 4) {
+      fab.style.left = (vw - barRect.width / 2 - 4) + 'px';
+    }
+    if (parseFloat(fab.style.top) < 4) {
+      // If block is near the top edge, show bar below the block instead
+      const bh = block.height || 80;
+      const svgBottomY = block.y + bh;
+      const screenBottomY = ctm.b * svgCenterX + ctm.d * svgBottomY + ctm.f;
+      fab.style.top = (screenBottomY + GAP) + 'px';
+    }
+  }
+
+  /**
+   * Attach a click handler to a button inside the floating action bar.
+   * @private
+   */
+  _fabAction(bar, id, handler) {
+    const el = bar.querySelector('#' + id);
+    if (el) el.addEventListener('click', (e) => { e.stopPropagation(); handler(); });
+  }
+
+  // =========================================================================
+  // COMMAND PALETTE
+  // =========================================================================
+
+  /**
+   * Open the command palette overlay.
+   * Indexes all toolbar actions and block names for search.
+   */
+  openCommandPalette() {
+    const overlay = document.getElementById('command-palette-overlay');
+    const input = document.getElementById('command-palette-input');
+    const results = document.getElementById('command-palette-results');
+    if (!overlay || !input || !results) return;
+
+    // Build command list
+    this._cmdPaletteItems = this._buildCommandIndex();
+    this._cmdPaletteActive = 0;
+    this._cmdPaletteFiltered = [...this._cmdPaletteItems];
+
+    // Load recently used
+    let recent = [];
+    try { recent = JSON.parse(localStorage.getItem('fusion-cmd-recent') || '[]'); } catch (_) {}
+    this._cmdPaletteRecent = new Set(recent);
+
+    overlay.style.display = 'block';
+    input.value = '';
+    input.focus();
+    this._renderPaletteResults();
+
+    // Event listeners (fresh each open to avoid stale closures)
+    const onInput = () => {
+      this._filterCommandPalette(input.value);
+      this._cmdPaletteActive = 0;
+      this._renderPaletteResults();
+    };
+    const onKeydown = (e) => {
+      const count = this._cmdPaletteFiltered.length;
+      if (e.key === 'ArrowDown') { e.preventDefault(); this._cmdPaletteActive = (this._cmdPaletteActive + 1) % Math.max(count, 1); this._renderPaletteResults(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); this._cmdPaletteActive = (this._cmdPaletteActive - 1 + Math.max(count, 1)) % Math.max(count, 1); this._renderPaletteResults(); }
+      else if (e.key === 'Enter') { e.preventDefault(); this._executeCommandPaletteItem(); }
+      else if (e.key === 'Escape') { e.preventDefault(); this.closeCommandPalette(); }
+    };
+    const onOverlayClick = (e) => {
+      if (e.target === overlay) this.closeCommandPalette();
+    };
+
+    // Remove old, add new
+    input.removeEventListener('input', input._cmdHandler);
+    input.removeEventListener('keydown', input._cmdKeyHandler);
+    overlay.removeEventListener('click', overlay._cmdClickHandler);
+    input._cmdHandler = onInput;
+    input._cmdKeyHandler = onKeydown;
+    overlay._cmdClickHandler = onOverlayClick;
+    input.addEventListener('input', onInput);
+    input.addEventListener('keydown', onKeydown);
+    overlay.addEventListener('click', onOverlayClick);
+  }
+
+  /**
+   * Close the command palette overlay.
+   */
+  closeCommandPalette() {
+    const overlay = document.getElementById('command-palette-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  /**
+   * Build the full command index: toolbar actions + navigable blocks.
+   * @returns {Array<{id,label,icon,shortcut,category,handler}>}
+   */
+  _buildCommandIndex() {
+    const items = [];
+    const tm = this.modules.get('toolbar');
+    const core = this.modules.get('core');
+    const renderer = this.modules.get('renderer');
+    const features = this.modules.get('features');
+
+    // --- Toolbar actions ---
+    const actions = [
+      { id: 'new-diagram',  label: 'New Diagram', icon: '📄', shortcut: 'Ctrl+N', category: 'File', handler: () => tm && tm.handleNewDiagram() },
+      { id: 'save',         label: 'Save',        icon: '💾', shortcut: 'Ctrl+S', category: 'File', handler: () => tm && tm.handleSave() },
+      { id: 'save-as',      label: 'Save As',     icon: '💾', shortcut: 'Ctrl+Shift+S', category: 'File', handler: () => tm && tm.handleSaveAs() },
+      { id: 'open',         label: 'Open / Load', icon: '📂', shortcut: 'Ctrl+O', category: 'File', handler: () => tm && tm.handleLoad() },
+      { id: 'export',       label: 'Export',       icon: '📤', shortcut: '', category: 'File', handler: () => tm && tm.handleExport() },
+      { id: 'import',       label: 'Import',       icon: '📥', shortcut: '', category: 'File', handler: () => tm && tm.handleImport() },
+
+      { id: 'undo',         label: 'Undo',        icon: '↩️', shortcut: 'Ctrl+Z', category: 'Edit', handler: () => tm && tm.handleUndo() },
+      { id: 'redo',         label: 'Redo',        icon: '↪️', shortcut: 'Ctrl+Y', category: 'Edit', handler: () => tm && tm.handleRedo() },
+      { id: 'copy',         label: 'Copy',        icon: '📋', shortcut: 'Ctrl+C', category: 'Edit', handler: () => tm && tm.handleCopy() },
+      { id: 'paste',        label: 'Paste',       icon: '📌', shortcut: 'Ctrl+V', category: 'Edit', handler: () => tm && tm.handlePaste() },
+      { id: 'duplicate',    label: 'Duplicate',   icon: '📋', shortcut: 'Ctrl+D', category: 'Edit', handler: () => tm && tm.handleDuplicate() },
+      { id: 'delete',       label: 'Delete Selected', icon: '🗑️', shortcut: 'Del', category: 'Edit', handler: () => tm && tm.handleDeleteSelected() },
+      { id: 'select-all',   label: 'Select All',  icon: '☑️', shortcut: 'Ctrl+A', category: 'Edit', handler: () => tm && tm.handleSelectAll() },
+
+      { id: 'add-block',    label: 'Add Block',   icon: '➕', shortcut: 'B', category: 'Create', handler: () => tm && tm.handleCreateBlock() },
+      { id: 'connect',      label: 'Connect Mode', icon: '🔗', shortcut: 'C', category: 'Create', handler: () => tm && tm.handleConnect() },
+      { id: 'rotate',       label: 'Rotate Block 90°', icon: '🔄', shortcut: 'R', category: 'Create', handler: () => tm && tm.handleRotateSelected() },
+
+      { id: 'fit-view',     label: 'Fit to View',  icon: '🔍', shortcut: 'Ctrl+0', category: 'View', handler: () => tm && tm.handleFitView() },
+      { id: 'zoom-in',      label: 'Zoom In',      icon: '🔍', shortcut: 'Ctrl+=', category: 'View', handler: () => tm && tm.handleZoomIn() },
+      { id: 'zoom-out',     label: 'Zoom Out',     icon: '🔍', shortcut: 'Ctrl+-', category: 'View', handler: () => tm && tm.handleZoomOut() },
+      { id: 'zoom-sel',     label: 'Zoom to Selection', icon: '🎯', shortcut: 'Ctrl+Shift+1', category: 'View', handler: () => tm && tm.handleZoomToSelection() },
+      { id: 'minimap',      label: 'Toggle Minimap', icon: '🗺️', shortcut: 'M', category: 'View', handler: () => tm && tm.handleToggleMinimap() },
+      { id: 'theme',        label: 'Toggle Theme (Light/Dark)', icon: '🌗', shortcut: '', category: 'View', handler: () => tm && tm.handleToggleTheme() },
+      { id: 'snap-grid',    label: 'Toggle Snap to Grid', icon: '#️⃣', shortcut: '', category: 'View', handler: () => tm && tm.handleToggleSnapGrid() },
+      { id: 'ortho',        label: 'Toggle Orthogonal Routing', icon: '📐', shortcut: '', category: 'View', handler: () => tm && tm.handleToggleRoutingMode() },
+
+      { id: 'auto-layout',  label: 'Auto Layout',  icon: '📊', shortcut: '', category: 'Arrange', handler: () => tm && tm.handleAutoLayout() },
+      { id: 'align-left',   label: 'Align Left',   icon: '◀', shortcut: '', category: 'Arrange', handler: () => tm && tm.handleAlignLeft() },
+      { id: 'align-center', label: 'Align Center',  icon: '⬛', shortcut: '', category: 'Arrange', handler: () => tm && tm.handleAlignCenter() },
+      { id: 'align-right',  label: 'Align Right',   icon: '▶', shortcut: '', category: 'Arrange', handler: () => tm && tm.handleAlignRight() },
+      { id: 'create-group', label: 'Create Group',  icon: '📂', shortcut: '', category: 'Arrange', handler: () => tm && tm.handleCreateGroup() },
+
+      { id: 'check-rules',  label: 'Check Rules',  icon: '✅', shortcut: '', category: 'Validate', handler: () => tm && tm.handleCheckRules() },
+
+      { id: 'nav-up',       label: 'Navigate Up (Parent)', icon: '⬆️', shortcut: 'Ctrl+Shift+↑', category: 'Navigate', handler: () => tm && tm.handleNavigateUp() },
+      { id: 'drill-down',   label: 'Drill Down (Child)',   icon: '⬇️', shortcut: 'Ctrl+Shift+↓', category: 'Navigate', handler: () => tm && tm.handleDrillDown() },
+      { id: 'create-child', label: 'Create Child Diagram', icon: '📎', shortcut: 'Ctrl+Shift+N', category: 'Navigate', handler: () => tm && tm.handleCreateChild() },
+
+      { id: 'shortcuts',    label: 'Keyboard Shortcuts', icon: '⌨️', shortcut: '?', category: 'Help', handler: () => tm && tm.handleShowShortcuts() },
+    ];
+    items.push(...actions);
+
+    // --- Navigable blocks ---
+    if (core && core.diagram && core.diagram.blocks) {
+      core.diagram.blocks.forEach(block => {
+        items.push({
+          id: 'block-' + block.id,
+          label: block.name || 'Unnamed Block',
+          icon: '⬡',
+          shortcut: '',
+          category: block.type || 'Block',
+          handler: () => {
+            if (features) { features.clearSelection(); features.addToSelection(block.id); }
+            if (core) core.selectBlock(block.id);
+            // Zoom to block
+            if (core && core.animateViewBox) {
+              const padding = 100;
+              const bw = block.width || 160;
+              const bh = block.height || 100;
+              core.animateViewBox(block.x - padding, block.y - padding, bw + padding * 2, bh + padding * 2);
+            }
+            if (renderer) renderer.updateAllBlocks(core.diagram);
+          }
+        });
+      });
+    }
+
+    return items;
+  }
+
+  /**
+   * Filter command palette items by query string (fuzzy match).
+   * @param {string} query
+   */
+  _filterCommandPalette(query) {
+    const q = (query || '').toLowerCase().trim();
+    if (!q) {
+      // Show recently used first, then all
+      const recent = this._cmdPaletteRecent || new Set();
+      const recentItems = this._cmdPaletteItems.filter(i => recent.has(i.id));
+      const rest = this._cmdPaletteItems.filter(i => !recent.has(i.id));
+      this._cmdPaletteFiltered = [...recentItems, ...rest];
+      return;
+    }
+
+    // Fuzzy match: check if all query chars appear in order in the label
+    const scored = [];
+    for (const item of this._cmdPaletteItems) {
+      const label = item.label.toLowerCase();
+      const cat = (item.category || '').toLowerCase();
+      const haystack = label + ' ' + cat;
+
+      // Simple substring match first
+      if (haystack.includes(q)) {
+        scored.push({ item, score: label.indexOf(q) === 0 ? 0 : 1 });
+        continue;
+      }
+
+      // Fuzzy: all query chars in order
+      let qi = 0;
+      for (let hi = 0; hi < haystack.length && qi < q.length; hi++) {
+        if (haystack[hi] === q[qi]) qi++;
+      }
+      if (qi === q.length) {
+        scored.push({ item, score: 2 });
+      }
+    }
+
+    // Recently used boost
+    const recent = this._cmdPaletteRecent || new Set();
+    scored.sort((a, b) => {
+      const ra = recent.has(a.item.id) ? -1 : 0;
+      const rb = recent.has(b.item.id) ? -1 : 0;
+      if (ra !== rb) return ra - rb;
+      return a.score - b.score;
+    });
+
+    this._cmdPaletteFiltered = scored.map(s => s.item);
+  }
+
+  /**
+   * Render the filtered command palette results with highlight marks.
+   */
+  _renderPaletteResults() {
+    const results = document.getElementById('command-palette-results');
+    if (!results) return;
+
+    const items = this._cmdPaletteFiltered;
+    if (items.length === 0) {
+      results.innerHTML = '<div class="cmd-palette-empty">No matching commands</div>';
+      return;
+    }
+
+    const query = (document.getElementById('command-palette-input') || {}).value || '';
+    const q = query.toLowerCase();
+
+    // Limit display to 20 items for performance
+    const visible = items.slice(0, 20);
+    const html = visible.map((item, i) => {
+      const active = i === this._cmdPaletteActive ? ' active' : '';
+      const label = this._highlightMatch(item.label, q);
+      const shortcut = item.shortcut ? `<span class="cmd-shortcut">${_escapeHtml(item.shortcut)}</span>` : '';
+      const cat = item.category ? `<span class="cmd-category">${_escapeHtml(item.category)}</span>` : '';
+      return `<div class="cmd-palette-item${active}" data-cmd-idx="${i}">
+        <span class="cmd-icon">${_escapeHtml(item.icon)}</span>
+        <span class="cmd-label">${label}</span>
+        ${cat}${shortcut}
+      </div>`;
+    }).join('');
+
+    results.innerHTML = html;
+
+    // Wire click handlers
+    results.querySelectorAll('.cmd-palette-item').forEach(el => {
+      el.addEventListener('click', () => {
+        this._cmdPaletteActive = parseInt(el.dataset.cmdIdx, 10);
+        this._executeCommandPaletteItem();
+      });
+      el.addEventListener('mouseenter', () => {
+        this._cmdPaletteActive = parseInt(el.dataset.cmdIdx, 10);
+        results.querySelectorAll('.cmd-palette-item').forEach(e => e.classList.remove('active'));
+        el.classList.add('active');
+      });
+    });
+
+    // Scroll active item into view
+    const activeEl = results.querySelector('.cmd-palette-item.active');
+    if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+  }
+
+  /**
+   * Highlight query characters in the label using <mark> tags.
+   */
+  _highlightMatch(label, query) {
+    if (!query) return _escapeHtml(label);
+    const escaped = _escapeHtml(label);
+    const escapedQuery = _escapeHtml(query);
+    // Try substring highlight first
+    const idx = escaped.toLowerCase().indexOf(escapedQuery.toLowerCase());
+    if (idx >= 0) {
+      return escaped.slice(0, idx) + '<mark>' + escaped.slice(idx, idx + escapedQuery.length) + '</mark>' + escaped.slice(idx + escapedQuery.length);
+    }
+    // Fuzzy highlight
+    let result = '';
+    let qi = 0;
+    for (let i = 0; i < escaped.length; i++) {
+      if (qi < escapedQuery.length && escaped[i].toLowerCase() === escapedQuery[qi]) {
+        result += '<mark>' + escaped[i] + '</mark>';
+        qi++;
+      } else {
+        result += escaped[i];
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Execute the currently active command palette item.
+   */
+  _executeCommandPaletteItem() {
+    const item = this._cmdPaletteFiltered[this._cmdPaletteActive];
+    if (!item) return;
+
+    // Track in recent
+    const recent = this._cmdPaletteRecent || new Set();
+    recent.add(item.id);
+    // Keep max 10 recent
+    const arr = [...recent];
+    if (arr.length > 10) arr.shift();
+    try { localStorage.setItem('fusion-cmd-recent', JSON.stringify(arr)); } catch (_) {}
+    this._cmdPaletteRecent = new Set(arr);
+
+    this.closeCommandPalette();
+    if (item.handler) item.handler();
+  }
+
+  // =========================================================================
   // CONNECTION CONTEXT MENU
   // =========================================================================
 
@@ -2185,6 +2843,38 @@ class SystemBlocksMain {
         updateConn({ arrowDirection: item.getAttribute('data-conn-direction') });
         this.hideConnectionContextMenu();
       });
+    });
+
+    // --- Route Mode submenu (per-connection routing override) ---
+    freshMenu.querySelectorAll('[data-conn-route-mode]').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const mode = item.getAttribute('data-conn-route-mode') || null;
+        updateConn({ routeMode: mode });
+        this.hideConnectionContextMenu();
+      });
+    });
+
+    // --- Edit Label ---
+    this._ctxAction(freshMenu, 'ctx-conn-edit-label', () => {
+      this.hideConnectionContextMenu();
+      // Find the rendered connection group and its path to position the editor
+      const connGroup = renderer.connectionElements.get(connection.id);
+      const pathEl = connGroup ? connGroup.querySelector('.connection-line') : null;
+      if (connGroup && pathEl && renderer._startConnectionLabelEdit) {
+        // Resolve endpoints to get from/to coordinates for fallback
+        const fb = core.diagram.blocks.find(b => b.id === connection.fromBlock);
+        const tb = core.diagram.blocks.find(b => b.id === connection.toBlock);
+        const fW = fb ? (fb.width || 120) : 120;
+        const fH = fb ? (fb.height || 80) : 80;
+        const tW = tb ? (tb.width || 120) : 120;
+        const tH = tb ? (tb.height || 80) : 80;
+        const fromX = fb ? (fb.x + fW) : 0;
+        const fromY = fb ? (fb.y + fH / 2) : 0;
+        const toX = tb ? tb.x : 0;
+        const toY = tb ? (tb.y + tH / 2) : 0;
+        renderer._startConnectionLabelEdit(connection, connGroup, pathEl, fromX, fromY, toX, toY);
+      }
     });
 
     // --- Toggle Stub Display ---
@@ -2531,10 +3221,34 @@ class SystemBlocksMain {
     this._connectionMode.active = true;
     this._connectionMode.sourceBlock = sourceBlock;
     this._connectionMode.sourcePort = sourcePortType;
+    this._connectionMode.snappedPort = null;       // track currently snapped target port
+    this._connectionMode.snappedPortEl = null;      // DOM reference for class removal
     this._connectionModeEntryTime = performance.now();
 
     // Highlight source block
     renderer.highlightBlock(sourceBlock.id, true);
+
+    // --- Port-to-port visual feedback ---
+    // 1. Add 'connection-mode-active' to SVG to reveal all ports via CSS
+    svg.classList.add('connection-mode-active');
+
+    // 2. Mark source port with .port-source class
+    const sourcePortEl = svg.querySelector(
+      '.connection-port[data-block-id="' + sourceBlock.id +
+      '"][data-port-type="' + sourcePortType + '"]'
+    );
+    if (sourcePortEl) {
+      sourcePortEl.classList.add('port-source');
+      this._connectionMode.sourcePortEl = sourcePortEl;
+    }
+
+    // 3. Mark all ports on the source block as invalid (no self-connections)
+    const sourceBlockPorts = svg.querySelectorAll(
+      '.connection-port[data-block-id="' + sourceBlock.id + '"]'
+    );
+    sourceBlockPorts.forEach(p => {
+      if (p !== sourcePortEl) p.classList.add('port-invalid');
+    });
 
     // Compute temp line start based on which port was clicked
     const w = sourceBlock.width || 120;
@@ -2558,6 +3272,7 @@ class SystemBlocksMain {
     line.setAttribute('stroke-width', '2');
     line.setAttribute('stroke-dasharray', '6,3');
     line.setAttribute('pointer-events', 'none');
+    line.setAttribute('class', 'connection-temp-line');
     svg.appendChild(line);
     this._connectionMode.tempLine = line;
 
@@ -2575,8 +3290,21 @@ class SystemBlocksMain {
     if (this._connectionMode.sourceBlock && window.diagramRenderer) {
       window.diagramRenderer.highlightBlock(this._connectionMode.sourceBlock.id, false);
     }
+
+    // --- Clean up port-to-port visual state ---
+    if (svg) {
+      svg.classList.remove('connection-mode-active');
+      // Remove all port state classes in one sweep
+      svg.querySelectorAll('.port-source, .port-snap, .port-invalid').forEach(el => {
+        el.classList.remove('port-source', 'port-snap', 'port-invalid');
+      });
+    }
+
     this._connectionMode.active = false;
     this._connectionMode.sourceBlock = null;
+    this._connectionMode.sourcePortEl = null;
+    this._connectionMode.snappedPort = null;
+    this._connectionMode.snappedPortEl = null;
     this._connectionMode.tempLine = null;
     this._connectionModeExitTime = performance.now();
     if (svg) svg.style.cursor = '';
@@ -2605,6 +3333,15 @@ class SystemBlocksMain {
     }
     this._connectionMode.active = false;
     this._connectionMode.tempLine = null;
+
+    // Clean up connection-mode CSS classes (mirrors exitConnectionMode)
+    if (svg) {
+      svg.classList.remove('connection-mode-active');
+      svg.querySelectorAll('.port-source, .port-snap, .port-invalid').forEach(el => {
+        el.classList.remove('port-source', 'port-snap', 'port-invalid');
+      });
+    }
+
     this._connectionModeExitTime = performance.now();
 
     const sourceName = sourceBlock.name || sourceBlock.id;
@@ -2631,6 +3368,14 @@ class SystemBlocksMain {
 
     if (trimmedName) {
       // --- Named stub (net label) ---
+      // Clean up any existing stub on the same block+port to prevent duplicates
+      const existingStubs = (core.diagram.namedStubs || []).filter(
+        s => s.blockId === sourceBlock.id && (s.portSide || 'output') === sourcePort
+      );
+      for (const old of existingStubs) {
+        if (core.removeNamedStub) core.removeNamedStub(old.id);
+      }
+
       const connType = document.getElementById('connection-type-select');
       const type = connType ? connType.value : 'auto';
       const arrowDir = document.getElementById('arrow-direction-select');
@@ -2817,6 +3562,11 @@ class SystemBlocksMain {
   }
 
   setupToolbarSync(core, toolbar, features) {
+    // Guard: prevent re-wrapping on reinitialize() — stacking wrappers
+    // causes N-deep call chains and duplicate side-effects.
+    if (core._toolbarSyncPatched) return;
+    core._toolbarSyncPatched = true;
+
     // Update toolbar when selection changes
     const originalSelectBlock = core.selectBlock.bind(core);
     core.selectBlock = function(blockId) {
@@ -2830,15 +3580,13 @@ class SystemBlocksMain {
       toolbar.updateButtonStates();
     };
     
-    // Update toolbar when diagram changes — also save undo state
+    // Update toolbar when diagram changes
     const originalAddBlock = core.addBlock.bind(core);
     core.addBlock = function(blockData) {
       const result = originalAddBlock(blockData);
       toolbar.updateButtonStates();
-      // Save state for undo/redo after block creation
-      if (window.advancedFeatures && !window.advancedFeatures.isPerformingUndoRedo) {
-        window.advancedFeatures.saveState();
-      }
+      // Note: saveState() is NOT called here — callers are responsible
+      // for calling saveState() explicitly to avoid duplicate undo entries.
       return result;
     };
     
@@ -2850,6 +3598,10 @@ class SystemBlocksMain {
   }
 
   setupAdvancedFeaturesIntegration(core, renderer, features) {
+    // Guard: prevent re-wrapping on reinitialize()
+    if (core._advancedFeaturesPatched) return;
+    core._advancedFeaturesPatched = true;
+
     // Save state when blocks are modified, with debounce to avoid flooding
     // during drag operations (~60 updateBlock calls/sec).
     // IMPORTANT: only save if the redo stack is empty, otherwise the
@@ -3065,7 +3817,7 @@ class SystemBlocksMain {
   // =========================================================================
   setupImportDialog(core, renderer, features) {
     const dialog = document.getElementById('import-dialog');
-    const overlay = document.getElementById('dialog-overlay');
+    const overlay = document.getElementById('import-overlay');
     const btnOk = document.getElementById('btn-import-ok');
     const btnCancel = document.getElementById('btn-import-cancel');
     const mermaidSection = document.getElementById('mermaid-import');
@@ -3081,12 +3833,13 @@ class SystemBlocksMain {
     });
 
     const hideDialog = () => {
-      if (dialog) dialog.style.display = 'none';
       if (overlay) overlay.style.display = 'none';
     };
 
     if (btnCancel) btnCancel.addEventListener('click', hideDialog);
-    if (overlay) overlay.addEventListener('click', hideDialog);
+    if (overlay) overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) hideDialog();
+    });
 
     btnOk.addEventListener('click', () => {
       const importType = document.querySelector('input[name="import-type"]:checked');
@@ -3119,31 +3872,53 @@ class SystemBlocksMain {
     let yPos = 100;
 
     // Regex for node definitions like A[Label] or A{Decision} or A(Rounded)
-    const nodeDef = /([A-Za-z0-9_]+)\s*[\[({]([^}\])]*)[\])}]/g;
-    // Regex for arrows: A -->|label| B  or  A --> B  or  A --- B
-    const arrowPattern = /([A-Za-z0-9_]+)\s*(-->|---|\.-+>|==>)(\|[^|]*\|)?\s*([A-Za-z0-9_]+)/g;
+    // Uses non-greedy matching to handle labels with balanced brackets.
+    const nodeDef = /([A-Za-z0-9_]+)\s*(?:\[([^\]]*)\]|\{([^}]*)\}|\(([^)]*)\))/g;
+    // Regex for arrows: A -->|label| B  or  A --> B  or  A --- B  or  A -.-> B
+    const arrowPattern = /([A-Za-z0-9_]+)\s*(-->|---|-\.+-?>|==>)(\|[^|]*\|)?\s*([A-Za-z0-9_]+)/g;
 
     // First pass: extract all node definitions
     for (const line of lines) {
       let match;
       nodeDef.lastIndex = 0;
       while ((match = nodeDef.exec(line)) !== null) {
-        const [, id, label] = match;
+        const id = match[1];
+        // Label is in one of the bracket-type capture groups
+        const label = match[2] || match[3] || match[4] || id;
         if (!nodeMap.has(id)) {
-          nodeMap.set(id, { id, label: label || id });
+          nodeMap.set(id, { id, label });
         }
       }
     }
 
     // Second pass: extract connections (and implicitly defined nodes)
+    // Handle chained arrows like A --> B --> C by splitting into pairwise segments
     for (const line of lines) {
-      let match;
-      arrowPattern.lastIndex = 0;
-      while ((match = arrowPattern.exec(line)) !== null) {
-        const [, fromId, arrowType, , toId] = match;
-        if (!nodeMap.has(fromId)) nodeMap.set(fromId, { id: fromId, label: fromId });
-        if (!nodeMap.has(toId)) nodeMap.set(toId, { id: toId, label: toId });
-        connections.push({ from: fromId, to: toId, arrowType: arrowType });
+      // Tokenize line into alternating node-ids and arrow operators
+      const chainPattern = /([A-Za-z0-9_]+)(?:\[[^\]]*\]|\{[^}]*\}|\([^)]*\))?\s*(?:(-->|---|-\.+-?>|==>)(\|[^|]*\|)?\s*)?/g;
+      const tokens = [];  // { type: 'node'|'arrow', value, label? }
+      let cm;
+      chainPattern.lastIndex = 0;
+      while ((cm = chainPattern.exec(line)) !== null) {
+        if (!cm[0].trim()) break;  // avoid infinite loop on empty match
+        const nodeId = cm[1];
+        if (nodeId) {
+          tokens.push({ type: 'node', value: nodeId });
+        }
+        if (cm[2]) {
+          tokens.push({ type: 'arrow', value: cm[2], label: cm[3] || '' });
+        }
+      }
+      // Walk tokens pairwise: node, arrow, node, arrow, node ...
+      for (let ti = 0; ti < tokens.length; ti++) {
+        if (tokens[ti].type === 'arrow' && ti > 0 && ti < tokens.length - 1) {
+          const fromId = tokens[ti - 1].value;
+          const toId = tokens[ti + 1].value;
+          const arrowType = tokens[ti].value;
+          if (!nodeMap.has(fromId)) nodeMap.set(fromId, { id: fromId, label: fromId });
+          if (!nodeMap.has(toId)) nodeMap.set(toId, { id: toId, label: toId });
+          connections.push({ from: fromId, to: toId, arrowType });
+        }
       }
     }
 
@@ -3517,6 +4292,12 @@ class SystemBlocksMain {
       load: () => this.modules.get('python').loadDiagram(),
       exportReports: () => this.modules.get('python').exportReports(),
       
+      // Shape palette
+      toggleShapePalette: () => {
+        const palette = this.modules.get('shapePalette');
+        if (palette) palette.toggle();
+      },
+
       // Module access (for advanced users)
       getModule: (name) => this.modules.get(name),
       
@@ -3530,9 +4311,13 @@ class SystemBlocksMain {
 
   finalizeInitialization() {
     // Set up window resize handler for responsive design
-    window.addEventListener('resize', () => {
+    if (this._windowResizeHandler) {
+      window.removeEventListener('resize', this._windowResizeHandler);
+    }
+    this._windowResizeHandler = () => {
       this.modules.get('toolbar').handleResize();
-    });
+    };
+    window.addEventListener('resize', this._windowResizeHandler);
     
     // Initial toolbar state update
     this.modules.get('toolbar').updateButtonStates();
@@ -3559,7 +4344,10 @@ class SystemBlocksMain {
     window.dispatchEvent(new CustomEvent('system-blocks:ready', { detail: readyDetail }));
 
     // Warn before closing palette with unsaved changes
-    window.addEventListener('beforeunload', (e) => {
+    if (this._beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this._beforeUnloadHandler);
+    }
+    this._beforeUnloadHandler = (e) => {
       const editor = window.diagramEditor;
       if (editor && typeof editor.hasUnsavedChanges === 'function' && editor.hasUnsavedChanges()) {
         e.preventDefault();
@@ -3569,13 +4357,17 @@ class SystemBlocksMain {
       }
       // Normal close — clear recovery backup
       this._clearRecoveryBackup();
-    });
+    };
+    window.addEventListener('beforeunload', this._beforeUnloadHandler);
 
     // Start periodic crash-recovery backup (every 30 s)
     this._startRecoveryBackup();
 
     // Check for leftover recovery backup from a crashed session
     this._checkRecoveryBackup();
+
+    // Initialize multi-page system
+    this._initPages();
 
     // Show ready indicator
     this.showReadyIndicator();
@@ -3782,9 +4574,483 @@ class SystemBlocksMain {
 
   reinitialize() {
     logger.info('Reinitializing System Blocks Editor...');
+    // Clear outstanding timers to prevent leaks
+    if (this._recoveryTimer) {
+      clearInterval(this._recoveryTimer);
+      this._recoveryTimer = null;
+    }
+    // Abort all event listeners registered with the previous signal
+    this._abortController.abort();
+    this._abortController = new AbortController();
+    // Reset multi-page state to a clean single default page
+    this._pages = [];
+    this._activePageIndex = 0;
+    this._pageTabEventsBound = false;
+    this._pageTabEventsTarget = null;
     this.isInitialized = false;
     this.modules.clear();
     this.initialize();
+  }
+
+  // ---------------------------------------------------------------
+  // Multi-page management
+  // ---------------------------------------------------------------
+
+  /** Create the initial page from whatever is currently on the canvas. */
+  _initPages() {
+    const core = this.modules.get('core');
+
+    if (this._pages.length === 0) {
+      this._pages = [{
+        id: this._generatePageId(),
+        name: 'Page 1',
+        blocks: JSON.parse(JSON.stringify(core.diagram.blocks)),
+        connections: JSON.parse(JSON.stringify(core.diagram.connections)),
+        groups: JSON.parse(JSON.stringify(core.diagram.groups || [])),
+        namedStubs: JSON.parse(JSON.stringify(core.diagram.namedStubs || [])),
+        viewport: { ...core.viewBox }
+      }];
+      this._activePageIndex = 0;
+    }
+    this._renderPageTabs();
+    this._wirePageTabEvents();
+
+    // Monkey-patch exportDiagram/importDiagram to include pages.
+    // Guard: prevent re-wrapping on reinitialize().
+    if (!core._pagesPatched) {
+      core._pagesPatched = true;
+
+      // Monkey-patch exportDiagram to include pages
+      const origExport = core.exportDiagram.bind(core);
+      const self = this;
+      core.exportDiagram = function () {
+        self._saveCurrentPageState();
+        const json = origExport();
+        const data = JSON.parse(json);
+        if (self._pages.length > 1) {
+          data.pages = self._pages.map(p => ({
+            id: p.id,
+            name: p.name,
+            blocks: p.blocks,
+            connections: p.connections,
+            groups: p.groups || [],
+            namedStubs: p.namedStubs || []
+          }));
+          data.activePageIndex = self._activePageIndex;
+        }
+        return JSON.stringify(data, null, 2);
+      };
+
+      // Monkey-patch importDiagram to restore pages
+      const origImport = core.importDiagram.bind(core);
+      core.importDiagram = function (jsonData) {
+        const parsed = JSON.parse(jsonData);
+        const pagesData = parsed.pages;
+        delete parsed.pages;
+        delete parsed.activePageIndex;
+
+        // If pages exist, load first page into the diagram data for the core import
+        if (pagesData && Array.isArray(pagesData) && pagesData.length > 0) {
+          parsed.blocks = pagesData[0].blocks || [];
+          parsed.connections = pagesData[0].connections || [];
+          parsed.groups = pagesData[0].groups || [];
+          parsed.namedStubs = pagesData[0].namedStubs || [];
+        }
+
+        const success = origImport(JSON.stringify(parsed));
+        if (success) {
+          self.loadPagesFromData(pagesData);
+        }
+        return success;
+      };
+    }
+  }
+
+  _generatePageId() {
+    return 'page-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  }
+
+  /** Save the currently active page's data from the live diagram. */
+  _saveCurrentPageState() {
+    const core = this.modules.get('core');
+    const page = this._pages[this._activePageIndex];
+    if (!page) return;
+    // Deep-clone to avoid storing live references that mutate
+    page.blocks = JSON.parse(JSON.stringify(core.diagram.blocks));
+    page.connections = JSON.parse(JSON.stringify(core.diagram.connections));
+    page.groups = JSON.parse(JSON.stringify(core.diagram.groups || []));
+    page.namedStubs = JSON.parse(JSON.stringify(core.diagram.namedStubs || []));
+    page.viewport = { ...core.viewBox };
+  }
+
+  /** Load a page's data into the live diagram. */
+  _loadPageState(pageIndex) {
+    const core = this.modules.get('core');
+    const renderer = this.modules.get('renderer');
+    const page = this._pages[pageIndex];
+    if (!page) return;
+
+    core.diagram.blocks = page.blocks;
+    core.diagram.connections = page.connections;
+    core.diagram.groups = page.groups || [];
+    core.diagram.namedStubs = page.namedStubs || [];
+    core.clearSelection();
+
+    // Restore viewport
+    const vp = page.viewport || { x: 0, y: 0, width: 1000, height: 1000 };
+    core.setViewBox(vp.x, vp.y, vp.width, vp.height);
+
+    renderer.updateAllBlocks(core.diagram);
+    if (window.advancedFeatures) {
+      window.advancedFeatures.clearSelection();
+      window.advancedFeatures.saveState();
+    }
+    this._updateMinimap();
+  }
+
+  /** Switch to a different page. */
+  switchToPage(pageIndex) {
+    if (pageIndex === this._activePageIndex) return;
+    if (pageIndex < 0 || pageIndex >= this._pages.length) return;
+
+    this._saveCurrentPageState();
+    this._activePageIndex = pageIndex;
+    this._loadPageState(pageIndex);
+    this._renderPageTabs();
+  }
+
+  /** Add a new blank page. */
+  addPage(name) {
+    this._saveCurrentPageState();
+    const pageName = name || `Page ${this._pages.length + 1}`;
+    const newPage = {
+      id: this._generatePageId(),
+      name: pageName,
+      blocks: [],
+      connections: [],
+      groups: [],
+      namedStubs: [],
+      viewport: { x: 0, y: 0, width: 1000, height: 1000 }
+    };
+    this._pages.push(newPage);
+    this._activePageIndex = this._pages.length - 1;
+    this._loadPageState(this._activePageIndex);
+    this._renderPageTabs();
+    if (window.advancedFeatures) window.advancedFeatures.saveState();
+  }
+
+  /** Delete a page by index. Cannot delete the last remaining page. */
+  deletePage(pageIndex) {
+    if (this._pages.length <= 1) return;
+    if (pageIndex < 0 || pageIndex >= this._pages.length) return;
+
+    this._pages.splice(pageIndex, 1);
+
+    // Adjust active page index
+    if (this._activePageIndex >= this._pages.length) {
+      this._activePageIndex = this._pages.length - 1;
+    } else if (pageIndex < this._activePageIndex) {
+      this._activePageIndex--;
+    } else if (pageIndex === this._activePageIndex) {
+      // We deleted the active page, load whichever is now at that index
+      this._activePageIndex = Math.min(pageIndex, this._pages.length - 1);
+    }
+
+    this._loadPageState(this._activePageIndex);
+    this._renderPageTabs();
+    if (window.advancedFeatures) window.advancedFeatures.saveState();
+  }
+
+  /** Rename a page. */
+  renamePage(pageIndex, newName) {
+    if (pageIndex < 0 || pageIndex >= this._pages.length) return;
+    this._pages[pageIndex].name = newName || this._pages[pageIndex].name;
+    this._renderPageTabs();
+  }
+
+  /** Move a page from one index to another (reorder). */
+  movePage(fromIndex, toIndex) {
+    if (fromIndex === toIndex) return;
+    if (fromIndex < 0 || fromIndex >= this._pages.length) return;
+    if (toIndex < 0 || toIndex >= this._pages.length) return;
+
+    const [page] = this._pages.splice(fromIndex, 1);
+    this._pages.splice(toIndex, 0, page);
+
+    // Update active index to follow the active page
+    if (this._activePageIndex === fromIndex) {
+      this._activePageIndex = toIndex;
+    } else if (fromIndex < this._activePageIndex && toIndex >= this._activePageIndex) {
+      this._activePageIndex--;
+    } else if (fromIndex > this._activePageIndex && toIndex <= this._activePageIndex) {
+      this._activePageIndex++;
+    }
+
+    this._renderPageTabs();
+  }
+
+  /** Get all pages data for serialization. */
+  getAllPagesData() {
+    this._saveCurrentPageState();
+    return this._pages.map(p => ({
+      id: p.id,
+      name: p.name,
+      blocks: p.blocks,
+      connections: p.connections,
+      groups: p.groups || [],
+      namedStubs: p.namedStubs || []
+    }));
+  }
+
+  /** Load pages from imported data (called during diagram import). */
+  loadPagesFromData(pagesArray) {
+    const core = this.modules.get('core');
+    if (!pagesArray || !Array.isArray(pagesArray) || pagesArray.length === 0) {
+      // Single-page legacy diagram — wrap current diagram as page 1
+      this._pages = [{
+        id: this._generatePageId(),
+        name: 'Page 1',
+        blocks: core.diagram.blocks,
+        connections: core.diagram.connections,
+        groups: core.diagram.groups || [],
+        namedStubs: core.diagram.namedStubs || [],
+        viewport: { x: 0, y: 0, width: 1000, height: 1000 }
+      }];
+      this._activePageIndex = 0;
+    } else {
+      this._pages = pagesArray.map((p, i) => ({
+        id: p.id || this._generatePageId(),
+        name: p.name || `Page ${i + 1}`,
+        blocks: p.blocks || [],
+        connections: p.connections || [],
+        groups: p.groups || [],
+        namedStubs: p.namedStubs || [],
+        viewport: p.viewport || { x: 0, y: 0, width: 1000, height: 1000 }
+      }));
+      this._activePageIndex = 0;
+      this._loadPageState(0);
+    }
+    this._renderPageTabs();
+  }
+
+  /** Render all page tabs in the tab bar. */
+  _renderPageTabs() {
+    const container = document.getElementById('page-tabs');
+    if (!container) return;
+
+    container.innerHTML = '';
+    this._pages.forEach((page, index) => {
+      const tab = document.createElement('div');
+      tab.className = 'page-tab' + (index === this._activePageIndex ? ' active' : '');
+      tab.dataset.pageIndex = index;
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-selected', index === this._activePageIndex ? 'true' : 'false');
+      tab.draggable = true;
+
+      const label = document.createElement('span');
+      label.className = 'page-tab-label';
+      label.textContent = page.name;
+      tab.appendChild(label);
+
+      // Close button (only if more than 1 page)
+      if (this._pages.length > 1) {
+        const closeBtn = document.createElement('span');
+        closeBtn.className = 'page-tab-close';
+        closeBtn.textContent = '×';
+        closeBtn.title = 'Delete page';
+        tab.appendChild(closeBtn);
+      }
+
+      container.appendChild(tab);
+    });
+  }
+
+  /** Wire event handlers for page tab interactions. */
+  _wirePageTabEvents() {
+    const container = document.getElementById('page-tabs');
+    const addBtn = document.getElementById('page-tab-add');
+    if (!container) return;
+    if (this._pageTabEventsBound && this._pageTabEventsTarget === container) return;
+    this._pageTabEventsBound = true;
+    this._pageTabEventsTarget = container;
+
+    // Click handler for tab switching, closing, and renaming
+    container.addEventListener('click', (e) => {
+      const closeBtn = e.target.closest('.page-tab-close');
+      if (closeBtn) {
+        const tab = closeBtn.closest('.page-tab');
+        const idx = parseInt(tab.dataset.pageIndex, 10);
+        this.deletePage(idx);
+        return;
+      }
+
+      const tab = e.target.closest('.page-tab');
+      if (tab) {
+        const idx = parseInt(tab.dataset.pageIndex, 10);
+        this.switchToPage(idx);
+      }
+    });
+
+    // Double-click to rename
+    container.addEventListener('dblclick', (e) => {
+      const tab = e.target.closest('.page-tab');
+      if (!tab) return;
+      const idx = parseInt(tab.dataset.pageIndex, 10);
+      const label = tab.querySelector('.page-tab-label');
+      if (!label) return;
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = this._pages[idx].name;
+      input.style.cssText = 'width:80px;font-size:11px;padding:1px 4px;background:var(--fusion-input-bg,#2a2a3e);color:var(--fusion-text-primary,#eee);border:1px solid var(--fusion-accent,#64b5f6);border-radius:3px;outline:none;';
+      label.replaceWith(input);
+      input.focus();
+      input.select();
+
+      const finish = () => {
+        const newName = input.value.trim() || this._pages[idx].name;
+        this.renamePage(idx, newName);
+      };
+      input.addEventListener('blur', finish);
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+        if (ev.key === 'Escape') { input.value = this._pages[idx].name; input.blur(); }
+      });
+    });
+
+    // Drag-and-drop reorder
+    let dragSrcIndex = null;
+    container.addEventListener('dragstart', (e) => {
+      const tab = e.target.closest('.page-tab');
+      if (!tab) return;
+      dragSrcIndex = parseInt(tab.dataset.pageIndex, 10);
+      tab.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragSrcIndex.toString());
+    });
+
+    container.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    container.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const tab = e.target.closest('.page-tab');
+      if (!tab || dragSrcIndex === null) return;
+      const dropIndex = parseInt(tab.dataset.pageIndex, 10);
+      this.movePage(dragSrcIndex, dropIndex);
+      dragSrcIndex = null;
+    });
+
+    container.addEventListener('dragend', (e) => {
+      const tab = e.target.closest('.page-tab');
+      if (tab) tab.style.opacity = '';
+      dragSrcIndex = null;
+    });
+
+    // Add page button
+    if (addBtn) {
+      addBtn.addEventListener('click', () => this.addPage());
+    }
+
+    // Right-click context menu on tabs
+    container.addEventListener('contextmenu', (e) => {
+      const tab = e.target.closest('.page-tab');
+      if (!tab) return;
+      e.preventDefault();
+      const idx = parseInt(tab.dataset.pageIndex, 10);
+
+      // Simple context menu with rename/delete/duplicate
+      const menu = document.createElement('div');
+      menu.style.cssText = 'position:fixed;z-index:9999;background:var(--fusion-bg-secondary,#1e1e2e);border:1px solid var(--fusion-border-primary,#444);border-radius:6px;padding:4px 0;min-width:140px;box-shadow:0 4px 12px rgba(0,0,0,0.4);font-size:12px;';
+      menu.innerHTML = `
+        <div class="page-ctx-item" data-action="rename" style="padding:6px 12px;cursor:pointer;color:var(--fusion-text-primary,#eee);">Rename</div>
+        <div class="page-ctx-item" data-action="duplicate" style="padding:6px 12px;cursor:pointer;color:var(--fusion-text-primary,#eee);">Duplicate</div>
+        ${this._pages.length > 1 ? '<div class="page-ctx-item" data-action="delete" style="padding:6px 12px;cursor:pointer;color:var(--fusion-danger,#dc3545);">Delete</div>' : ''}
+      `;
+      menu.style.left = e.clientX + 'px';
+      menu.style.top = e.clientY + 'px';
+      document.body.appendChild(menu);
+
+      // Hover effect
+      menu.querySelectorAll('.page-ctx-item').forEach(item => {
+        item.addEventListener('mouseenter', () => { item.style.background = 'var(--fusion-bg-tertiary,#2a2a3e)'; });
+        item.addEventListener('mouseleave', () => { item.style.background = ''; });
+      });
+
+      const closeMenu = () => { if (menu.parentNode) menu.remove(); document.removeEventListener('click', closeMenu); };
+      setTimeout(() => document.addEventListener('click', closeMenu), 0);
+
+      menu.addEventListener('click', (ev) => {
+        const action = ev.target.dataset.action;
+        closeMenu();
+        if (action === 'rename') {
+          // Trigger the dblclick rename flow
+          const tabEl = container.querySelector(`.page-tab[data-page-index="${idx}"]`);
+          if (tabEl) tabEl.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+        } else if (action === 'duplicate') {
+          this._duplicatePage(idx);
+        } else if (action === 'delete') {
+          this.deletePage(idx);
+        }
+      });
+    });
+  }
+
+  /** Duplicate a page (deep copy blocks/connections). */
+  _duplicatePage(pageIndex) {
+    this._saveCurrentPageState();
+    const src = this._pages[pageIndex];
+    if (!src) return;
+
+    /** Generate a unique ID with a prefix, avoiding Date.now() collisions. */
+    const _uid = (prefix) =>
+      prefix + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2, 10));
+
+    // Deep clone blocks and connections with new IDs
+    const idMap = {};
+    const newBlocks = src.blocks.map(b => {
+      const newId = _uid('block-');
+      idMap[b.id] = newId;
+      const clone = JSON.parse(JSON.stringify(b));
+      clone.id = newId;
+      return clone;
+    });
+    const newConns = src.connections.map(c => {
+      const clone = JSON.parse(JSON.stringify(c));
+      clone.id = _uid('conn-');
+      clone.fromBlock = idMap[c.fromBlock] || c.fromBlock;
+      clone.toBlock = idMap[c.toBlock] || c.toBlock;
+      return clone;
+    });
+    const newGroups = (src.groups || []).map(g => {
+      const clone = JSON.parse(JSON.stringify(g));
+      clone.id = _uid('group-');
+      clone.blockIds = (g.blockIds || []).map(id => idMap[id] || id);
+      return clone;
+    });
+    const newStubs = (src.namedStubs || []).map(s => {
+      const clone = JSON.parse(JSON.stringify(s));
+      clone.id = _uid('stub-');
+      clone.blockId = idMap[s.blockId] || s.blockId;
+      return clone;
+    });
+
+    const newPage = {
+      id: this._generatePageId(),
+      name: src.name + ' (Copy)',
+      blocks: newBlocks,
+      connections: newConns,
+      groups: newGroups,
+      namedStubs: newStubs,
+      viewport: { ...src.viewport }
+    };
+    this._pages.splice(pageIndex + 1, 0, newPage);
+    this._activePageIndex = pageIndex + 1;
+    this._loadPageState(this._activePageIndex);
+    this._renderPageTabs();
+    if (window.advancedFeatures) window.advancedFeatures.saveState();
   }
 }
 

@@ -94,28 +94,19 @@ var DeltaUtils = (function () {
   }
 
   function _diffListById(old, cur, path, ops) {
-    var oldMap = {};
-    var curMap = {};
-    for (var i = 0; i < old.length; i++) oldMap[old[i].id] = { idx: i, item: old[i] };
-    for (var j = 0; j < cur.length; j++) curMap[cur[j].id] = { idx: j, item: cur[j] };
+    var oldIds = old.map(function (item) { return item.id; });
+    var curIds = cur.map(function (item) { return item.id; });
 
-    // Removed
-    for (var id in oldMap) {
-      if (!(id in curMap)) {
-        ops.push({ op: 'remove', path: path + '/' + oldMap[id].idx });
-      }
+    // Any membership change or reorder can invalidate index-based paths.
+    // Use a full list replace to preserve correctness.
+    if (!_deepEqual(oldIds, curIds)) {
+      ops.push({ op: 'replace', path: path, value: cur });
+      return;
     }
-    // Added
-    for (var id2 in curMap) {
-      if (!(id2 in oldMap)) {
-        ops.push({ op: 'add', path: path + '/' + curMap[id2].idx, value: curMap[id2].item });
-      }
-    }
-    // Modified
-    for (var id3 in oldMap) {
-      if (id3 in curMap) {
-        _diff(oldMap[id3].item, curMap[id3].item, path + '/' + oldMap[id3].idx, ops);
-      }
+
+    // Same id sequence: safe to diff by index.
+    for (var i = 0; i < old.length; i++) {
+      _diff(old[i], cur[i], path + '/' + i, ops);
     }
   }
 

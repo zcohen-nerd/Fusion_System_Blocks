@@ -43,6 +43,7 @@ from .models import (
     Graph,
     Group,
     NamedStub,
+    Page,
     Port,
     PortDirection,
     PortKind,

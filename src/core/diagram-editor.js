@@ -63,6 +63,12 @@ class DiagramEditorCore {
 
   // Core diagram operations
   addBlock(blockData) {
+    // Guard: reject null/undefined input
+    if (!blockData || typeof blockData !== 'object') {
+      logger.warn('addBlock: invalid blockData', blockData);
+      return null;
+    }
+
     // Default attribute fields — empty slots for common engineering metadata.
     // Users can fill these in via the property editor or side panel.
     const defaultAttributes = {
@@ -75,25 +81,25 @@ class DiagramEditorCore {
       'Notes': ''
     };
 
+    // Strip protected keys from blockData to prevent overwriting generated ID
+    const { id: _discardedId, attributes: callerAttrs, ...safeBlockData } = blockData;
+
     const block = {
       id: this.generateId(),
-      name: blockData.name || 'New Block',
-      type: blockData.type || 'Generic',
-      x: blockData.x || 100,
-      y: blockData.y || 100,
-      width: blockData.width || 160,
-      height: blockData.height || 100,
-      status: blockData.status || 'Placeholder',
-      attributes: { ...defaultAttributes, ...(blockData.attributes || {}) },
-      ...blockData
+      name: safeBlockData.name || 'New Block',
+      type: safeBlockData.type || 'Generic',
+      x: safeBlockData.x ?? 100,
+      y: safeBlockData.y ?? 100,
+      width: safeBlockData.width ?? 160,
+      height: safeBlockData.height ?? 100,
+      rotation: safeBlockData.rotation ?? 0,
+      status: safeBlockData.status || 'Placeholder',
+      attributes: { ...defaultAttributes, ...(callerAttrs || {}) },
+      ...safeBlockData
     };
-    // Ensure attributes merges defaults with any caller-supplied values
-    // (the spread above handles blockData.attributes, but if blockData
-    // also has an attributes key it would be overwritten by ...blockData,
-    // so we re-merge here to be safe)
-    if (blockData.attributes) {
-      block.attributes = { ...defaultAttributes, ...blockData.attributes };
-    }
+    // Re-merge attributes so defaults are always present even if
+    // safeBlockData spread overwrote them with caller-supplied values
+    block.attributes = { ...defaultAttributes, ...(callerAttrs || {}) };
     
     this.diagram.blocks.push(block);
     this.diagram.metadata.modified = new Date().toISOString();
@@ -102,8 +108,21 @@ class DiagramEditorCore {
   }
 
   removeBlock(blockId) {
+    // Bug #231: Clear selection if the removed block is currently selected
+    if (this.selectedBlock === blockId) {
+      this.selectedBlock = null;
+    }
+
+    // Only mark dirty if the block actually exists
+    const originalLength = this.diagram.blocks.length;
+
     // Remove block
     this.diagram.blocks = this.diagram.blocks.filter(block => block.id !== blockId);
+
+    if (this.diagram.blocks.length === originalLength) {
+      // Block not found — nothing to do
+      return;
+    }
     
     // Remove connected connections
     this.diagram.connections = this.diagram.connections.filter(
@@ -116,6 +135,15 @@ class DiagramEditorCore {
         s => s.blockId !== blockId
       );
     }
+
+    // Bug #232: Remove block from any groups it belongs to
+    if (this.diagram.groups) {
+      for (const group of this.diagram.groups) {
+        if (group.blockIds) {
+          group.blockIds = group.blockIds.filter(id => id !== blockId);
+        }
+      }
+    }
     
     this.diagram.metadata.modified = new Date().toISOString();
     this._markDirty();
@@ -127,6 +155,12 @@ class DiagramEditorCore {
 
     // Prevent self-connections
     if (fromBlockId === toBlockId) return null;
+
+    // Verify referenced blocks (or groups) actually exist
+    const blockExists = id => this.diagram.blocks.some(b => b.id === id);
+    const groupExists = id => (this.diagram.groups || []).some(g => g.id === id);
+    if (!blockExists(fromBlockId) && !groupExists(fromBlockId)) return null;
+    if (!blockExists(toBlockId) && !groupExists(toBlockId)) return null;
 
     // Prevent duplicate connections of the same type between the same blocks.
     // Different types (e.g. power AND data) between the same pair are allowed.
@@ -233,8 +267,11 @@ class DiagramEditorCore {
   updateConnection(connectionId, updates) {
     const connection = this.diagram.connections.find(c => c.id === connectionId);
     if (connection) {
-      Object.assign(connection, updates);
+      // Strip protected keys to prevent identity corruption
+      const { id: _id, fromBlock: _fb, toBlock: _tb, ...safeUpdates } = updates;
+      Object.assign(connection, safeUpdates);
       this.diagram.metadata.modified = new Date().toISOString();
+      this._markDirty();
       return connection;
     }
     return null;
@@ -243,12 +280,29 @@ class DiagramEditorCore {
   updateBlock(blockId, updates) {
     const block = this.diagram.blocks.find(b => b.id === blockId);
     if (block) {
-      Object.assign(block, updates);
+      // Strip protected key to prevent identity corruption
+      const { id: _id, ...safeUpdates } = updates;
+      Object.assign(block, safeUpdates);
       this.diagram.metadata.modified = new Date().toISOString();
       this._markDirty();
       return block;
     }
     return null;
+  }
+
+  /**
+   * Rotate a block by 90° clockwise, cycling through 0 → 90 → 180 → 270 → 0.
+   * @param {string} blockId  Block to rotate.
+   * @returns {object|null}   Updated block, or null if not found.
+   */
+  rotateBlock(blockId) {
+    const block = this.diagram.blocks.find(b => b.id === blockId);
+    if (!block) return null;
+    const current = block.rotation || 0;
+    block.rotation = (current + 90) % 360;
+    this.diagram.metadata.modified = new Date().toISOString();
+    this._markDirty();
+    return block;
   }
 
   // Canvas management
@@ -260,6 +314,46 @@ class DiagramEditorCore {
     }
   }
 
+  /**
+   * Smoothly animate the viewBox from its current value to a target.
+   * @param {number} tx  Target viewBox x.
+   * @param {number} ty  Target viewBox y.
+   * @param {number} tw  Target viewBox width.
+   * @param {number} th  Target viewBox height.
+   * @param {number} [duration=280]  Animation duration in ms.
+   */
+  animateViewBox(tx, ty, tw, th, duration = 280) {
+    // Cancel any in-flight animation
+    if (this._viewBoxAnimId) {
+      cancelAnimationFrame(this._viewBoxAnimId);
+      this._viewBoxAnimId = null;
+    }
+
+    const startVB = { ...this.viewBox };
+    const startTime = performance.now();
+
+    const step = (now) => {
+      let t = Math.min((now - startTime) / duration, 1);
+      // Ease-out cubic
+      t = 1 - Math.pow(1 - t, 3);
+
+      const cx = startVB.x      + (tx - startVB.x)      * t;
+      const cy = startVB.y      + (ty - startVB.y)      * t;
+      const cw = startVB.width  + (tw - startVB.width)  * t;
+      const ch = startVB.height + (th - startVB.height) * t;
+
+      this.setViewBox(cx, cy, cw, ch);
+
+      if (t < 1) {
+        this._viewBoxAnimId = requestAnimationFrame(step);
+      } else {
+        this._viewBoxAnimId = null;
+      }
+    };
+
+    this._viewBoxAnimId = requestAnimationFrame(step);
+  }
+
   panBy(deltaX, deltaY) {
     this.viewBox.x -= deltaX;
     this.viewBox.y -= deltaY;
@@ -269,6 +363,11 @@ class DiagramEditorCore {
   zoomAt(factor, centerX, centerY) {
     const newWidth = this.viewBox.width * factor;
     const newHeight = this.viewBox.height * factor;
+
+    // Enforce min/max zoom limits (viewBox width controls zoom level)
+    const MIN_VB_WIDTH = 200;   // max zoom-in
+    const MAX_VB_WIDTH = 10000; // max zoom-out
+    if (newWidth < MIN_VB_WIDTH || newWidth > MAX_VB_WIDTH) return;
     
     // Zoom towards the center point
     const deltaX = (newWidth - this.viewBox.width) * ((centerX - this.viewBox.x) / this.viewBox.width);
@@ -281,6 +380,61 @@ class DiagramEditorCore {
     this.scale = 1000 / this.viewBox.width; // Base scale reference
     
     this.setViewBox(this.viewBox.x, this.viewBox.y, this.viewBox.width, this.viewBox.height);
+  }
+
+  /**
+   * Smooth focal-point zoom driven by wheel events.  Accumulates scroll
+   * deltas and animates the viewBox via requestAnimationFrame so rapid
+   * wheel ticks merge into a single fluid motion.
+   *
+   * @param {number} delta    Wheel deltaY (positive = zoom out).
+   * @param {number} centerX  SVG x-coordinate under the cursor.
+   * @param {number} centerY  SVG y-coordinate under the cursor.
+   */
+  smoothZoomAt(delta, centerX, centerY) {
+    // Accumulate scroll impulse
+    if (!this._zoomAcc) this._zoomAcc = 0;
+    this._zoomAcc += delta;
+
+    // Store the most recent cursor focus point
+    this._zoomCenter = { x: centerX, y: centerY };
+
+    // If an animation frame is already queued, skip — it will pick up
+    // the accumulated delta.
+    if (this._zoomRaf) return;
+
+    const start = { ...this.viewBox };
+
+    this._zoomRaf = requestAnimationFrame(() => {
+      // Compute aggregate zoom factor from accumulated scroll
+      const factor = Math.pow(1.0015, this._zoomAcc);
+      this._zoomAcc = 0;
+      this._zoomRaf = null;
+
+      // Compute target viewBox
+      const cx = this._zoomCenter.x;
+      const cy = this._zoomCenter.y;
+
+      let tw = start.width * factor;
+      let th = start.height * factor;
+
+      // Enforce limits
+      const MIN_VB_WIDTH = 200;
+      const MAX_VB_WIDTH = 10000;
+      if (tw < MIN_VB_WIDTH) { tw = MIN_VB_WIDTH; th = tw * (start.height / start.width); }
+      if (tw > MAX_VB_WIDTH) { tw = MAX_VB_WIDTH; th = tw * (start.height / start.width); }
+
+      const dx = (tw - start.width) * ((cx - start.x) / start.width);
+      const dy = (th - start.height) * ((cy - start.y) / start.height);
+
+      this.viewBox.x = start.x - dx;
+      this.viewBox.y = start.y - dy;
+      this.viewBox.width = tw;
+      this.viewBox.height = th;
+      this.scale = 1000 / tw;
+
+      this.setViewBox(this.viewBox.x, this.viewBox.y, this.viewBox.width, this.viewBox.height);
+    });
   }
 
   // Grid and snapping
@@ -326,7 +480,7 @@ class DiagramEditorCore {
     let bestDx = tolerance + 1;
     let bestDy = tolerance + 1;
 
-    const skip = excludeIds || new Set();
+    const skip = new Set(excludeIds);
     skip.add(blockId);
 
     for (const other of this.diagram.blocks) {
@@ -397,29 +551,134 @@ class DiagramEditorCore {
         top: other.y, bottom: other.y + oh, cy: other.y + oh / 2,
       };
 
-      // Vertical guides (x matches)
+      // Vertical guides (x matches) — tag center vs edge
       for (const xVal of [oEdges.left, oEdges.right, oEdges.cx]) {
         for (const sxVal of [snappedEdges.left, snappedEdges.right, snappedEdges.cx]) {
           if (Math.abs(sxVal - xVal) < 1) {
             const minY = Math.min(snapY, other.y);
             const maxY = Math.max(snapY + bh, other.y + oh);
-            guides.push({ axis: 'v', pos: xVal, from: minY - 10, to: maxY + 10 });
+            const isCenterAlign = (sxVal === snappedEdges.cx && xVal === oEdges.cx);
+            guides.push({ axis: 'v', pos: xVal, from: minY - 10, to: maxY + 10,
+                          type: isCenterAlign ? 'center' : 'edge' });
           }
         }
       }
-      // Horizontal guides (y matches)
+      // Horizontal guides (y matches) — tag center vs edge
       for (const yVal of [oEdges.top, oEdges.bottom, oEdges.cy]) {
         for (const syVal of [snappedEdges.top, snappedEdges.bottom, snappedEdges.cy]) {
           if (Math.abs(syVal - yVal) < 1) {
             const minX = Math.min(snapX, other.x);
             const maxX = Math.max(snapX + bw, other.x + ow);
-            guides.push({ axis: 'h', pos: yVal, from: minX - 10, to: maxX + 10 });
+            const isCenterAlign = (syVal === snappedEdges.cy && yVal === oEdges.cy);
+            guides.push({ axis: 'h', pos: yVal, from: minX - 10, to: maxX + 10,
+                          type: isCenterAlign ? 'center' : 'edge' });
           }
         }
       }
     }
 
+    // ── Equal-spacing detection ────────────────────────────────────────
+    // Look for 3+ blocks in a row (horizontally or vertically) with equal
+    // gaps.  If the dragged block can slot in with matching spacing, add
+    // spacing guides and optionally snap to that position.
+    this._detectEqualSpacing(
+      snapX, snapY, bw, bh, skip, tolerance, guides
+    );
+
     return { x: snapX, y: snapY, guides };
+  }
+
+  /**
+   * Detect equal spacing opportunities between blocks and emit spacing
+   * guide objects.  Mutates the `guides` array in place.
+   * @private
+   */
+  _detectEqualSpacing(snapX, snapY, bw, bh, skipIds, tolerance, guides) {
+    const others = this.diagram.blocks.filter(b => !skipIds.has(b.id));
+    if (others.length < 2) return; // need at least 2 neighbours
+
+    const dragged = { x: snapX, y: snapY, w: bw, h: bh };
+
+    // --- Horizontal row check (blocks sharing similar cy) ---
+    const dragCY = snapY + bh / 2;
+    const rowBlocks = others.filter(b => {
+      const cy = b.y + (b.height || 80) / 2;
+      return Math.abs(cy - dragCY) < (bh / 2 + (b.height || 80) / 2);
+    });
+    this._checkSpacingAxis(rowBlocks, dragged, 'x', guides, tolerance);
+
+    // --- Vertical column check (blocks sharing similar cx) ---
+    const dragCX = snapX + bw / 2;
+    const colBlocks = others.filter(b => {
+      const cx = b.x + (b.width || 120) / 2;
+      return Math.abs(cx - dragCX) < (bw / 2 + (b.width || 120) / 2);
+    });
+    this._checkSpacingAxis(colBlocks, dragged, 'y', guides, tolerance);
+  }
+
+  /**
+   * For a set of blocks roughly aligned on one axis, check if inserting
+   * the dragged block would create equal spacing between consecutive pairs.
+   * @private
+   */
+  _checkSpacingAxis(neighbours, dragged, axis, guides, tolerance) {
+    if (neighbours.length < 2) return;
+
+    const isX = axis === 'x';
+    const posKey = isX ? 'x' : 'y';
+    const sizeKey = isX ? 'w' : 'h';
+    const blockSizeKey = isX ? 'width' : 'height';
+    const defaultSize = isX ? 120 : 80;
+
+    // Build sorted list of {start, end} ranges including the dragged block
+    const ranges = neighbours.map(b => ({
+      start: b[posKey],
+      end:   b[posKey] + (b[blockSizeKey] || defaultSize),
+      cy:    isX ? (b.y + (b.height || 80) / 2) : (b.x + (b.width || 120) / 2),
+    }));
+    ranges.push({
+      start: dragged[posKey],
+      end:   dragged[posKey] + dragged[sizeKey],
+      cy:    isX ? (dragged.y + dragged.h / 2) : (dragged.x + dragged.w / 2),
+    });
+    ranges.sort((a, b) => a.start - b.start);
+
+    // Compute gaps between consecutive blocks
+    const gaps = [];
+    for (let i = 0; i < ranges.length - 1; i++) {
+      gaps.push(ranges[i + 1].start - ranges[i].end);
+    }
+    if (gaps.length < 2) return; // need at least 2 gaps
+
+    // Check if all gaps are approximately equal
+    const avg = gaps.reduce((s, g) => s + g, 0) / gaps.length;
+    if (avg < 5) return; // blocks overlap or nearly touching — skip
+    const allEqual = gaps.every(g => Math.abs(g - avg) < tolerance);
+    if (!allEqual) return;
+
+    // Emit spacing guides between each consecutive pair
+    for (let i = 0; i < ranges.length - 1; i++) {
+      const gapStart = ranges[i].end;
+      const gapEnd   = ranges[i + 1].start;
+      const mid = (gapStart + gapEnd) / 2;
+
+      if (isX) {
+        // Vertical tick marks at gap boundaries and a label in between
+        const minY = Math.min(...ranges.map(r => r.cy)) - 20;
+        const maxY = Math.max(...ranges.map(r => r.cy)) + 20;
+        guides.push({ axis: 'v', pos: gapStart, from: minY, to: maxY, type: 'spacing' });
+        guides.push({ axis: 'v', pos: gapEnd,   from: minY, to: maxY, type: 'spacing' });
+        guides.push({ axis: 'spacing-label', x: mid, y: minY - 6,
+                       label: Math.round(avg) + 'px', type: 'spacing' });
+      } else {
+        const minX = Math.min(...ranges.map(r => r.cy)) - 20;
+        const maxX = Math.max(...ranges.map(r => r.cy)) + 20;
+        guides.push({ axis: 'h', pos: gapStart, from: minX, to: maxX, type: 'spacing' });
+        guides.push({ axis: 'h', pos: gapEnd,   from: minX, to: maxX, type: 'spacing' });
+        guides.push({ axis: 'spacing-label', x: minX - 6, y: mid,
+                       label: Math.round(avg) + 'px', type: 'spacing' });
+      }
+    }
   }
 
   // Utility functions
@@ -563,6 +822,11 @@ class DiagramEditorCore {
         throw new Error('Invalid diagram format: missing blocks array');
       }
 
+      // Validate connections is an array if present
+      if (importedDiagram.connections && !Array.isArray(importedDiagram.connections)) {
+        throw new Error('Invalid diagram format: connections must be an array');
+      }
+
       // Ensure required fields have safe defaults
       if (!importedDiagram.connections) {
         importedDiagram.connections = [];
@@ -575,6 +839,16 @@ class DiagramEditorCore {
       }
       if (!importedDiagram.metadata) {
         importedDiagram.metadata = { created: new Date().toISOString() };
+      }
+
+      // Merge default attribute keys into imported blocks so property
+      // editor always shows the standard engineering metadata slots.
+      const defaultAttributes = {
+        'Manufacturer': '', 'Part Number': '', 'Datasheet URL': '',
+        'Rating / Specification': '', 'Cost': '', 'Lead Time': '', 'Notes': ''
+      };
+      for (const block of importedDiagram.blocks) {
+        block.attributes = { ...defaultAttributes, ...(block.attributes || {}) };
       }
 
       // Apply schema migrations (0.9 → 1.0, etc.)

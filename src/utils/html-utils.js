@@ -144,7 +144,22 @@ function _fusionConfirm(message) {
 
     okBtn.focus();
 
+    let settled = false;
+    const onKeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        cleanup(true);
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cleanup(false);
+      }
+    };
+
     const cleanup = (value) => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener('keydown', onKeydown);
       overlay.remove();
       resolve(value);
     };
@@ -152,10 +167,7 @@ function _fusionConfirm(message) {
     okBtn.addEventListener('click', () => cleanup(true));
     cancelBtn.addEventListener('click', () => cleanup(false));
     overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(false); });
-    document.addEventListener('keydown', function handler(e) {
-      if (e.key === 'Enter') { e.preventDefault(); document.removeEventListener('keydown', handler); cleanup(true); }
-      if (e.key === 'Escape') { e.preventDefault(); document.removeEventListener('keydown', handler); cleanup(false); }
-    });
+    document.addEventListener('keydown', onKeydown);
   });
 }
 
@@ -198,19 +210,24 @@ function _fusionAlert(message) {
 
     okBtn.focus();
 
+    let settled = false;
+    const onKeydown = (e) => {
+      if (e.key === 'Enter' || e.key === 'Escape') {
+        e.preventDefault();
+        cleanup();
+      }
+    };
+
     const cleanup = () => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener('keydown', onKeydown);
       overlay.remove();
       resolve();
     };
 
     okBtn.addEventListener('click', cleanup);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(); });
-    document.addEventListener('keydown', function handler(e) {
-      if (e.key === 'Enter' || e.key === 'Escape') {
-        e.preventDefault();
-        document.removeEventListener('keydown', handler);
-        cleanup();
-      }
-    });
+    document.addEventListener('keydown', onKeydown);
   });
 }

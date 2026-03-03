@@ -57,6 +57,7 @@ class ToolbarManager {
       'snap-grid': 'btn-snap-grid',
       'import': 'btn-import',
       'fit-view': 'btn-fit-view',
+      'zoom-selection': 'btn-zoom-selection',
       'zoom-in': 'btn-zoom-in',
       'zoom-out': 'btn-zoom-out',
       'connect': 'btn-connect',
@@ -66,12 +67,19 @@ class ToolbarManager {
       'drill-down': 'btn-drill-down',
       'create-child': 'btn-create-child',
       'history': 'btn-history',
-      'help': 'btn-help'
+      'help': 'btn-help',
+      'theme-toggle': 'btn-theme-toggle',
+      'distribute-h': 'btn-distribute-h',
+      'distribute-v': 'btn-distribute-v',
+      'match-width': 'btn-match-width',
+      'match-height': 'btn-match-height',
+      'format-painter': 'btn-format-painter'
     };
 
     this.initializeToolbar();
     this.setupKeyboardShortcuts();
     this._initTwoTierTooltips();
+    this.applyPersistedTheme();
   }
 
   /**
@@ -103,6 +111,7 @@ class ToolbarManager {
     'btn-snap-grid':       { title: 'Toggle Grid', detail: 'Enable or disable snapping blocks to the grid.' },
     'btn-minimap':         { title: 'Minimap', detail: 'Toggle the minimap overview in the corner of the canvas.' },
     'btn-fit-view':        { title: 'Fit View', detail: 'Zoom and pan to fit all blocks in the viewport.', shortcut: 'Ctrl+0' },
+    'btn-zoom-selection':  { title: 'Zoom to Selection', detail: 'Zoom and pan to fit the selected block(s).', shortcut: 'Ctrl+Shift+1' },
     'btn-zoom-in':         { title: 'Zoom In', detail: 'Zoom into the canvas.', shortcut: 'Ctrl+=' },
     'btn-zoom-out':        { title: 'Zoom Out', detail: 'Zoom out of the canvas.', shortcut: 'Ctrl+−' },
     'btn-go-up':           { title: 'Navigate Up', detail: 'Return to the parent diagram from a child block diagram.' },
@@ -133,9 +142,9 @@ class ToolbarManager {
       clearTimeout(this._tipTimers.tier2);
 
       this._tipTimers.tier1 = setTimeout(() => {
-        tip.innerHTML = `<div class="tt-title">${data.title}</div>`;
+        tip.innerHTML = `<div class="tt-title">${this._escapeHtml(data.title)}</div>`;
         if (data.shortcut) {
-          tip.innerHTML += `<div class="tt-shortcut">${data.shortcut}</div>`;
+          tip.innerHTML += `<div class="tt-shortcut">${this._escapeHtml(data.shortcut)}</div>`;
         }
         // Position below the button
         const rect = el.getBoundingClientRect();
@@ -146,9 +155,9 @@ class ToolbarManager {
 
       this._tipTimers.tier2 = setTimeout(() => {
         if (tip.style.display === 'none') return;
-        let html = `<div class="tt-title">${data.title}</div>`;
-        html += `<div class="tt-detail">${data.detail}</div>`;
-        if (data.shortcut) html += `<div class="tt-shortcut">${data.shortcut}</div>`;
+        let html = `<div class="tt-title">${this._escapeHtml(data.title)}</div>`;
+        html += `<div class="tt-detail">${this._escapeHtml(data.detail)}</div>`;
+        if (data.shortcut) html += `<div class="tt-shortcut">${this._escapeHtml(data.shortcut)}</div>`;
         tip.innerHTML = html;
       }, 2000);
     };
@@ -196,7 +205,7 @@ class ToolbarManager {
         order: 4
       },
       'Arrange': {
-        buttons: ['auto-layout', 'align-left', 'align-center', 'align-right', 'create-group', 'ungroup'],
+        buttons: ['auto-layout', 'align-left', 'align-center', 'align-right', 'distribute-h', 'distribute-v', 'match-width', 'match-height', 'format-painter', 'create-group', 'ungroup'],
         order: 5
       },
       'Validate': {
@@ -208,8 +217,8 @@ class ToolbarManager {
         order: 7
       },
       'View': {
-        buttons: ['fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'routing-mode'],
-        order: 7
+        buttons: ['fit-view', 'zoom-selection', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'routing-mode', 'theme-toggle', 'help'],
+        order: 8
       }
     };
 
@@ -227,7 +236,7 @@ class ToolbarManager {
 
   getDefaultButtonState(buttonId) {
     // Buttons that are always enabled
-    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'types', 'check-rules', 'fit-view', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'routing-mode', 'connect', 'history', 'import', 'copy', 'paste', 'text', 'note', 'dimension', 'callout'];
+    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'types', 'check-rules', 'fit-view', 'zoom-selection', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'routing-mode', 'theme-toggle', 'help', 'connect', 'history', 'import', 'copy', 'paste', 'text', 'note', 'dimension', 'callout'];
     if (alwaysEnabled.includes(buttonId)) return true;
 
     // Undo/redo: enabled when there are states to restore
@@ -268,7 +277,10 @@ class ToolbarManager {
 
     // Buttons enabled when blocks are selected (single or multi)
     const needsSelection = ['link-cad', 'link-ecad', 'clear-selection',
-                           'align-left', 'align-center', 'align-right'];
+                           'align-left', 'align-center', 'align-right',
+                           'distribute-h', 'distribute-v',
+                           'match-width', 'match-height',
+                           'format-painter'];
     if (needsSelection.includes(buttonId)) {
       return this.editor.selectedBlock !== null ||
         (window.advancedFeatures && window.advancedFeatures.hasSelection());
@@ -351,6 +363,11 @@ class ToolbarManager {
     this.addButtonListener('align-left', () => this.handleAlignLeft());
     this.addButtonListener('align-center', () => this.handleAlignCenter());
     this.addButtonListener('align-right', () => this.handleAlignRight());
+    this.addButtonListener('distribute-h', () => this.handleDistributeH());
+    this.addButtonListener('distribute-v', () => this.handleDistributeV());
+    this.addButtonListener('match-width', () => this.handleMatchWidth());
+    this.addButtonListener('match-height', () => this.handleMatchHeight());
+    this.addButtonListener('format-painter', () => this.handleCopyStyle());
     this.addButtonListener('create-group', () => this.handleCreateGroup());
     this.addButtonListener('ungroup', () => this.handleUngroup());
 
@@ -359,11 +376,13 @@ class ToolbarManager {
 
     // View operations
     this.addButtonListener('fit-view', () => this.handleFitView());
+    this.addButtonListener('zoom-selection', () => this.handleZoomToSelection());
     this.addButtonListener('zoom-in', () => this.handleZoomIn());
     this.addButtonListener('zoom-out', () => this.handleZoomOut());
     this.addButtonListener('snap-grid', () => this.handleToggleSnapGrid());
     this.addButtonListener('minimap', () => this.handleToggleMinimap());
     this.addButtonListener('routing-mode', () => this.handleToggleRoutingMode());
+    this.addButtonListener('theme-toggle', () => this.handleToggleTheme());
 
     // Help
     this.addButtonListener('help', () => this.handleShowHelp());
@@ -393,6 +412,7 @@ class ToolbarManager {
       'Shift+KeyS': { ctrl: true, shift: true, handler: () => this.handleSaveAs() },
       'KeyO': { ctrl: true, handler: () => this.handleLoad() },
       'Shift+KeyO': { ctrl: true, shift: true, handler: () => this.handleOpenNamed() },
+      'KeyK': { ctrl: true, handler: () => this.handleOpenCommandPalette() },
       'KeyZ': { ctrl: true, handler: () => this.handleUndo() },
       'Shift+KeyZ': { ctrl: true, shift: true, handler: () => this.handleRedo() },
       'KeyY': { ctrl: true, handler: () => this.handleRedo() },
@@ -403,6 +423,8 @@ class ToolbarManager {
       'Equal': { ctrl: true, handler: () => this.handleZoomIn() },
       'Minus': { ctrl: true, handler: () => this.handleZoomOut() },
       'Digit0': { ctrl: true, handler: () => this.handleFitView() },
+      'Digit1': { ctrl: true, shift: true, handler: () => this.handleZoomToSelection() },
+      'Shift+KeyF': { ctrl: true, shift: true, handler: () => this.handleFitView() },
       'Escape': { handler: () => this.handleClearSelection() },
       'Delete': { handler: () => this.handleDeleteSelected() },
       'Backspace': { handler: () => this.handleDeleteSelected() },
@@ -435,6 +457,9 @@ class ToolbarManager {
       'Shift+KeyN': { ctrl: true, shift: true, handler: () => this.handleCreateChild() },
       'Shift+Slash': { shift: true, handler: () => this.handleShowShortcuts() },  // ? key
       'KeyM': { handler: () => this.handleToggleMinimap() },
+      'KeyR': { handler: () => this.handleRotateSelected() },
+      'Shift+KeyC': { ctrl: true, shift: true, handler: () => this.handleCopyStyle() },
+      'Shift+KeyV': { ctrl: true, shift: true, handler: () => this.handlePasteStyle() },
       'F1': { handler: () => this.handleShowHelp() }
     };
 
@@ -453,13 +478,46 @@ class ToolbarManager {
     // Keep existing KeyB binding (quick-pick) intact.
     this.keyboardShortcuts.set('KeyC', { handler: () => this.handleConnect() });
 
-    document.addEventListener('keydown', (e) => this.handleKeydown(e));
+    this._keydownHandler = (e) => this.handleKeydown(e);
+    document.addEventListener('keydown', this._keydownHandler);
+  }
+
+  /**
+   * Remove the global keydown listener to prevent leaks when the
+   * toolbar manager is torn down or re-initialised.
+   */
+  destroyKeyboardShortcuts() {
+    if (this._keydownHandler) {
+      document.removeEventListener('keydown', this._keydownHandler);
+      this._keydownHandler = null;
+    }
+  }
+
+  _isElementVisible(el) {
+    return !!el && window.getComputedStyle(el).display !== 'none';
+  }
+
+  _isAnyModalOpen() {
+    if (document.querySelector('.fusion-dialog-overlay')) return true;
+
+    const modalOverlays = document.querySelectorAll('.fusion-modal-overlay');
+    for (const overlay of modalOverlays) {
+      if (this._isElementVisible(overlay)) return true;
+    }
+
+    const auxiliaryOverlays = ['command-palette-overlay', 'loading-overlay'];
+    return auxiliaryOverlays.some(id => this._isElementVisible(document.getElementById(id)));
   }
 
   handleKeydown(e) {
     // Don't fire shortcuts when typing in inputs
-    const tag = e.target.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+    const target = e.target;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) {
+      return;
+    }
+
+    // Do not execute editor shortcuts behind active modal/dialog overlays.
+    if (this._isAnyModalOpen()) {
       return;
     }
 
@@ -637,13 +695,17 @@ class ToolbarManager {
       }
     });
 
-    // Allow Enter to confirm
-    nameInput.addEventListener('keydown', (e) => {
+    // Allow Enter to confirm — remove previous listener to avoid leaks
+    if (this._saveAsKeydownHandler) {
+      nameInput.removeEventListener('keydown', this._saveAsKeydownHandler);
+    }
+    this._saveAsKeydownHandler = (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         newConfirm.click();
       }
-    });
+    };
+    nameInput.addEventListener('keydown', this._saveAsKeydownHandler);
   }
 
   handleOpenNamed() {
@@ -676,7 +738,7 @@ class ToolbarManager {
         item.innerHTML =
           '<div style="flex:1;cursor:pointer;">' +
             '<strong>' + this._escapeHtml(doc.label) + '</strong>' +
-            '<div style="font-size:11px;color:#999;">' + (doc.modified || '') + '</div>' +
+            '<div style="font-size:11px;color:#999;">' + this._escapeHtml(doc.modified || '') + '</div>' +
           '</div>' +
           '<button class="doc-delete-btn" title="Delete" style="background:none;border:none;color:#dc3545;cursor:pointer;font-size:16px;">✕</button>';
 
@@ -743,6 +805,14 @@ class ToolbarManager {
     if (allBtn) allBtn.onclick = selectAll;
     if (noneBtn) noneBtn.onclick = selectNone;
 
+    // PDF page-size options — show/hide based on PDF checkbox
+    const pdfCb = document.getElementById('exp-pdf');
+    const pdfOpts = document.getElementById('exp-pdf-options');
+    if (pdfCb && pdfOpts) {
+      pdfOpts.style.display = pdfCb.checked ? 'block' : 'none';
+      pdfCb.onchange = () => { pdfOpts.style.display = pdfCb.checked ? 'block' : 'none'; };
+    }
+
     // Browse folder button — asks Python for a folder dialog
     const browseBtn = document.getElementById('exp-browse-folder');
     const folderInput = document.getElementById('exp-folder-path');
@@ -806,6 +876,11 @@ class ToolbarManager {
           : null;
 
         overlay.style.display = 'none';
+
+        // Capture PDF page size selection for client-side PDF export
+        const pageSizeEl = document.getElementById('exp-pdf-page-size');
+        if (pageSizeEl) this._pdfPageSize = pageSizeEl.value;
+
         this._executeExport(selected, customPath);
       };
     }
@@ -816,6 +891,33 @@ class ToolbarManager {
    */
   _executeExport(formats, outputPath) {
     try {
+      // Guard: if called without formats (e.g. fallback path), delegate to Python
+      if (!formats || !Array.isArray(formats)) {
+        if (window.pythonInterface) {
+          window.pythonInterface.exportReports();
+        }
+        return;
+      }
+
+      // Handle client-side PDF export
+      if (formats.includes('pdf') && typeof PdfExporter !== 'undefined') {
+        const remainingFormats = formats.filter(f => f !== 'pdf');
+        const title = (this.editor.diagram.metadata && this.editor.diagram.metadata.name)
+          || this.editor.diagram.name || 'System Block Diagram';
+
+        PdfExporter.exportToPdf({
+          title,
+          pageSize: this._pdfPageSize || 'A4',
+          landscape: true
+        }).catch(err => {
+          logger.error('Client-side PDF export failed:', err);
+        });
+
+        // If no other formats, we're done
+        if (remainingFormats.length === 0) return;
+        formats = remainingFormats;
+      }
+
       if (window.pythonInterface) {
         if (window.showLoadingSpinner) window.showLoadingSpinner('Exporting reports\u2026');
         window.pythonInterface.exportReports(formats, outputPath)
@@ -860,8 +962,9 @@ class ToolbarManager {
     if (isVisible) {
       panel.classList.remove('show');
     } else {
-      this.updateHistoryPanel();
+      // Add 'show' first — updateHistoryPanel guards on the class
       panel.classList.add('show');
+      this.updateHistoryPanel();
     }
   }
 
@@ -1368,6 +1471,25 @@ class ToolbarManager {
     }
   }
 
+  /**
+   * Rotate the selected block(s) 90° clockwise.
+   */
+  handleRotateSelected() {
+    const multiIds = window.advancedFeatures && window.advancedFeatures.hasSelection()
+      ? window.advancedFeatures.getSelectedBlocks()
+      : [];
+
+    if (multiIds.length > 0) {
+      multiIds.forEach(id => this.editor.rotateBlock(id));
+      this.renderer.updateAllBlocks(this.editor.diagram);
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
+    } else if (this.editor.selectedBlock) {
+      this.editor.rotateBlock(this.editor.selectedBlock);
+      this.renderer.updateAllBlocks(this.editor.diagram);
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
+    }
+  }
+
   handleAutoLayout() {
     // Simple grid layout for all blocks
     const blocks = this.editor.diagram.blocks;
@@ -1413,6 +1535,144 @@ class ToolbarManager {
     blocks.forEach(b => { b.x = maxRight - (b.width || 120); });
     this.renderer.updateAllBlocks(this.editor.diagram);
     window.advancedFeatures.saveState();
+  }
+
+  handleDistributeH() {
+    if (!window.advancedFeatures || !window.advancedFeatures.hasSelection()) return;
+    const ids = window.advancedFeatures.getSelectedBlocks();
+    const blocks = this.editor.diagram.blocks.filter(b => ids.includes(b.id));
+    if (blocks.length < 3) return;
+    blocks.sort((a, b) => a.x - b.x);
+    const first = blocks[0];
+    const last = blocks[blocks.length - 1];
+    const totalSpan = (last.x + (last.width || 120)) - first.x;
+    const totalBlockWidth = blocks.reduce((sum, b) => sum + (b.width || 120), 0);
+    const gap = (totalSpan - totalBlockWidth) / (blocks.length - 1);
+    let currentX = first.x;
+    blocks.forEach(b => {
+      b.x = currentX;
+      currentX += (b.width || 120) + gap;
+    });
+    this.renderer.updateAllBlocks(this.editor.diagram);
+    window.advancedFeatures.saveState();
+  }
+
+  handleDistributeV() {
+    if (!window.advancedFeatures || !window.advancedFeatures.hasSelection()) return;
+    const ids = window.advancedFeatures.getSelectedBlocks();
+    const blocks = this.editor.diagram.blocks.filter(b => ids.includes(b.id));
+    if (blocks.length < 3) return;
+    blocks.sort((a, b) => a.y - b.y);
+    const first = blocks[0];
+    const last = blocks[blocks.length - 1];
+    const totalSpan = (last.y + (last.height || 80)) - first.y;
+    const totalBlockHeight = blocks.reduce((sum, b) => sum + (b.height || 80), 0);
+    const gap = (totalSpan - totalBlockHeight) / (blocks.length - 1);
+    let currentY = first.y;
+    blocks.forEach(b => {
+      b.y = currentY;
+      currentY += (b.height || 80) + gap;
+    });
+    this.renderer.updateAllBlocks(this.editor.diagram);
+    window.advancedFeatures.saveState();
+  }
+
+  handleMatchWidth() {
+    if (!window.advancedFeatures || !window.advancedFeatures.hasSelection()) return;
+    const ids = window.advancedFeatures.getSelectedBlocks();
+    const blocks = this.editor.diagram.blocks.filter(b => ids.includes(b.id));
+    if (blocks.length < 2) return;
+    const maxWidth = Math.max(...blocks.map(b => b.width || 120));
+    blocks.forEach(b => { b.width = maxWidth; });
+    this.renderer.updateAllBlocks(this.editor.diagram);
+    window.advancedFeatures.saveState();
+  }
+
+  handleMatchHeight() {
+    if (!window.advancedFeatures || !window.advancedFeatures.hasSelection()) return;
+    const ids = window.advancedFeatures.getSelectedBlocks();
+    const blocks = this.editor.diagram.blocks.filter(b => ids.includes(b.id));
+    if (blocks.length < 2) return;
+    const maxHeight = Math.max(...blocks.map(b => b.height || 80));
+    blocks.forEach(b => { b.height = maxHeight; });
+    this.renderer.updateAllBlocks(this.editor.diagram);
+    window.advancedFeatures.saveState();
+  }
+
+  /**
+   * Copy visual style from the currently selected block.
+   * Style includes type, status, shape, and rotation.
+   */
+  handleCopyStyle() {
+    // Get the single selected block (or first from multi-select)
+    let block = null;
+    const selectedId = this.editor.selectedBlock;
+    if (selectedId) {
+      block = this.editor.diagram.blocks.find(b => b.id === selectedId);
+    }
+    if (!block && window.advancedFeatures && window.advancedFeatures.hasSelection()) {
+      const ids = window.advancedFeatures.getSelectedBlocks();
+      if (ids.length > 0) {
+        block = this.editor.diagram.blocks.find(b => b.id === ids[0]);
+      }
+    }
+    if (!block) return;
+
+    this._copiedStyle = {
+      type: block.type || 'Generic',
+      status: block.status || 'Planned',
+      shape: block.shape || 'rectangle',
+      rotation: block.rotation || 0
+    };
+
+    // Visual feedback — highlight the format painter button
+    const btn = document.getElementById('btn-format-painter');
+    if (btn) {
+      btn.classList.add('active');
+      btn.title = `Format Painter — Style copied (${this._copiedStyle.type}, ${this._copiedStyle.status}, ${this._copiedStyle.shape}). Select targets and press Ctrl+Shift+V to apply.`;
+    }
+  }
+
+  /**
+   * Paste the previously copied style onto all selected blocks.
+   */
+  handlePasteStyle() {
+    if (!this._copiedStyle) return;
+    if (!window.advancedFeatures || !window.advancedFeatures.hasSelection()) {
+      // Try single selection — resolve ID string to actual block object
+      const blockId = this.editor.selectedBlock;
+      if (!blockId) return;
+      const block = this.editor.diagram.blocks.find(b => b.id === blockId);
+      if (!block) return;
+      block.type = this._copiedStyle.type;
+      block.status = this._copiedStyle.status;
+      block.shape = this._copiedStyle.shape;
+      block.rotation = this._copiedStyle.rotation;
+      this.renderer.updateAllBlocks(this.editor.diagram);
+      if (window.advancedFeatures) window.advancedFeatures.saveState();
+      return;
+    }
+
+    const ids = window.advancedFeatures.getSelectedBlocks();
+    const blocks = this.editor.diagram.blocks.filter(b => ids.includes(b.id));
+    if (blocks.length === 0) return;
+
+    blocks.forEach(b => {
+      b.type = this._copiedStyle.type;
+      b.status = this._copiedStyle.status;
+      b.shape = this._copiedStyle.shape;
+      b.rotation = this._copiedStyle.rotation;
+    });
+
+    this.renderer.updateAllBlocks(this.editor.diagram);
+    window.advancedFeatures.saveState();
+
+    // Clear the active state on the button
+    const btn = document.getElementById('btn-format-painter');
+    if (btn) {
+      btn.classList.remove('active');
+      btn.title = 'Format Painter — Copy style from selected block and apply to others (Ctrl+Shift+C / Ctrl+Shift+V)';
+    }
   }
 
   handleCreateGroup() {
@@ -1482,15 +1742,18 @@ class ToolbarManager {
     const idMap = new Map(); // old id → new id
     // Paste blocks with offset
     this._clipboard.forEach(orig => {
+      const defaultAttributes = {
+        'Manufacturer': '', 'Part Number': '', 'Datasheet URL': '',
+        'Rating / Specification': '', 'Cost': '', 'Lead Time': '', 'Notes': ''
+      };
+      const attributes = { ...defaultAttributes, ...(orig.attributes || {}) };
       const clone = this.editor.addBlock({
+        ...orig,
+        id: undefined,
         name: orig.name + ' (copy)',
-        type: orig.type || 'Generic',
         x: orig.x + step,
         y: orig.y + step,
-        width: orig.width,
-        height: orig.height,
-        status: orig.status,
-        shape: orig.shape
+        attributes: attributes
       });
       idMap.set(orig.id, clone.id);
       this.renderer.renderBlock(clone);
@@ -1529,13 +1792,18 @@ class ToolbarManager {
     selectedIds.forEach(id => {
       const orig = this.editor.diagram.blocks.find(b => b.id === id);
       if (!orig) return;
+      const defaultAttributes = {
+        'Manufacturer': '', 'Part Number': '', 'Datasheet URL': '',
+        'Rating / Specification': '', 'Cost': '', 'Lead Time': '', 'Notes': ''
+      };
+      const attributes = { ...defaultAttributes, ...(orig.attributes || {}) };
       const clone = this.editor.addBlock({
+        ...orig,
+        id: undefined,
         name: orig.name + ' (copy)',
-        type: orig.type || 'Generic',
         x: orig.x + step,
         y: orig.y + step,
-        status: orig.status,
-        shape: orig.shape
+        attributes: attributes
       });
       this.renderer.renderBlock(clone);
     });
@@ -1562,12 +1830,9 @@ class ToolbarManager {
   }
 
   handleImport() {
-    const dialog = document.getElementById('import-dialog');
-    const overlay = document.getElementById('dialog-overlay');
-    if (dialog) {
-      dialog.style.display = 'block';
-      // Also show the backdrop overlay
-      if (overlay) overlay.style.display = 'block';
+    const overlay = document.getElementById('import-overlay');
+    if (overlay) {
+      overlay.style.display = '';
     } else {
       logger.warn('Import dialog element not found');
     }
@@ -1826,17 +2091,17 @@ class ToolbarManager {
 
       let html = `<div style="display:flex;align-items:center;gap:4px;">
         <span>${icon}</span>
-        <strong style="color:${statusColor};">${result.rule}</strong>
+        <strong style="color:${statusColor};">${this._escapeHtml(result.rule)}</strong>
         <span style="color:var(--fusion-text-secondary);margin-left:auto;font-size:10px;">${result.success ? 'pass' : 'fail'}</span>
       </div>
-      <div style="color:var(--fusion-text-secondary);font-size:10px;padding-left:20px;">${result.message}</div>`;
+      <div style="color:var(--fusion-text-secondary);font-size:10px;padding-left:20px;">${this._escapeHtml(result.message)}</div>`;
 
       // Add clickable detail items
       if (result.details && result.details.length > 0 && result.blocks) {
         html += '<div style="padding-left:20px;margin-top:2px;">';
         result.details.forEach((detail, i) => {
           const blockId = result.blocks[i] || '';
-          html += `<span class="rule-block-link" data-block-id="${blockId}" style="color:#FF6B35;cursor:pointer;font-size:10px;text-decoration:underline;margin-right:6px;">${detail}</span>`;
+          html += `<span class="rule-block-link" data-block-id="${this._escapeHtml(blockId)}" style="color:#FF6B35;cursor:pointer;font-size:10px;text-decoration:underline;margin-right:6px;">${this._escapeHtml(detail)}</span>`;
         });
         html += '</div>';
       } else if (!result.success && result.blocks && result.blocks.length > 0) {
@@ -1848,7 +2113,7 @@ class ToolbarManager {
         html += '<div style="padding-left:20px;margin-top:2px;">';
         blockNames.forEach((name, i) => {
           const blockId = result.blocks[i] || '';
-          html += `<span class="rule-block-link" data-block-id="${blockId}" style="color:#FF6B35;cursor:pointer;font-size:10px;text-decoration:underline;margin-right:6px;">${name}</span>`;
+          html += `<span class="rule-block-link" data-block-id="${this._escapeHtml(blockId)}" style="color:#FF6B35;cursor:pointer;font-size:10px;text-decoration:underline;margin-right:6px;">${this._escapeHtml(name)}</span>`;
         });
         html += '</div>';
       }
@@ -1930,6 +2195,9 @@ class ToolbarManager {
     const features = window.advancedFeatures;
     if (!features) return;
     if (!features._hierarchyStack) features._hierarchyStack = [];
+
+    // Save state before modifying the diagram
+    if (window.advancedFeatures) window.advancedFeatures.saveState();
 
     // Push current diagram onto hierarchy stack
     features._hierarchyStack.push({
@@ -2083,12 +2351,81 @@ class ToolbarManager {
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
 
-    this.editor.setViewBox(
-      cx - fitW / 2,
-      cy - fitH / 2,
-      fitW,
-      fitH
-    );
+    if (this.editor.animateViewBox) {
+      this.editor.animateViewBox(cx - fitW / 2, cy - fitH / 2, fitW, fitH);
+    } else {
+      this.editor.setViewBox(cx - fitW / 2, cy - fitH / 2, fitW, fitH);
+    }
+  }
+
+  /**
+   * Zoom the viewport to fit the currently selected block(s).
+   * Falls back to zoomToFit if nothing is selected.
+   */
+  handleZoomToSelection() {
+    const features = window.advancedFeatures;
+    const selectedIds = features && features.hasSelection()
+      ? features.getSelectedBlocks()
+      : (this.editor.selectedBlock ? [this.editor.selectedBlock] : []);
+
+    if (selectedIds.length === 0) {
+      // Nothing selected — fall back to fit-all
+      this.handleFitView();
+      return;
+    }
+
+    // Gather bounding box of selected blocks
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    selectedIds.forEach(id => {
+      const block = this.editor.diagram.blocks.find(b => b.id === id);
+      if (!block) return;
+      const w = block.width || 120;
+      const h = block.height || 80;
+      minX = Math.min(minX, block.x);
+      minY = Math.min(minY, block.y);
+      maxX = Math.max(maxX, block.x + w);
+      maxY = Math.max(maxY, block.y + h);
+    });
+
+    if (!isFinite(minX)) return; // no valid blocks found
+
+    const contentW = maxX - minX;
+    const contentH = maxY - minY;
+    const padX = Math.max(80, contentW * 0.35);
+    const padY = Math.max(80, contentH * 0.35);
+
+    let fitW = contentW + padX * 2;
+    let fitH = contentH + padY * 2;
+
+    // Match container aspect ratio
+    const svgEl = document.getElementById('svg-canvas');
+    if (svgEl) {
+      const rect = svgEl.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        const containerAR = rect.width / rect.height;
+        const fitAR = fitW / fitH;
+        if (fitAR > containerAR) {
+          fitH = fitW / containerAR;
+        } else {
+          fitW = fitH * containerAR;
+        }
+      }
+    }
+
+    // Minimum zoom level to avoid extreme close-ups on single blocks
+    const MIN_VB_W = 400;
+    const MIN_VB_H = 300;
+    if (fitW < MIN_VB_W) fitW = MIN_VB_W;
+    if (fitH < MIN_VB_H) fitH = MIN_VB_H;
+
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+
+    if (this.editor.animateViewBox) {
+      this.editor.animateViewBox(cx - fitW / 2, cy - fitH / 2, fitW, fitH);
+    } else {
+      this.editor.setViewBox(cx - fitW / 2, cy - fitH / 2, fitW, fitH);
+    }
   }
 
   handleZoomIn() {
@@ -2113,6 +2450,8 @@ class ToolbarManager {
         ? 'Snap to Grid: ON (click to disable)'
         : 'Snap to Grid: OFF (click to enable)';
     }
+    const snapState = this.buttonStates.get('snap-grid');
+    if (snapState) snapState.active = this.editor.snapToGridEnabled;
     if (window.pythonInterface) {
       window.pythonInterface.showNotification(
         'Snap to grid: ' + (this.editor.snapToGridEnabled ? 'ON' : 'OFF'),
@@ -2123,18 +2462,23 @@ class ToolbarManager {
   }
 
   handleToggleMinimap() {
+    let isActive = false;
     if (window.Minimap && window.minimapInstance) {
       window.minimapInstance.toggle();
+      isActive = window.minimapInstance.visible !== false;
     } else {
       // Fallback: toggle container directly
       const container = document.getElementById('minimap-container');
       if (container) {
         const hidden = container.style.display === 'none';
         container.style.display = hidden ? '' : 'none';
+        isActive = hidden;
         const btn = document.getElementById('btn-minimap');
-        if (btn) btn.classList.toggle('active', hidden);
+        if (btn) btn.classList.toggle('active', isActive);
       }
     }
+    const minimapState = this.buttonStates.get('minimap');
+    if (minimapState) minimapState.active = isActive;
   }
 
   /**
@@ -2151,11 +2495,61 @@ class ToolbarManager {
         ? 'Switch to curved connections'
         : 'Switch to orthogonal connections';
     }
+    const routingState = this.buttonStates.get('routing-mode');
+    if (routingState) routingState.active = newMode === 'orthogonal';
     if (window.pythonInterface) {
       window.pythonInterface.showNotification(
         `Routing: ${newMode === 'orthogonal' ? 'Orthogonal' : 'Bezier'}`,
         'info'
       );
+    }
+  }
+
+  /**
+   * Toggle between dark and light themes.
+   * Persists preference in localStorage and updates all UI elements.
+   */
+  handleToggleTheme() {
+    const isLight = document.body.classList.toggle('theme-light');
+    try { localStorage.setItem('fusion-theme', isLight ? 'light' : 'dark'); } catch (_) { /* CEF may block */ }
+    this._updateThemeButton(isLight);
+    if (window.pythonInterface) {
+      window.pythonInterface.showNotification(
+        `Theme: ${isLight ? 'Light' : 'Dark'}`, 'info'
+      );
+    }
+  }
+
+  /**
+   * Restore persisted theme preference on startup.
+   * Called during initialization.
+   */
+  applyPersistedTheme() {
+    let pref = 'dark';
+    try { pref = localStorage.getItem('fusion-theme') || 'dark'; } catch (_) { /* CEF may block */ }
+    const isLight = pref === 'light';
+    document.body.classList.toggle('theme-light', isLight);
+    this._updateThemeButton(isLight);
+  }
+
+  /** @private Update the theme toggle button icon and state. */
+  _updateThemeButton(isLight) {
+    const btn = document.getElementById('btn-theme-toggle');
+    if (!btn) return;
+    btn.classList.toggle('active', isLight);
+    const icon = btn.querySelector('.ribbon-icon-small');
+    if (icon) icon.textContent = isLight ? '☀️' : '🌙';
+    btn.title = isLight ? 'Switch to Dark Theme' : 'Switch to Light Theme';
+    const themeState = this.buttonStates.get('theme-toggle');
+    if (themeState) themeState.active = isLight;
+  }
+
+  /**
+   * Open the command palette via the coordinator.
+   */
+  handleOpenCommandPalette() {
+    if (window.SystemBlocksMain && window.SystemBlocksMain.openCommandPalette) {
+      window.SystemBlocksMain.openCommandPalette();
     }
   }
 

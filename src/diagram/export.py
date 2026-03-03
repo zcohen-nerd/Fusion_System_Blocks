@@ -1748,7 +1748,9 @@ def generate_pin_map_header(diagram: dict[str, Any]) -> str:
     pin_counter = 1
 
     for block in diagram.get("blocks", []):
-        block_name = block.get("name", "").upper().replace(" ", "_")
+        block_name = re.sub(r"[^A-Z0-9_]", "_", block.get("name", "").upper())
+        if block_name and block_name[0].isdigit():
+            block_name = "_" + block_name
         attributes = block.get("attributes", {})
 
         # Look for pin-related attributes
@@ -1766,7 +1768,9 @@ def generate_pin_map_header(diagram: dict[str, Any]) -> str:
         interfaces = block.get("interfaces", [])
         if interfaces and not any("pin" in attr.lower() for attr in attributes.keys()):
             for intf in interfaces:
-                intf_name = intf.get("name", "").upper().replace(" ", "_")
+                intf_name = re.sub(r"[^A-Z0-9_]", "_", intf.get("name", "").upper())
+                if intf_name and intf_name[0].isdigit():
+                    intf_name = "_" + intf_name
                 define_name = f"{block_name}_{intf_name}_PIN"
                 lines.append(f"#define {define_name} {pin_counter}")
                 pin_counter += 1
@@ -1790,9 +1794,14 @@ def _normalize_connections(diagram: dict[str, Any]) -> dict[str, Any]:
     if not conns:
         return diagram
 
-    # Fast check — if the first connection already has "from", skip
-    sample = conns[0]
-    if isinstance(sample.get("from"), dict):
+    # Check whether ANY connection needs conversion — do not short-
+    # circuit on the first element alone, since mixed-format lists
+    # (first nested, rest flat) would be skipped incorrectly.
+    needs_conversion = any(
+        not isinstance(c.get("from"), dict) and "fromBlock" in c
+        for c in conns
+    )
+    if not needs_conversion:
         return diagram
 
     # Need to convert — work on a shallow copy of the diagram
@@ -1802,9 +1811,15 @@ def _normalize_connections(diagram: dict[str, Any]) -> dict[str, Any]:
         c = dict(conn)
         # Convert fromBlock/toBlock to from.blockId/to.blockId
         if "fromBlock" in c and not isinstance(c.get("from"), dict):
-            c["from"] = {"blockId": c["fromBlock"]}
+            from_dict: dict[str, Any] = {"blockId": c["fromBlock"]}
+            if "fromPort" in c:
+                from_dict["interfaceId"] = c["fromPort"]
+            c["from"] = from_dict
         if "toBlock" in c and not isinstance(c.get("to"), dict):
-            c["to"] = {"blockId": c["toBlock"]}
+            to_dict: dict[str, Any] = {"blockId": c["toBlock"]}
+            if "toPort" in c:
+                to_dict["interfaceId"] = c["toPort"]
+            c["to"] = to_dict
         # Map 'type' to 'kind' (JS uses 'type', Python uses 'kind')
         if "kind" not in c and "type" in c:
             c["kind"] = c["type"]
@@ -2138,6 +2153,9 @@ def validate_imported_diagram(diagram: dict[str, Any]) -> tuple:
     # Check if diagram is empty
     if not diagram.get("blocks"):
         return False, "Diagram must contain at least one block"
+
+    # Normalise connections so both JS flat and Python nested formats work
+    diagram = _normalize_connections(diagram)
 
     # Check for duplicate block names
     block_names = [block.get("name", "") for block in diagram["blocks"]]

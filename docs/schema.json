@@ -33,6 +33,12 @@
             "enum": ["rectangle", "circle", "diamond", "hexagon", "parallelogram", "oval", "trapezoid", "cylinder", "cloud", "star"],
             "default": "rectangle"
           },
+          "rotation": {
+            "type": "integer",
+            "enum": [0, 90, 180, 270],
+            "default": 0,
+            "description": "Block rotation in degrees (clockwise)"
+          },
           "status": {
             "type": "string",
             "enum": ["Placeholder", "Planned", "In-Work", "Implemented", "Verified"]

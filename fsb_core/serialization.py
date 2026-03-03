@@ -20,6 +20,7 @@ from .models import (
     Graph,
     Group,
     NamedStub,
+    Page,
     Port,
     PortDirection,
     PortKind,
@@ -86,6 +87,7 @@ def graph_to_dict(graph: Graph) -> dict[str, Any]:
             "type": block.block_type,
             "x": block.x,
             "y": block.y,
+            "rotation": block.rotation,
             "status": block.status.value,
             "attributes": block.attributes,
             "links": block.links,
@@ -128,9 +130,11 @@ def graph_to_dict(graph: Graph) -> dict[str, Any]:
             "kind": conn.kind,
             "attributes": conn.attributes,
         }
+        if conn.route_mode:
+            conn_dict["routeMode"] = conn.route_mode
         connections_data.append(conn_dict)
 
-    return {
+    result = {
         "schema": graph.schema,
         "id": graph.id,
         "name": graph.name,
@@ -141,6 +145,11 @@ def graph_to_dict(graph: Graph) -> dict[str, Any]:
         "metadata": graph.metadata,
         "requirements": [_requirement_to_dict(r) for r in graph.requirements],
     }
+
+    if graph.pages:
+        result["pages"] = [_page_to_dict(p) for p in graph.pages]
+
+    return result
 
 
 def dict_to_graph(data: dict[str, Any]) -> Graph:
@@ -184,6 +193,10 @@ def dict_to_graph(data: dict[str, Any]) -> Graph:
     for stub_data in data.get("namedStubs", []):
         graph.named_stubs.append(_parse_named_stub(stub_data))
 
+    # Parse pages (multi-page diagrams)
+    for page_data in data.get("pages", []):
+        graph.pages.append(_parse_page(page_data))
+
     return graph
 
 
@@ -209,6 +222,7 @@ def _parse_block(data: dict[str, Any]) -> Block:
         block_type=data.get("type", data.get("block_type", "Generic")),
         x=data.get("x", 0),
         y=data.get("y", 0),
+        rotation=data.get("rotation", 0),
         status=status,
         attributes=data.get("attributes", {}),
         links=data.get("links", []),
@@ -310,6 +324,7 @@ def _parse_connection(data: dict[str, Any]) -> Connection:
         to_block_id=to_block_id,
         to_port_id=to_port_id,
         kind=data.get("kind", data.get("type", data.get("protocol", "data"))),
+        route_mode=data.get("routeMode"),
         attributes={
             **data.get("attributes", {}),
             **(
@@ -320,6 +335,21 @@ def _parse_connection(data: dict[str, Any]) -> Connection:
             **(
                 {"renderAsStub": data["renderAsStub"]}
                 if data.get("renderAsStub")
+                else {}
+            ),
+            **(
+                {"label": data["label"]}
+                if data.get("label")
+                else {}
+            ),
+            **(
+                {"labelOffset": data["labelOffset"]}
+                if data.get("labelOffset") is not None
+                else {}
+            ),
+            **(
+                {"labelOffsetY": data["labelOffsetY"]}
+                if data.get("labelOffsetY") is not None
                 else {}
             ),
         },
@@ -512,3 +542,93 @@ def _parse_named_stub(data: dict[str, Any]) -> NamedStub:
         stub_type=data.get("type", data.get("stub_type", "auto")),
         direction=data.get("direction", "forward"),
     )
+
+
+# ------------------------------------------------------------------
+# Page helpers
+# ------------------------------------------------------------------
+
+
+def _page_to_dict(page: Page) -> dict[str, Any]:
+    """Serialize a Page to dictionary.
+
+    Args:
+        page: The page to serialize.
+
+    Returns:
+        Dictionary representation.
+    """
+    # Reuse the block/connection serialization logic from graph_to_dict
+    blocks_data = []
+    for block in page.blocks:
+        block_dict: dict[str, Any] = {
+            "id": block.id,
+            "name": block.name,
+            "type": block.block_type,
+            "x": block.x,
+            "y": block.y,
+            "rotation": block.rotation,
+            "status": block.status.value,
+            "attributes": block.attributes,
+            "links": block.links,
+        }
+        interfaces_list: list[dict[str, Any]] = []
+        for port in block.ports:
+            interfaces_list.append({
+                "id": port.id,
+                "name": port.name,
+                "kind": port.kind.value,
+                "direction": port.direction.value,
+                "port": {"side": port.side, "index": port.index},
+                "params": port.params,
+            })
+        block_dict["interfaces"] = interfaces_list
+        if block.child_diagram_id:
+            block_dict["childDiagramId"] = block.child_diagram_id
+        blocks_data.append(block_dict)
+
+    connections_data = []
+    for conn in page.connections:
+        conn_dict = {
+            "id": conn.id,
+            "from": {"blockId": conn.from_block_id, "interfaceId": conn.from_port_id},
+            "to": {"blockId": conn.to_block_id, "interfaceId": conn.to_port_id},
+            "kind": conn.kind,
+            "attributes": conn.attributes,
+        }
+        if conn.route_mode:
+            conn_dict["routeMode"] = conn.route_mode
+        connections_data.append(conn_dict)
+
+    return {
+        "id": page.id,
+        "name": page.name,
+        "blocks": blocks_data,
+        "connections": connections_data,
+        "groups": [_group_to_dict(g) for g in page.groups],
+        "namedStubs": [_named_stub_to_dict(s) for s in page.named_stubs],
+    }
+
+
+def _parse_page(data: dict[str, Any]) -> Page:
+    """Parse a Page from dictionary data.
+
+    Args:
+        data: Page dictionary.
+
+    Returns:
+        Constructed Page instance.
+    """
+    page = Page(
+        id=data.get("id", ""),
+        name=data.get("name", "Page"),
+    )
+    for block_data in data.get("blocks", []):
+        page.blocks.append(_parse_block(block_data))
+    for conn_data in data.get("connections", []):
+        page.connections.append(_parse_connection(conn_data))
+    for group_data in data.get("groups", []):
+        page.groups.append(_parse_group(group_data))
+    for stub_data in data.get("namedStubs", []):
+        page.named_stubs.append(_parse_named_stub(stub_data))
+    return page
