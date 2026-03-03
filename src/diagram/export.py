@@ -1798,8 +1798,7 @@ def _normalize_connections(diagram: dict[str, Any]) -> dict[str, Any]:
     # circuit on the first element alone, since mixed-format lists
     # (first nested, rest flat) would be skipped incorrectly.
     needs_conversion = any(
-        not isinstance(c.get("from"), dict) and "fromBlock" in c
-        for c in conns
+        not isinstance(c.get("from"), dict) and "fromBlock" in c for c in conns
     )
     if not needs_conversion:
         return diagram

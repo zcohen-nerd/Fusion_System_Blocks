@@ -158,11 +158,7 @@ def _diff_list_by_id(
     # Removed items — iterate in reverse index order so that earlier
     # removals don't shift the indices of later ones.
     removed_indices = sorted(
-        (
-            old_map[item_id][0]
-            for item_id in old_map
-            if item_id not in new_map
-        ),
+        (old_map[item_id][0] for item_id in old_map if item_id not in new_map),
         reverse=True,
     )
     for idx in removed_indices:

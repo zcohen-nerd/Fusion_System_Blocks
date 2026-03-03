@@ -655,8 +655,7 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
 
             if operation in {"add", "replace"} and "value" not in op:
                 return (
-                    f"Invalid patch op at index {idx}: '{operation}' "
-                    "requires 'value'"
+                    f"Invalid patch op at index {idx}: '{operation}' requires 'value'"
                 )
 
         return None

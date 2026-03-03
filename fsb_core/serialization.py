@@ -337,11 +337,7 @@ def _parse_connection(data: dict[str, Any]) -> Connection:
                 if data.get("renderAsStub")
                 else {}
             ),
-            **(
-                {"label": data["label"]}
-                if data.get("label")
-                else {}
-            ),
+            **({"label": data["label"]} if data.get("label") else {}),
             **(
                 {"labelOffset": data["labelOffset"]}
                 if data.get("labelOffset") is not None
@@ -574,14 +570,16 @@ def _page_to_dict(page: Page) -> dict[str, Any]:
         }
         interfaces_list: list[dict[str, Any]] = []
         for port in block.ports:
-            interfaces_list.append({
-                "id": port.id,
-                "name": port.name,
-                "kind": port.kind.value,
-                "direction": port.direction.value,
-                "port": {"side": port.side, "index": port.index},
-                "params": port.params,
-            })
+            interfaces_list.append(
+                {
+                    "id": port.id,
+                    "name": port.name,
+                    "kind": port.kind.value,
+                    "direction": port.direction.value,
+                    "port": {"side": port.side, "index": port.index},
+                    "params": port.params,
+                }
+            )
         block_dict["interfaces"] = interfaces_list
         if block.child_diagram_id:
             block_dict["childDiagramId"] = block.child_diagram_id
