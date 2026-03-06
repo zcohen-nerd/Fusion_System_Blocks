@@ -262,6 +262,13 @@ class ShapePalette {
       el.classList.remove('sp-dragging');
     });
 
+    // Click to add block at viewport centre
+    el.addEventListener('click', (e) => {
+      // Ignore if this was the end of a drag gesture
+      if (el.classList.contains('sp-dragging')) return;
+      this._addBlockFromShape(item);
+    });
+
     return el;
   }
 
@@ -503,6 +510,58 @@ class ShapePalette {
 
       logger.info('ShapePalette: dropped block', block.id, shapeData.name);
     });
+  }
+
+  /**
+   * Add a block from a shape palette item at the centre of the current viewport.
+   * Called when the user clicks (not drags) a shape.
+   */
+  _addBlockFromShape(shapeData) {
+    const vb = this.editor.viewBox;
+    const bw = shapeData.width || 160;
+    const bh = shapeData.height || 100;
+    let cx = vb.x + vb.width / 2 - bw / 2;
+    let cy = vb.y + vb.height / 2 - bh / 2;
+
+    // Snap to grid
+    if (this.editor.snapToGridEnabled) {
+      const gs = this.editor.gridSize || 20;
+      cx = Math.round(cx / gs) * gs;
+      cy = Math.round(cy / gs) * gs;
+    }
+
+    const block = this.editor.addBlock({
+      name: shapeData.name || 'New Block',
+      type: shapeData.type || 'Generic',
+      shape: shapeData.shape || 'rectangle',
+      x: cx,
+      y: cy,
+      width: bw,
+      height: bh
+    });
+
+    this.renderer.renderBlock(block);
+    this.renderer.renderAllConnections();
+    this.editor.selectBlock(block.id);
+
+    // Push undo state
+    if (window.advancedFeatures && typeof window.advancedFeatures.saveState === 'function') {
+      window.advancedFeatures.saveState('Add block: ' + block.name);
+    }
+
+    // Hide empty canvas state
+    const emptyState = document.getElementById('empty-canvas-state');
+    if (emptyState) emptyState.style.display = 'none';
+
+    // Update minimap
+    if (window.minimapInstance) window.minimapInstance.scheduleRender();
+
+    // Notification
+    if (window.pythonInterface && typeof window.pythonInterface.showNotification === 'function') {
+      window.pythonInterface.showNotification('Added: ' + block.name, 'success');
+    }
+
+    logger.info('ShapePalette: click-added block', block.id, shapeData.name);
   }
 
   /**

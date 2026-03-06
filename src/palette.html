@@ -39,6 +39,8 @@
       color: var(--fusion-text-primary);
       overflow: hidden;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
     }
     
     /* === MILESTONE 10: ENHANCED HEADER STYLING === */
@@ -50,6 +52,7 @@
       flex-direction: column;
       position: relative;
       overflow: visible;
+      flex-shrink: 0;
     }
     
     header::before {
@@ -316,7 +319,8 @@
     }
     
     #canvas-container { 
-      height: calc(100% - 78px); 
+      flex: 1;
+      min-height: 0;
       position: relative;
       overflow: hidden;
       background: var(--fusion-bg-primary);
@@ -474,7 +478,7 @@
       gap: 8px;
       padding: 4px 6px;
       border-radius: var(--fusion-radius-small, 4px);
-      cursor: grab;
+      cursor: pointer;
       transition: background 0.15s;
       user-select: none;
     }
@@ -2931,11 +2935,10 @@
       </div>
       <div style="font-size:10px;color:var(--fusion-text-secondary);margin-bottom:6px;">Drag the title bar to move this panel</div>
       <div id="rule-checkboxes" style="margin-bottom:8px;">
+        <!-- Structural rules -->
+        <div style="font-size:10px;color:var(--fusion-text-secondary);text-transform:uppercase;letter-spacing:0.5px;padding:4px 0 2px;margin-top:2px;">Structural</div>
         <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
           <input type="checkbox" data-rule="connectivity" checked> Connectivity &mdash; orphaned blocks
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
-          <input type="checkbox" data-rule="implementation_completeness" checked> Implementation Status &mdash; placeholder blocks
         </label>
         <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
           <input type="checkbox" data-rule="unique_names" checked> Unique Names &mdash; duplicate block names
@@ -2946,13 +2949,41 @@
         <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
           <input type="checkbox" data-rule="named_blocks" checked> Named Blocks &mdash; default names
         </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="cycle_detection" checked> Cycle Detection &mdash; circular dependencies
+        </label>
+        <!-- Electrical rules -->
+        <div style="font-size:10px;color:var(--fusion-text-secondary);text-transform:uppercase;letter-spacing:0.5px;padding:4px 0 2px;margin-top:4px;">Electrical</div>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="logic_level_compatibility" checked> Logic Level &mdash; voltage mismatches
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="power_budget" checked> Power Budget &mdash; supply vs consumption
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="protocol_compatibility" checked> Protocol Compatibility &mdash; SPI/I2C/UART matching
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="connection_direction" checked> Connection Direction &mdash; output&#x2192;output / input&#x2192;input
+        </label>
+        <!-- Completeness rules -->
+        <div style="font-size:10px;color:var(--fusion-text-secondary);text-transform:uppercase;letter-spacing:0.5px;padding:4px 0 2px;margin-top:4px;">Completeness</div>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="dangling_interfaces"> Dangling Interfaces &mdash; unconnected ports
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="implementation_completeness" checked> Implementation Status &mdash; placeholder blocks
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:12px;">
+          <input type="checkbox" data-rule="missing_required_attributes" checked> Required Attributes &mdash; missing Manufacturer/Part Number
+        </label>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:8px;">
         <button id="rule-run-btn" class="fusion-button primary" style="flex:1;padding:4px 8px;font-size:12px;">&#9654; Run Selected</button>
         <button id="rule-select-all-btn" class="fusion-button" style="padding:4px 8px;font-size:12px;">All</button>
         <button id="rule-select-none-btn" class="fusion-button" style="padding:4px 8px;font-size:12px;">None</button>
       </div>
-      <div id="rule-results" style="max-height:150px;overflow-y:auto;"></div>
+      <div id="rule-results" style="max-height:220px;overflow-y:auto;"></div>
     </div>
   </div>
   
@@ -4679,6 +4710,7 @@
       position: sticky;
       top: 0;
       z-index: var(--z-fixed, 500);
+      flex-shrink: 0;
     }
 
     .sb-tabbar .sb-tab {
