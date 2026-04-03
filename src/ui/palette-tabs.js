@@ -2,6 +2,9 @@
 (function () {
   const q = (sel) => document.querySelector(sel);
   const qa = (sel) => Array.from(document.querySelectorAll(sel));
+  const logger = window.getSystemBlocksLogger
+    ? window.getSystemBlocksLogger()
+    : console;
 
   // _escapeHtml is provided by utils/html-utils.js (loaded before this module)
 
@@ -108,29 +111,39 @@
       b.addEventListener('keydown', onKeydownTab);
     });
 
-    const bNew = q('#action-new');
-    if (bNew) bNew.addEventListener('click', () => {
-      if (window.diagramEditor && typeof window.diagramEditor.createEmptyDiagram === 'function') {
-        const empty = window.diagramEditor.createEmptyDiagram();
-        window.diagramEditor.importDiagram(JSON.stringify(empty));
-        updateHealth('New diagram');
+    // Reuse toolbar actions so Home-tab buttons cannot drift from the
+    // confirmation, history-reset, and breadcrumb logic.
+    const invokeToolbarAction = (methodName, onSuccess) => {
+      const toolbar = window.toolbarManager;
+      if (!toolbar || typeof toolbar[methodName] !== 'function') {
+        logger.warn('Toolbar action unavailable:', methodName);
+        return;
       }
+
+      Promise.resolve(toolbar[methodName]())
+        .then((result) => {
+          if (result === false) return;
+          if (typeof onSuccess === 'function') onSuccess();
+        })
+        .catch((error) => {
+          logger.error('Toolbar action failed:', methodName, error);
+        });
+    };
+
+    const bNew = q('#action-new');
+    if (bNew) bNew.addEventListener('click', () => invokeToolbarAction('handleNewDiagram', () => {
+      updateHealth('New diagram');
       setActiveTab('diagram');
-    });
+    }));
 
     const bLoad = q('#action-load');
-    if (bLoad) bLoad.addEventListener('click', () => {
-      if (window.pythonInterface) {
-        window.pythonInterface.loadDiagram().then(() => setActiveTab('diagram'));
-      }
-    });
+    if (bLoad) bLoad.addEventListener('click', () => invokeToolbarAction('handleLoad', () => {
+      updateHealth('Diagram loaded');
+      setActiveTab('diagram');
+    }));
 
     const bSave = q('#action-save');
-    if (bSave) bSave.addEventListener('click', () => {
-      if (window.pythonInterface) {
-        window.pythonInterface.saveDiagram().then(updateLastSaved);
-      }
-    });
+    if (bSave) bSave.addEventListener('click', () => invokeToolbarAction('handleSave', updateLastSaved));
 
     const autosaveToggle = q('#toggle-autosave');
     if (autosaveToggle) {
@@ -323,6 +336,17 @@
       });
     });
   }
+
+  // Expose the history renderer so the bridge can refresh persisted
+  // snapshots after save/load/restore without duplicating UI logic.
+  window.renderSnapshotList = renderSnapshotList;
+  window.refreshSnapshotListFromBackend = function () {
+    if (!window.pythonInterface) return Promise.resolve([]);
+    return window.pythonInterface.listSnapshots().then((snapshots) => {
+      renderSnapshotList(snapshots);
+      return snapshots;
+    }).catch(() => []);
+  };
 
   function renderValidationResults(results) {
     const list = q('#validation-results');

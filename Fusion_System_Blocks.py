@@ -21,11 +21,11 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 # Import the core library for validation and action planning (hard dependency)
-from fsb_core.bridge_actions import BridgeAction, BridgeEvent
-from fsb_core.delta import apply_patch, is_trivial_patch
-from fsb_core.requirements import validate_requirements
-from fsb_core.serialization import dict_to_graph
-from fsb_core.version_control import SnapshotStore
+from fsb_core.bridge_actions import BridgeAction, BridgeEvent  # noqa: E402
+from fsb_core.delta import apply_patch, is_trivial_patch  # noqa: E402
+from fsb_core.requirements import validate_requirements  # noqa: E402
+from fsb_core.serialization import dict_to_graph  # noqa: E402
+from fsb_core.version_control import SnapshotStore  # noqa: E402
 
 # Import logging utilities
 try:
@@ -57,8 +57,11 @@ except ImportError:
 APP = adsk.core.Application.get()
 UI = APP.userInterface
 ATTR_GROUP = "systemBlocks"
+SNAPSHOT_ATTR_NAME = "snapshots"
 
-_handlers = []  # keep event handlers alive
+# Keep handler references on the owning Fusion object so command-scoped
+# handlers are released with the command instead of leaking for the full session.
+_handler_fallback_refs: dict[int, list[Any]] = {}
 
 # Pending CAD link data — stored when sendInfoToHTML may arrive
 # before the palette web-view is ready after being restored.
@@ -66,6 +69,214 @@ _pending_cad_link: dict | None = None
 
 # Global snapshot store for version control (Issue #31)
 _snapshot_store = SnapshotStore(max_snapshots=50)
+
+
+def _log_runtime_error(message: str, exc: Exception | None = None) -> None:
+    """Log backend errors to both the add-in logger and Fusion, when available."""
+    if LOGGING_AVAILABLE:
+        if exc is None:
+            _logger.error(message)
+        else:
+            _logger.exception("%s: %s", message, exc)
+
+    try:
+        if APP and hasattr(APP, "log"):
+            APP.log(f"[FusionSystemBlocks] {message}")
+    except Exception:
+        pass
+
+
+def _retain_handler(owner: Any, handler: Any) -> Any:
+    """Keep a handler alive for the lifetime of its owning Fusion object."""
+    if owner is None or handler is None:
+        return handler
+
+    try:
+        handlers = getattr(owner, "_system_blocks_handlers", None)
+        if handlers is None:
+            handlers = []
+            setattr(owner, "_system_blocks_handlers", handlers)
+        handlers.append(handler)
+    except Exception:
+        # Some Fusion proxy objects reject Python attributes; fall back to a
+        # per-owner registry and clear it on the owner's destroy event.
+        _handler_fallback_refs.setdefault(id(owner), []).append(handler)
+    return handler
+
+
+def _release_handlers(owner: Any) -> None:
+    """Drop retained handlers when their owner command or UI object is done."""
+    if owner is None:
+        return
+
+    try:
+        handlers = getattr(owner, "_system_blocks_handlers", None)
+        if handlers is not None:
+            handlers.clear()
+    except Exception:
+        pass
+
+    _handler_fallback_refs.pop(id(owner), None)
+
+
+def _bridge_event_name(event_type: BridgeEvent | str) -> str:
+    """Normalize bridge event names to the canonical payload.type string."""
+    return event_type.value if isinstance(event_type, BridgeEvent) else str(event_type)
+
+
+def _send_bridge_event(
+    event_type: BridgeEvent | str,
+    data: dict[str, Any] | None = None,
+) -> bool:
+    """Send a structured Python → JS event payload through Fusion's bridge."""
+    event_name = _bridge_event_name(event_type)
+
+    try:
+        palette = UI.palettes.itemById("SystemBlocksPalette")
+    except Exception:
+        palette = None
+
+    if not palette:
+        return False
+
+    payload = {
+        "type": event_name,
+        "data": data or {},
+    }
+    palette.sendInfoToHTML(event_name, json.dumps(payload))
+    return True
+
+
+def _snapshot_attr_name(slug: str | None = None) -> str:
+    """Return the Fusion attribute name for the current snapshot scope."""
+    if slug:
+        return f"{SNAPSHOT_ATTR_NAME}_{_slug_from_label(slug)}"
+    return SNAPSHOT_ATTR_NAME
+
+
+def _load_snapshot_store(slug: str | None = None) -> SnapshotStore:
+    """Restore persisted snapshots for the current Fusion document scope."""
+    root_comp = get_root_component()
+    if not root_comp:
+        return SnapshotStore(max_snapshots=50)
+
+    attr_name = _snapshot_attr_name(slug)
+
+    try:
+        for attr in root_comp.attributes:
+            if attr.groupName == ATTR_GROUP and attr.name == attr_name:
+                data = json.loads(attr.value)
+                if isinstance(data, list):
+                    return SnapshotStore.from_list(data, max_snapshots=50)
+                break
+    except Exception as exc:
+        _log_runtime_error(
+            f"Failed to load snapshot store for scope '{attr_name}'",
+            exc,
+        )
+
+    return SnapshotStore(max_snapshots=50)
+
+
+def _persist_snapshot_store(slug: str | None = None) -> bool:
+    """Persist the current snapshot store with the active Fusion document."""
+    root_comp = get_root_component()
+    if not root_comp:
+        return False
+
+    attr_name = _snapshot_attr_name(slug)
+    attrs = root_comp.attributes
+
+    try:
+        for attr in attrs:
+            if attr.groupName == ATTR_GROUP and attr.name == attr_name:
+                attr.deleteMe()
+                break
+
+        # Persist snapshots alongside the document so version history survives
+        # add-in reloads and document switches.
+        attrs.add(ATTR_GROUP, attr_name, json.dumps(_snapshot_store.to_list()))
+        return True
+    except Exception as exc:
+        _log_runtime_error(
+            f"Failed to persist snapshot store for scope '{attr_name}'",
+            exc,
+        )
+        return False
+
+
+def _iter_documents() -> list[Any]:
+    """Enumerate open Fusion documents across API variants."""
+    documents = getattr(APP, "documents", None)
+    if not documents:
+        return []
+
+    try:
+        count = getattr(documents, "count", None)
+        if isinstance(count, int) and hasattr(documents, "item"):
+            return [documents.item(index) for index in range(count)]
+    except Exception:
+        pass
+
+    try:
+        return list(documents)
+    except Exception:
+        return []
+
+
+def _resolve_design_for_doc(doc_id: str) -> adsk.fusion.Design | None:
+    """Resolve a Fusion design by document ID, with active-product fallback."""
+    normalized_doc_id = str(doc_id or "").strip()
+
+    if normalized_doc_id:
+        for document in _iter_documents():
+            try:
+                data_file = getattr(document, "dataFile", None)
+                if not data_file or getattr(data_file, "id", "") != normalized_doc_id:
+                    continue
+
+                products = getattr(document, "products", None)
+                if products and hasattr(products, "itemByProductType"):
+                    product = products.itemByProductType("DesignProductType")
+                    design = adsk.fusion.Design.cast(product)
+                    if design:
+                        return design
+
+                if getattr(APP, "activeDocument", None) != document and hasattr(
+                    document,
+                    "activate",
+                ):
+                    document.activate()
+                    try:
+                        adsk.doEvents()
+                    except Exception:
+                        pass
+
+                design = adsk.fusion.Design.cast(APP.activeProduct)
+                if design:
+                    return design
+            except Exception as exc:
+                _log_runtime_error(
+                    f"Failed to inspect Fusion document '{normalized_doc_id}'",
+                    exc,
+                )
+
+        _log_runtime_error(
+            f"Document '{normalized_doc_id}' not found; falling back to active design"
+        )
+
+    return adsk.fusion.Design.cast(APP.activeProduct)
+
+
+class CommandScopeCleanupHandler(adsk.core.CommandEventHandler):
+    """Release retained command handlers when the Fusion command is destroyed."""
+
+    def __init__(self, owner: Any):
+        super().__init__()
+        self._owner = owner
+
+    def notify(self, args):
+        _release_handlers(self._owner)
 
 
 def send_palette_notification(message: str, level: str = "info") -> None:
@@ -76,20 +287,12 @@ def send_palette_notification(message: str, level: str = "info") -> None:
         level: The severity level ('info', 'success', 'warning', 'error').
     """
 
-    try:
-        palette = UI.palettes.itemById("SystemBlocksPalette")
-    except Exception:
-        palette = None
+    if _send_bridge_event(
+        BridgeEvent.NOTIFICATION,
+        {"message": message, "level": level},
+    ):
+        return
 
-    if palette:
-        script = (
-            "if(window.pythonInterface && "
-            "typeof window.pythonInterface.showNotification === 'function'){"
-            f"window.pythonInterface.showNotification({json.dumps(message)}, "
-            f"{json.dumps(level)});"
-            "}"
-        )
-        palette.sendInfoToHTML(BridgeEvent.NOTIFICATION, script)
     else:
         UI.messageBox(message)
 
@@ -390,56 +593,6 @@ def delete_named_diagram(slug: str) -> bool:
         return False
 
 
-def select_occurrence_for_linking():
-    """Allow user to select a Fusion occurrence for CAD linking."""
-    try:
-        # Create selection input
-        selectionInput = UI.createSelectionInput(
-            "selectOccurrence",
-            "Select Component",
-            "Select the component to link to this block",
-        )
-        selectionInput.addSelectionFilter("Occurrences")
-        selectionInput.setSelectionLimits(1, 1)
-
-        # Get the selection
-        result = UI.commandDefinitions.itemById("SelectOccurrenceCommand")
-        if not result:
-            UI.commandDefinitions.addButtonDefinition(
-                "SelectOccurrenceCommand",
-                "Select Component",
-                "Select a component to link",
-            )
-
-        # Create and show selection dialog
-        selection = UI.selectEntity(
-            "Select the component to link to this block", "Occurrences"
-        )
-
-        if selection:
-            occurrence = adsk.fusion.Occurrence.cast(selection)
-            if occurrence:
-                doc_file = None
-                if APP.activeDocument:
-                    doc_file = APP.activeDocument.dataFile
-
-                return {
-                    "type": "CAD",
-                    "occToken": occurrence.entityToken,
-                    "name": occurrence.name,
-                    "docId": doc_file.id if doc_file else None,
-                }
-
-        return None
-
-    except Exception as e:
-        send_palette_notification(
-            f"Failed to select occurrence: {str(e)}",
-            level="error",
-        )
-        return None
-
-
 class DiagnosticsCommandHandler(adsk.core.CommandCreatedEventHandler):
     """Handler for the Run Diagnostics command.
 
@@ -456,9 +609,14 @@ class DiagnosticsCommandHandler(adsk.core.CommandCreatedEventHandler):
                 _logger.debug("DiagnosticsCommandHandler.notify() called")
 
             command = args.command
-            onExecute = DiagnosticsExecuteHandler()
-            command.execute.add(onExecute)
-            _handlers.append(onExecute)
+            # Keep execute handlers attached to the command lifetime.
+            on_execute = DiagnosticsExecuteHandler()
+            command.execute.add(on_execute)
+            _retain_handler(command, on_execute)
+
+            cleanup_handler = CommandScopeCleanupHandler(command)
+            command.destroy.add(cleanup_handler)
+            _retain_handler(command, cleanup_handler)
 
         except Exception as e:
             if LOGGING_AVAILABLE:
@@ -503,10 +661,14 @@ class SystemBlocksPaletteShowCommandHandler(adsk.core.CommandCreatedEventHandler
             # Get the command created event args
             command = args.command
 
-            # Add a command execute handler
-            onExecute = CommandExecuteHandler()
-            command.execute.add(onExecute)
-            _handlers.append(onExecute)
+            # Keep execute handlers attached to the command lifetime.
+            on_execute = CommandExecuteHandler()
+            command.execute.add(on_execute)
+            _retain_handler(command, on_execute)
+
+            cleanup_handler = CommandScopeCleanupHandler(command)
+            command.destroy.add(cleanup_handler)
+            _retain_handler(command, cleanup_handler)
 
             if LOGGING_AVAILABLE:
                 _logger.debug("CommandExecuteHandler added successfully")
@@ -594,10 +756,16 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         json_data = data.get("diagram", "{}")
         success = save_diagram_json(json_data)
         if success:
-            return {"success": True}
+            _persist_snapshot_store()
+            return {
+                "success": True,
+                "snapshots": _snapshot_store.list_snapshots(),
+            }
         return {"success": False, "error": "Diagram validation or save failed"}
 
     def _handle_load_diagram(self, data: dict[str, Any]) -> dict[str, Any]:
+        global _snapshot_store
+
         diagram_json = load_diagram_json()
         if diagram_json:
             try:
@@ -611,7 +779,14 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
                 diagram_dict = diagram_data.create_empty_diagram()
         else:
             diagram_dict = diagram_data.create_empty_diagram()
-        return {"success": True, "diagram": diagram_dict}
+
+        # Reload persisted history whenever the active diagram is opened.
+        _snapshot_store = _load_snapshot_store()
+        return {
+            "success": True,
+            "diagram": diagram_dict,
+            "snapshots": _snapshot_store.list_snapshots(),
+        }
 
     def _validate_patch_ops(self, patch: list[Any]) -> str | None:
         """Validate patch operation structure and allowed target roots.
@@ -863,19 +1038,24 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         resolved_slug = _slug_from_label(slug) if slug else _slug_from_label(label)
         ok = save_named_diagram(label, json_data, slug=resolved_slug)
         if ok:
+            _persist_snapshot_store(resolved_slug)
             # Keep the default open/load slot in sync with the latest saved
             # named document so plain "Open" returns the newest content.
             save_diagram_json(json_data)
+            _persist_snapshot_store()
             return {
                 "success": True,
                 "documents": list_named_diagrams(),
                 "slug": resolved_slug,
                 "label": label,
+                "snapshots": _snapshot_store.list_snapshots(),
             }
         return {"success": False, "error": "Save failed"}
 
     def _handle_load_named_diagram(self, data: dict[str, Any]) -> dict[str, Any]:
         """Load a named diagram by slug."""
+        global _snapshot_store
+
         slug = data.get("slug", "")
         json_str = load_named_diagram(slug)
         if json_str:
@@ -883,6 +1063,7 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
                 diagram = json.loads(json_str)
             except json.JSONDecodeError:
                 diagram = diagram_data.create_empty_diagram()
+            _snapshot_store = _load_snapshot_store(slug)
             docs = list_named_diagrams()
             existing = next((d for d in docs if d.get("slug") == slug), None)
             label = existing.get("label", slug) if existing else slug
@@ -891,6 +1072,7 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
                 "diagram": diagram,
                 "slug": slug,
                 "label": label,
+                "snapshots": _snapshot_store.list_snapshots(),
             }
         return {"success": False, "error": "Document not found"}
 
@@ -933,6 +1115,8 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         """Create a version-control snapshot of the current diagram."""
         global _snapshot_store
         try:
+            slug = str(data.get("slug", "") or "").strip() or None
+            _snapshot_store = _load_snapshot_store(slug)
             diagram_json = data.get("diagram", "{}")
             diagram = (
                 diagram_json
@@ -943,6 +1127,7 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             author = data.get("author", "")
             description = data.get("description", "")
             snap = _snapshot_store.add(graph, author=author, description=description)
+            _persist_snapshot_store(slug)
             return {
                 "success": True,
                 "snapshotId": snap.id,
@@ -957,6 +1142,8 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
     def _handle_list_snapshots(self, data: dict[str, Any]) -> dict[str, Any]:
         """Return the list of stored snapshots."""
         global _snapshot_store
+        slug = str(data.get("slug", "") or "").strip() or None
+        _snapshot_store = _load_snapshot_store(slug)
         return {
             "success": True,
             "snapshots": _snapshot_store.list_snapshots(),
@@ -965,13 +1152,19 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
     def _handle_restore_snapshot(self, data: dict[str, Any]) -> dict[str, Any]:
         """Restore the diagram to a previous snapshot."""
         global _snapshot_store
+        slug = str(data.get("slug", "") or "").strip() or None
+        _snapshot_store = _load_snapshot_store(slug)
         snapshot_id = data.get("snapshotId", "")
         try:
             graph = _snapshot_store.restore(snapshot_id)
             from fsb_core.serialization import graph_to_dict
 
             diagram = graph_to_dict(graph)
-            return {"success": True, "diagram": diagram}
+            return {
+                "success": True,
+                "diagram": diagram,
+                "snapshots": _snapshot_store.list_snapshots(),
+            }
         except KeyError as exc:
             return {"success": False, "error": str(exc)}
         except Exception as exc:
@@ -983,6 +1176,8 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
     def _handle_compare_snapshots(self, data: dict[str, Any]) -> dict[str, Any]:
         """Compare two snapshots and return a structured diff."""
         global _snapshot_store
+        slug = str(data.get("slug", "") or "").strip() or None
+        _snapshot_store = _load_snapshot_store(slug)
         old_id = data.get("oldId", "")
         new_id = data.get("newId", "")
         try:
@@ -1036,9 +1231,9 @@ def _create_palette() -> adsk.core.Palette | None:
         )
 
         # Add HTML event handler
-        onHTMLEvent = PaletteHTMLEventHandler()
-        palette.incomingFromHTML.add(onHTMLEvent)
-        _handlers.append(onHTMLEvent)
+        on_html_event = PaletteHTMLEventHandler()
+        palette.incomingFromHTML.add(on_html_event)
+        _retain_handler(palette, on_html_event)
 
         return palette
     except Exception as e:
@@ -1161,7 +1356,8 @@ def get_component_info_from_fusion(doc_id, occ_token):
         Dictionary with component information or None if not found
     """
     try:
-        design = adsk.fusion.Design.cast(APP.activeProduct)
+        # Respect the stored document ID first so links survive document switches.
+        design = _resolve_design_for_doc(doc_id)
         if not design:
             return None
 
@@ -1287,6 +1483,7 @@ def start_cad_selection(block_id, block_name):
         # current block_id / block_name.
         old_cmd = UI.commandDefinitions.itemById("selectCADForBlock")
         if old_cmd:
+            _release_handlers(old_cmd)
             old_cmd.deleteMe()
 
         selection_cmd = UI.commandDefinitions.addButtonDefinition(
@@ -1298,7 +1495,7 @@ def start_cad_selection(block_id, block_name):
         # Set up command handler
         handler = CADSelectionHandler(block_id, block_name)
         selection_cmd.commandCreated.add(handler)
-        _handlers.append(handler)
+        _retain_handler(selection_cmd, handler)
 
         # Execute the command
         selection_cmd.execute()
@@ -1336,14 +1533,14 @@ class CADSelectionHandler(adsk.core.CommandCreatedEventHandler):
                 self.block_name,
             )
             cmd.execute.add(execute_handler)
-            _handlers.append(execute_handler)
+            _retain_handler(cmd, execute_handler)
 
             # Destroy handler fires on Cancel/Escape AND after Execute,
             # guaranteeing palette is restored regardless of how the
             # command ends.
-            destroy_handler = CADSelectionDestroyHandler()
+            destroy_handler = CADSelectionDestroyHandler(cmd)
             cmd.destroy.add(destroy_handler)
-            _handlers.append(destroy_handler)
+            _retain_handler(cmd, destroy_handler)
 
         except Exception as e:
             notify_error(f"CAD selection setup failed: {str(e)}")
@@ -1356,6 +1553,10 @@ class CADSelectionDestroyHandler(adsk.core.CommandEventHandler):
     and error — so the palette is never left hidden.
     """
 
+    def __init__(self, owner: Any):
+        super().__init__()
+        self._owner = owner
+
     def notify(self, args):
         try:
             palette = UI.palettes.itemById("SystemBlocksPalette")
@@ -1363,6 +1564,8 @@ class CADSelectionDestroyHandler(adsk.core.CommandEventHandler):
                 palette.isVisible = True
         except Exception:
             pass  # best-effort palette restore
+        finally:
+            _release_handlers(self._owner)
 
 
 class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
@@ -1394,9 +1597,8 @@ class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
         except Exception:
             pass
 
-        # Send the JSON data directly — fusionJavaScriptHandler on
-        # the JS side now routes "cad-link" to handleCADLinkPayload.
-        palette.sendInfoToHTML(BridgeEvent.CAD_LINK, json.dumps(payload))
+        # Send a structured payload so the JS bridge routes by payload.type.
+        _send_bridge_event(BridgeEvent.CAD_LINK, payload)
 
     def notify(self, args):
         try:
@@ -1471,23 +1673,6 @@ class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
                     palette.isVisible = True
             except Exception:
                 pass  # palette restore is best-effort
-
-
-def start_enhanced_cad_selection(block_id, block_name):
-    """
-    Start enhanced CAD component selection process.
-
-    Args:
-        block_id: ID of the block to link
-        block_name: Name of the block
-    """
-    try:
-        # For now, use the existing CAD selection process
-        # In the future, this could be enhanced with additional property collection
-        start_cad_selection(block_id, block_name)
-
-    except Exception as e:
-        notify_error(f"Enhanced CAD selection error: {str(e)}")
 
 
 # ============================================================================
@@ -1714,15 +1899,13 @@ def generate_live_thumbnail(block_id, view_angle, size):
 
         save_diagram_json(json.dumps(diagram_data_obj))
 
-        # Notify JavaScript that thumbnail was updated
-        palette = UI.palettes.itemById("SystemBlocksPalette")
-        if palette:
-            script = (
-                "if(editor) { "
-                f"editor.onThumbnailUpdated({json.dumps(block_id)}, {json.dumps(thumbnail_data)});"
-                " }"
-            )
-            palette.sendInfoToHTML(BridgeEvent.THUMBNAIL_UPDATED, script)
+        _send_bridge_event(
+            BridgeEvent.THUMBNAIL_UPDATE,
+            {
+                "blockId": block_id,
+                "thumbnailData": thumbnail_data,
+            },
+        )
 
     except Exception as e:
         notify_error(f"Live thumbnail error: {str(e)}")
@@ -1739,37 +1922,16 @@ def generate_assembly_sequence_from_diagram(diagram):
         # Generate assembly sequence using diagram_data
         assembly_sequence = diagram_data.generate_assembly_sequence(diagram)
 
-        # Send response to JavaScript
-        palette = UI.palettes.itemById("SystemBlocksPalette")
-        if palette:
-            sequence_payload = json.dumps(assembly_sequence)
-            script = (
-                "if(editor && editor.displayAssemblySequence) { "
-                f"editor.displayAssemblySequence({sequence_payload});"
-                " }"
-            )
-            palette.sendInfoToHTML(BridgeEvent.ASSEMBLY_SEQUENCE, script)
+        _send_bridge_event(
+            BridgeEvent.BOM_UPDATE,
+            {
+                "kind": "assembly-sequence",
+                "sequence": assembly_sequence,
+            },
+        )
 
     except Exception as e:
-        # Send error response
-        palette = UI.palettes.itemById("SystemBlocksPalette")
-        if palette:
-            error_message = f"Assembly sequence error: {str(e)}"
-            safe_message = json.dumps(error_message)
-            script = (
-                "(function(){"
-                "var getter = window.getSystemBlocksLogger;"
-                "var logger = typeof getter === 'function' ? getter() : "
-                "(window.SystemBlocksLogger || null);"
-                f"var message = {safe_message};"
-                "if (logger && typeof logger.error === 'function') {"
-                "logger.error(message);"
-                "return;"
-                "}"
-                "if (window.alert) { window.alert(message); }"
-                "})();"
-            )
-            palette.sendInfoToHTML(BridgeEvent.ASSEMBLY_ERROR, script)
+        notify_error(f"Assembly sequence error: {str(e)}")
 
 
 def generate_living_bom_from_diagram(diagram):
@@ -1783,37 +1945,16 @@ def generate_living_bom_from_diagram(diagram):
         # Generate living BOM using diagram_data
         living_bom = diagram_data.generate_living_bom(diagram)
 
-        # Send response to JavaScript
-        palette = UI.palettes.itemById("SystemBlocksPalette")
-        if palette:
-            bom_payload = json.dumps(living_bom)
-            script = (
-                "if(editor && editor.displayLivingBOM) { "
-                f"editor.displayLivingBOM({bom_payload});"
-                " }"
-            )
-            palette.sendInfoToHTML(BridgeEvent.LIVING_BOM, script)
+        _send_bridge_event(
+            BridgeEvent.BOM_UPDATE,
+            {
+                "kind": "living-bom",
+                "bom": living_bom,
+            },
+        )
 
     except Exception as e:
-        # Send error response
-        palette = UI.palettes.itemById("SystemBlocksPalette")
-        if palette:
-            error_message = f"Living BOM error: {str(e)}"
-            safe_message = json.dumps(error_message)
-            script = (
-                "(function(){"
-                "var getter = window.getSystemBlocksLogger;"
-                "var logger = typeof getter === 'function' ? getter() : "
-                "(window.SystemBlocksLogger || null);"
-                f"var message = {safe_message};"
-                "if (logger && typeof logger.error === 'function') {"
-                "logger.error(message);"
-                "return;"
-                "}"
-                "if (window.alert) { window.alert(message); }"
-                "})();"
-            )
-            palette.sendInfoToHTML(BridgeEvent.BOM_ERROR, script)
+        notify_error(f"Living BOM error: {str(e)}")
 
 
 def generate_service_manual_for_block(block_id, diagram):
@@ -1852,12 +1993,7 @@ def generate_service_manual_for_block(block_id, diagram):
             "generatedAt": datetime.now().isoformat(),
         }
 
-        # Send to JavaScript
-        palette = UI.palettes.itemById("SystemBlocksPalette")
-        if palette:
-            payload = json.dumps(service_manual)
-            script = f"if(editor) {{ editor.displayServiceManual({payload}); }}"
-            palette.sendInfoToHTML(BridgeEvent.SERVICE_MANUAL, script)
+        _send_bridge_event(BridgeEvent.SERVICE_MANUAL_UPDATE, service_manual)
 
     except Exception as e:
         notify_error(f"Service manual error: {str(e)}")
@@ -1877,16 +2013,7 @@ def analyze_change_impact_for_block(block_id, diagram):
             diagram, block_id, "User-initiated analysis"
         )
 
-        # Send to JavaScript
-        palette = UI.palettes.itemById("SystemBlocksPalette")
-        if palette:
-            impact_payload = json.dumps(impact_analysis)
-            script = (
-                "if(editor && editor.displayChangeImpact) { "
-                f"editor.displayChangeImpact({impact_payload});"
-                " }"
-            )
-            palette.sendInfoToHTML(BridgeEvent.CHANGE_IMPACT, script)
+        _send_bridge_event(BridgeEvent.CHANGE_IMPACT, impact_analysis)
 
     except Exception as e:
         notify_error(f"Change impact analysis error: {str(e)}")
@@ -1991,9 +2118,9 @@ def run(context):
             )
 
         # Create the event handler
-        onCommandCreated = SystemBlocksPaletteShowCommandHandler()
-        cmdDef.commandCreated.add(onCommandCreated)
-        _handlers.append(onCommandCreated)
+        on_command_created = SystemBlocksPaletteShowCommandHandler()
+        cmdDef.commandCreated.add(on_command_created)
+        _retain_handler(cmdDef, on_command_created)
 
         if LOGGING_AVAILABLE:
             _logger.info(
@@ -2028,9 +2155,9 @@ def run(context):
             )
 
             # Add HTML event handler
-            onHTMLEvent = PaletteHTMLEventHandler()
-            palette.incomingFromHTML.add(onHTMLEvent)
-            _handlers.append(onHTMLEvent)
+            on_html_event = PaletteHTMLEventHandler()
+            palette.incomingFromHTML.add(on_html_event)
+            _retain_handler(palette, on_html_event)
 
             if LOGGING_AVAILABLE:
                 _logger.info("Palette created: SystemBlocksPalette")
@@ -2044,9 +2171,9 @@ def run(context):
                 "Run self-tests to verify add-in health",
             )
 
-        onDiagCreated = DiagnosticsCommandHandler()
-        diagCmdDef.commandCreated.add(onDiagCreated)
-        _handlers.append(onDiagCreated)
+        on_diag_created = DiagnosticsCommandHandler()
+        diagCmdDef.commandCreated.add(on_diag_created)
+        _retain_handler(diagCmdDef, on_diag_created)
 
         if LOGGING_AVAILABLE:
             _logger.info(
@@ -2058,9 +2185,12 @@ def run(context):
 
         # Register workspace activation handler so toolbar controls
         # are re-added when the user switches workspaces.
-        onWorkspaceActivated = WorkspaceActivatedHandler()
-        UI.workspaceActivated.add(onWorkspaceActivated)
-        _handlers.append(onWorkspaceActivated)
+        on_workspace_activated = WorkspaceActivatedHandler()
+        UI.workspaceActivated.add(on_workspace_activated)
+        _retain_handler(UI, on_workspace_activated)
+
+        global _snapshot_store
+        _snapshot_store = _load_snapshot_store()
 
         if LOGGING_AVAILABLE:
             _logger.info("=" * 60)
@@ -2097,14 +2227,15 @@ def stop(context):
             except Exception:
                 pass
 
-        # Clean up UI elements
         cmdDef = UI.commandDefinitions.itemById("SystemBlocksPaletteShowCommand")
         if cmdDef:
+            _release_handlers(cmdDef)
             cmdDef.deleteMe()
 
         # Clean up diagnostics command
         diagCmdDef = UI.commandDefinitions.itemById("SystemBlocksDiagnosticsCommand")
         if diagCmdDef:
+            _release_handlers(diagCmdDef)
             diagCmdDef.deleteMe()
 
         # Remove from workspace
@@ -2130,10 +2261,11 @@ def stop(context):
         # Remove palette
         palette = UI.palettes.itemById("SystemBlocksPalette")
         if palette:
+            _release_handlers(palette)
             palette.deleteMe()
 
-        # Clear handlers
-        _handlers.clear()
+        _release_handlers(UI)
+        _handler_fallback_refs.clear()
 
         if LOGGING_AVAILABLE:
             _logger.info("SHUTDOWN COMPLETE - System Blocks Add-in")

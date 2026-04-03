@@ -1,1392 +1,467 @@
-# 📚 DETAILED TESTING DOCUMENTATION
-## Fusion System Blocks - Complete Feature Documentation & Validation Reference
-
-**Created:** September 25, 2025  
-**Updated:** February 2026 (Beta release: 605 automated tests, 11-format export pipeline, requirements engine, version control, delta serialization, bridge constants)  
-**System Status:** 16/18 Milestones Complete (2 not started: M13, M15)  
-**Document Purpose:** Comprehensive reference documentation for all system features and testing procedures
-
-> **⚡ For Practical Testing:** Use `FUSION_MANUAL_TEST_PLAN.md` (30-minute workflow)  
-> **📚 For Documentation:** Use this file (complete feature reference)
-
----
-
-## 📋 DOCUMENTATION OVERVIEW
-
-This detailed documentation provides comprehensive validation procedures for the entire Fusion System Blocks system across **18 milestones (16 complete, 2 not started)**. It serves as both a testing reference and complete feature documentation, covering every aspect from basic diagram creation to advanced diagramming features, architecture tooling, requirements verification, and delta serialization.
-
-### 🎯 Testing Objectives
-1. **Functional Validation**: Verify all features work as designed
-2. **Integration Testing**: Ensure seamless interaction between components
-3. **Performance Testing**: Validate system responsiveness and reliability
-4. **User Experience Testing**: Confirm professional, intuitive workflows
-5. **Data Integrity Testing**: Ensure JSON schema compliance and data persistence
-6. **API Integration Testing**: Validate Fusion API communication
-7. **Diagnostics Testing**: Verify built-in self-test suite (Milestone 16)
-
----
-
-## 🗂️ TESTING STRUCTURE
-
-### Phase 1: Foundation Testing (Milestones 1-3)
-### Phase 2: Core Features Testing (Milestones 4-7)
-### Phase 3: Advanced Features Testing (Milestones 8-11)
-### Phase 4: Revolutionary Features Testing (Milestones 12-13)
-### Phase 5: Professional Diagramming Testing (Milestone 14) 🆕
-### Phase 6: Architecture & Tooling Testing (Milestone 16) 🆕
-### Phase 7: Integration & Performance Testing
-### Phase 8: User Acceptance Testing
-
----
-
-# 🚀 PHASE 1: FOUNDATION TESTING
-
-## Milestone 1: Diagram Core + Persistence
-
-### Test 1.1: Basic Node Editor Functionality
-**Objective**: Validate core diagramming capabilities
-
-**Prerequisites**: 
-- Fusion installed and running
-- Fusion System Blocks add-in loaded
-- Empty workspace
-
-**Test Steps**:
-1. **Launch Palette with Ribbon Interface**
-   - [ ] Open Fusion
-   - [ ] Activate Fusion System Blocks add-in
-   - [ ] Verify palette opens with **Fusion-style ribbon interface**
-   - [ ] Confirm **ribbon groups** appear properly (File, Edit, Create, Select, etc.)
-   - [ ] Verify **secondary toolbar** appears below ribbon (search, connection types)
-   - [ ] Confirm professional UI theme loads correctly
-
-2. **Canvas Operations**
-   - [ ] Test pan functionality (mouse drag)
-   - [ ] Test zoom functionality (mouse wheel)
-   - [ ] Verify zoom limits (min/max)
-   - [ ] Test snap-to-grid alignment
-   - [ ] Confirm grid visibility toggle
-
-3. **Block Creation**
-   - [ ] Create new block using **Create** ribbon group
-   - [ ] Verify block appears at correct position
-   - [ ] Test block selection (click)
-   - [ ] Test multi-select (Ctrl+click)
-   - [ ] Verify selection highlighting
-
-4. **Block Manipulation**
-   - [ ] Drag blocks around canvas
-   - [ ] Verify snap-to-grid during drag
-   - [ ] Test block resizing (if applicable)
-   - [ ] Confirm collision detection
-
-**Expected Results**: 
-- Smooth, responsive diagram editing
-- Professional appearance matching Fusion theme
-- No errors in browser console
-
-### Test 1.2: Save/Load Operations
-**Objective**: Validate diagram persistence
-
-**Test Steps**:
-1. **Create Test Diagram**
-   - [ ] Create 5 blocks with different names
-   - [ ] Position blocks in specific arrangement
-   - [ ] Add some connections between blocks
-
-2. **Save Functionality**
-   - [ ] Click "Save" button in **File** ribbon group
-   - [ ] Verify success confirmation
-   - [ ] Check Fusion attributes for saved data
-
-3. **Clear and Load**
-   - [ ] Click "New" in **File** ribbon group to clear diagram
-   - [ ] Verify canvas is empty
-   - [ ] Click "Load" button in **File** ribbon group
-   - [ ] Confirm diagram restores exactly as saved
-
-4. **Multiple Save/Load Cycles**
-   - [ ] Modify diagram and save again
-   - [ ] Load and verify changes persisted
-   - [ ] Test with complex diagrams (20+ blocks)
-
-**Expected Results**:
-- Perfect diagram restoration
-- No data loss during save/load cycles
-- Fast save/load operations (<2 seconds)
-
-## Milestone 2: CAD/ECAD Linking
-
-### Test 2.1: CAD Linking Functionality
-**Objective**: Validate CAD component linking
-
-**Prerequisites**:
-- Fusion assembly with multiple components
-- At least 5 different components to link
-
-**Test Steps**:
-1. **Link to CAD Components**
-   - [ ] Select block in diagram
-   - [ ] Click "Link to CAD" button in **Edit** ribbon group
-   - [ ] Select component in Fusion viewport
-   - [ ] Verify link appears in block properties
-   - [ ] Repeat for 5 different blocks/components
-
-2. **Link Validation**
-   - [ ] Verify occurrence tokens are stored correctly
-   - [ ] Check document IDs are captured
-   - [ ] Confirm component names are extracted
-   - [ ] Test with renamed components
-
-3. **Link Management**
-   - [ ] Remove existing CAD links
-   - [ ] Re-link to different components
-   - [ ] Test linking same component to multiple blocks
-   - [ ] Verify link uniqueness validation
-
-**Expected Results**:
-- Accurate component linking
-- Proper token and ID storage
-- No broken links after component operations
-
-### Test 2.2: ECAD Linking Functionality
-**Objective**: Validate ECAD component linking
-
-**Test Steps**:
-1. **ECAD Link Creation**
-   - [ ] Select electrical blocks
-   - [ ] Click "Link to ECAD" button in **Edit** ribbon group
-   - [ ] Enter device information (IC, resistor, etc.)
-   - [ ] Enter footprint information (SMD, through-hole)
-   - [ ] Save ECAD links
-
-2. **ECAD Data Validation**
-   - [ ] Verify device names are stored
-   - [ ] Check footprint specifications
-   - [ ] Confirm electrical properties (if applicable)
-   - [ ] Test with complex device hierarchies
-
-**Expected Results**:
-- Accurate ECAD data storage
-- Proper device/footprint association
-- Valid electrical property tracking
-
-## Milestone 3: Status Tracking
-
-### Test 3.1: Automatic Status Computation
-**Objective**: Validate intelligent status detection
-
-**Test Steps**:
-1. **Status Progression Testing**
-   - [ ] Create new block (should be "Placeholder")
-   - [ ] Add name and description (should become "Planned")
-   - [ ] Add CAD or ECAD link (should become "In-Work")
-   - [ ] Complete all required fields (should become "Complete")
-
-2. **Status Visual Indicators**
-   - [ ] Verify status halos appear correctly
-   - [ ] Confirm color coding matches specification
-   - [ ] Test status updates in real-time
-   - [ ] Verify status legends and tooltips
-
-3. **Bulk Status Operations**
-   - [ ] Create 20 blocks with various completion levels
-   - [ ] Verify status computation for all blocks
-   - [ ] Test status filtering and sorting
-   - [ ] Confirm performance with large diagrams
-
-**Expected Results**:
-- Accurate automatic status detection
-- Clear visual status indicators
-- Real-time status updates
-- Consistent status logic across all blocks
-
----
-
-# ⚙️ PHASE 2: CORE FEATURES TESTING
-
-## Milestone 4: Rule-Based Validation
-
-### Test 4.1: Connection Rules Validation
-**Objective**: Validate intelligent connection rules
-
-**Test Steps**:
-1. **Valid Connection Testing**
-   - [ ] Connect electrical blocks (should succeed)
-   - [ ] Connect mechanical blocks (should succeed)
-   - [ ] Connect software blocks (should succeed)
-   - [ ] Verify visual feedback for valid connections
-
-2. **Invalid Connection Prevention**
-   - [ ] Try connecting incompatible block types
-   - [ ] Verify error messages appear
-   - [ ] Confirm invalid connections are prevented
-   - [ ] Test edge cases and boundary conditions
-
-3. **Complex Rule Validation**
-   - [ ] Test multi-port connection rules
-   - [ ] Verify interface compatibility checking
-   - [ ] Confirm voltage/signal level validation
-   - [ ] Test custom rule definitions
-
-**Expected Results**:
-- Accurate connection rule enforcement
-- Clear error messages for invalid attempts
-- Intelligent interface compatibility checking
-
-### Test 4.2: Design Rule Checking (DRC)
-**Objective**: Validate comprehensive design rules
-
-**Test Steps**:
-1. **Electrical DRC**
-   - [ ] Test power supply validation
-   - [ ] Verify signal integrity checks
-   - [ ] Confirm component rating validation
-   - [ ] Test thermal management rules
-
-2. **Mechanical DRC**
-   - [ ] Verify clearance checking
-   - [ ] Test assembly sequence validation
-   - [ ] Confirm material compatibility
-   - [ ] Validate structural integrity rules
-
-3. **Software DRC**
-   - [ ] Test interface protocol validation
-   - [ ] Verify data flow consistency
-   - [ ] Confirm timing requirement checks
-   - [ ] Validate resource allocation rules
-
-**Expected Results**:
-- Comprehensive design validation
-- Proactive error detection
-- Professional DRC reporting
-- Integration with CAD constraints
-
-## Milestone 5: Import/Export Capabilities
-
-### Test 5.1: Export Functionality
-**Objective**: Validate all 10 export formats and configurable profiles
-
-**Test Steps**:
-1. **JSON Export**
-   - [ ] Export diagram to JSON file
-   - [ ] Verify complete data preservation
-   - [ ] Test with complex diagrams (50+ blocks)
-   - [ ] Confirm schema compliance
-
-2. **CSV / Pin Map Export**
-   - [ ] Export block data to CSV
-   - [ ] Verify all properties included
-   - [ ] Test with various block types
-   - [ ] Confirm Excel compatibility
-
-3. **HTML Report**
-   - [ ] Generate self-contained HTML report with embedded CSS
-   - [ ] Verify blocks, connections, interfaces, rules sections rendered
-   - [ ] Confirm status colour classes (placeholder, planned, in-work, implemented)
-   - [ ] Verify XSS escaping for user-supplied names
-   - [ ] Test print styles (landscape layout, colour preservation)
-
-4. **BOM Export (CSV & JSON)**
-   - [ ] Generate BOM CSV with Block, Part Number, Qty, Supplier, Unit Cost, Total Cost, Lead Time
-   - [ ] Generate BOM JSON with items array and summary totals
-   - [ ] Verify empty diagrams produce header-only CSV and empty items array
-
-5. **Assembly Sequence Export (Markdown & JSON)**
-   - [ ] Generate step-by-step Markdown with topological ordering
-   - [ ] Generate JSON with totalSteps, estimatedTotalMinutes metadata
-   - [ ] Verify dependency lists and complexity indicators
-
-6. **Connection Matrix CSV**
-   - [ ] Generate block × block adjacency matrix
-   - [ ] Verify directional connection recording (1 in correct cells)
-   - [ ] Confirm empty diagrams produce header-only CSV
-
-7. **SVG Diagram Snapshot**
-   - [ ] Generate valid SVG XML with xmlns attribute
-   - [ ] Verify blocks rendered as rectangles with names and types
-   - [ ] Confirm connection lines drawn between blocks
-   - [ ] Verify status-based stroke colours
-
-8. **C Header Stubs**
-   - [ ] Generate C header with interface constants
-   - [ ] Verify include guard and struct definitions
-
-9. **Export Profiles**
-   - [ ] `quick` profile generates 3 files (summary, pin map, header)
-   - [ ] `standard` profile generates 9 files
-   - [ ] `full` profile generates 11 files (includes SVG and PDF)
-   - [ ] Unknown profile name falls back to `full`
-   - [ ] Default profile (no parameter) uses `full`
-
-**Expected Results**:
-- High-quality exports in all 11 formats
-- Perfect data preservation
-- Professional document formatting
-- Profile system correctly filters output files
-
-### Test 5.2: Import Functionality
-**Objective**: Validate import from external sources
-
-**Test Steps**:
-1. **JSON Import**
-   - [ ] Import previously exported JSON
-   - [ ] Verify perfect diagram restoration
-   - [ ] Test with different schema versions
-   - [ ] Confirm backward compatibility
-
-2. **CSV Import**
-   - [ ] Import block data from CSV
-   - [ ] Verify automatic block creation
-   - [ ] Test with various data formats
-   - [ ] Confirm data type conversion
-
-3. **Legacy Format Import**
-   - [ ] Import from other diagramming tools
-   - [ ] Test Visio import capabilities
-   - [ ] Verify Lucidchart compatibility
-   - [ ] Confirm AutoCAD block import
-
-**Expected Results**:
-- Seamless import from all supported formats
-- Accurate data conversion
-- Proper error handling for invalid data
-- Professional import wizards
-
-## Milestone 6: Hierarchy Support
-
-### Test 6.1: Multi-Level Hierarchies
-**Objective**: Validate complex system hierarchies
-
-**Test Steps**:
-1. **Hierarchy Creation**
-   - [ ] Create top-level system blocks
-   - [ ] Add sub-system levels (2-3 deep)
-   - [ ] Verify parent-child relationships
-   - [ ] Test with various hierarchy structures
-
-2. **Navigation and Visualization**
-   - [ ] Test drill-down functionality
-   - [ ] Verify breadcrumb navigation
-   - [ ] Confirm zoom-to-fit on level changes
-   - [ ] Test overview/detail switching
-
-3. **Cross-Hierarchy References**
-   - [ ] Create references between hierarchy levels
-   - [ ] Test bi-directional navigation
-   - [ ] Verify reference integrity
-   - [ ] Confirm dependency tracking
-
-**Expected Results**:
-- Intuitive hierarchy navigation
-- Clear parent-child relationships
-- Robust reference management
-- Professional hierarchy visualization
-
-### Test 6.2: Hierarchy Data Management
-**Objective**: Validate hierarchy data integrity
-
-**Test Steps**:
-1. **Data Consistency**
-   - [ ] Verify data inheritance rules
-   - [ ] Test property propagation
-   - [ ] Confirm change notification cascade
-   - [ ] Validate hierarchy persistence
-
-2. **Hierarchy Operations**
-   - [ ] Move blocks between hierarchy levels
-   - [ ] Restructure hierarchy (promote/demote)
-   - [ ] Delete hierarchy branches
-   - [ ] Test undo/redo with hierarchies
-
-**Expected Results**:
-- Consistent data management across levels
-- Robust hierarchy operations
-- Perfect change tracking
-- No data corruption during restructuring
-
-## Milestone 7: Reporting System
-
-### Test 7.1: Comprehensive Reporting
-**Objective**: Validate professional report generation
-
-**Test Steps**:
-1. **Report Generation**
-   - [ ] Generate Bill of Materials (BOM)
-   - [ ] Create connection matrices
-   - [ ] Generate status reports
-   - [ ] Produce design documentation
-
-2. **Report Customization**
-   - [ ] Test various report templates
-   - [ ] Customize report formatting
-   - [ ] Add company branding
-   - [ ] Configure data filtering
-
-3. **Report Export**
-   - [ ] Export reports to PDF
-   - [ ] Generate Excel spreadsheets
-   - [ ] Create PowerPoint presentations
-   - [ ] Test HTML report generation
-
-**Expected Results**:
-- Professional-quality reports
-- Flexible customization options
-- Multiple export formats
-- Consistent formatting and branding
-
----
-
-# 🎨 PHASE 3: ADVANCED FEATURES TESTING
-
-## Milestone 8: User Interface Enhancements
-
-### Test 8.1: Professional UI Components
-**Objective**: Validate enhanced user interface
-
-**Test Steps**:
-1. **Modern UI Elements**
-   - [ ] Test tabbed interface functionality
-   - [ ] Verify modal dialog operations
-   - [ ] Confirm tooltip system works
-   - [ ] Test context menu interactions
-
-2. **Theme Integration**
-   - [ ] Verify Fusion theme consistency
-   - [ ] Test dark/light mode switching
-   - [ ] Confirm color scheme accuracy
-   - [ ] Validate icon integration
-
-3. **Responsive Design**
-   - [ ] Test various screen resolutions
-   - [ ] Verify mobile/tablet compatibility
-   - [ ] Confirm layout adaptability
-   - [ ] Test with different zoom levels
-
-**Expected Results**:
-- Professional, modern interface
-- Consistent Fusion integration
-- Responsive design across devices
-- Intuitive user interactions
-
-### Test 8.2: Advanced Interaction Features
-**Objective**: Validate sophisticated user interactions
-
-**Test Steps**:
-1. **Advanced Selection**
-   - [ ] Test lasso selection tool
-   - [ ] Verify multi-select operations
-   - [ ] Confirm selection filters
-   - [ ] Test selection memory/recall
-
-2. **Drag and Drop**
-   - [ ] Test block drag and drop
-   - [ ] Verify connection drag creation
-   - [ ] Confirm file drag and drop
-   - [ ] Test drag preview effects
-
-3. **Keyboard Shortcuts**
-   - [ ] Test all defined shortcuts
-   - [ ] Verify shortcut conflicts
-   - [ ] Confirm contextual shortcuts
-   - [ ] Test shortcut customization
-
-**Expected Results**:
-- Smooth, intuitive interactions
-- Professional drag and drop
-- Comprehensive keyboard support
-- No interaction conflicts
-
-## Milestone 9: Performance Optimization
-
-### Test 9.1: Large Diagram Performance
-**Objective**: Validate system performance with complex diagrams
-
-**Test Steps**:
-1. **Scalability Testing**
-   - [ ] Create diagram with 100 blocks
-   - [ ] Test with 500+ connections
-   - [ ] Verify performance with 1000+ blocks
-   - [ ] Measure response times
-
-2. **Memory Management**
-   - [ ] Monitor memory usage during operations
-   - [ ] Test for memory leaks
-   - [ ] Verify garbage collection
-   - [ ] Test with long-running sessions
-
-3. **Rendering Performance**
-   - [ ] Test smooth pan/zoom operations
-   - [ ] Verify real-time updates
-   - [ ] Confirm 60fps target achievement
-   - [ ] Test with complex visual effects
-
-**Expected Results**:
-- Smooth performance with large diagrams
-- Efficient memory utilization
-- Consistent frame rates
-- No performance degradation over time
-
-### Test 9.2: Optimization Validation
-**Objective**: Verify all performance optimizations
-
-**Test Steps**:
-1. **Rendering Optimizations**
-   - [ ] Test viewport culling effectiveness
-   - [ ] Verify level-of-detail rendering
-   - [ ] Confirm batch operations
-   - [ ] Test caching mechanisms
-
-2. **Data Structure Optimizations**
-   - [ ] Verify efficient data structures
-   - [ ] Test query performance
-   - [ ] Confirm indexing effectiveness
-   - [ ] Test with various data patterns
-
-**Expected Results**:
-- Optimal rendering performance
-- Efficient data operations
-- Scalable architecture
-- Professional responsiveness
-
-## Milestone 10: Testing Framework
-
-### Test 10.1: Automated Testing Validation
-**Objective**: Validate the testing framework itself
-
-**Test Steps**:
-1. **Unit Test Suite**
-   - [ ] Run all unit tests
-   - [ ] Verify 100% pass rate
-   - [ ] Check code coverage metrics
-   - [ ] Test with various scenarios
-
-2. **Integration Test Suite**
-   - [ ] Run integration tests
-   - [ ] Verify system interactions
-   - [ ] Test API communications
-   - [ ] Confirm data flow validation
-
-3. **Performance Test Suite**
-   - [ ] Run performance benchmarks
-   - [ ] Verify performance targets
-   - [ ] Test regression detection
-   - [ ] Confirm continuous monitoring
-
-**Expected Results**:
-- Comprehensive test coverage
-- All tests passing consistently
-- Performance targets met
-- Reliable test automation
-
-## Milestone 11: Block Shape System
-
-### Test 11.1: Professional Block Shapes
-**Objective**: Validate multi-shape block system
-
-**Test Steps**:
-1. **Shape Creation and Selection**
-   - [ ] Test all 8 professional shapes
-   - [ ] Verify shape selector interface
-   - [ ] Confirm shape change operations
-   - [ ] Test with various block types
-
-2. **Shape-Specific Features**
-   - [ ] Test intelligent dimension adjustment
-   - [ ] Verify shape-aware connection points
-   - [ ] Confirm visual effects integration
-   - [ ] Test with status indicators
-
-3. **Shape Persistence**
-   - [ ] Save diagrams with various shapes
-   - [ ] Load and verify shape preservation
-   - [ ] Test shape data integrity
-   - [ ] Confirm backward compatibility
-
-**Expected Results**:
-- Professional shape variety
-- Intelligent shape behaviors
-- Perfect shape persistence
-- Seamless integration with existing features
-
----
-
-# 🚀 PHASE 4: REVOLUTIONARY FEATURES TESTING
-
-## Milestone 12: Enhanced CAD Linking System
-
-### Test 12.1: Living CAD Integration
-**Objective**: Validate revolutionary CAD synchronization
-
-**Prerequisites**:
-- Complex Fusion assembly (20+ components)
-- Various component types (parts, sub-assemblies)
-- Components with rich properties
-
-**Test Steps**:
-1. **Enhanced Link Creation**
-   - [ ] Create enhanced CAD links to 10+ components
-   - [ ] Verify automatic property extraction
-   - [ ] Test with renamed components
-   - [ ] Confirm document relationship tracking
-
-2. **Real-Time Synchronization**
-   - [ ] Modify component properties in Fusion
-   - [ ] Verify automatic update in diagram
-   - [ ] Test bi-directional synchronization
-   - [ ] Confirm change notification system
-
-3. **Component Health Monitoring**
-   - [ ] Test health status detection
-   - [ ] Verify broken link identification
-   - [ ] Confirm outdated link detection
-   - [ ] Test health dashboard functionality
-
-4. **Professional Dashboard**
-   - [ ] Test sync control interface
-   - [ ] Verify bulk operations
-   - [ ] Confirm filtering and sorting
-   - [ ] Test status visualization
-
-**Expected Results**:
-- Perfect CAD-diagram synchronization
-- Real-time property updates
-- Robust health monitoring
-- Professional management interface
-
-### Test 12.2: Advanced CAD Operations
-**Objective**: Validate sophisticated CAD integration features
-
-**Test Steps**:
-1. **Bulk Operations**
-   - [ ] Test mass link creation
-   - [ ] Verify bulk synchronization
-   - [ ] Confirm batch property updates
-   - [ ] Test mass health checking
-
-2. **Component Lifecycle Management**
-   - [ ] Track component through design phases
-   - [ ] Verify version management
-   - [ ] Test change impact analysis
-   - [ ] Confirm lifecycle documentation
-
-3. **API Integration Stress Testing**
-   - [ ] Test with large assemblies (100+ components)
-   - [ ] Verify API rate limiting handling
-   - [ ] Test concurrent operations
-   - [ ] Confirm error recovery mechanisms
-
-**Expected Results**:
-- Efficient bulk operations
-- Comprehensive lifecycle tracking
-- Robust API integration
-- Professional error handling
-
-## Milestone 13: Visual Integration & Living Documentation
-
-### Test 13.1: 3D Visualization System
-**Objective**: Validate revolutionary 3D integration
-
-**Prerequisites**:
-- 3D assembly with complex geometry
-- Multiple system groups (electrical, mechanical)
-- Various connection types
-
-**Test Steps**:
-1. **3D Overlay Mode**
-   - [ ] Enable 3D overlay mode
-   - [ ] Test component highlighting in 3D
-   - [ ] Verify system grouping visualization
-   - [ ] Confirm live thumbnail generation
-
-2. **Interactive 3D Controls**
-   - [ ] Test 3D position adjustment
-   - [ ] Verify highlight color changes
-   - [ ] Confirm group boundary controls
-   - [ ] Test connection route visualization
-
-3. **Real-Time 3D Updates**
-   - [ ] Modify diagram and verify 3D updates
-   - [ ] Test with component changes
-   - [ ] Confirm synchronization accuracy
-   - [ ] Verify performance with complex scenes
-
-**Expected Results**:
-- Seamless 3D-diagram integration
-- Real-time visualization updates
-- Professional 3D interaction controls
-- Excellent performance with complex models
-
-### Test 13.2: Living Documentation System
-**Objective**: Validate automatic documentation generation
-
-**Test Steps**:
-1. **Assembly Sequence Generation**
-   - [ ] Generate assembly sequences from diagrams
-   - [ ] Verify dependency analysis accuracy
-   - [ ] Test with complex assembly hierarchies
-   - [ ] Confirm time estimation accuracy
-
-2. **Living BOM Generation**
-   - [ ] Generate real-time BOMs
-   - [ ] Verify cost calculations
-   - [ ] Test supplier integration
-   - [ ] Confirm automatic updates
-
-3. **Service Manual Creation**
-   - [ ] Generate service manuals automatically
-   - [ ] Verify step-by-step procedures
-   - [ ] Test with various system types
-   - [ ] Confirm professional formatting
-
-4. **Change Impact Analysis**
-   - [ ] Track changes through system
-   - [ ] Verify cascade effect detection
-   - [ ] Test impact visualization
-   - [ ] Confirm documentation updates
-
-**Expected Results**:
-- Accurate automatic documentation
-- Real-time content generation
-- Professional document quality
-- Comprehensive change tracking
-
----
-
-# 🎨 PHASE 5: PROFESSIONAL DIAGRAMMING TESTING (MILESTONE 14)
-
-## Advanced Layout & Alignment Tools Testing
-
-### Test 5.1: Auto-Layout Engine Validation
-**Objective**: Test intelligent hierarchical block arrangement
-
-**Prerequisites**:
-- Complex diagram with 10+ blocks and connections
-- Mixed block types and connection dependencies
-
-**Test Steps**:
-1. **Create Complex Diagram**
-   - [ ] Add 15+ blocks with various types
-   - [ ] Create dependency chains (A→B→C, branching)
-   - [ ] Include circular references (if any)
-   - [ ] Note original positions
-
-2. **Apply Auto-Layout**
-   - [ ] Click "Auto Layout" button in **Arrange** ribbon group
-   - [ ] Verify layout algorithm runs without errors
-   - [ ] Confirm blocks are repositioned intelligently
-   - [ ] Check dependency relationships are maintained
-
-3. **Validate Layout Quality**
-   - [ ] Verify hierarchical arrangement (dependencies flow top-to-bottom)
-   - [ ] Confirm adequate spacing between blocks
-   - [ ] Check no block overlaps
-   - [ ] Validate connection paths are clear
-
-**Expected Results**:
-- Clean hierarchical layout
-- Clear dependency visualization
-- No overlapping elements
-- Professional appearance
-
-### Test 5.2: Alignment Tools Validation
-**Objective**: Test professional alignment functionality
-
-**Test Steps**:
-1. **Multi-Block Selection**
-   - [ ] Create 5+ blocks at random positions
-   - [ ] Select multiple blocks with Ctrl+click
-   - [ ] Verify visual selection indicators appear
-   - [ ] Confirm alignment buttons become enabled
-
-2. **Left Alignment**
-   - [ ] Click "Align Left" button in **Arrange** ribbon group
-   - [ ] Verify all selected blocks align to leftmost X position
-   - [ ] Check Y positions remain unchanged
-   - [ ] Confirm smooth transition animation
-
-3. **Center Alignment**
-   - [ ] Select different blocks
-   - [ ] Click "Align Center" button in **Arrange** ribbon group
-   - [ ] Verify blocks align to average center position
-   - [ ] Check vertical positions unchanged
-
-4. **Right Alignment**
-   - [ ] Select blocks
-   - [ ] Click "Align Right" button in **Arrange** ribbon group
-   - [ ] Verify alignment to rightmost block position
-
-5. **Distribution Testing**
-   - [ ] Select 4+ blocks
-   - [ ] Test "Distribute Horizontally"
-   - [ ] Verify even spacing between blocks
-   - [ ] Test "Distribute Vertically"
-   - [ ] Confirm equal vertical spacing
-
-**Expected Results**:
-- Precise alignment operations
-- Smooth animations
-- Professional visual feedback
-- Consistent spacing in distribution
-
-## Multi-Selection System Testing
-
-### Test 5.3: Advanced Selection Modes
-**Objective**: Validate multi-selection capabilities
-
-**Test Steps**:
-1. **Ctrl+Click Multi-Selection**
-   - [ ] Click first block (single selection)
-   - [ ] Ctrl+click additional blocks
-   - [ ] Verify each block gets selection indicator
-   - [ ] Check selection count in status
-   - [ ] Test deselection (Ctrl+click selected block)
-
-2. **Select All Functionality**
-   - [ ] Click "Select All" button in **Select** ribbon group (or Ctrl+A)
-   - [ ] Verify all blocks become selected
-   - [ ] Check selection count matches total blocks
-   - [ ] Confirm visual indicators on all blocks
-
-3. **Clear Selection**
-   - [ ] With multiple blocks selected
-   - [ ] Click "Clear Selection" button in **Select** ribbon group (or press Esc)
-   - [ ] Verify all selection indicators disappear
-   - [ ] Check ribbon buttons return to disabled state
-
-4. **Selection Visual Feedback**
-   - [ ] Verify selected blocks have orange outline
-   - [ ] Check selection glow effect
-   - [ ] Confirm proper z-index layering
-   - [ ] Test selection persistence during pan/zoom
-
-**Expected Results**:
-- Intuitive multi-selection behavior
-- Clear visual feedback
-- Proper keyboard shortcut support
-- Responsive selection updates
-
-### Test 5.4: Group Management System
-**Objective**: Test group creation and management
-
-**Test Steps**:
-1. **Group Creation**
-   - [ ] Select 3+ blocks
-   - [ ] Click "Create Group" button in **Arrange** ribbon group
-   - [ ] Verify group boundary indicator appears
-   - [ ] Check blocks are marked as grouped
-   - [ ] Confirm group appears in data structure
-
-2. **Group Visual Indicators**
-   - [ ] Verify dashed yellow boundary around group
-   - [ ] Check group boundaries update when blocks move
-   - [ ] Confirm proper visual layering (behind blocks)
-   - [ ] Test multiple group creation
-
-3. **Group Operations**
-   - [ ] Move one block in group
-   - [ ] Verify group boundary updates
-   - [ ] Test selecting entire group
-   - [ ] Confirm coordinated group operations
-
-4. **Ungrouping**
-   - [ ] Select grouped blocks
-   - [ ] Click "Ungroup" button in **Arrange** ribbon group
-   - [ ] Verify group boundary disappears
-   - [ ] Check blocks are no longer marked as grouped
-   - [ ] Confirm independent block movement
-
-**Expected Results**:
-- Visual group boundaries
-- Coordinated group operations
-- Clean ungroup functionality
-- Persistent group data
-
-## Annotation System Testing
-
-### Test 5.5: Text Annotations
-**Objective**: Test comprehensive annotation capabilities
-
-**Test Steps**:
-1. **Text Label Creation**
-   - [ ] Click "Add Text" button in **Create** ribbon group
-   - [ ] Verify text label appears at default position
-   - [ ] Test editing text content
-   - [ ] Check font size and color customization
-   - [ ] Confirm text persistence
-
-2. **Sticky Note Creation**
-   - [ ] Click "Add Note" button in **Create** ribbon group
-   - [ ] Verify yellow sticky note appears
-   - [ ] Test note editing functionality
-   - [ ] Check note positioning and sizing
-   - [ ] Confirm visual shadow effects
-
-3. **Dimension Line Creation**
-   - [ ] Click "Add Dimension" button in **Create** ribbon group
-   - [ ] Verify dimension line with extension lines
-   - [ ] Test dimension label editing
-   - [ ] Check measurement accuracy
-   - [ ] Confirm professional appearance
-
-4. **Callout Creation**
-   - [ ] Click "Add Callout" button in **Create** ribbon group
-   - [ ] Verify callout box with leader line
-   - [ ] Test callout positioning
-   - [ ] Check arrow pointer accuracy
-   - [ ] Confirm text box editing
-
-**Expected Results**:
-- Professional annotation appearance
-- Editable text content
-- Accurate positioning
-- Persistent annotation data
-
-### Test 5.6: Annotation Integration
-**Objective**: Test annotation interaction with diagram
-
-**Test Steps**:
-1. **Annotation Persistence**
-   - [ ] Create various annotations
-   - [ ] Save diagram
-   - [ ] Load diagram
-   - [ ] Verify all annotations restored
-   - [ ] Check positioning accuracy
-
-2. **Pan/Zoom Behavior**
-   - [ ] Create annotations
-   - [ ] Pan diagram view
-   - [ ] Verify annotations move with diagram
-   - [ ] Test zoom behavior
-   - [ ] Confirm scaling consistency
-
-3. **Export Integration**
-   - [ ] Create annotated diagram
-   - [ ] Export to various formats
-   - [ ] Verify annotations included in exports
-   - [ ] Check visual quality in exports
-
-**Expected Results**:
-- Persistent annotation data
-- Proper view transformation
-- Export integration
-- Visual consistency
-
-## Professional Polish Testing
-
-### Test 5.7: Smart Notification System
-**Objective**: Test user feedback system
-
-**Test Steps**:
-1. **Success Notifications**
-   - [ ] Perform successful operations (align, group, etc.)
-   - [ ] Verify green success notifications appear
-   - [ ] Check notification positioning (top-right)
-   - [ ] Confirm auto-dismiss after 3 seconds
-
-2. **Warning Notifications**
-   - [ ] Try invalid operations (align with <2 blocks)
-   - [ ] Verify orange warning notifications
-   - [ ] Check appropriate warning messages
-   - [ ] Confirm proper dismissal timing
-
-3. **Info Notifications**
-   - [ ] Trigger info scenarios
-   - [ ] Verify blue info notifications
-   - [ ] Check message clarity
-   - [ ] Confirm visual consistency
-
-**Expected Results**:
-- Contextual notification messages
-- Proper color coding
-- Professional timing
-- Clear user feedback
-
-### Test 5.8: Responsive Ribbon Design
-**Objective**: Test ribbon interface adaptation to panel sizes
-
-**Test Steps**:
-1. **Wide Panel Testing**
-   - [ ] Open palette in wide panel (>800px)
-   - [ ] Verify all **ribbon groups** visible (File, Edit, Create, Select, Arrange)
-   - [ ] Check proper button spacing within groups
-   - [ ] Confirm group labels and separators visible
-   - [ ] Verify **secondary toolbar** appears below ribbon
-
-2. **Medium Panel Testing**
-   - [ ] Resize panel to medium width (400-800px)
-   - [ ] Verify ribbon adapts appropriately (possible group condensing)
-   - [ ] Check button sizing adjustments
-   - [ ] Confirm usability maintained
-
-3. **Narrow Panel Testing**
-   - [ ] Resize panel to narrow width (<400px)
-   - [ ] Verify toolbar remains functional
-   - [ ] Check button compression/wrapping
-   - [ ] Confirm group labels hide appropriately
-
-**Expected Results**:
-- Responsive toolbar behavior
-- Maintained functionality
-- Professional appearance at all sizes
-- Intuitive adaptive design
-
-### Test 5.9: Context-Aware Controls
-**Objective**: Test intelligent button state management
-
-**Test Steps**:
-1. **Selection-Dependent Buttons**
-   - [ ] With no selection, verify align buttons disabled
-   - [ ] Select 1 block, confirm align buttons still disabled
-   - [ ] Select 2+ blocks, verify align buttons enabled
-   - [ ] Select 3+ blocks, verify distribute buttons enabled
-
-2. **Group-Dependent Buttons**
-   - [ ] With ungrouped blocks selected, verify "Group" enabled
-   - [ ] Verify "Ungroup" disabled
-   - [ ] Select grouped blocks, check "Ungroup" enabled
-   - [ ] Test mixed selection (grouped + ungrouped)
-
-3. **Dynamic State Updates**
-   - [ ] Test button states update immediately on selection change
-   - [ ] Verify proper visual feedback (enabled/disabled styling)
-   - [ ] Check tooltip updates reflect current state
-
-**Expected Results**:
-- Intelligent button state management
-- Immediate visual feedback
-- Intuitive user experience
-- Professional control behavior
-
----
-
-# 🔧 PHASE 6: INTEGRATION & PERFORMANCE TESTING
-
-## System Integration Testing
-
-### Test 5.1: End-to-End Workflow Validation
-**Objective**: Validate complete system workflows
-
-**Test Scenarios**:
-
-1. **Complete Design Workflow**
-   - [ ] Create new diagram from scratch
-   - [ ] Add 20+ blocks of various types
-   - [ ] Link all blocks to CAD components
-   - [ ] Apply professional shapes
-   - [ ] Configure 3D visualization
-   - [ ] Generate living documentation
-   - [ ] Export complete project package
-
-2. **Collaborative Design Workflow**
-   - [ ] Multiple users working on same project
-   - [ ] Concurrent editing operations
-   - [ ] Change synchronization testing
-   - [ ] Conflict resolution validation
-
-3. **Large Project Workflow**
-   - [ ] Import complex existing project
-   - [ ] Validate all data integrity
-   - [ ] Perform bulk operations
-   - [ ] Generate comprehensive reports
-   - [ ] Test performance under load
-
-**Expected Results**:
-- Seamless end-to-end workflows
-- No data corruption or loss
-- Professional user experience
-- Excellent performance throughout
-
-### Test 5.2: Cross-Feature Integration
-**Objective**: Validate feature interaction integrity
-
-**Test Steps**:
-1. **Feature Combination Testing**
-   - [ ] Use multiple features simultaneously
-   - [ ] Test feature interdependencies
-   - [ ] Verify data consistency across features
-   - [ ] Confirm UI coherence
-
-2. **Data Flow Validation**
-   - [ ] Track data through all system layers
-   - [ ] Verify JSON schema compliance
-   - [ ] Test data transformation accuracy
-   - [ ] Confirm persistent storage integrity
-
-**Expected Results**:
-- Perfect feature integration
-- Consistent data handling
-- No feature conflicts
-- Seamless user experience
-
-## Performance & Stress Testing
-
-### Test 5.3: Performance Benchmarks
-**Objective**: Validate system performance targets
-
-**Performance Targets**:
-- Diagram load time: <2 seconds (100 blocks)
-- Save operation: <1 second
-- 3D visualization update: <500ms
-- Report generation: <5 seconds
-- Memory usage: <200MB (1000 blocks)
-
-**Test Steps**:
-1. **Load Testing**
-   - [ ] Test with increasing diagram complexity
-   - [ ] Measure response times at each level
-   - [ ] Verify performance targets are met
-   - [ ] Test with various hardware configurations
-
-2. **Stress Testing**
-   - [ ] Maximum diagram size testing
-   - [ ] Concurrent user simulation
-   - [ ] Extended operation testing
-   - [ ] Memory leak detection
-
-3. **Regression Testing**
-   - [ ] Compare performance across versions
-   - [ ] Verify no performance degradation
-   - [ ] Test with various system configurations
-   - [ ] Confirm optimization effectiveness
-
-**Expected Results**:
-- All performance targets met
-- No performance regressions
-- Excellent scalability
-- Optimal resource utilization
-
----
-
-# 👥 PHASE 7: USER ACCEPTANCE TESTING
-
-## Usability Testing
-
-### Test 6.1: User Experience Validation
-**Objective**: Validate intuitive, professional user experience
-
-**Test Participants**: 
-- Mechanical engineers (3-5 users)
-- Electrical engineers (3-5 users)
-- System designers (3-5 users)
-- CAD specialists (3-5 users)
-
-**Test Scenarios**:
-1. **First-Time User Experience**
-   - [ ] New user creates first diagram
-   - [ ] Time to productivity measurement
-   - [ ] Feature discoverability testing
-   - [ ] Learning curve assessment
-
-2. **Professional Workflow Testing**
-   - [ ] Complex project creation
-   - [ ] Advanced feature utilization
-   - [ ] Productivity measurement
-   - [ ] Professional satisfaction assessment
-
-3. **Competitive Comparison**
-   - [ ] Compare with existing tools
-   - [ ] Feature completeness assessment
-   - [ ] Performance comparison
-   - [ ] User preference evaluation
-
-**Expected Results**:
-- Intuitive user interface
-- Professional workflow efficiency
-- Competitive feature advantage
-- High user satisfaction scores
-
-## Documentation & Training Testing
-
-### Test 6.2: Documentation Validation
-**Objective**: Validate comprehensive documentation
-
-**Test Steps**:
-1. **User Documentation**
-   - [ ] Test step-by-step tutorials
-   - [ ] Verify feature documentation completeness
-   - [ ] Confirm troubleshooting guides
-   - [ ] Test video tutorial effectiveness
-
-2. **Technical Documentation**
-   - [ ] Validate API documentation
-   - [ ] Test integration guides
-   - [ ] Verify schema documentation
-   - [ ] Confirm developer resources
-
-3. **Training Material Validation**
-   - [ ] Test training curriculum
-   - [ ] Verify hands-on exercises
-   - [ ] Confirm certification materials
-   - [ ] Test training effectiveness
-
-**Expected Results**:
-- Comprehensive documentation coverage
-- Clear, professional presentation
-- Effective training materials
-- High documentation usability scores
-
----
-
-# 📊 TESTING EXECUTION PLAN
-
-## Testing Schedule
-
-### Week 1: Foundation Testing
-- **Days 1-2**: Milestone 1-3 testing
-- **Days 3-4**: Core functionality validation
-- **Day 5**: Foundation integration testing
-
-### Week 2: Core Features Testing
-- **Days 1-2**: Milestones 4-5 testing
-- **Days 3-4**: Milestones 6-7 testing
-- **Day 5**: Core feature integration testing
-
-### Week 3: Advanced Features Testing
-- **Days 1-2**: Milestones 8-9 testing
-- **Days 3-4**: Milestones 10-11 testing
-- **Day 5**: Advanced feature integration testing
-
-### Week 4: Revolutionary Features Testing
-- **Days 1-2**: Milestone 12 testing
-- **Days 3-4**: Milestone 13 testing
-- **Day 5**: Revolutionary feature integration testing
-
-### Week 5: Professional Diagramming Testing (NEW!)
-- **Days 1-2**: Milestone 14 layout and alignment testing
-- **Days 3**: Multi-selection and group management testing
-- **Days 4**: Annotation system testing
-- **Day 5**: Professional polish and responsiveness testing
-
-### Week 6: Integration & Performance Testing
-- **Days 1-2**: System integration testing
-- **Days 3-4**: Performance and stress testing
-- **Day 5**: Performance optimization
-
-### Week 7: User Acceptance Testing
-- **Days 1-3**: Usability testing with target users
-- **Days 4-5**: Documentation validation and training testing
-
-## Testing Resources
-
-### Required Hardware
-- High-performance workstation (CAD-capable)
-- Multiple test environments (Windows 10/11)
-- Various screen resolutions and configurations
-- Network testing environment
-
-### Required Software
-- Fusion (latest version)
-- Various test assemblies and projects
-- Testing automation tools
-- Performance monitoring software
-
-### Test Data
-- Simple test diagrams (5-10 blocks)
-- Medium complexity diagrams (50-100 blocks)
-- Complex diagrams (500+ blocks)
-- Real-world project samples
-- Various CAD assemblies
-
----
-
-# 🎯 SUCCESS CRITERIA
-
-## Functional Success Criteria
-- [ ] **100% Feature Functionality**: All implemented features work as designed
-- [ ] **Zero Critical Bugs**: No bugs that prevent core functionality
-- [ ] **Data Integrity**: No data loss or corruption in any scenario
-- [ ] **API Integration**: Perfect Fusion API communication
-- [ ] **Schema Compliance**: All data validates against JSON schema
-
-## Performance Success Criteria
-- [ ] **Response Time Targets**: All operations meet performance targets
-- [ ] **Scalability**: System handles large, complex diagrams efficiently
-- [ ] **Memory Efficiency**: Optimal memory usage under all conditions
-- [ ] **Stability**: No crashes or freezes during extended operations
-- [ ] **Resource Management**: Efficient CPU and memory utilization
-
-## User Experience Success Criteria
-- [ ] **Intuitive Interface**: New users productive within 30 minutes
-- [ ] **Professional Quality**: Interface matches Fusion standards
-- [ ] **Workflow Efficiency**: Common tasks completed efficiently
-- [ ] **Error Handling**: Clear, helpful error messages and recovery
-- [ ] **Documentation**: Complete, accurate user documentation
-
-## Integration Success Criteria
-- [ ] **Seamless CAD Integration**: Perfect Fusion integration
-- [ ] **Cross-Platform Compatibility**: Works on all target platforms
-- [ ] **Data Portability**: Easy import/export to other tools
-- [ ] **API Reliability**: Robust, reliable API communications
-- [ ] **Future Extensibility**: Architecture supports future enhancements
-
----
-
-# 📈 TESTING METRICS & REPORTING
-
-## Key Performance Indicators (KPIs)
-
-### Quality Metrics
-- **Bug Density**: <0.1 bugs per function
-- **Test Coverage**: >95% code coverage
-- **Defect Resolution Time**: <24 hours for critical issues
-- **User Acceptance Rate**: >90% user satisfaction
-
-### Performance Metrics
-- **System Response Time**: <2 seconds for all operations
-- **Throughput**: Handle 1000+ blocks without degradation
-- **Resource Utilization**: <200MB memory, <10% CPU baseline
-- **Reliability**: 99.9% uptime during testing period
-
-### User Experience Metrics
-- **Time to Productivity**: <30 minutes for new users
-- **Task Completion Rate**: >95% for common workflows
-- **Error Recovery Rate**: >90% successful error recovery
-- **Feature Adoption Rate**: >80% of available features used
-
-## Testing Reports
-
-### Daily Test Reports
-- Test execution summary
-- Pass/fail statistics
-- Critical issues identified
-- Performance measurements
-- Next day priorities
-
-### Weekly Progress Reports
-- Milestone completion status
-- Quality trend analysis
-- Performance trend analysis
-- Risk assessment and mitigation
-- Resource utilization review
-
-### Final Test Report
-- Complete test execution summary
-- Quality assessment and certification
-- Performance validation results
-- User acceptance testing results
-- Deployment readiness recommendation
-
----
-
-# 🚀 NEXT STEPS
-
-## Immediate Actions
-1. **Set up testing environment** with all required resources
-2. **Create test data sets** for various complexity levels
-3. **Configure testing tools** and automation frameworks
-4. **Recruit test participants** for user acceptance testing
-5. **Begin Phase 1 testing** with foundation features
-
-## Long-term Testing Strategy
-1. **Continuous Testing**: Integrate testing into development workflow
-2. **Automated Regression**: Set up automated test suites
-3. **Performance Monitoring**: Implement continuous performance monitoring
-4. **User Feedback Loop**: Establish ongoing user feedback collection
-5. **Quality Gates**: Define quality criteria for future releases
-
----
-
-**This comprehensive testing plan ensures the revolutionary Fusion System Blocks system meets the highest standards of quality, performance, and user experience. With 16 major milestones completed, this testing strategy validates we've built something truly groundbreaking in engineering design tools.**
-
-🎯 **Ready to begin comprehensive validation of our world-class CAD-diagram integration system!**
+Detailed step-by-step test plan for the current Fusion System Blocks
+repository. This document replaces the older milestone-by-milestone,
+future-state checklist with a current-state verification plan.
+
+## Current Baseline
+
+- Updated: April 3, 2026
+- Repository status: 18 milestones total; 16 complete; 2 not started
+  (Milestone 13 and Milestone 15)
+- Latest local automated regression: `pytest -q` passed 707 tests
+- In-app diagnostics baseline: `DiagnosticsRunner` discovers 32 checks
+- Companion smoke plan:
+  [FUSION_MANUAL_TEST_PLAN.md](FUSION_MANUAL_TEST_PLAN.md)
+
+## Purpose
+
+Use this document for full regression and release validation of the add-in as
+it exists now. It is organized as an execution plan, not as a historical
+feature catalog.
+
+The main changes from the older version are:
+
+- Removed test phases that treated future milestones as already shipped.
+- Converted broad milestone prose into explicit run-order steps.
+- Marked partial or backend-only features so they do not become false release
+  blockers.
+- Added current regression focus areas such as named-document behavior,
+  snapshot persistence, bridge readiness, and power-budget validation.
+
+## Scope
+
+| Area | How it is covered here | Status |
+| --- | --- | --- |
+| Core diagramming, persistence, hierarchy, exports, CAD linking, rules, history, accessibility | Primary manual acceptance | Fully in scope |
+| Requirements verification | Hybrid manual plus seeded fixture | In scope, but no dedicated authoring UI |
+| Schema migration | Hybrid manual plus prepared legacy document | In scope |
+| Snapshot comparison | Backend-capable only | Not a primary manual gate |
+| ECAD linking | UI placeholder only | Informational, not a release gate |
+| Milestone 13: 3D visualization and living documentation | Excluded from this pass | Not implemented as a shipped user workflow |
+| Milestone 15: AI-powered assistant | Excluded from this pass | Not implemented |
+
+## Test Environment
+
+- Autodesk Fusion installed and running.
+- Fusion System Blocks deployed to the Fusion add-in folder.
+- Fusion restarted after deployment.
+- A test Fusion document open with at least 3 components and 1 subassembly.
+- A writable export folder available for report generation checks.
+- Access to the session log directory:
+  `%USERPROFILE%\FusionSystemBlocks\logs\`
+- Optional but recommended:
+  - A second Fusion document open for multi-document CAD-link regression.
+  - A prepared fixture document that already contains top-level
+    `requirements` data.
+  - A prepared legacy document saved without `schemaVersion` for migration
+    testing.
+
+## Execution Order
+
+1. Run automated preflight first.
+2. Run Fusion startup and diagnostics before opening the palette.
+3. Execute Phases 2 through 11 in order for the main manual pass.
+4. Run Phase 12 for accessibility, undo history panel, and recovery checks.
+5. Run Phase 13 when validating requirements and legacy-schema behavior.
+6. Record failures with screenshots, exported artifacts, and log paths.
+
+## Phase 0: Automated Preflight
+
+Run these steps from the repository root before starting Fusion-side manual
+testing.
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 0.1 | Activate the project environment and confirm you are in the repo root. | Commands run against the correct workspace. | [ ] |
+| 0.2 | Run `pytest -q`. | All tests pass. Current baseline on this repo state: 707 passed. | [ ] |
+| 0.3 | Run `ruff check .`. | No lint failures. | [ ] |
+| 0.4 | Review editor diagnostics for touched files. | No blocking syntax or import errors remain. | [ ] |
+| 0.5 | If any preflight step fails, stop the manual pass and log the blocker. | Manual testing does not continue on a known-bad baseline. | [ ] |
+
+## Phase 1: Fusion Launch and Diagnostics
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 1.1 | Open the Fusion test document. | Fusion is running with a writable design open. | [ ] |
+| 1.2 | Open Utilities -> Add-Ins. | `Fusion System Blocks` and `Run Diagnostics` are visible. | [ ] |
+| 1.3 | Run `Run Diagnostics`. | Diagnostics complete without crashing Fusion. | [ ] |
+| 1.4 | Review the diagnostics summary. | All 32 checks pass and a log path is shown. | [ ] |
+| 1.5 | Launch `Fusion System Blocks`. | The palette opens successfully. | [ ] |
+| 1.6 | Watch for startup errors or dialog boxes. | No uncaught startup exception is surfaced to the user. | [ ] |
+| 1.7 | Wait for the footer bridge pill to settle. | Footer shows `Bridge: connected` with queue and pending counts. | [ ] |
+| 1.8 | Confirm a new session log was created. | A timestamped log file exists in the System Blocks log folder. | [ ] |
+
+## Phase 2: Palette Shell, Ribbon, Tabs, and Help
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 2.1 | Inspect the ribbon. | 11 groups are present: File, Edit, Create, Navigate, Select, Arrange, Annotate, View, Validate, CAD Links, Help. | [ ] |
+| 2.2 | Inspect the secondary toolbar. | Search input, status filters, connection-type dropdown, arrow-direction dropdown, and breadcrumb are visible. | [ ] |
+| 2.3 | Inspect the tab bar. | The tabs `Home`, `Diagram`, `Linking`, `Validation`, `Reqs`, `History`, and `Reports` are visible and clickable. | [ ] |
+| 2.4 | Inspect the footer. | `Save`, `Autosave`, `Health`, `Last saved`, and `Bridge` controls are visible. | [ ] |
+| 2.5 | Hover a ribbon button for about 0.5 seconds. | The short tooltip appears. | [ ] |
+| 2.6 | Keep hovering the same button for about 2 seconds. | The expanded tooltip appears with description and shortcut. | [ ] |
+| 2.7 | Resize the palette to a narrow width. | Controls remain usable; ribbon groups do not overlap. | [ ] |
+| 2.8 | Resize the palette wide again. | Groups and controls lay out cleanly. | [ ] |
+| 2.9 | Press `F1`. | The help overlay opens. | [ ] |
+| 2.10 | Press `?`. | The keyboard-shortcuts dialog opens. | [ ] |
+
+## Phase 3: Core Diagram Editing, Block Libraries, and Properties
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 3.1 | Start a new diagram from the Home tab or the File ribbon group. | The canvas is blank and ready for editing. | [ ] |
+| 3.2 | Add a generic block from the Create workflow. | A new block appears on the canvas. | [ ] |
+| 3.3 | Add an electrical block from the block-type library or quick block menu. | An electrical block is created with electrical styling. | [ ] |
+| 3.4 | Add a mechanical block from the block-type library. | A mechanical block is created with mechanical styling. | [ ] |
+| 3.5 | Add a software block from the block-type library. | A software block is created with software styling. | [ ] |
+| 3.6 | Double-click a block name and rename it inline. | The block label updates immediately. | [ ] |
+| 3.7 | Select a block and inspect the right-side properties panel. | Name, Type, Status, Shape, Attributes, and connection summary fields are visible. | [ ] |
+| 3.8 | Inspect the default engineering attributes on a newly created block. | The default keys exist: Manufacturer, Part Number, Datasheet URL, Rating / Specification, Cost, Lead Time, Notes. | [ ] |
+| 3.9 | Cycle one block through all 8 shapes. | Rectangle, Rounded, Diamond, Ellipse, Hexagon, Parallelogram, Cylinder, and Triangle all render correctly. | [ ] |
+| 3.10 | Drag the block around the canvas and resize it. | Movement is smooth; resize handles work; snap-to-grid behavior is consistent when enabled. | [ ] |
+| 3.11 | Copy and paste a selected block or duplicate it with the keyboard shortcut. | A distinct copy is created with preserved visual properties. | [ ] |
+| 3.12 | Delete a selected block, then undo and redo the action. | Delete, undo, and redo all behave correctly. | [ ] |
+
+## Phase 4: Selection, Grouping, Arrange Tools, and Annotations
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 4.1 | Click a single block. | Only that block is selected. | [ ] |
+| 4.2 | Ctrl+click additional blocks. | Multi-selection grows without losing earlier selections. | [ ] |
+| 4.3 | Press `Ctrl+A`. | All blocks are selected. | [ ] |
+| 4.4 | Press `Escape`. | The selection clears. | [ ] |
+| 4.5 | Lasso-select several blocks by dragging on empty canvas space. | Blocks inside the lasso are selected; text is not accidentally selected instead. | [ ] |
+| 4.6 | With 2 or more blocks selected, click `Create Group`. | A dashed group boundary appears and persists. | [ ] |
+| 4.7 | Click `Ungroup`. | The group boundary disappears and the blocks become independent. | [ ] |
+| 4.8 | Scatter 4 or more blocks, then click `Auto Layout`. | Blocks rearrange into a cleaner layout with no obvious overlap. | [ ] |
+| 4.9 | Select 3 blocks and run `Align Left`, `Align Center`, and `Align Right`. | The selected blocks align correctly for each command. | [ ] |
+| 4.10 | Select 4 or more blocks and run `Distribute Horizontal`. | Spacing becomes even across the selection. | [ ] |
+| 4.11 | Drag one block near another block edge. | Smart alignment guides appear and snapping behaves consistently. | [ ] |
+| 4.12 | Add a text annotation. | A text annotation appears and is editable. | [ ] |
+| 4.13 | Add a note, a dimension, and a callout annotation. | All 3 annotation types render and persist on the canvas. | [ ] |
+| 4.14 | Edit one annotation and delete another. | Annotation edit and delete flows work correctly. | [ ] |
+
+## Phase 5: Connections, Routing, Search, and Filters
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 5.1 | Hover a block. | Connection port dots appear. | [ ] |
+| 5.2 | Create a connection using the port-dot workflow. | A connection is drawn between the selected blocks. | [ ] |
+| 5.3 | Create another connection using `C` or the block context menu. | Keyboard and context-menu entry points work as well. | [ ] |
+| 5.4 | Open the connection-type dropdown. | The options include auto, power, data, signal, electrical, mechanical, software, optical, and thermal. | [ ] |
+| 5.5 | Change a connection through several types. | Stroke color and line style update for each type. | [ ] |
+| 5.6 | Change arrow direction through forward, backward, bidirectional, and none. | Arrow rendering updates correctly at each setting. | [ ] |
+| 5.7 | Select a connection and delete it. | The selected connection is removed. | [ ] |
+| 5.8 | Attempt to connect a block to itself. | The self-loop is rejected. | [ ] |
+| 5.9 | Attempt to create the same connection twice. | Duplicate connection creation is rejected. | [ ] |
+| 5.10 | Toggle orthogonal routing mode on. | Connections render as right-angle routes instead of bezier curves. | [ ] |
+| 5.11 | Move a block so it obstructs an orthogonal route. | The route recalculates around the obstacle. | [ ] |
+| 5.12 | Add and then remove a waypoint in orthogonal mode. | The route bends through the waypoint, then recalculates after removal. | [ ] |
+| 5.13 | Press `Ctrl+F` and search for a block by name. | Matching blocks remain visible and non-matching blocks dim. | [ ] |
+| 5.14 | Use the status-filter buttons: All, Placeholder, Planned, In-Work, Implemented. | Filtering behaves as labeled; the `Implemented` filter includes Implemented and Verified blocks. | [ ] |
+
+## Phase 6: Save, Load, Named Documents, Autosave, and Close Warnings
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 6.1 | Save the current diagram. | Save succeeds and no error notification appears. | [ ] |
+| 6.2 | Inspect the footer after save. | `Last saved` updates to the current timestamp. | [ ] |
+| 6.3 | Click `New`. | The active canvas clears. | [ ] |
+| 6.4 | Click `Load`. | The previously saved diagram is restored. | [ ] |
+| 6.5 | Use `Save As...` to save the current diagram as `Named Diagram A`. | A named document is created successfully. | [ ] |
+| 6.6 | Make an obvious change and use `Save As...` again for `Named Diagram B`. | A second named document is created successfully. | [ ] |
+| 6.7 | Use `Open...` to load `Named Diagram A`. | The A version is restored. | [ ] |
+| 6.8 | Use `Open...` to load `Named Diagram B`. | The B version is restored. | [ ] |
+| 6.9 | Trigger `Save` and `Load` from the Home tab. | Home-tab actions behave the same as the ribbon actions. | [ ] |
+| 6.10 | Make an unsaved change and attempt to close the palette. | A browser-style unsaved-changes warning appears. | [ ] |
+| 6.11 | Cancel the close action. | The palette stays open and the diagram is unchanged. | [ ] |
+| 6.12 | Save the diagram and then close the palette. | The palette closes without the unsaved-changes warning. | [ ] |
+| 6.13 | Reopen the palette, enable `Autosave`, make a small change, and wait at least 5 seconds. | The change is saved automatically and `Last saved` updates. | [ ] |
+| 6.14 | Disable `Autosave`. | Autosave stops and an informational notification appears. | [ ] |
+
+## Phase 7: Hierarchy and Cross-Diagram Navigation
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 7.1 | Select a parent block and create a child diagram. | Navigation moves into the child diagram. | [ ] |
+| 7.2 | Inspect the breadcrumb. | It updates from `Root` to `Root > <Block Name>`. | [ ] |
+| 7.3 | Add blocks inside the child diagram. | The child canvas behaves like the root canvas. | [ ] |
+| 7.4 | Use `Go Up`. | Navigation returns to the parent diagram. | [ ] |
+| 7.5 | Inspect the parent block after returning. | A child-diagram indicator is visible on the parent block. | [ ] |
+| 7.6 | Use `Drill Down` on the same parent block. | Navigation returns to the child diagram. | [ ] |
+| 7.7 | Save, close, reopen, and drill back into the child diagram. | Child-diagram data persists across save/load. | [ ] |
+| 7.8 | Optional: if your regression target includes cross-diagram connections, test `Connect Across Diagrams...` from the context menu. | The cross-diagram picker works without corrupting the active diagram. | [ ] |
+| 7.9 | Optional: if your regression target includes named stubs, create and rename a net stub. | Stub creation, rename, and persistence behave correctly. | [ ] |
+
+## Phase 8: CAD Linking
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 8.1 | Select a block and click `Link to CAD`. | The palette hides and Fusion enters component-selection mode. | [ ] |
+| 8.2 | Select a component in the Fusion viewport. | The palette returns automatically. | [ ] |
+| 8.3 | Inspect the linked block. | A CAD-link badge appears with the selected component name. | [ ] |
+| 8.4 | Inspect notifications and the Linking tab status. | The UI reports a successful CAD link. | [ ] |
+| 8.5 | Save and reload the diagram. | The CAD-link badge and stored metadata persist. | [ ] |
+| 8.6 | Link the same block to a different component. | The badge and stored component name update cleanly. | [ ] |
+| 8.7 | Trigger CAD selection from the `Linking` tab instead of the ribbon. | The same selection workflow runs successfully. | [ ] |
+| 8.8 | Start CAD selection again and cancel with `Escape`. | The palette returns and the cancellation is surfaced cleanly. | [ ] |
+| 8.9 | If you have multiple Fusion documents open, repeat one link operation on the active test document. | The link resolves against the correct document and does not pick stale metadata from another open design. | [ ] |
+
+Notes for this phase:
+
+- The ECAD button exists in the UI, but the authoring flow is still a
+  placeholder. Do not fail the release solely because ECAD linking is not a
+  completed user workflow yet.
+
+## Phase 9: Validation, Visible Status Behavior, and Power Rules
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 9.1 | Open the `Validation` tab. | Error and warning filters, category dropdown, run button, and results list are visible. | [ ] |
+| 9.2 | Create an obvious orphan or placeholder block and run `Run Checks`. | At least one validation result appears. | [ ] |
+| 9.3 | Manually set a block status to `Implemented` without adding interfaces, attributes, and links, then rerun checks. | The implementation-completeness rule flags the mismatch. | [ ] |
+| 9.4 | Create a power-supply block with `output_current = 1000mA` and a load block with `current = 200mA`, then rerun checks. | No power-budget error is reported for that pair. | [ ] |
+| 9.5 | Reduce the supply to `100mA` and rerun checks. | A power-budget exceeded error appears. | [ ] |
+| 9.6 | Change the supply value to `abc` and rerun checks. | An invalid-power-value error appears instead of being silently ignored. | [ ] |
+| 9.7 | Remove the supply value or delete the supply block and rerun checks. | A warning reports incomplete or missing power data. | [ ] |
+| 9.8 | Watch the footer health pill before and after fixing issues. | It moves between `Issues detected` and `OK` appropriately. | [ ] |
+| 9.9 | Inspect the Home-tab status legend against block colors. | Placeholder, Planned, In-Work, Implemented, and Verified colors still match the UI. | [ ] |
+
+Notes for this phase:
+
+- Automatic status computation still exists in the core logic and automated
+  tests, but the current manual pass should focus on visible status selection,
+  legends, and validation output.
+
+## Phase 10: History, Snapshots, and Named-Document Snapshot Scope
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 10.1 | Open the `History` tab on a fresh default-scope diagram. | The empty-state message reads `No snapshots yet.` | [ ] |
+| 10.2 | Create a snapshot with the description `v1`. | A snapshot entry appears in the list. | [ ] |
+| 10.3 | Make a visible change and create a second snapshot `v2`. | A second snapshot appears. | [ ] |
+| 10.4 | Click `Refresh`. | The list remains current and ordered with the newest snapshot first. | [ ] |
+| 10.5 | Restore the older snapshot. | The diagram returns to the earlier state. | [ ] |
+| 10.6 | Save, close, reopen, and reload the diagram. | The snapshot list persists with the document. | [ ] |
+| 10.7 | Save the diagram as `Named Diagram A` and create snapshot `A1`. | Snapshot `A1` appears under that named document. | [ ] |
+| 10.8 | Save the diagram as `Named Diagram B` and create snapshot `B1`. | Snapshot `B1` appears under that second named document. | [ ] |
+| 10.9 | Reopen `Named Diagram A`. | The History tab shows only the A-scope snapshots. | [ ] |
+| 10.10 | Reopen `Named Diagram B`. | The History tab shows only the B-scope snapshots. | [ ] |
+| 10.11 | Start a brand-new unnamed diagram after using a named document. | The active named-document scope clears and the History tab refreshes back to the default scope. | [ ] |
+
+Notes for this phase:
+
+- Snapshot comparison exists in the backend and bridge contract, but there is
+  no primary compare control in the History UI yet. Treat snapshot comparison
+  as backend coverage rather than a manual release gate.
+
+## Phase 11: Import, Export, Reporting, and Exported Artifacts
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 11.1 | Open the Import dialog. | Mermaid and CSV import modes are available. | [ ] |
+| 11.2 | In Mermaid mode, paste the fixture from Appendix A and import it. | The expected blocks and connection are created. | [ ] |
+| 11.3 | Reopen the dialog in CSV mode and paste the block and connection fixtures from Appendix A. | CSV import succeeds and the diagram matches the fixture. | [ ] |
+| 11.4 | Open the Export dialog from the Reports tab or the File ribbon group. | The export dialog opens without error. | [ ] |
+| 11.5 | Inspect the format list. | All 11 formats are present. | [ ] |
+| 11.6 | Click `Select None`, then `Select All`. | The selection helpers work correctly. | [ ] |
+| 11.7 | Export only Markdown and HTML to a temporary folder. | Exactly 2 files are produced. | [ ] |
+| 11.8 | Export the full set of formats to a temporary folder. | All 11 files are produced. | [ ] |
+| 11.9 | Open the Markdown report. | It contains an executive summary plus block and connection data. | [ ] |
+| 11.10 | Open the HTML report. | It contains the same summary data with styled output and print-ready formatting. | [ ] |
+| 11.11 | Open BOM CSV and BOM JSON. | Item data, quantities, and totals are present and consistent. | [ ] |
+| 11.12 | Open Assembly Sequence Markdown and JSON. | Step ordering and metadata are present. | [ ] |
+| 11.13 | Open the Connection Matrix CSV. | The adjacency matrix reflects the current connections. | [ ] |
+| 11.14 | Open the SVG output. | Shapes, colors, and connection rendering are recognizable and non-empty. | [ ] |
+| 11.15 | Open the PDF output. | The PDF contains header, block, connection, and validation content. | [ ] |
+
+Notes for this phase:
+
+- The backend supports `quick`, `standard`, and `full` export profiles, but the
+  current UI drives exports through explicit format selection. Profile behavior
+  is primarily covered by automated tests.
+
+## Phase 12: Accessibility, Undo History Panel, and Crash Recovery
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 12.1 | Use arrow keys, `Home`, and `End` on the tab bar. | Tab focus and selection move according to the WAI-ARIA tab pattern. | [ ] |
+| 12.2 | Tab through ribbon buttons with the keyboard. | A clear `:focus-visible` style is shown. | [ ] |
+| 12.3 | Open a modal dialog and press `Tab` repeatedly, then `Escape`. | Focus stays inside the modal until `Escape` closes it. | [ ] |
+| 12.4 | If high-contrast mode is available, enable it and inspect the palette. | Borders and focus outlines remain visible and usable. | [ ] |
+| 12.5 | Open the undo history panel from the Edit ribbon group. | The history panel opens and shows labeled entries. | [ ] |
+| 12.6 | Perform a few actions, then click an older entry in the history panel. | The diagram jumps to the selected historical state. | [ ] |
+| 12.7 | Close the history panel. | The panel closes cleanly. | [ ] |
+| 12.8 | Optional: create unsaved changes, wait at least 30 seconds for auto-backup, force-close the session, and reopen the add-in. | A recovery prompt appears on startup. | [ ] |
+| 12.9 | Optional: choose `Recover` from the recovery prompt. | The recovered diagram is restored. | [ ] |
+| 12.10 | Optional: repeat the recovery test and choose `Discard`. | The backup is removed and the recovery prompt does not reappear. | [ ] |
+
+## Phase 13: Hybrid Verification for Requirements and Legacy Schema
+
+Use this phase when you need to validate requirements and migration behavior.
+These workflows are real, but they are not fully authorable through a polished
+manual UI path yet.
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 13.1 | Load a prepared fixture document that contains a top-level `requirements` array, or seed one using the Appendix B JSON through a developer harness. | The diagram loads without dropping the requirement data. | [ ] |
+| 13.2 | Open the `Reqs` tab and click `Check Requirements`. | The results table appears with pass/fail rows and the status pill updates. | [ ] |
+| 13.3 | Save, close, reopen, and load the same fixture document. | Requirements survive persistence and still validate correctly. | [ ] |
+| 13.4 | Load a prepared legacy document that has no `schemaVersion` field. | The document still loads successfully. | [ ] |
+| 13.5 | Save that legacy document and reload it again. | The migrated document continues to load after save. | [ ] |
+| 13.6 | If you are using automated coverage instead of seeded manual data, rerun targeted tests: `pytest -q tests/test_requirements.py tests/test_version_control.py tests/test_status_tracking.py tests/test_rule_checks.py`. | Targeted requirements, version-control, status, and rule tests all pass. | [ ] |
+
+## Known Partial or Deferred Areas
+
+- ECAD linking remains a placeholder UI path and is not a release-blocking
+  manual acceptance item yet.
+- Snapshot comparison is backend-capable but does not have a primary compare
+  control in the History panel.
+- Milestone 13 user-facing 3D visualization and living-documentation workflows
+  are not part of this manual test pass.
+- Milestone 15 AI workflows are not part of this manual test pass.
+
+## Defect Capture Checklist
+
+For every failure, record all of the following:
+
+- Phase and step number
+- Exact user action and expected result
+- Actual result
+- Whether the issue is reproducible
+- Screenshot or exported artifact, if applicable
+- Fusion version, OS, and whether a named document was active
+- Relevant log file path from `%USERPROFILE%\FusionSystemBlocks\logs\`
+
+## Pass Criteria
+
+- Phase 0 and Phase 1 must pass before the rest of the plan is considered
+  valid.
+- All non-optional steps in Phases 2 through 11 should pass for release
+  readiness.
+- Phase 12 optional recovery steps and Phase 13 hybrid steps may be satisfied by
+  either seeded manual verification or targeted automated tests, depending on
+  the release scope.
+- Any failure in persistence, load integrity, CAD linking, export correctness,
+  or rule validation is release-blocking.
+
+## Appendix A: Pasteable Import Fixtures
+
+### Mermaid Fixture
+
+```text
+flowchart TD
+  A[Power Supply] --> B[Controller]
+```
+
+### CSV Blocks Fixture
+
+```csv
+name,type,x,y,status
+Power Supply,PowerSupply,100,100,Verified
+Controller,Microcontroller,320,100,Planned
+```
+
+### CSV Connections Fixture
+
+```csv
+from,to,kind,protocol
+Power Supply,Controller,electrical,3.3V
+```
+
+## Appendix B: Requirements Fixture for Seeded Manual Tests
+
+Do not paste this into the Import dialog. The current Import dialog supports
+Mermaid and CSV only. Use this JSON through a prepared Fusion document or a
+developer harness.
+
+```json
+{
+  "schemaVersion": "1.0",
+  "schema": "system-blocks-v2",
+  "id": "req-fixture",
+  "name": "Requirements Fixture",
+  "blocks": [
+    {
+      "id": "b1",
+      "name": "Battery",
+      "type": "Electrical",
+      "x": 100,
+      "y": 100,
+      "status": "Implemented",
+      "attributes": {
+        "mass": "2.5",
+        "voltage": "3.3"
+      },
+      "links": [],
+      "interfaces": []
+    },
+    {
+      "id": "b2",
+      "name": "Controller",
+      "type": "Software",
+      "x": 320,
+      "y": 100,
+      "status": "Implemented",
+      "attributes": {
+        "mass": "1.3"
+      },
+      "links": [],
+      "interfaces": []
+    }
+  ],
+  "connections": [],
+  "groups": [],
+  "namedStubs": [],
+  "metadata": {},
+  "requirements": [
+    {
+      "id": "r1",
+      "name": "Max Weight",
+      "targetValue": 5.0,
+      "operator": "<=",
+      "unit": "kg",
+      "linkedAttribute": "mass",
+      "tolerance": 0.0
+    },
+    {
+      "id": "r2",
+      "name": "Bus Voltage",
+      "targetValue": 3.3,
+      "operator": "==",
+      "unit": "V",
+      "linkedAttribute": "voltage",
+      "tolerance": 0.01
+    }
+  ]
+}
+```
+
+## Results Summary
+
+| Phase | Area | Result | Notes |
+| --- | --- | --- | --- |
+| 0 | Automated preflight |  |  |
+| 1 | Fusion launch and diagnostics |  |  |
+| 2 | Palette shell, ribbon, tabs, and help |  |  |
+| 3 | Core editing, block libraries, and properties |  |  |
+| 4 | Selection, grouping, arrange tools, and annotations |  |  |
+| 5 | Connections, routing, search, and filters |  |  |
+| 6 | Save, load, named documents, autosave, and close warnings |  |  |
+| 7 | Hierarchy and cross-diagram navigation |  |  |
+| 8 | CAD linking |  |  |
+| 9 | Validation, visible status behavior, and power rules |  |  |
+| 10 | History, snapshots, and named-document snapshot scope |  |  |
+| 11 | Import, export, reporting, and exported artifacts |  |  |
+| 12 | Accessibility, undo history panel, and crash recovery |  |  |
+| 13 | Hybrid requirements and legacy schema verification |  |  |
+
+Tester: ____________________
+
+Date: ____________________
+
+Fusion version: ____________________
+
+OS: ____________________
+
+Overall result: [ ] PASS  [ ] FAIL

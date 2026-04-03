@@ -138,6 +138,85 @@ def _parse_power_value_mw(raw_value: Any) -> float:
     return float(text)
 
 
+def _collect_power_budget_data(diagram: dict[str, Any]) -> dict[str, Any]:
+    """Collect parsed power values and explicit validation issues."""
+    power_supplies: list[tuple[dict[str, Any], float]] = []
+    power_consumers: list[tuple[dict[str, Any], float]] = []
+    issues: list[dict[str, Any]] = []
+    referenced_blocks: list[str] = []
+    has_power_fields = False
+
+    for block in diagram.get("blocks", []):
+        attributes = block.get("attributes", {})
+        block_name = block.get("name") or block.get("id") or "Unknown Block"
+        block_id = block.get("id")
+
+        supply_field = (
+            "output_current"
+            if attributes.get("output_current")
+            else "power_supply_mw"
+        )
+        supply_raw = attributes.get(supply_field)
+        if any(key in attributes for key in ("output_current", "power_supply_mw")):
+            has_power_fields = True
+            if block_id:
+                referenced_blocks.append(block_id)
+        if supply_raw not in (None, ""):
+            try:
+                power_supplies.append((block, _parse_power_value_mw(supply_raw)))
+            except (ValueError, TypeError):
+                issues.append(
+                    {
+                        "type": "invalid_power_value",
+                        "severity": "error",
+                        "message": (
+                            f"Invalid power value for block '{block_name}' "
+                            f"field '{supply_field}': {supply_raw}"
+                        ),
+                        "blocks": [block_id] if block_id else [],
+                    }
+                )
+
+        consumption_field = (
+            "current"
+            if attributes.get("current")
+            else "power_consumption_mw"
+        )
+        consumption_raw = attributes.get(consumption_field)
+        if any(key in attributes for key in ("current", "power_consumption_mw")):
+            has_power_fields = True
+            if block_id:
+                referenced_blocks.append(block_id)
+        if consumption_raw not in (None, ""):
+            try:
+                power_consumers.append((block, _parse_power_value_mw(consumption_raw)))
+            except (ValueError, TypeError):
+                issues.append(
+                    {
+                        "type": "invalid_power_value",
+                        "severity": "error",
+                        "message": (
+                            f"Invalid power value for block '{block_name}' "
+                            f"field '{consumption_field}': {consumption_raw}"
+                        ),
+                        "blocks": [block_id] if block_id else [],
+                    }
+                )
+
+    total_supply = sum(value for _, value in power_supplies)
+    total_consumption = sum(value for _, value in power_consumers)
+
+    return {
+        "power_supplies": power_supplies,
+        "power_consumers": power_consumers,
+        "issues": issues,
+        "has_power_fields": has_power_fields,
+        "referenced_blocks": list(dict.fromkeys(referenced_blocks)),
+        "total_supply": total_supply,
+        "total_consumption": total_consumption,
+    }
+
+
 def check_power_budget_bulk(diagram: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Check if power consumption exceeds power supply capability.
@@ -155,36 +234,45 @@ def check_power_budget_bulk(diagram: dict[str, Any]) -> list[dict[str, Any]]:
     Returns:
         List of violation dictionaries.
     """
-    violations = []
+    metrics = _collect_power_budget_data(diagram)
+    violations = list(metrics["issues"])
 
-    power_supplies: list[tuple] = []
-    power_consumers: list[tuple] = []
+    power_supplies = metrics["power_supplies"]
+    power_consumers = metrics["power_consumers"]
+    total_supply = metrics["total_supply"]
+    total_consumption = metrics["total_consumption"]
 
-    for block in diagram.get("blocks", []):
-        attributes = block.get("attributes", {})
-
-        # Accept multiple attribute names for supply
-        supply_raw = attributes.get("output_current") or attributes.get(
-            "power_supply_mw"
+    if not metrics["has_power_fields"]:
+        violations.append(
+            {
+                "type": "power_budget_incomplete",
+                "severity": "warning",
+                "message": "Power budget incomplete: no power specifications found",
+                "blocks": [],
+            }
         )
-        if supply_raw:
-            try:
-                power_supplies.append((block, _parse_power_value_mw(supply_raw)))
-            except (ValueError, TypeError):
-                pass
+        return violations
 
-        # Accept multiple attribute names for consumption
-        consumption_raw = attributes.get("current") or attributes.get(
-            "power_consumption_mw"
+    if not power_supplies or not power_consumers:
+        violations.append(
+            {
+                "type": "power_budget_incomplete",
+                "severity": "warning",
+                "message": (
+                    "Power budget incomplete: need at least one valid supply "
+                    "and one valid consumption value"
+                ),
+                "blocks": metrics["referenced_blocks"],
+                "details": {
+                    "total_supply": total_supply,
+                    "total_consumption": total_consumption,
+                },
+            }
         )
-        if consumption_raw:
-            try:
-                power_consumers.append((block, _parse_power_value_mw(consumption_raw)))
-            except (ValueError, TypeError):
-                pass
+        return violations
 
-    total_supply = sum(s for _, s in power_supplies)
-    total_consumption = sum(c for _, c in power_consumers)
+    if any(issue.get("severity") == "error" for issue in violations):
+        return violations
 
     if total_consumption > total_supply:
         violations.append(
@@ -394,66 +482,48 @@ def check_power_budget(diagram: dict[str, Any]) -> dict[str, Any]:
     Returns:
         Dictionary with check results.
     """
+    metrics = _collect_power_budget_data(diagram)
     violations = check_power_budget_bulk(diagram)
 
-    # Determine whether any blocks had power specs at all
-    has_power_specs = any(
-        attributes.get("output_current")
-        or attributes.get("power_supply_mw")
-        or attributes.get("current")
-        or attributes.get("power_consumption_mw")
-        for block in diagram.get("blocks", [])
-        for attributes in [block.get("attributes", {})]
-    )
-
-    if not has_power_specs:
-        return {
-            "success": True,
-            "rule": "power_budget",
-            "message": "No power specifications found",
-        }
-
     if violations:
-        v = violations[0]
-        details = v.get("details", {})
+        highest_severity = "warning"
+        message = violations[0]["message"]
+
+        for violation in violations:
+            if violation.get("severity") == "error":
+                highest_severity = "error"
+                message = violation["message"]
+                break
+
+        if highest_severity == "error":
+            power_exceeded = next(
+                (
+                    violation
+                    for violation in violations
+                    if violation.get("type") == "power_budget_exceeded"
+                ),
+                None,
+            )
+            if power_exceeded:
+                details = power_exceeded.get("details", {})
+                message = (
+                    f"Power budget exceeded: {details['total_consumption']:.1f}mW needed, "
+                    f"{details['total_supply']:.1f}mW available"
+                )
+
         return {
             "success": False,
             "rule": "power_budget",
-            "message": (
-                f"Power budget exceeded: {details['total_consumption']:.1f}mW needed, "
-                f"{details['total_supply']:.1f}mW available"
-            ),
-            "severity": "error",
+            "message": message,
+            "severity": highest_severity,
         }
-
-    # Re-calculate totals for the OK message
-    total_supply = 0.0
-    total_consumption = 0.0
-    for block in diagram.get("blocks", []):
-        attributes = block.get("attributes", {})
-        supply_raw = attributes.get("output_current") or attributes.get(
-            "power_supply_mw"
-        )
-        if supply_raw:
-            try:
-                total_supply += _parse_power_value_mw(supply_raw)
-            except (ValueError, TypeError):
-                pass
-        consumption_raw = attributes.get("current") or attributes.get(
-            "power_consumption_mw"
-        )
-        if consumption_raw:
-            try:
-                total_consumption += _parse_power_value_mw(consumption_raw)
-            except (ValueError, TypeError):
-                pass
 
     return {
         "success": True,
         "rule": "power_budget",
         "message": (
-            f"Power budget OK: {total_consumption:.1f}mW used of "
-            f"{total_supply:.1f}mW available"
+            f"Power budget OK: {metrics['total_consumption']:.1f}mW used of "
+            f"{metrics['total_supply']:.1f}mW available"
         ),
     }
 

@@ -31,21 +31,36 @@
 - Python 3.9+ (included with Fusion)
 
 ## Feature Availability
-- ✅ Diagram authoring, hierarchy navigation, import/export, rule checking
-- ✅ Enhanced CAD linking and status dashboards (milestone 12)
-- ✅ Advanced ribbon UI, annotations, and layout tooling (milestone 14)
-- ✅ Two-layer architecture with production logging (milestone 16)
-- ✅ Delta serialization for incremental saves (JSON-Patch style diffs)
-- ✅ Shared bridge action constants between Python and JavaScript
-- ✅ Built-in "Run Diagnostics" command for self-testing
-- ✅ GitHub Actions CI: ruff, mypy, pytest on Python 3.9–3.12 (605 tests)
+- ✅ Current release line: 16 of 18 milestones complete
+- ✅ Diagram authoring, save/load, named documents, hierarchy navigation,
+   import/export, and rule checking
+- ✅ Enhanced CAD linking with persisted links and current document-aware sync
+- ✅ Requirements verification and snapshot-backed version history
+- ✅ Advanced ribbon UI, annotations, alignment tools, grouping, minimap, and
+   undo history panel
+- ✅ Orthogonal connection routing with obstacle avoidance and waypoint editing
+- ✅ Two-layer architecture, production logging, diagnostics, delta
+   serialization, and shared bridge constants
+- ✅ GitHub Actions CI: ruff, mypy, pytest on Python 3.9–3.12;
+   current workspace baseline is 707 passing tests
 - ✅ 11-format export pipeline with PDF report support
-- ✅ Requirements & verification engine with version control
-- ✅ Orthogonal connection routing with obstacle avoidance
-- ✅ Canvas minimap, undo history panel, connection context menu
-- ✅ Crash recovery auto-backup, keyboard shortcut help, schema versioning
-- ✅ 10 professional block shapes with shape-aware rendering
+- ✅ 8 professional block shapes with shape-aware rendering
+- 🚧 ECAD link button exists, but the authoring flow is still a placeholder
+- 🚧 Snapshot comparison is backend-capable, but no primary compare control is
+   exposed in the History tab yet
 - 🚧 3D visualization and living documentation workflows (milestone 13, not started)
+- 🚧 AI-powered assistant workflows (milestone 15, not started)
+
+## Validation and Testing
+
+- Built-in Fusion self-test: **Run Diagnostics** from **Utilities** →
+   **Add-Ins**
+- Current workspace validation baseline: 707 passing `pytest` tests and 32
+   in-app diagnostics checks
+- Quick manual regression plan:
+   [docs/FUSION_MANUAL_TEST_PLAN.md](docs/FUSION_MANUAL_TEST_PLAN.md)
+- Full release validation plan:
+   [docs/DETAILED_TESTING_DOCUMENTATION.md](docs/DETAILED_TESTING_DOCUMENTATION.md)
 
 ## Troubleshooting
 
@@ -53,7 +68,8 @@
 If the add-in isn't working correctly:
 1. In Fusion, go to **Utilities** → **Add-Ins** panel
 2. Click **Run Diagnostics**
-3. A message box shows pass/fail status with test counts
+3. A message box shows pass/fail status with the number of checks run
+    (currently 32 when healthy)
 4. Check the log file at `~/FusionSystemBlocks/logs/` for details
 
 ### Log Files

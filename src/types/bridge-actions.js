@@ -40,11 +40,8 @@ const BridgeAction = Object.freeze({
 const BridgeEvent = Object.freeze({
   NOTIFICATION:       'notification',
   CAD_LINK:           'cad-link',
-  THUMBNAIL_UPDATED:  'thumbnail-updated',
-  ASSEMBLY_SEQUENCE:  'assembly-sequence',
-  ASSEMBLY_ERROR:     'assembly-error',
-  LIVING_BOM:         'living-bom',
-  BOM_ERROR:          'bom-error',
-  SERVICE_MANUAL:     'service-manual',
+  THUMBNAIL_UPDATE:   'thumbnail-update',
+  BOM_UPDATE:         'bom-update',
+  SERVICE_MANUAL_UPDATE: 'service-manual-update',
   CHANGE_IMPACT:      'change-impact',
 });

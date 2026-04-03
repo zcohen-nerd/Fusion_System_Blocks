@@ -482,17 +482,6 @@ class ToolbarManager {
     document.addEventListener('keydown', this._keydownHandler);
   }
 
-  /**
-   * Remove the global keydown listener to prevent leaks when the
-   * toolbar manager is torn down or re-initialised.
-   */
-  destroyKeyboardShortcuts() {
-    if (this._keydownHandler) {
-      document.removeEventListener('keydown', this._keydownHandler);
-      this._keydownHandler = null;
-    }
-  }
-
   _isElementVisible(el) {
     return !!el && window.getComputedStyle(el).display !== 'none';
   }
@@ -595,7 +584,8 @@ class ToolbarManager {
 
   // Button action handlers
   handleNewDiagram() {
-    _fusionConfirm('Create new diagram? Unsaved changes will be lost.').then(ok => {
+    // Return the promise so the Home tab can reuse the canonical flow.
+    return _fusionConfirm('Create new diagram? Unsaved changes will be lost.').then(ok => {
       if (!ok) return;
       this.editor.diagram = this.editor.createEmptyDiagram();
       this.editor.clearSelection();
@@ -616,47 +606,60 @@ class ToolbarManager {
       }
       this.renderer.updateAllBlocks(this.editor.diagram);
       this._updateBreadcrumb();
+      return true;
+    }).catch(error => {
+      logger.error('New diagram failed:', error);
+      return false;
     });
   }
 
   handleSave() {
     try {
       if (window.pythonInterface) {
-        window.pythonInterface.saveDiagram().then(() => {
+        // Return the promise so Home-tab Save reuses the same code path.
+        return window.pythonInterface.saveDiagram().then(() => {
           // Update the "Last saved" footer pill
           const el = document.getElementById('status-last-saved');
           if (el) el.textContent = 'Last saved: ' + new Date().toLocaleString();
+          return true;
         });
-      } else {
-        logger.error('Save failed: Python interface not available');
       }
+
+      logger.error('Save failed: Python interface not available');
+      return Promise.reject(new Error('Python interface not available'));
     } catch (error) {
       logger.error('Save failed:', error);
+      return Promise.reject(error);
     }
   }
 
   handleLoad() {
     try {
-      // Warn about unsaved changes before loading a new diagram
+      // Return the promise so Home-tab Load reuses the guarded toolbar flow.
       const doLoad = () => {
         if (window.pythonInterface) {
           if (window.showLoadingSpinner) window.showLoadingSpinner('Loading diagram\u2026');
-          window.pythonInterface.loadDiagram()
+          return window.pythonInterface.loadDiagram()
+            .then(() => true)
             .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
-        } else {
-          logger.error('Load failed: Python interface not available');
         }
+
+        logger.error('Load failed: Python interface not available');
+        return Promise.reject(new Error('Python interface not available'));
       };
+
       if (this.editor && typeof this.editor.hasUnsavedChanges === 'function' && this.editor.hasUnsavedChanges()) {
-        _fusionConfirm('You have unsaved changes. Load a new diagram anyway?').then(ok => {
-          if (ok) doLoad();
+        return _fusionConfirm('You have unsaved changes. Load a new diagram anyway?').then(ok => {
+          if (!ok) return false;
+          return doLoad();
         });
-      } else {
-        doLoad();
       }
+
+      return doLoad();
     } catch (error) {
       if (window.hideLoadingSpinner) window.hideLoadingSpinner();
       logger.error('Load failed:', error);
+      return Promise.reject(error);
     }
   }
 

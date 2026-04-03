@@ -36,6 +36,7 @@ class PythonInterface {
     this.pendingRequests = new Map();
     this.requestId = 0;
     this.activeNamedDocument = null;
+    this.latestBridgeUpdates = {};
 
     /** Timeout in ms for pending request-response round-trips. */
     this.REQUEST_TIMEOUT_MS = 30000;
@@ -57,32 +58,106 @@ class PythonInterface {
     window.receiveImportFromPython = (responseData) => this.handleImportResponse(responseData);
     window.onPythonError = (error) => this.handlePythonError(error);
 
-    // Handler for Python → JS async messages via palette.sendInfoToHTML().
-    // With useNewWebBrowser=True, Fusion calls this instead of eval'ing scripts.
-    // Known events are routed directly by parsing JSON; unknown events fall
-    // back to executing the data as a JS snippet for backward-compatibility.
+    // Bridge contract: Python sends JSON payloads shaped as
+    // { type: <BridgeEvent>, data: {...} }. The Fusion action mirrors type,
+    // but JavaScript routes strictly by payload.type.
     window.fusionJavaScriptHandler = (action, data) => {
       try {
-        logger.debug('fusionJavaScriptHandler received:', action);
+        const payload = this._parseBridgePayload(action, data);
+        if (!payload) return;
 
-        // Route known events to their handlers directly with JSON data.
-        if (action === 'cad-link') {
-          try {
-            const payload = typeof data === 'string' ? JSON.parse(data) : data;
-            this.handleCADLinkPayload(payload);
-            return;
-          } catch (parseErr) {
-            // Fallback: data might be executable JS (older API path)
-            logger.warn('cad-link JSON parse failed, trying script exec:', parseErr);
-          }
+        logger.debug('fusionJavaScriptHandler received:', payload.type);
+
+        switch (payload.type) {
+          case BridgeEvent.CAD_LINK:
+            this.handleCADLinkPayload(payload.data);
+            break;
+          case BridgeEvent.NOTIFICATION:
+            this.handleBridgeNotification(payload.data);
+            break;
+          case BridgeEvent.THUMBNAIL_UPDATE:
+            this.handleThumbnailUpdate(payload.data);
+            break;
+          case BridgeEvent.BOM_UPDATE:
+            this.handleBomUpdate(payload.data);
+            break;
+          case BridgeEvent.SERVICE_MANUAL_UPDATE:
+            this.handleServiceManualUpdate(payload.data);
+            break;
+          case BridgeEvent.CHANGE_IMPACT:
+            this.handleChangeImpactUpdate(payload.data);
+            break;
+          default:
+            console.warn('Unhandled bridge event:', payload.type);
+            logger.warn('Unhandled bridge event:', payload.type, payload.data);
+            break;
         }
-
-        // Reject unrecognized actions — never execute arbitrary strings as code
-        logger.warn(`Unrecognized action '${action}' — ignoring payload`);
       } catch (e) {
         logger.error('fusionJavaScriptHandler error for action ' + action + ':', e);
       }
     };
+  }
+
+  _parseBridgePayload(action, data) {
+    let rawPayload = data;
+
+    if (typeof data === 'string') {
+      try {
+        rawPayload = JSON.parse(data);
+      } catch (error) {
+        logger.warn('Failed to parse bridge payload for action ' + action + ':', error);
+        return null;
+      }
+    }
+
+    if (!rawPayload || typeof rawPayload !== 'object') {
+      logger.warn('Ignoring bridge payload with invalid shape for action ' + action);
+      return null;
+    }
+
+    if (typeof rawPayload.type === 'string' && rawPayload.type) {
+      return {
+        type: rawPayload.type,
+        data: rawPayload.data || {}
+      };
+    }
+
+    // Keep cad-link tolerant while any older pending payloads age out.
+    if (action === BridgeEvent.CAD_LINK) {
+      return {
+        type: BridgeEvent.CAD_LINK,
+        data: rawPayload
+      };
+    }
+
+    logger.warn('Ignoring bridge payload without type for action ' + action);
+    return null;
+  }
+
+  _emitBridgeEvent(payload) {
+    window.dispatchEvent(new CustomEvent('fsb:bridge-event', { detail: payload }));
+  }
+
+  _getSnapshotScope() {
+    if (this.activeNamedDocument && this.activeNamedDocument.slug) {
+      return { slug: this.activeNamedDocument.slug };
+    }
+    return {};
+  }
+
+  _syncSnapshotPanel(snapshots = null) {
+    if (Array.isArray(snapshots)) {
+      if (typeof window.renderSnapshotList === 'function') {
+        window.renderSnapshotList(snapshots);
+      }
+      return Promise.resolve(snapshots);
+    }
+
+    if (typeof window.refreshSnapshotListFromBackend === 'function') {
+      return window.refreshSnapshotListFromBackend();
+    }
+
+    return Promise.resolve([]);
   }
 
   testConnection() {
@@ -219,6 +294,12 @@ class PythonInterface {
 
   // === MESSAGE HANDLERS ===
 
+  handleBridgeNotification(data = {}) {
+    const message = data.message || 'Notification received';
+    const level = data.level || 'info';
+    this.showNotification(message, level);
+  }
+
   handleLoadDiagram(jsonData) {
     try {
       logger.debug('Received diagram from Python:', jsonData);
@@ -335,6 +416,62 @@ class PythonInterface {
     }
   }
 
+  handleThumbnailUpdate(data = {}) {
+    const { blockId, thumbnailData } = data;
+    if (!blockId || !thumbnailData || !window.diagramEditor) {
+      logger.warn('Skipping thumbnail update with incomplete data:', data);
+      return;
+    }
+
+    const block = (window.diagramEditor.diagram.blocks || []).find(b => b.id === blockId);
+    if (!block) {
+      logger.warn('Thumbnail update target block not found:', blockId);
+      return;
+    }
+
+    (block.links || []).forEach(link => {
+      if (link.target === 'cad') {
+        link.thumbnail = {
+          dataUrl: thumbnailData,
+          width: 150,
+          height: 150,
+          generatedAt: new Date().toISOString()
+        };
+      }
+    });
+
+    this.latestBridgeUpdates.thumbnail = data;
+    this._emitBridgeEvent({ type: BridgeEvent.THUMBNAIL_UPDATE, data });
+
+    if (window.diagramRenderer) {
+      window.diagramRenderer.renderBlock(block);
+    }
+  }
+
+  handleBomUpdate(data = {}) {
+    this.latestBridgeUpdates.bom = data;
+    this._emitBridgeEvent({ type: BridgeEvent.BOM_UPDATE, data });
+
+    const message = data.kind === 'assembly-sequence'
+      ? 'Assembly sequence updated'
+      : 'BOM updated';
+    this.showNotification(message, 'info');
+  }
+
+  handleServiceManualUpdate(data = {}) {
+    this.latestBridgeUpdates.serviceManual = data;
+    this._emitBridgeEvent({ type: BridgeEvent.SERVICE_MANUAL_UPDATE, data });
+
+    const label = data.blockName ? ' for ' + data.blockName : '';
+    this.showNotification('Service manual updated' + label, 'info');
+  }
+
+  handleChangeImpactUpdate(data = {}) {
+    this.latestBridgeUpdates.changeImpact = data;
+    this._emitBridgeEvent({ type: BridgeEvent.CHANGE_IMPACT, data });
+    this.showNotification('Change impact analysis updated', 'info');
+  }
+
   handleImportResponse(responseData) {
     try {
       logger.debug('Received import response from Python:', responseData);
@@ -389,6 +526,7 @@ class PythonInterface {
           if (response.success) {
             window.diagramEditor.markSaved();
             try { localStorage.removeItem('fsb_recovery_backup'); } catch (_) {}
+            this._syncSnapshotPanel(response.snapshots || null);
             if (!silent) {
               this.showNotification('Document saved successfully', 'success');
             }
@@ -442,6 +580,7 @@ class PythonInterface {
         if (response.success) {
           window.diagramEditor.markSaved();
           try { localStorage.removeItem('fsb_recovery_backup'); } catch (_) {}
+          this._syncSnapshotPanel(response.snapshots || null);
           if (!silent) {
             this.showNotification('Diagram saved successfully', 'success');
           }
@@ -468,6 +607,7 @@ class PythonInterface {
         if (response.diagram) {
           this.handleLoadDiagram(response.diagram);
           this.activeNamedDocument = null;
+          this._syncSnapshotPanel(response.snapshots || null);
         } else {
           this.showNotification('No saved diagram found', 'info');
         }
@@ -555,23 +695,6 @@ class PythonInterface {
       .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
   }
 
-  syncComponents() {
-    if (!window.diagramEditor) return Promise.reject('No diagram editor available');
-    if (window.showLoadingSpinner) window.showLoadingSpinner('Syncing components\u2026');
-    
-    const diagramJson = window.diagramEditor.exportDiagram();
-    return this.sendMessage(BridgeAction.SYNC_COMPONENTS, { diagram: diagramJson }, true)
-      .then(response => {
-        this.displaySyncResults(response);
-        return response;
-      })
-      .catch(error => {
-        this.showNotification('Failed to sync components: ' + error.message, 'error');
-        throw error;
-      })
-      .finally(() => { if (window.hideLoadingSpinner) window.hideLoadingSpinner(); });
-  }
-
   // === NAMED DOCUMENT OPERATIONS ===
 
   listDocuments() {
@@ -590,6 +713,7 @@ class PythonInterface {
             slug: response.slug || null,
             label: response.label || label
           };
+          this._syncSnapshotPanel(response.snapshots || null);
           this.showNotification('Saved as "' + label + '"', 'success');
         } else {
           throw new Error(response.error || 'Save As failed');
@@ -612,6 +736,7 @@ class PythonInterface {
             slug: response.slug || slug,
             label: response.label || slug
           };
+          this._syncSnapshotPanel(response.snapshots || null);
         } else {
           throw new Error(response.error || 'Load failed');
         }
@@ -640,6 +765,7 @@ class PythonInterface {
 
   clearActiveNamedDocument() {
     this.activeNamedDocument = null;
+    this._syncSnapshotPanel();
   }
 
   // === REQUIREMENTS & VERSION CONTROL (Issue #31) ===
@@ -672,7 +798,8 @@ class PythonInterface {
     return this.sendMessage(BridgeAction.CREATE_SNAPSHOT, {
       diagram: diagramJson,
       description: description,
-      author: author
+      author: author,
+      ...this._getSnapshotScope()
     }, true)
       .then(response => {
         if (response.success) {
@@ -692,7 +819,7 @@ class PythonInterface {
    * @returns {Promise<Array>} Array of snapshot summary objects.
    */
   listSnapshots() {
-    return this.sendMessage(BridgeAction.LIST_SNAPSHOTS, {}, true)
+    return this.sendMessage(BridgeAction.LIST_SNAPSHOTS, this._getSnapshotScope(), true)
       .then(response => response.snapshots || [])
       .catch(() => []);
   }
@@ -704,10 +831,14 @@ class PythonInterface {
    */
   restoreSnapshot(snapshotId) {
     if (window.showLoadingSpinner) window.showLoadingSpinner('Restoring snapshot\u2026');
-    return this.sendMessage(BridgeAction.RESTORE_SNAPSHOT, { snapshotId }, true)
+    return this.sendMessage(BridgeAction.RESTORE_SNAPSHOT, {
+      snapshotId,
+      ...this._getSnapshotScope()
+    }, true)
       .then(response => {
         if (response.success && response.diagram) {
           this.handleLoadDiagram(response.diagram);
+          this._syncSnapshotPanel(response.snapshots || null);
           this.showNotification('Snapshot restored', 'success');
         } else {
           throw new Error(response.error || 'Restore failed');
@@ -728,7 +859,11 @@ class PythonInterface {
    * @returns {Promise<Object>} Diff result object.
    */
   compareSnapshots(oldId, newId) {
-    return this.sendMessage(BridgeAction.COMPARE_SNAPSHOTS, { oldId, newId }, true)
+    return this.sendMessage(BridgeAction.COMPARE_SNAPSHOTS, {
+      oldId,
+      newId,
+      ...this._getSnapshotScope()
+    }, true)
       .then(response => {
         if (response.success) {
           return response.diff;

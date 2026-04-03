@@ -13,6 +13,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+try:
+    from fusion_addin.logging_util import get_logger
+
+    _LOGGER = get_logger("selection")
+except Exception:
+    _LOGGER = None
+
 # Fusion imports - only in this adapter layer
 try:
     import adsk.core
@@ -25,6 +32,25 @@ except ImportError:
 if TYPE_CHECKING:
     import adsk.core
     import adsk.fusion
+
+
+def _log_selection_error(message: str, exc: Exception | None = None) -> None:
+    """Log selection adapter failures instead of silently returning None."""
+    full_message = f"Selection adapter error: {message}"
+
+    if _LOGGER is not None:
+        if exc is None:
+            _LOGGER.error(full_message)
+        else:
+            _LOGGER.exception("%s: %s", full_message, exc)
+
+    if _FUSION_AVAILABLE:
+        try:
+            app = adsk.core.Application.get()
+            if app and hasattr(app, "log"):
+                app.log(full_message if exc is None else f"{full_message}: {exc}")
+        except Exception:
+            pass
 
 
 class SelectionHandler:
@@ -90,7 +116,8 @@ class SelectionHandler:
                 "docId": doc_id,
             }
 
-        except Exception:
+        except Exception as exc:
+            _log_selection_error("select_occurrence failed", exc)
             return None
 
     def select_multiple_occurrences(
@@ -148,8 +175,8 @@ class SelectionHandler:
                         }
                     )
 
-        except Exception:
-            pass
+        except Exception as exc:
+            _log_selection_error("select_multiple_occurrences failed", exc)
 
         return selections
 
@@ -178,8 +205,8 @@ class SelectionHandler:
             for occurrence in root_component.allOccurrences:
                 if occurrence.entityToken == token:
                     return occurrence
-        except Exception:
-            pass
+        except Exception as exc:
+            _log_selection_error("find_occurrence_by_token failed", exc)
 
         return None
 
@@ -228,17 +255,18 @@ class SelectionHandler:
                             "min": [bbox.minPoint.x, bbox.minPoint.y, bbox.minPoint.z],
                             "max": [bbox.maxPoint.x, bbox.maxPoint.y, bbox.maxPoint.z],
                         }
-            except Exception:
-                pass
+            except Exception as exc:
+                _log_selection_error("Failed to read physical properties", exc)
 
             # Get material
             try:
                 if component.material:
                     info["material"] = component.material.name
-            except Exception:
-                pass
+            except Exception as exc:
+                _log_selection_error("Failed to read component material", exc)
 
             return info
 
-        except Exception:
+        except Exception as exc:
+            _log_selection_error("get_occurrence_info failed", exc)
             return {}

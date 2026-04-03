@@ -24,11 +24,17 @@ Fusion System Blocks adds a **system block diagram palette** directly inside Fus
 
 **Key capabilities:**
 
-- Drag-and-drop blocks from electrical, mechanical, and software libraries.
-- Connect blocks with typed wires (power, data, mechanical, etc.).
+- Create blocks from electrical, mechanical, and software libraries with 8
+  supported shapes.
+- Connect blocks with typed wires, directional arrows, and optional
+  orthogonal routing.
 - Link any block to an actual Fusion component so the diagram and the CAD model stay in sync.
-- Run rule checks to catch orphan blocks, interface mismatches, and power budget violations.
-- Export reports: BOM, connection matrix, pin map, PDF, SVG, and more.
+- Save diagrams and named variants inside the Fusion document, then create and
+  restore snapshots from the History tab.
+- Run rule checks and requirements verification to catch orphan blocks,
+  interface mismatches, and power-budget issues.
+- Export 11 report and artifact formats including BOM, connection matrix, SVG,
+  PDF, and more.
 
 <p align="center">
   <img src="docs/Images/Blank%20Canvas.png" alt="Blank canvas – the diagram palette as it appears when first opened" width="720" />
@@ -47,7 +53,12 @@ Most engineering teams document their system architecture in separate tools — 
 
 > **Experimental — V0.1.1**
 >
-> Core diagramming, CAD linking, and export features are implemented and tested (600+ automated tests). The add-in is usable for personal and academic projects. APIs and file formats may change before v1.0.
+> Core diagramming, named documents, snapshot history, CAD linking, rule
+> checking, and 11-format exports are implemented and tested. Current
+> workspace baseline: 707 automated tests and 32 in-app diagnostics checks.
+> 16 of 18 milestones are complete; milestone 13 and milestone 15 remain not
+> started. The add-in is usable for personal and academic projects. APIs and
+> file formats may change before v1.0.
 
 ---
 
@@ -64,20 +75,24 @@ Most engineering teams document their system architecture in separate tools — 
 
 2. **Unzip** it. You will get a single folder called `Fusion_System_Blocks`.
 
-3. **Move** that folder into your Fusion Add-Ins directory:
+3. **Open Fusion** (or restart it if it was already running).
 
-   | OS | Path |
-   |---|---|
-   | **Windows** | `%APPDATA%\Autodesk\ApplicationPlugins\` |
-   | **macOS** | `~/Library/Application Support/Autodesk/ApplicationPlugins/` |
+4. Go to **Utilities → Add-Ins**.
 
-4. **Open Fusion** (or restart it if it was already running).
-
-5. Go to **Utilities → Add-Ins** (or press <kbd>Shift</kbd>+<kbd>S</kbd>).
+5. Open **Scripts and Add-Ins**, switch to the **Add-Ins** tab, click the
+  **+** button, and select the extracted `Fusion_System_Blocks` folder.
 
 6. Find **Fusion System Blocks** in the list, select it, and click **Run**.
 
    > Optionally check **Run on Startup** so it loads every time you open Fusion.
+
+7. **Manual alternative:** copy the folder into the Fusion Add-Ins directory if
+  you prefer a file-based install.
+
+  | OS | Path |
+  |---|---|
+  | **Windows** | `%APPDATA%\Autodesk\Autodesk Fusion\API\AddIns\` |
+  | **macOS** | `~/Library/Application Support/Autodesk/Autodesk Fusion/API/AddIns/` |
 
 That's it — a "System Blocks" button appears in the toolbar. Click it to open the diagram palette.
 
@@ -115,6 +130,19 @@ Open Fusion document
             → Export a report (PDF, BOM, etc.)
               → Save — diagram persists inside the .f3d file
 ```
+
+---
+
+## Testing & Validation
+
+- Quick manual regression plan:
+  [docs/FUSION_MANUAL_TEST_PLAN.md](docs/FUSION_MANUAL_TEST_PLAN.md)
+- Full release validation plan:
+  [docs/DETAILED_TESTING_DOCUMENTATION.md](docs/DETAILED_TESTING_DOCUMENTATION.md)
+- Built-in Fusion self-test:
+  run **Run Diagnostics** from **Utilities → Add-Ins**
+- Current workspace validation baseline:
+  707 passing `pytest` tests and 32 in-app diagnostics checks
 
 ---
 

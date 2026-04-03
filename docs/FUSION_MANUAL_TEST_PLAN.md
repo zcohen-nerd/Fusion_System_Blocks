@@ -1,4 +1,253 @@
-# Fusion System Blocks — Manual Test Plan
+Companion short manual regression plan for the current Fusion System Blocks
+repository. Use this for a practical release pass. Use
+[DETAILED_TESTING_DOCUMENTATION.md](DETAILED_TESTING_DOCUMENTATION.md) when
+you need the longer, full-coverage plan.
+
+## Current Baseline
+
+- Updated: April 3, 2026
+- Repository status: 18 milestones total; 16 complete; 2 not started
+  (Milestone 13 and Milestone 15)
+- Latest automated baseline in this workspace: `pytest -q` passed 707 tests
+- In-app diagnostics baseline: 32 checks discovered by `DiagnosticsRunner`
+- Estimated total time: 30 to 40 minutes
+
+## Prerequisites
+
+- Fusion installed and running.
+- Fusion System Blocks deployed and visible in Utilities -> Add-Ins.
+- If manual installation is needed, the add-in folder is under:
+  `%APPDATA%\Autodesk\Autodesk Fusion\API\AddIns\`
+- Fusion restarted after deployment.
+- A Fusion test document open with at least 3 components and 1 subassembly.
+- A writable export folder available.
+- Optional but recommended:
+  - A second Fusion document open for multi-document CAD-link checks.
+  - A prepared fixture document for requirements verification.
+  - A prepared legacy document without `schemaVersion` for migration checks.
+
+## Stop Conditions
+
+- If automated preflight fails, stop the manual pass.
+- If the palette fails to launch or the bridge never becomes connected, stop
+  the manual pass.
+- If save/load corrupts data, treat that as release-blocking.
+
+## Known Partial Areas
+
+- ECAD linking is still a placeholder UI path. Do not fail the release solely
+  because ECAD does not have a full authoring workflow.
+- Snapshot comparison is backend-capable, but there is no primary compare
+  control in the History tab yet.
+- Requirements verification works best with seeded fixture data because there
+  is not yet a dedicated requirements authoring UI.
+- Milestone 13 and Milestone 15 are not part of this manual plan.
+
+## Phase 0: Automated Preflight (5 min)
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 0.1 | Open the repository root in the configured environment. | Commands run against the correct workspace. | [ ] |
+| 0.2 | Run `pytest -q`. | All tests pass. Current baseline: 707 passed. | [ ] |
+| 0.3 | Run `ruff check .`. | No lint failures. | [ ] |
+| 0.4 | Review editor diagnostics for any touched files. | No blocking syntax or import errors remain. | [ ] |
+
+## Phase 1: Launch and Diagnostics (5 min)
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 1.1 | Open the Fusion test document. | Fusion is running with a writable document open. | [ ] |
+| 1.2 | Open Utilities -> Add-Ins. | `Fusion System Blocks` and `Run Diagnostics` are visible. | [ ] |
+| 1.3 | Run `Run Diagnostics`. | Diagnostics finish without crashing Fusion. | [ ] |
+| 1.4 | Review the result summary. | All 32 checks pass and a log path is shown. | [ ] |
+| 1.5 | Launch `Fusion System Blocks`. | The palette opens successfully. | [ ] |
+| 1.6 | Inspect the footer bridge pill after startup settles. | The footer shows `Bridge: connected`. | [ ] |
+| 1.7 | Confirm a new session log exists in `%USERPROFILE%\FusionSystemBlocks\logs\`. | A fresh log file is present. | [ ] |
+
+## Phase 2: Shell, Ribbon, Tabs, and Help (4 min)
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 2.1 | Inspect the ribbon. | 11 groups are visible: File, Edit, Create, Navigate, Select, Arrange, Annotate, View, Validate, CAD Links, Help. | [ ] |
+| 2.2 | Inspect the secondary toolbar. | Search, status filters, connection-type dropdown, arrow-direction dropdown, and breadcrumb are visible. | [ ] |
+| 2.3 | Inspect the tab row. | `Home`, `Diagram`, `Linking`, `Validation`, `Reqs`, `History`, and `Reports` are visible. | [ ] |
+| 2.4 | Hover any ribbon button briefly, then longer. | Short and expanded tooltips both appear. | [ ] |
+| 2.5 | Resize the palette narrow, then wide again. | Layout remains usable without overlapping controls. | [ ] |
+| 2.6 | Press `F1`. | The help overlay opens. | [ ] |
+| 2.7 | Press `?`. | The keyboard-shortcuts dialog opens. | [ ] |
+
+## Phase 3: Core Editing, Shapes, and Connections (7 min)
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 3.1 | Start a new diagram. | The canvas is blank and ready for editing. | [ ] |
+| 3.2 | Add one generic block, one electrical block, and one software or mechanical block. | All selected block types are created successfully. | [ ] |
+| 3.3 | Rename one block inline and inspect the right-side properties panel. | Name, Type, Status, Shape, Attributes, and connection summary are visible and editable. | [ ] |
+| 3.4 | Verify the default engineering attributes on a new block. | Manufacturer, Part Number, Datasheet URL, Rating / Specification, Cost, Lead Time, and Notes are present. | [ ] |
+| 3.5 | Cycle a block through all 8 shapes. | Rectangle, Rounded, Diamond, Ellipse, Hexagon, Parallelogram, Cylinder, and Triangle all render correctly. | [ ] |
+| 3.6 | Create a connection using the port-dot workflow or `C`. | A connection is drawn successfully between 2 blocks. | [ ] |
+| 3.7 | Change the connection type and arrow direction. | Stroke styling and arrowheads update correctly. | [ ] |
+| 3.8 | Attempt a self-loop and then a duplicate connection. | Both invalid connection attempts are rejected. | [ ] |
+| 3.9 | Toggle orthogonal routing on and move a block into the route path. | Right-angle routing appears and recalculates around the obstacle. | [ ] |
+| 3.10 | Turn orthogonal routing back off. | Connections return to bezier mode. | [ ] |
+| 3.11 | Copy, paste, delete, undo, and redo a block or connection. | Editing and history behave correctly. | [ ] |
+
+## Phase 4: Navigation, Search, Grouping, and Layout (4 min)
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 4.1 | Pan and zoom the canvas. | Canvas movement is smooth and the minimap updates. | [ ] |
+| 4.2 | Toggle snap-to-grid and drag a block. | Snap behavior changes visibly when the toggle is on or off. | [ ] |
+| 4.3 | Search for a block by name with `Ctrl+F`. | Matching blocks remain visible and non-matching blocks dim. | [ ] |
+| 4.4 | Use the status filters: All, Placeholder, Planned, In-Work, Implemented. | Filtering behaves as labeled; `Implemented` includes Verified blocks. | [ ] |
+| 4.5 | Multi-select blocks, create a group, then ungroup them. | Group boundaries appear and then clear correctly. | [ ] |
+| 4.6 | Run `Auto Layout`, then `Align Left` and `Distribute Horizontal`. | Layout and alignment commands move blocks as expected. | [ ] |
+| 4.7 | Add one text or note annotation. | The annotation appears and can be edited or deleted. | [ ] |
+
+## Phase 5: Save, Load, Named Documents, and Close Safety (5 min)
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 5.1 | Save the current diagram. | Save succeeds and the `Last saved` footer pill updates. | [ ] |
+| 5.2 | Click `New`, then `Load`. | The previously saved diagram is restored correctly. | [ ] |
+| 5.3 | Use `Save As...` to create `Named Diagram A`. | The named document is created successfully. | [ ] |
+| 5.4 | Make an obvious change and use `Save As...` to create `Named Diagram B`. | A second named document is created successfully. | [ ] |
+| 5.5 | Use `Open...` to switch between A and B. | Each named document loads the correct content. | [ ] |
+| 5.6 | Trigger Save and Load from the Home tab. | Home-tab actions behave the same as the ribbon actions. | [ ] |
+| 5.7 | Enable Autosave, make a small change, and wait at least 5 seconds. | The change is saved automatically and the footer updates. | [ ] |
+| 5.8 | Make another unsaved change and try to close the palette. | The unsaved-changes warning appears. | [ ] |
+| 5.9 | Cancel the close, then save and close again. | Cancel preserves the diagram; saved close exits cleanly. | [ ] |
+
+## Phase 6: Hierarchy, History, and Undo Panel (4 min)
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 6.1 | Create a child diagram from a parent block. | Navigation moves into the child diagram and the breadcrumb updates. | [ ] |
+| 6.2 | Add blocks inside the child diagram and go back up. | Child data is present and the parent shows a child indicator. | [ ] |
+| 6.3 | Drill back down into the same child diagram. | The child content is still present. | [ ] |
+| 6.4 | Open the `History` tab and create snapshot `v1`, then make a change and create `v2`. | Both snapshots appear in the list. | [ ] |
+| 6.5 | Restore the older snapshot. | The diagram returns to the earlier state. | [ ] |
+| 6.6 | Save a named document, create a snapshot, switch to another named document, and inspect History again. | Snapshot lists follow the active document scope. | [ ] |
+| 6.7 | Open the undo history panel from the Edit ribbon group. | The panel opens and shows labeled entries. | [ ] |
+| 6.8 | Click an earlier history entry. | The diagram jumps to that recorded state. | [ ] |
+
+## Phase 7: CAD Linking and Validation (6 min)
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 7.1 | Select a block and click `Link to CAD`. | The palette hides and Fusion enters selection mode. | [ ] |
+| 7.2 | Select a component in the viewport. | The palette returns and the block shows a CAD-link badge. | [ ] |
+| 7.3 | Save and reload the diagram. | The CAD-link badge and metadata persist. | [ ] |
+| 7.4 | Start CAD selection again and cancel with `Escape`. | The palette returns cleanly and cancellation is surfaced. | [ ] |
+| 7.5 | Open the `Validation` tab and run checks on a diagram with an orphan or placeholder block. | Validation results appear. | [ ] |
+| 7.6 | Set a block status to `Implemented` without interfaces, attributes, and links, then rerun checks. | The implementation-completeness rule flags the mismatch. | [ ] |
+| 7.7 | Create a supply with `output_current = 1000mA` and a load with `current = 200mA`, then rerun checks. | No power-budget error is reported. | [ ] |
+| 7.8 | Reduce the supply to `100mA`, then rerun checks. | A power-budget exceeded error appears. | [ ] |
+| 7.9 | Change the supply value to `abc`, then rerun checks. | An invalid-power-value error appears instead of being ignored. | [ ] |
+| 7.10 | Watch the footer health pill after fixing and re-running checks. | It moves appropriately between `Issues detected` and `OK`. | [ ] |
+
+## Phase 8: Import, Export, and Report Artifacts (5 min)
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 8.1 | Open the Import dialog. | Mermaid and CSV import modes are both available. | [ ] |
+| 8.2 | Import the Mermaid fixture from Appendix A. | The expected blocks and connection appear. | [ ] |
+| 8.3 | Import the CSV fixtures from Appendix A. | The expected blocks and connection appear. | [ ] |
+| 8.4 | Open the Export dialog and inspect the format list. | All 11 export formats are present. | [ ] |
+| 8.5 | Use `Select None`, then `Select All`. | The selection helpers work correctly. | [ ] |
+| 8.6 | Export Markdown and HTML only to a temporary folder. | Exactly 2 files are written. | [ ] |
+| 8.7 | Export the full set of formats to a temporary folder. | All 11 files are written. | [ ] |
+| 8.8 | Open the generated Markdown, HTML, SVG, and PDF outputs. | Files are non-empty and reflect the current diagram. | [ ] |
+
+## Phase 9: Accessibility and Recovery Smoke (3 min)
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 9.1 | Use arrow keys on the tab bar. | Focus and selection move according to the tab pattern. | [ ] |
+| 9.2 | Open a modal dialog, press `Tab`, then press `Escape`. | Focus stays inside the modal until `Escape` closes it. | [ ] |
+| 9.3 | Tab through ribbon buttons. | A clear focus-visible outline appears. | [ ] |
+| 9.4 | If high-contrast mode is available, enable it and inspect the palette. | Borders and focus outlines remain usable. | [ ] |
+| 9.5 | Optional: if testing crash recovery, force a recoverable unsaved session and reopen the add-in. | The recovery prompt appears and `Recover` restores the diagram. | [ ] |
+
+## Phase 10: Optional Hybrid Checks (Requirements and Schema) (3 min)
+
+Use this phase only when the release scope includes requirements validation or
+legacy migration behavior.
+
+| Step | Action | Expected Result | Pass |
+| --- | --- | --- | --- |
+| 10.1 | Load a prepared requirements fixture document or use the seeded fixture from [DETAILED_TESTING_DOCUMENTATION.md](DETAILED_TESTING_DOCUMENTATION.md). | Requirement data is present after load. | [ ] |
+| 10.2 | Open `Reqs` and click `Check Requirements`. | Pass/fail rows appear and the status pill updates. | [ ] |
+| 10.3 | Load a prepared legacy document with no `schemaVersion`, then save and reload it. | Migration succeeds and the document remains loadable. | [ ] |
+| 10.4 | If using automated coverage instead of fixture-driven manual checks, run `pytest -q tests/test_requirements.py tests/test_version_control.py tests/test_status_tracking.py tests/test_rule_checks.py`. | All targeted tests pass. | [ ] |
+
+## Quick Smoke Test
+
+1. [ ] Add-in launches and the bridge becomes connected.
+2. [ ] `Run Diagnostics` passes all 32 checks.
+3. [ ] Can create, rename, connect, save, and load blocks.
+4. [ ] Can link a block to a Fusion component and keep the link after reload.
+5. [ ] Can export reports without errors.
+
+## Appendix A: Pasteable Import Fixtures
+
+### Mermaid Fixture
+
+```text
+flowchart TD
+  A[Power Supply] --> B[Controller]
+```
+
+### CSV Blocks Fixture
+
+```csv
+name,type,x,y,status
+Power Supply,PowerSupply,100,100,Verified
+Controller,Microcontroller,320,100,Planned
+```
+
+### CSV Connections Fixture
+
+```csv
+from,to,kind,protocol
+Power Supply,Controller,electrical,3.3V
+```
+
+## Error Log Location
+
+```text
+Windows: %USERPROFILE%\FusionSystemBlocks\logs\
+macOS:   ~/FusionSystemBlocks/logs/
+```
+
+Log filename format:
+`systemblocks_YYYYMMDD_HHMMSS_<session>.log`
+
+## Results Summary
+
+| Phase | Area | Result | Notes |
+| --- | --- | --- | --- |
+| 0 | Automated preflight |  |  |
+| 1 | Launch and diagnostics |  |  |
+| 2 | Shell, ribbon, tabs, and help |  |  |
+| 3 | Core editing, shapes, and connections |  |  |
+| 4 | Navigation, search, grouping, and layout |  |  |
+| 5 | Save, load, named documents, and close safety |  |  |
+| 6 | Hierarchy, history, and undo panel |  |  |
+| 7 | CAD linking and validation |  |  |
+| 8 | Import, export, and report artifacts |  |  |
+| 9 | Accessibility and recovery smoke |  |  |
+| 10 | Optional hybrid checks |  |  |
+
+Tested by: ____________________
+
+Date: ____________________
+
+Fusion version: ____________________
+
+OS: ____________________
+
+Overall result: [ ] PASS  [ ] FAIL# Fusion System Blocks — Manual Test Plan
 
 Comprehensive manual verification plan for the Fusion System Blocks
 add-in covering all features across 20 phases (185 test steps).

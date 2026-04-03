@@ -14,6 +14,13 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
+try:
+    from fusion_addin.logging_util import get_logger
+
+    _LOGGER = get_logger("document")
+except Exception:
+    _LOGGER = None
+
 # Fusion imports - only in this adapter layer
 try:
     import adsk.core
@@ -26,6 +33,25 @@ except ImportError:
 if TYPE_CHECKING:
     import adsk.core
     import adsk.fusion
+
+
+def _log_document_error(message: str, exc: Exception | None = None) -> None:
+    """Log document adapter failures instead of silently suppressing them."""
+    full_message = f"Document adapter error: {message}"
+
+    if _LOGGER is not None:
+        if exc is None:
+            _LOGGER.error(full_message)
+        else:
+            _LOGGER.exception("%s: %s", full_message, exc)
+
+    if _FUSION_AVAILABLE:
+        try:
+            app = adsk.core.Application.get()
+            if app and hasattr(app, "log"):
+                app.log(full_message if exc is None else f"{full_message}: {exc}")
+        except Exception:
+            pass
 
 
 class DocumentManager:
@@ -88,8 +114,11 @@ class DocumentManager:
             for attr in root_comp.attributes:
                 if attr.groupName == group_name and attr.name == attr_name:
                     return attr.value
-        except Exception:
-            pass
+        except Exception as exc:
+            _log_document_error(
+                f"get_attribute failed for {group_name}/{attr_name}",
+                exc,
+            )
 
         return None
 
@@ -124,7 +153,11 @@ class DocumentManager:
             root_comp.attributes.add(group_name, attr_name, value)
             return True
 
-        except Exception:
+        except Exception as exc:
+            _log_document_error(
+                f"set_attribute failed for {group_name}/{attr_name}",
+                exc,
+            )
             return False
 
     def delete_attribute(
@@ -150,8 +183,11 @@ class DocumentManager:
                 if attr.groupName == group_name and attr.name == attr_name:
                     attr.deleteMe()
                     return True
-        except Exception:
-            pass
+        except Exception as exc:
+            _log_document_error(
+                f"delete_attribute failed for {group_name}/{attr_name}",
+                exc,
+            )
 
         return False
 
@@ -175,7 +211,11 @@ class DocumentManager:
 
         try:
             return json.loads(value)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as exc:
+            _log_document_error(
+                f"get_json_attribute failed for {group_name}/{attr_name}",
+                exc,
+            )
             return None
 
     def set_json_attribute(
@@ -197,7 +237,11 @@ class DocumentManager:
         try:
             value = json.dumps(data, indent=2)
             return self.set_attribute(group_name, attr_name, value)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as exc:
+            _log_document_error(
+                f"set_json_attribute failed for {group_name}/{attr_name}",
+                exc,
+            )
             return False
 
     def get_document_info(self) -> dict[str, Any]:
@@ -242,7 +286,8 @@ class DocumentManager:
 
         try:
             return list(root_comp.allOccurrences)
-        except Exception:
+        except Exception as exc:
+            _log_document_error("get_all_occurrences failed", exc)
             return []
 
     def get_all_components(self) -> list[adsk.fusion.Component]:
@@ -257,5 +302,6 @@ class DocumentManager:
 
         try:
             return list(design.allComponents)
-        except Exception:
+        except Exception as exc:
+            _log_document_error("get_all_components failed", exc)
             return []

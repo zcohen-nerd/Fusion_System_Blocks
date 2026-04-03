@@ -47,16 +47,16 @@ class BridgeAction(str, Enum):
 class BridgeEvent(str, Enum):
     """Events sent from Python to JavaScript via ``palette.sendInfoToHTML``.
 
-    These are the ``action`` parameter passed to ``sendInfoToHTML``
-    and received by ``window.fusionJavaScriptHandler`` on the JS side.
+    Contract:
+    * ``sendInfoToHTML`` always carries a JSON payload with the shape
+      ``{"type": <event-name>, "data": {...}}``.
+    * The ``action`` parameter mirrors ``payload.type`` for logging only.
+    * JavaScript routes exclusively by ``payload.type``.
     """
 
     NOTIFICATION = "notification"
     CAD_LINK = "cad-link"
-    THUMBNAIL_UPDATED = "thumbnail-updated"
-    ASSEMBLY_SEQUENCE = "assembly-sequence"
-    ASSEMBLY_ERROR = "assembly-error"
-    LIVING_BOM = "living-bom"
-    BOM_ERROR = "bom-error"
-    SERVICE_MANUAL = "service-manual"
+    THUMBNAIL_UPDATE = "thumbnail-update"
+    BOM_UPDATE = "bom-update"
+    SERVICE_MANUAL_UPDATE = "service-manual-update"
     CHANGE_IMPACT = "change-impact"

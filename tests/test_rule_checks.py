@@ -174,8 +174,50 @@ class TestRuleChecks:
         }
 
         result = check_power_budget(diagram)
-        assert result["success"] is True
-        assert "No power specifications found" in result["message"]
+        assert result["success"] is False
+        assert result["severity"] == "warning"
+        assert "no power specifications found" in result["message"].lower()
+
+    def test_power_budget_invalid_value_is_error(self):
+        """Invalid numeric values must surface as a rule error."""
+        diagram = {
+            "blocks": [
+                {
+                    "id": "supply1",
+                    "name": "PSU",
+                    "attributes": {"output_current": "abc"},
+                },
+                {
+                    "id": "load1",
+                    "name": "Load",
+                    "attributes": {"current": "10mA"},
+                },
+            ],
+            "connections": [],
+        }
+
+        result = check_power_budget(diagram)
+        assert result["success"] is False
+        assert result["severity"] == "error"
+        assert "Invalid power value" in result["message"]
+
+    def test_power_budget_incomplete_data_is_warning(self):
+        """Missing either a supply or consumer should warn instead of passing."""
+        diagram = {
+            "blocks": [
+                {
+                    "id": "load1",
+                    "name": "Load",
+                    "attributes": {"current": "10mA"},
+                },
+            ],
+            "connections": [],
+        }
+
+        result = check_power_budget(diagram)
+        assert result["success"] is False
+        assert result["severity"] == "warning"
+        assert "incomplete" in result["message"].lower()
 
     def test_implementation_completeness_success(self):
         """Test complete implementation passes the check"""
@@ -368,6 +410,28 @@ class TestRuleChecks:
         }
         violations = check_power_budget_bulk(diagram)
         assert violations == []
+
+    def test_power_budget_bulk_reports_invalid_values(self):
+        """Bulk validation should surface invalid numeric inputs."""
+        diagram = {
+            "blocks": [
+                {
+                    "id": "psu",
+                    "name": "PSU",
+                    "attributes": {"output_current": "bad-value"},
+                },
+                {
+                    "id": "load",
+                    "name": "Load",
+                    "attributes": {"current": "5mA"},
+                },
+            ],
+            "connections": [],
+        }
+
+        violations = check_power_budget_bulk(diagram)
+        assert any(v["type"] == "invalid_power_value" for v in violations)
+        assert any(v["severity"] == "error" for v in violations)
 
     def test_power_budget_bulk_with_mw_attributes(self):
         """check_power_budget_bulk accepts power_supply_mw / power_consumption_mw."""
