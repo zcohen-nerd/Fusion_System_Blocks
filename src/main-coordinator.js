@@ -278,6 +278,13 @@ class SystemBlocksMain {
       // Only handle primary (left) button for selection/drag.
       if (e.button !== 0) return;
 
+      // Annotation clicks stop propagation, so any left-click reaching
+      // this handler landed on something else — deselect annotations so
+      // a stale selection can't be removed by a later Delete keypress.
+      if (renderer.clearAnnotationSelection) {
+        renderer.clearAnnotationSelection();
+      }
+
       // --- Resize handle click detection ---
       let handleEl = e.target.closest
         ? e.target.closest('.resize-handle')
