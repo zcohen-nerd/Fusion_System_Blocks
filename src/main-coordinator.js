@@ -278,6 +278,13 @@ class SystemBlocksMain {
       // Only handle primary (left) button for selection/drag.
       if (e.button !== 0) return;
 
+      // Annotation clicks stop propagation, so any left-click reaching
+      // this handler landed on something else — deselect annotations so
+      // a stale selection can't be removed by a later Delete keypress.
+      if (renderer.clearAnnotationSelection) {
+        renderer.clearAnnotationSelection();
+      }
+
       // --- Resize handle click detection ---
       let handleEl = e.target.closest
         ? e.target.closest('.resize-handle')
@@ -4593,6 +4600,19 @@ class SystemBlocksMain {
     this._pageTabEventsBound = false;
     this._pageTabEventsTarget = null;
     this.isInitialized = false;
+    // Tear down module-owned document-level listeners (renderer's
+    // annotation keydown, minimap's mousemove/mouseup, toolbar's
+    // shortcut keydown) — clearing the map alone would leak them and
+    // stack duplicate handlers across reinitializations.
+    this.modules.forEach((mod) => {
+      if (mod && typeof mod.destroy === 'function') {
+        try {
+          mod.destroy();
+        } catch (err) {
+          logger.warn('Module destroy failed during reinitialize:', err);
+        }
+      }
+    });
     this.modules.clear();
     this.initialize();
   }

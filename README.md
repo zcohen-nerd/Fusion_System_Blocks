@@ -210,15 +210,19 @@ regular users can stop reading here.
 - The Python core (`fsb_core/`, `src/diagram/`) is pure Python with no Fusion
   dependencies; the Fusion-specific layer lives in `fusion_addin/` and
   `Fusion_System_Blocks.py`. The panel UI is plain HTML/JS in `src/`.
-- Run the automated test suite (requires the test extras — `pytest`,
-  `hypothesis`, and `jsonschema`):
+- Run the automated test suites:
 
   ```bash
+  # Python (requires the test extras: pytest, hypothesis, jsonschema)
   pip install -e .[test]
   pytest -q
+
+  # JavaScript (requires Node.js 18+, no npm dependencies)
+  npm test
   ```
 
-- Current baseline: **775 passing tests** and **30 in-app diagnostics checks**.
+- Current baseline: **775 passing Python tests**, **24 JS harness tests**,
+  and **30 in-app diagnostics checks**.
 - Manual regression plan: [docs/FUSION_MANUAL_TEST_PLAN.md](docs/FUSION_MANUAL_TEST_PLAN.md)
 - Full release validation plan: [docs/DETAILED_TESTING_DOCUMENTATION.md](docs/DETAILED_TESTING_DOCUMENTATION.md)
 - Verbose logging for debugging: set the `SYSTEM_BLOCKS_LOG_LEVEL` environment

@@ -197,7 +197,7 @@ class ToolbarManager {
         order: 2
       },
       'Create': {
-        buttons: ['block', 'connect', 'types', 'text', 'note', 'dimension', 'callout'],
+        buttons: ['block', 'connect', 'text', 'note', 'dimension', 'callout'],
         order: 3
       },
       'Select': {
@@ -236,7 +236,7 @@ class ToolbarManager {
 
   getDefaultButtonState(buttonId) {
     // Buttons that are always enabled
-    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'types', 'check-rules', 'fit-view', 'zoom-selection', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'routing-mode', 'theme-toggle', 'help', 'connect', 'history', 'import', 'copy', 'paste', 'text', 'note', 'dimension', 'callout'];
+    const alwaysEnabled = ['new', 'load', 'open-named', 'block', 'check-rules', 'fit-view', 'zoom-selection', 'zoom-in', 'zoom-out', 'snap-grid', 'minimap', 'routing-mode', 'theme-toggle', 'help', 'connect', 'history', 'import', 'copy', 'paste', 'text', 'note', 'dimension', 'callout'];
     if (alwaysEnabled.includes(buttonId)) return true;
 
     // Undo/redo: enabled when there are states to restore
@@ -342,7 +342,6 @@ class ToolbarManager {
     // Create operations
     this.addButtonListener('block', () => this.handleCreateBlock());
     this.addButtonListener('connect', () => this.handleConnect());
-    this.addButtonListener('types', () => this.handleShowBlockTypes());
     this.addButtonListener('text', () => this.handleAddText());
     this.addButtonListener('note', () => this.handleAddNote());
     this.addButtonListener('dimension', () => this.handleAddDimension());
@@ -480,6 +479,21 @@ class ToolbarManager {
 
     this._keydownHandler = (e) => this.handleKeydown(e);
     document.addEventListener('keydown', this._keydownHandler);
+  }
+
+  /**
+   * Remove document-level listeners. Called by the coordinator before a
+   * reinitialize so keyboard shortcuts don't stack across instances.
+   */
+  destroy() {
+    if (this._keydownHandler) {
+      document.removeEventListener('keydown', this._keydownHandler);
+      this._keydownHandler = null;
+    }
+    if (this._cadLinkPoll) {
+      clearInterval(this._cadLinkPoll);
+      this._cadLinkPoll = null;
+    }
   }
 
   _isElementVisible(el) {
@@ -1289,14 +1303,6 @@ class ToolbarManager {
       if (window.pythonInterface) {
         window.pythonInterface.showNotification('Select a block first, then click Connect', 'warning');
       }
-    }
-  }
-
-  handleShowBlockTypes() {
-    // Toggle block types dropdown/panel
-    const typesPanel = document.getElementById('block-types-panel');
-    if (typesPanel) {
-      typesPanel.style.display = typesPanel.style.display === 'block' ? 'none' : 'block';
     }
   }
 

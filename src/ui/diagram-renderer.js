@@ -2014,11 +2014,15 @@ class DiagramRenderer {
     });
     this.blockElements.clear();
     this.connectionElements.clear();
-    // Clear annotation elements
+    // Clear annotation elements. The selection reference is dropped too:
+    // a full re-render destroys the selection outline, so keeping the
+    // reference would leave an invisible "selected" annotation that a
+    // later Delete keypress would silently remove.
     if (this._annotationElements) {
       this._annotationElements.forEach(el => el.remove());
       this._annotationElements.clear();
     }
+    this._selectedAnnotation = null;
     // Clear group boundary overlays so they don't persist across
     // drill-down, navigate-up, or new-document operations.
     const svg = this.svg;
@@ -3031,6 +3035,24 @@ class DiagramRenderer {
       if (e.button !== 0) return;
       e.stopPropagation();
 
+      // Annotations participate in exclusive selection: selecting one
+      // clears any block/connection selection. Otherwise a later Delete
+      // keypress would be handled by BOTH the toolbar (deleting the
+      // selected block) and the annotation listener below — removing two
+      // unrelated things with one keypress.
+      if (window.advancedFeatures) window.advancedFeatures.clearSelection();
+      if (this.editor && typeof this.editor.clearSelection === 'function') {
+        this.editor.clearSelection();
+      }
+      if (window.SystemBlocksMain) {
+        window.SystemBlocksMain._selectedConnection = null;
+        window.SystemBlocksMain._selectedStub = null;
+        if (window.SystemBlocksMain.hideFloatingActionBar) {
+          window.SystemBlocksMain.hideFloatingActionBar();
+        }
+      }
+      this.clearConnectionHighlights();
+
       // Deselect other annotations
       if (this._annotationElements) {
         this._annotationElements.forEach(el => el.classList.remove('annotation-selected'));
@@ -3087,6 +3109,10 @@ class DiagramRenderer {
         // Full re-render once on drop to finalize the position in DOM
         this.renderAnnotation(annotation);
         if (this.editor) this.editor._markDirty();
+        // Undo entry for the move (saveState dedupes no-op drags)
+        if (window.advancedFeatures) {
+          window.advancedFeatures.saveState('Move annotation');
+        }
       }
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
@@ -3103,6 +3129,9 @@ class DiagramRenderer {
           annotation.text = newText;
           this.renderAnnotation(annotation);
           if (this.editor) this.editor._markDirty();
+          if (window.advancedFeatures) {
+            window.advancedFeatures.saveState('Edit annotation');
+          }
         }
       });
     });
@@ -3131,9 +3160,30 @@ class DiagramRenderer {
           if (el) el.remove();
           this._annotationElements.delete(annId);
           this._selectedAnnotation = null;
+          // Undo entry so an accidental Delete can be reverted
+          if (window.advancedFeatures) {
+            window.advancedFeatures.saveState('Delete annotation');
+          }
         }
       };
       document.addEventListener('keydown', this._annotationKeydownHandler);
+    }
+  }
+
+  /**
+   * Deselect any selected annotation (removes outlines and selection
+   * state). Called by the coordinator whenever a left-click lands on
+   * anything that is not an annotation (annotation clicks stop
+   * propagation), so a stale selection can never make a later Delete
+   * keypress remove an annotation the user wasn't looking at.
+   */
+  clearAnnotationSelection() {
+    this._selectedAnnotation = null;
+    if (this._annotationElements) {
+      this._annotationElements.forEach(el => {
+        el.classList.remove('annotation-selected');
+        el.querySelectorAll('.ann-select-outline').forEach(o => o.remove());
+      });
     }
   }
 

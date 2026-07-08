@@ -1,0 +1,9 @@
+{
+  "name": "fusion-system-blocks-devtools",
+  "version": "0.1.1",
+  "private": true,
+  "description": "Developer tooling for Fusion System Blocks — JS test harness (no runtime dependencies; the add-in itself ships plain browser scripts)",
+  "scripts": {
+    "test": "node tests/js/run-tests.js"
+  }
+}

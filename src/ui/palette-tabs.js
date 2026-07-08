@@ -148,8 +148,22 @@
     const autosaveToggle = q('#toggle-autosave');
     if (autosaveToggle) {
       let timer = null;
+      // Consecutive-failure backoff: without it, a persistent failure
+      // (e.g. no active Fusion design) produces an error toast every
+      // 5 seconds forever.
+      let consecutiveFailures = 0;
+      const MAX_CONSECUTIVE_FAILURES = 3;
+
+      const stopAutosave = () => {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      };
+
       autosaveToggle.addEventListener('change', (e) => {
         if (e.target.checked) {
+          consecutiveFailures = 0;
           timer = setInterval(() => {
             // Only save when there are actual unsaved changes
             const editor = window.diagramEditor;
@@ -157,17 +171,32 @@
               return; // nothing to save
             }
             if (window.pythonInterface) {
-              window.pythonInterface.saveDiagram({ silent: true }).then(updateLastSaved).catch(() => {});
+              window.pythonInterface.saveDiagram({ silent: true })
+                .then(() => {
+                  consecutiveFailures = 0;
+                  updateLastSaved();
+                })
+                .catch(() => {
+                  consecutiveFailures++;
+                  if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+                    stopAutosave();
+                    autosaveToggle.checked = false;
+                    if (window.pythonInterface) {
+                      window.pythonInterface.showNotification(
+                        'Autosave paused after ' + consecutiveFailures +
+                        ' failed saves — fix the problem (e.g. open a design), then re-enable it',
+                        'warning'
+                      );
+                    }
+                  }
+                });
             }
           }, 5000);
           if (window.pythonInterface) {
             window.pythonInterface.showNotification('Autosave enabled (every 5 s)', 'info');
           }
         } else {
-          if (timer) {
-            clearInterval(timer);
-            timer = null;
-          }
+          stopAutosave();
           if (window.pythonInterface) {
             window.pythonInterface.showNotification('Autosave disabled', 'info');
           }

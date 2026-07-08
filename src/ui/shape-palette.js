@@ -29,7 +29,7 @@ var logger = window.getSystemBlocksLogger
 class ShapePalette {
   /**
    * @param {DiagramEditorCore} editor      – Core editor (has .addBlock, .gridSize, .snapToGridEnabled)
-   * @param {DiagramRenderer}   renderer    – Renderer (has .renderBlock, .renderAllConnections)
+   * @param {DiagramRenderer}   renderer    – Renderer (has .renderBlock)
    */
   constructor(editor, renderer) {
     this.editor = editor;
@@ -486,9 +486,9 @@ class ShapePalette {
         height: shapeData.height || 100
       });
 
-      // Render and select
+      // Render and select. A freshly added block has no connections, so
+      // only the block itself needs rendering.
       this.renderer.renderBlock(block);
-      this.renderer.renderAllConnections();
       this.editor.selectBlock(block.id);
 
       // Push undo state
@@ -540,8 +540,8 @@ class ShapePalette {
       height: bh
     });
 
+    // A freshly added block has no connections — render the block only.
     this.renderer.renderBlock(block);
-    this.renderer.renderAllConnections();
     this.editor.selectBlock(block.id);
 
     // Push undo state
