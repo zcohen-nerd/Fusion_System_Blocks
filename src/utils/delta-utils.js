@@ -235,3 +235,8 @@ var DeltaUtils = (function () {
     deepClone: deepClone
   };
 })();
+
+// Export for Node-based tests (browser usage relies on the global above)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = DeltaUtils;
+}

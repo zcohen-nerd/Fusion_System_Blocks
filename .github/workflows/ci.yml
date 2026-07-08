@@ -48,6 +48,22 @@ jobs:
         run: mypy fsb_core/ --ignore-missing-imports
 
   # -------------------------------------------------------------------
+  # Test: JS modules (delta utils, editor core, router, catalogs) plus
+  # a static sweep that fails on calls to nonexistent editor/renderer
+  # methods — the class of bug the palette UI has shipped before.
+  # -------------------------------------------------------------------
+  js-test:
+    name: Test (JS harness)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run JS test harness
+        run: node tests/js/run-tests.js
+
+  # -------------------------------------------------------------------
   # Test: pytest on multiple Python versions with coverage
   # -------------------------------------------------------------------
   test:

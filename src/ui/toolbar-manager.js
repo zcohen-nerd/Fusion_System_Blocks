@@ -481,6 +481,21 @@ class ToolbarManager {
     document.addEventListener('keydown', this._keydownHandler);
   }
 
+  /**
+   * Remove document-level listeners. Called by the coordinator before a
+   * reinitialize so keyboard shortcuts don't stack across instances.
+   */
+  destroy() {
+    if (this._keydownHandler) {
+      document.removeEventListener('keydown', this._keydownHandler);
+      this._keydownHandler = null;
+    }
+    if (this._cadLinkPoll) {
+      clearInterval(this._cadLinkPoll);
+      this._cadLinkPoll = null;
+    }
+  }
+
   _isElementVisible(el) {
     return !!el && window.getComputedStyle(el).display !== 'none';
   }

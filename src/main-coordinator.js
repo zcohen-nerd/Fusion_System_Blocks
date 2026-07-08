@@ -4600,6 +4600,19 @@ class SystemBlocksMain {
     this._pageTabEventsBound = false;
     this._pageTabEventsTarget = null;
     this.isInitialized = false;
+    // Tear down module-owned document-level listeners (renderer's
+    // annotation keydown, minimap's mousemove/mouseup, toolbar's
+    // shortcut keydown) — clearing the map alone would leak them and
+    // stack duplicate handlers across reinitializations.
+    this.modules.forEach((mod) => {
+      if (mod && typeof mod.destroy === 'function') {
+        try {
+          mod.destroy();
+        } catch (err) {
+          logger.warn('Module destroy failed during reinitialize:', err);
+        }
+      }
+    });
     this.modules.clear();
     this.initialize();
   }
