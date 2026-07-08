@@ -742,3 +742,28 @@ class TestAssemblyTimeTypeMultipliers:
         soft = create_block("Firmware", 0, 0, "Software")
         generic = create_block("Thing", 0, 0, "Generic")
         assert estimate_assembly_time(soft) < estimate_assembly_time(generic)
+
+
+class TestThumbnailPlaceholderEllipsis:
+    @staticmethod
+    def _decode_svg(thumb):
+        import base64
+
+        prefix = "data:image/svg+xml;base64,"
+        assert thumb["dataUrl"].startswith(prefix)
+        return base64.b64decode(thumb["dataUrl"][len(prefix) :]).decode("utf-8")
+
+    def test_short_name_is_not_ellipsized(self):
+        svg = self._decode_svg(
+            generate_component_thumbnail_placeholder(component_name="Bolt")
+        )
+        assert "Bolt" in svg
+        assert "…" not in svg
+
+    def test_long_name_is_truncated_with_ellipsis(self):
+        svg = self._decode_svg(
+            generate_component_thumbnail_placeholder(
+                component_name="VeryLongComponentName"
+            )
+        )
+        assert "VeryLong…" in svg

@@ -25,6 +25,7 @@ from __future__ import annotations
 import datetime
 import functools
 import logging
+import os
 import platform
 import sys
 import uuid
@@ -139,19 +140,44 @@ class SessionFormatter(logging.Formatter):
         )
 
 
-def setup_logging(level: int = logging.DEBUG) -> logging.Logger:
+#: Environment variable that overrides the default log level. Mirrors the
+#: JS logger's SYSTEM_BLOCKS_LOG_LEVEL. Accepts standard level names
+#: ("debug", "info", "warning", "error").
+LOG_LEVEL_ENV_VAR = "SYSTEM_BLOCKS_LOG_LEVEL"
+
+
+def resolve_log_level(default: int = logging.INFO) -> int:
+    """Resolve the log level from the environment, falling back to *default*.
+
+    Returns:
+        A logging level constant (e.g. ``logging.INFO``).
+    """
+    raw = os.environ.get(LOG_LEVEL_ENV_VAR, "").strip().upper()
+    if raw:
+        resolved = logging.getLevelName(raw)
+        if isinstance(resolved, int):
+            return resolved
+    return default
+
+
+def setup_logging(level: int | None = None) -> logging.Logger:
     """Initialize the logging system for this add-in session.
 
     Creates file and console handlers with appropriate formatters.
     Safe to call multiple times; subsequent calls are no-ops.
 
     Args:
-        level: The minimum logging level (default: DEBUG).
+        level: The minimum logging level. Defaults to INFO, overridable
+            via the SYSTEM_BLOCKS_LOG_LEVEL environment variable (set it
+            to "debug" when collecting logs for a bug report).
 
     Returns:
         The root logger for the add-in.
     """
     global _logging_initialized
+
+    if level is None:
+        level = resolve_log_level()
 
     if _logging_initialized:
         return logging.getLogger("FusionSystemBlocks")

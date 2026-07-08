@@ -19,10 +19,16 @@ def generate_id() -> str:
 
 
 def create_empty_diagram() -> dict[str, Any]:
-    """Create an empty diagram structure."""
+    """Create an empty diagram structure.
+
+    ``schemaVersion`` is the migration key (see :func:`migrate_diagram`);
+    ``schema`` is the document-format identifier, standardized on
+    ``"system-blocks-v2"`` to match the fsb_core Graph model and the JS
+    editor.
+    """
     return {
         "schemaVersion": SCHEMA_VERSION,
-        "schema": "system-blocks-v1",
+        "schema": "system-blocks-v2",
         "blocks": [],
         "connections": [],
     }

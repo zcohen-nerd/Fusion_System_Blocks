@@ -48,15 +48,18 @@ class DiagramEditorCore {
 
   createEmptyDiagram() {
     return {
+      // schemaVersion is the migration key (see migrateDiagram);
+      // schema is the document-format identifier, shared with the
+      // Python core (fsb_core Graph / diagram.core.create_empty_diagram).
       schemaVersion: DiagramEditorCore.SCHEMA_VERSION,
+      schema: 'system-blocks-v2',
       blocks: [],
       connections: [],
       groups: [],
       namedStubs: [],
       metadata: {
         created: new Date().toISOString(),
-        modified: new Date().toISOString(),
-        version: "2.0"
+        modified: new Date().toISOString()
       }
     };
   }

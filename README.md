@@ -55,7 +55,7 @@ Most engineering teams document their system architecture in separate tools — 
 >
 > Core diagramming, named documents, snapshot history, CAD linking, rule
 > checking, and 11-format exports are implemented and tested. Current
-> workspace baseline: 763 automated tests and 30 in-app diagnostics checks.
+> workspace baseline: 775 automated tests and 30 in-app diagnostics checks.
 > 16 of 18 milestones are complete; milestone 13 and milestone 15 remain not
 > started. The add-in is usable for personal and academic projects. APIs and
 > file formats may change before v1.0.
@@ -135,6 +135,14 @@ Open Fusion document
 
 ## Testing & Validation
 
+- Run the automated suite locally (requires the test extras —
+  `pytest`, `hypothesis`, and `jsonschema`):
+
+  ```bash
+  pip install -e .[test]
+  pytest -q
+  ```
+
 - Quick manual regression plan:
   [docs/FUSION_MANUAL_TEST_PLAN.md](docs/FUSION_MANUAL_TEST_PLAN.md)
 - Full release validation plan:
@@ -142,7 +150,7 @@ Open Fusion document
 - Built-in Fusion self-test:
   run **Run Diagnostics** from **Utilities → Add-Ins**
 - Current workspace validation baseline:
-  763 passing `pytest` tests and 30 in-app diagnostics checks
+  775 passing `pytest` tests and 30 in-app diagnostics checks
 
 ---
 

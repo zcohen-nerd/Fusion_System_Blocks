@@ -383,13 +383,17 @@ def generate_component_thumbnail_placeholder(
     Returns:
         Thumbnail data dictionary
     """
-    # Create a simple SVG placeholder
+    # Create a simple SVG placeholder; only ellipsize names that were
+    # actually truncated.
+    display_name = (
+        component_name if len(component_name) <= 8 else component_name[:8] + "…"
+    )
     svg_content = f"""
     <svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
         <rect width="100%" height="100%" fill="#f0f0f0" stroke="#ccc" stroke-width="1"/>
         <text x="50%" y="50%" font-family="Arial" font-size="10" text-anchor="middle"
               dominant-baseline="middle" fill="#666">
-            {component_name[:8]}...
+            {display_name}
         </text>
     </svg>
     """

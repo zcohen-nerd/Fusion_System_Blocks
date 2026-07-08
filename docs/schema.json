@@ -9,7 +9,10 @@
       "description": "Schema version for migration support. Missing = '0.9' (pre-versioning).",
       "enum": ["0.9", "1.0"]
     },
-    "schema": { "type": "string" },
+    "schema": {
+      "type": "string",
+      "description": "Document-format identifier; canonical value is 'system-blocks-v2' (schemaVersion is the migration key)"
+    },
     "id": { "type": "string" },
     "name": { "type": "string" },
     "metadata": {

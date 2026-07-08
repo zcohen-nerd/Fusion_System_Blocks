@@ -155,10 +155,21 @@ class SelectionHandler:
                 if max_count > 0 and len(selections) >= max_count:
                     break
 
-                selection = self._ui.selectEntity(
-                    f"{prompt} ({len(selections)} selected, ESC to finish)",
-                    "Occurrences",
-                )
+                # selectEntity raises when the user presses ESC — that is
+                # the documented "finish" gesture for this loop, not an
+                # error, so it must not be logged as one.
+                try:
+                    selection = self._ui.selectEntity(
+                        f"{prompt} ({len(selections)} selected, ESC to finish)",
+                        "Occurrences",
+                    )
+                except Exception:
+                    if _LOGGER is not None:
+                        _LOGGER.debug(
+                            "select_multiple_occurrences finished with %d selection(s)",
+                            len(selections),
+                        )
+                    break
                 if not selection:
                     break
 

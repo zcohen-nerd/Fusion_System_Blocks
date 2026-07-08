@@ -368,6 +368,10 @@ class CommandScopeCleanupHandler(adsk.core.CommandEventHandler):
 def send_palette_notification(message: str, level: str = "info") -> None:
     """Send a non-blocking notification to the HTML palette.
 
+    When the palette is unavailable, only warnings and errors fall back
+    to a blocking message box — info/success toasts are transient by
+    design and are just logged instead of interrupting the user.
+
     Args:
         message: The message to display.
         level: The severity level ('info', 'success', 'warning', 'error').
@@ -379,8 +383,10 @@ def send_palette_notification(message: str, level: str = "info") -> None:
     ):
         return
 
-    else:
+    if level in ("warning", "error"):
         UI.messageBox(message)
+    elif LOGGING_AVAILABLE:
+        _logger.info("Palette unavailable; %s notification dropped: %s", level, message)
 
 
 def notify_error(message: str) -> None:
@@ -894,6 +900,10 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         else:
             diagram_dict = diagram_data.create_empty_diagram()
 
+        # Apply forward-only schema migrations so stored pre-versioning
+        # documents load correctly even if the JS-side migration is skipped.
+        diagram_dict = diagram_data.migrate_diagram(diagram_dict)
+
         # Reload persisted history whenever the active diagram is opened.
         _set_snapshot_store()
         return {
@@ -1182,6 +1192,7 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
                 diagram = json.loads(json_str)
             except json.JSONDecodeError:
                 diagram = diagram_data.create_empty_diagram()
+            diagram = diagram_data.migrate_diagram(diagram)
             _set_snapshot_store(slug)
             docs = list_named_diagrams()
             existing = next((d for d in docs if d.get("slug") == slug), None)
@@ -1288,6 +1299,7 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         try:
             diagram = _snapshot_store.restore_document(snapshot_id)
             diagram = flatten_connections_for_js(diagram)
+            diagram = diagram_data.migrate_diagram(diagram)
             return {
                 "success": True,
                 "diagram": diagram,

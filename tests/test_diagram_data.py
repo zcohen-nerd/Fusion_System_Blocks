@@ -12,7 +12,9 @@ def test_create_empty_diagram():
     assert "connections" in diagram
     assert diagram["blocks"] == []
     assert diagram["connections"] == []
-    assert diagram["schema"] == "system-blocks-v1"
+    # Format identifier is standardized on system-blocks-v2 across the
+    # Python core, fsb_core Graph model, and the JS editor.
+    assert diagram["schema"] == "system-blocks-v2"
 
 
 def test_create_block():

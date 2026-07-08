@@ -2254,12 +2254,12 @@ class ToolbarManager {
     }
     // Create empty child diagram
     block.childDiagram = {
+      schema: 'system-blocks-v2',
       blocks: [],
       connections: [],
       metadata: {
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
-        version: '2.0',
         parentBlockId: block.id
       }
     };

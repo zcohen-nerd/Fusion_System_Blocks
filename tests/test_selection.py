@@ -197,3 +197,25 @@ class TestGetOccurrenceInfo:
         assert info["mass"] == 5.0
         assert info["volume"] == 2.0
         assert info["boundingBox"] == {"min": [0, 0, 0], "max": [1, 1, 1]}
+
+
+class TestMultiSelectEscFinish:
+    def test_esc_after_selections_returns_collected(self):
+        """ESC raises inside selectEntity — that's the documented finish
+        gesture and must return what was collected, not log an error."""
+        handler = _make_handler()
+        occ = _mock_occurrence("Bolt", "tok-bolt")
+
+        mock_app = MagicMock()
+        mock_app.activeDocument.dataFile.id = "d1"
+        _adsk_core.Application.get.return_value = mock_app
+
+        handler._ui.selectEntity.side_effect = [
+            occ,
+            occ,
+            RuntimeError("user pressed ESC"),
+        ]
+        with patch.object(sel_mod, "_log_selection_error") as log_err:
+            results = handler.select_multiple_occurrences()
+        assert len(results) == 2
+        log_err.assert_not_called()

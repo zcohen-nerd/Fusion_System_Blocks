@@ -8,7 +8,7 @@ you need the longer, full-coverage plan.
 - Updated: April 3, 2026
 - Repository status: 18 milestones total; 16 complete; 2 not started
   (Milestone 13 and Milestone 15)
-- Latest automated baseline in this workspace: `pytest -q` passed 763 tests
+- Latest automated baseline in this workspace: `pytest -q` passed 775 tests
 - In-app diagnostics baseline: 32 checks discovered by `DiagnosticsRunner`
 - Estimated total time: 30 to 40 minutes
 
@@ -48,7 +48,7 @@ you need the longer, full-coverage plan.
 | Step | Action | Expected Result | Pass |
 | --- | --- | --- | --- |
 | 0.1 | Open the repository root in the configured environment. | Commands run against the correct workspace. | [ ] |
-| 0.2 | Run `pytest -q`. | All tests pass. Current baseline: 763 passed. | [ ] |
+| 0.2 | Run `pytest -q`. | All tests pass. Current baseline: 775 passed. | [ ] |
 | 0.3 | Run `ruff check .`. | No lint failures. | [ ] |
 | 0.4 | Review editor diagnostics for any touched files. | No blocking syntax or import errors remain. | [ ] |
 
