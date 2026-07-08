@@ -24,6 +24,17 @@ class TestHierarchyFunctions:
         assert len(child_diagram["blocks"]) == 0  # Empty initially
         assert len(child_diagram["connections"]) == 0
 
+    def test_create_child_diagram_records_parent_block_id(self):
+        """The JS editor's Navigate Up persists child edits back into the
+        parent via metadata.parentBlockId — Python-created children must
+        carry it or those edits are silently lost."""
+        parent_block = diagram_data.create_block(
+            "Drive System", 100, 100, "Mechanical", "Planned"
+        )
+        child_diagram = diagram_data.create_child_diagram(parent_block)
+
+        assert child_diagram["metadata"]["parentBlockId"] == parent_block["id"]
+
     def test_has_child_diagram(self):
         """Test checking if a block has a child diagram."""
         block = diagram_data.create_block(

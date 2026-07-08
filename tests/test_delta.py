@@ -81,18 +81,63 @@ class TestComputePatchLists:
         assert any(op["value"] == 150 for op in replace_ops)
 
     def test_id_keyed_add(self, simple_diagram: dict) -> None:
+        """Membership change → whole-list replace (index-based sub-paths
+        would be unreliable), and the patch must round-trip exactly."""
         new = copy.deepcopy(simple_diagram)
         new["blocks"].append({"id": "b3", "name": "Controller", "x": 500, "y": 200})
         patch = compute_patch(simple_diagram, new)
-        add_ops = [op for op in patch if op["op"] == "add"]
-        assert len(add_ops) >= 1
+        assert {"op": "replace", "path": "/blocks", "value": new["blocks"]} in patch
+        assert apply_patch(simple_diagram, patch) == new
 
     def test_id_keyed_remove(self, simple_diagram: dict) -> None:
         new = copy.deepcopy(simple_diagram)
         new["blocks"] = [b for b in new["blocks"] if b["id"] != "b2"]
         patch = compute_patch(simple_diagram, new)
-        remove_ops = [op for op in patch if op["op"] == "remove"]
-        assert len(remove_ops) >= 1
+        assert {"op": "replace", "path": "/blocks", "value": new["blocks"]} in patch
+        assert apply_patch(simple_diagram, patch) == new
+
+    def test_id_keyed_reorder_plus_modify_roundtrips(self) -> None:
+        """Regression: reordered + modified id-keyed lists used to emit
+        modify ops at *new* indices against a document in *old* order,
+        writing one element's fields onto another."""
+        old = {
+            "blocks": [
+                {"id": "a", "name": "Alpha"},
+                {"id": "b", "name": "Beta"},
+                {"id": "c", "name": "Gamma"},
+            ]
+        }
+        new = {
+            "blocks": [
+                {"id": "c", "name": "Gamma MODIFIED"},
+                {"id": "b", "name": "Beta"},
+                {"id": "a", "name": "Alpha"},
+            ]
+        }
+        patch = compute_patch(old, new)
+        result = apply_patch(old, patch)
+        assert result == new
+        # Specifically: Alpha must NOT have been overwritten with Gamma's data
+        by_id = {b["id"]: b for b in result["blocks"]}
+        assert by_id["a"]["name"] == "Alpha"
+        assert by_id["c"]["name"] == "Gamma MODIFIED"
+
+    def test_id_keyed_pure_reorder_roundtrips(self) -> None:
+        old = {"blocks": [{"id": "a", "v": 1}, {"id": "b", "v": 2}]}
+        new = {"blocks": [{"id": "b", "v": 2}, {"id": "a", "v": 1}]}
+        patch = compute_patch(old, new)
+        assert apply_patch(old, patch) == new
+
+    def test_id_keyed_remove_and_modify_roundtrips(self) -> None:
+        old = {
+            "blocks": [
+                {"id": "a", "name": "Alpha"},
+                {"id": "b", "name": "Beta"},
+            ]
+        }
+        new = {"blocks": [{"id": "b", "name": "Beta EDITED"}]}
+        patch = compute_patch(old, new)
+        assert apply_patch(old, patch) == new
 
     def test_index_based_list(self) -> None:
         old = {"tags": ["a", "b", "c"]}
@@ -111,6 +156,15 @@ class TestComputePatchLists:
         new = {"tags": ["a"]}
         patch = compute_patch(old, new)
         assert {"op": "remove", "path": "/tags/1"} in patch
+
+    def test_index_based_multi_remove_roundtrips(self) -> None:
+        """Removing 2+ tail elements must apply cleanly — removals have
+        to be emitted in reverse index order or later removals hit
+        shifted (or out-of-range) indices."""
+        old = {"tags": ["a", "b", "c", "d", "e"]}
+        new = {"tags": ["a", "b"]}
+        patch = compute_patch(old, new)
+        assert apply_patch(old, patch) == new
 
 
 # ---------------------------------------------------------------------------

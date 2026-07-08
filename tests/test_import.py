@@ -304,3 +304,26 @@ Incomplete Block"""
         for block in diagram["blocks"]:
             assert "x" in block
             assert "y" in block
+
+
+class TestCsvCoordinateParsing:
+    """import_from_csv must tolerate empty or malformed x/y cells."""
+
+    def test_empty_coordinate_cells_use_defaults(self):
+        blocks_csv = "name,type,x,y,status\nMotor,Mechanical,,,Planned\n"
+        diagram = diagram_data.import_from_csv(blocks_csv)
+        assert len(diagram["blocks"]) == 1
+        block = diagram["blocks"][0]
+        assert isinstance(block["x"], int)
+        assert isinstance(block["y"], int)
+
+    def test_malformed_coordinate_cells_use_defaults(self):
+        blocks_csv = "name,type,x,y,status\nMotor,Mechanical,abc,1.5.2,Planned\n"
+        diagram = diagram_data.import_from_csv(blocks_csv)
+        assert len(diagram["blocks"]) == 1
+
+    def test_float_coordinates_are_accepted(self):
+        blocks_csv = "name,type,x,y,status\nMotor,Mechanical,120.7,80.2,Planned\n"
+        diagram = diagram_data.import_from_csv(blocks_csv)
+        assert diagram["blocks"][0]["x"] == 120
+        assert diagram["blocks"][0]["y"] == 80

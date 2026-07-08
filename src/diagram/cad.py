@@ -6,6 +6,7 @@ including component tracking, 3D visualization, assembly sequences, and living d
 """
 
 import base64
+import copy
 from datetime import datetime
 from typing import Any, Optional
 
@@ -866,6 +867,10 @@ def generate_assembly_sequence(diagram: dict[str, Any]) -> list[dict[str, Any]]:
     if not diagram or not diagram.get("blocks", []):
         return []
 
+    # Work on a deep copy: generating a report must not mutate the
+    # caller's diagram (the steps below inject livingDocumentation and
+    # assembly order into every block).
+    diagram = copy.deepcopy(diagram)
     blocks = diagram["blocks"]
     connections = diagram.get("connections", [])
 
@@ -984,8 +989,9 @@ def estimate_assembly_time(block: dict[str, Any]) -> float:
     cad_links = [link for link in block.get("links", []) if link.get("target") == "cad"]
     base_time += len(cad_links) * 5.0
 
-    # Adjust based on block type
-    block_type = block.get("type", "")
+    # Adjust based on block type — lower-case the lookup because block
+    # types are stored capitalized ("Mechanical", "Electrical", ...).
+    block_type = str(block.get("type", "")).lower()
     type_multipliers = {
         "mechanical": 1.5,
         "electrical": 1.2,
@@ -1085,6 +1091,10 @@ def generate_living_bom(diagram: dict[str, Any]) -> dict[str, Any]:
     """
     if not diagram or not diagram.get("blocks", []):
         return {"items": [], "summary": {}}
+
+    # Work on a deep copy: generating a BOM must not mutate the caller's
+    # diagram (initialize_living_documentation writes into each block).
+    diagram = copy.deepcopy(diagram)
 
     bom_items = []
     total_cost = 0.0

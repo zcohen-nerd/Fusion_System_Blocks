@@ -11,12 +11,14 @@ Classes:
 
 Functions:
     create_snapshot: Capture a Graph's current state.
+    create_snapshot_from_dict: Capture a raw diagram dict verbatim.
     diff_graphs: Produce a structured diff between two Graph objects.
     restore_snapshot: Reconstruct a Graph from a Snapshot.
 """
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from .models import (
@@ -59,6 +61,35 @@ def create_snapshot(
     json_str = serialize_graph(graph)
     return Snapshot(
         graph_json=json_str,
+        author=author,
+        description=description,
+    )
+
+
+def create_snapshot_from_dict(
+    diagram: dict[str, Any],
+    *,
+    author: str = "",
+    description: str = "",
+) -> Snapshot:
+    """Capture a raw diagram dictionary verbatim as an immutable Snapshot.
+
+    Unlike :func:`create_snapshot`, the document is stored exactly as
+    given — it never passes through the :class:`~fsb_core.models.Graph`
+    model.  Fields the Graph model does not know about (block sizes and
+    shapes, embedded child diagrams, annotations, connection waypoints,
+    port sides) therefore survive a later restore unchanged.
+
+    Args:
+        diagram: The diagram dictionary to snapshot.
+        author: Who created the snapshot (display only).
+        description: Free-form commit note.
+
+    Returns:
+        A new :class:`Snapshot` containing the serialized document.
+    """
+    return Snapshot(
+        graph_json=json.dumps(diagram),
         author=author,
         description=description,
     )
@@ -222,8 +253,39 @@ class SnapshotStore:
             The newly created Snapshot.
         """
         snap = create_snapshot(graph, author=author, description=description)
+        return self._append(snap)
+
+    def add_document(
+        self,
+        diagram: dict[str, Any],
+        *,
+        author: str = "",
+        description: str = "",
+    ) -> Snapshot:
+        """Create and store a snapshot of a raw diagram dictionary.
+
+        The document is stored verbatim (see
+        :func:`create_snapshot_from_dict`), so every field round-trips —
+        including ones the Graph model does not track.
+
+        Args:
+            diagram: The diagram dictionary to snapshot.
+            author: Who created the snapshot.
+            description: Free-form commit message.
+
+        Returns:
+            The newly created Snapshot.
+        """
+        snap = create_snapshot_from_dict(
+            diagram,
+            author=author,
+            description=description,
+        )
+        return self._append(snap)
+
+    def _append(self, snap: Snapshot) -> Snapshot:
+        """Store *snap*, pruning the oldest entries beyond capacity."""
         self._snapshots.append(snap)
-        # Prune oldest if over limit
         while len(self._snapshots) > self.max_snapshots:
             self._snapshots.pop(0)
         return snap
@@ -276,6 +338,37 @@ class SnapshotStore:
             raise KeyError(f"Snapshot '{snapshot_id}' not found.")
         return restore_snapshot(snap)
 
+    def restore_document(self, snapshot_id: str) -> dict[str, Any]:
+        """Restore the raw diagram dictionary from a stored snapshot.
+
+        Returns the document exactly as it was captured — no Graph
+        round-trip, so no fields are lost.  Works for both
+        :meth:`add_document` snapshots (verbatim documents) and legacy
+        :meth:`add` snapshots (Graph-serialized documents).
+
+        Args:
+            snapshot_id: ID of the snapshot to restore.
+
+        Returns:
+            The stored diagram dictionary.
+
+        Raises:
+            KeyError: If no snapshot with that ID exists.
+            ValueError: If the snapshot holds no or invalid data.
+        """
+        snap = self.get_by_id(snapshot_id)
+        if snap is None:
+            raise KeyError(f"Snapshot '{snapshot_id}' not found.")
+        if not snap.graph_json:
+            raise ValueError("Snapshot contains no graph data.")
+        try:
+            document = json.loads(snap.graph_json)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Snapshot data is not valid JSON: {exc}") from exc
+        if not isinstance(document, dict):
+            raise ValueError("Snapshot data is not a diagram document.")
+        return document
+
     def compare(
         self,
         old_id: str,
@@ -306,6 +399,28 @@ class SnapshotStore:
     def clear(self) -> None:
         """Remove all stored snapshots."""
         self._snapshots.clear()
+
+    def trim_to_json_size(self, max_bytes: int) -> int:
+        """Drop oldest snapshots until the serialized store fits *max_bytes*.
+
+        Persistence targets (e.g. Fusion document attributes) have finite
+        size limits; exceeding them fails the whole write and loses the
+        entire history. Trimming oldest-first keeps the most recent
+        snapshots. The newest snapshot is never dropped, even if it alone
+        exceeds the budget — callers should check the final size.
+
+        Args:
+            max_bytes: Size budget for ``json.dumps(self.to_list())``
+                (ASCII-safe JSON, so character count equals byte count).
+
+        Returns:
+            Number of snapshots removed.
+        """
+        removed = 0
+        while len(self._snapshots) > 1 and len(json.dumps(self.to_list())) > max_bytes:
+            self._snapshots.pop(0)
+            removed += 1
+        return removed
 
     def to_list(self) -> list[dict[str, Any]]:
         """Serialize all snapshots to a list for persistence.

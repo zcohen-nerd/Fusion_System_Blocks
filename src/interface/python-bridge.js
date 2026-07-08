@@ -549,8 +549,18 @@ class PythonInterface {
         });
     }
 
+    // Multi-page diagrams must always full-save: the delta patch only
+    // covers the active page, leaving the stored `pages` array stale.
+    // On the next load, importDiagram prefers pages[0] over the patched
+    // top-level blocks, silently reverting the delta-saved edits.
+    const hasMultiplePages = window.SystemBlocksMain &&
+      Array.isArray(window.SystemBlocksMain._pages) &&
+      window.SystemBlocksMain._pages.length > 1;
+
     // Try delta-save: send only the diff instead of the full diagram.
-    var delta = !forceFull ? window.diagramEditor.getDelta() : null;
+    var delta = (!forceFull && !hasMultiplePages)
+      ? window.diagramEditor.getDelta()
+      : null;
     if (delta !== null && delta.length > 0) {
       return this.sendMessage(BridgeAction.APPLY_DELTA, { patch: delta }, true)
         .then(response => {

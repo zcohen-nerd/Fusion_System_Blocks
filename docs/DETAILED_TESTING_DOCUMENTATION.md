@@ -7,7 +7,7 @@ future-state checklist with a current-state verification plan.
 - Updated: April 3, 2026
 - Repository status: 18 milestones total; 16 complete; 2 not started
   (Milestone 13 and Milestone 15)
-- Latest local automated regression: `pytest -q` passed 707 tests
+- Latest local automated regression: `pytest -q` passed 763 tests
 - In-app diagnostics baseline: `DiagnosticsRunner` discovers 32 checks
 - Companion smoke plan:
   [FUSION_MANUAL_TEST_PLAN.md](FUSION_MANUAL_TEST_PLAN.md)
@@ -72,7 +72,7 @@ testing.
 | Step | Action | Expected Result | Pass |
 | --- | --- | --- | --- |
 | 0.1 | Activate the project environment and confirm you are in the repo root. | Commands run against the correct workspace. | [ ] |
-| 0.2 | Run `pytest -q`. | All tests pass. Current baseline on this repo state: 707 passed. | [ ] |
+| 0.2 | Run `pytest -q`. | All tests pass. Current baseline on this repo state: 763 passed. | [ ] |
 | 0.3 | Run `ruff check .`. | No lint failures. | [ ] |
 | 0.4 | Review editor diagnostics for touched files. | No blocking syntax or import errors remain. | [ ] |
 | 0.5 | If any preflight step fails, stop the manual pass and log the blocker. | Manual testing does not continue on a known-bad baseline. | [ ] |

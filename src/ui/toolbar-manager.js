@@ -2166,15 +2166,25 @@ class ToolbarManager {
     const entry = features._hierarchyStack.pop();
 
     // Persist the current child diagram back into the parent block's
-    // childDiagram property so edits are not lost.
+    // childDiagram property so edits are not lost. The stack entry's
+    // parentBlockId (recorded at drill-down time) is authoritative;
+    // the child diagram's own metadata is only a fallback for stacks
+    // built by older versions.
     const parentDiagram = entry.diagram;
     const childDiagram = JSON.parse(JSON.stringify(this.editor.diagram));
-    const parentBlockId = (childDiagram.metadata && childDiagram.metadata.parentBlockId) || null;
+    const parentBlockId = entry.parentBlockId ||
+      (childDiagram.metadata && childDiagram.metadata.parentBlockId) || null;
     if (parentBlockId) {
       const parentBlock = parentDiagram.blocks.find(b => b.id === parentBlockId);
       if (parentBlock) {
         parentBlock.childDiagram = childDiagram;
+      } else {
+        logger.warn('Navigate Up: parent block', parentBlockId,
+          'not found — child edits could not be persisted');
       }
+    } else {
+      logger.warn('Navigate Up: no parentBlockId available — ' +
+        'child edits could not be persisted');
     }
 
     // Restore parent diagram
@@ -2202,10 +2212,24 @@ class ToolbarManager {
     // Save state before modifying the diagram
     if (window.advancedFeatures) window.advancedFeatures.saveState();
 
-    // Push current diagram onto hierarchy stack
+    // Ensure the child diagram knows its parent block. Child diagrams
+    // created by older versions or by the Python helpers lack
+    // metadata.parentBlockId, and without it Navigate Up cannot persist
+    // child edits back into the parent.
+    if (!block.childDiagram.metadata) {
+      block.childDiagram.metadata = {};
+    }
+    if (!block.childDiagram.metadata.parentBlockId) {
+      block.childDiagram.metadata.parentBlockId = block.id;
+    }
+
+    // Push current diagram onto hierarchy stack. parentBlockId is
+    // recorded on the stack entry as well so Navigate Up does not
+    // depend solely on the child diagram's metadata surviving edits.
     features._hierarchyStack.push({
       diagram: JSON.parse(JSON.stringify(this.editor.diagram)),
-      name: block.name || block.id
+      name: block.name || block.id,
+      parentBlockId: block.id
     });
 
     // Load child diagram

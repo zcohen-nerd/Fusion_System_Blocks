@@ -177,18 +177,23 @@ class TestGetOccurrenceInfo:
         occ.component.material.name = "Ceramic"
 
         props = MagicMock()
-        props.mass = 5.0  # grams internally
-        props.volume = 2.0
-        props.boundingBox.minPoint.x = 0
-        props.boundingBox.minPoint.y = 0
-        props.boundingBox.minPoint.z = 0
-        props.boundingBox.maxPoint.x = 1
-        props.boundingBox.maxPoint.y = 1
-        props.boundingBox.maxPoint.z = 1
+        props.mass = 5.0  # Fusion reports kg — must pass through unconverted
+        props.volume = 2.0  # Fusion reports cm³ — must pass through unconverted
         occ.component.getPhysicalProperties.return_value = props
+
+        # The bounding box lives on the occurrence, not on
+        # PhysicalProperties (which has no boundingBox property).
+        occ.boundingBox.minPoint.x = 0
+        occ.boundingBox.minPoint.y = 0
+        occ.boundingBox.minPoint.z = 0
+        occ.boundingBox.maxPoint.x = 1
+        occ.boundingBox.maxPoint.y = 1
+        occ.boundingBox.maxPoint.z = 1
 
         info = handler.get_occurrence_info(occ)
         assert info["name"] == "Resistor"
         assert info["description"] == "10k"
         assert info["material"] == "Ceramic"
-        assert info["boundingBox"] is not None
+        assert info["mass"] == 5.0
+        assert info["volume"] == 2.0
+        assert info["boundingBox"] == {"min": [0, 0, 0], "max": [1, 1, 1]}

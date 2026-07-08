@@ -152,37 +152,26 @@ def _diff_list_by_id(
     path: str,
     ops: list[dict[str, Any]],
 ) -> None:
-    old_map = {item["id"]: (i, item) for i, item in enumerate(old)}
-    new_map = {item["id"]: (i, item) for i, item in enumerate(new)}
+    """Diff two id-keyed lists.
 
-    # Removed items — iterate in reverse index order so that earlier
-    # removals don't shift the indices of later ones.
-    removed_indices = sorted(
-        (old_map[item_id][0] for item_id in old_map if item_id not in new_map),
-        reverse=True,
-    )
-    for idx in removed_indices:
-        ops.append({"op": "remove", "path": f"{path}/{idx}"})
+    Mirrors DeltaUtils._diffListById in ``src/utils/delta-utils.js``:
+    any membership change or reorder invalidates index-based sub-paths
+    (a modify emitted at a *new* index would land on whatever element
+    happens to sit at that index in the *old* list — silent data
+    corruption). In that case, emit a single whole-list replace.
+    Only when the id sequence is identical is an index-by-index diff
+    safe.
+    """
+    old_ids = [item["id"] for item in old]
+    new_ids = [item["id"] for item in new]
 
-    # Added items
-    for item_id in new_map:
-        if item_id not in old_map:
-            idx = new_map[item_id][0]
-            ops.append(
-                {
-                    "op": "add",
-                    "path": f"{path}/{idx}",
-                    "value": new_map[item_id][1],
-                }
-            )
+    if old_ids != new_ids:
+        ops.append({"op": "replace", "path": path, "value": new})
+        return
 
-    # Modified items (compare by matching id) — use the *new* index
-    # so sub-patch paths target the correct element in the final list
-    # (after removals and additions have shifted positions).
-    for item_id in old_map:
-        if item_id in new_map:
-            new_idx = new_map[item_id][0]
-            _diff(old_map[item_id][1], new_map[item_id][1], f"{path}/{new_idx}", ops)
+    # Same id sequence: safe to diff element-by-element.
+    for i in range(len(old)):
+        _diff(old[i], new[i], f"{path}/{i}", ops)
 
 
 def _diff_list_by_index(

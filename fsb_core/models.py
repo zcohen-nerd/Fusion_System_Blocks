@@ -730,8 +730,9 @@ class Graph:
 def block_fingerprint(block: Block) -> str:
     """Compute a deterministic hash of a block's observable state.
 
-    The fingerprint covers name, type, position, status, attributes,
-    ports, and links — everything that would matter for a visual diff.
+    The fingerprint covers name, type, position, rotation, status,
+    attributes, ports, and links — everything that would matter for a
+    visual diff.
 
     Args:
         block: The block to fingerprint.
@@ -744,6 +745,7 @@ def block_fingerprint(block: Block) -> str:
         "type": block.block_type,
         "x": block.x,
         "y": block.y,
+        "rotation": block.rotation,
         "status": block.status.value,
         "attributes": block.attributes,
         "ports": [

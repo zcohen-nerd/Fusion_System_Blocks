@@ -245,11 +245,14 @@ class SelectionHandler:
                     adsk.fusion.CalculationAccuracy.LowCalculationAccuracy
                 )
                 if props:
-                    info["mass"] = props.mass / 1000.0  # kg
-                    info["volume"] = props.volume / 1000.0  # cm³
+                    # Fusion's PhysicalProperties API already reports mass
+                    # in kilograms and volume in cubic centimetres.
+                    info["mass"] = props.mass
+                    info["volume"] = props.volume
 
-                    # Bounding box
-                    bbox = props.boundingBox
+                    # Bounding box comes from the occurrence —
+                    # PhysicalProperties has no boundingBox property.
+                    bbox = occurrence.boundingBox
                     if bbox:
                         info["boundingBox"] = {
                             "min": [bbox.minPoint.x, bbox.minPoint.y, bbox.minPoint.z],

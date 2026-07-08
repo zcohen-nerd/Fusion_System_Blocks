@@ -4736,7 +4736,21 @@ class SystemBlocksMain {
     this._activePageIndex = this._pages.length - 1;
     this._loadPageState(this._activePageIndex);
     this._renderPageTabs();
+    this._markPagesDirty();
     if (window.advancedFeatures) window.advancedFeatures.saveState();
+  }
+
+  /**
+   * Flag the diagram as having unsaved changes after a page-level
+   * operation. Page state lives in this._pages (not the live diagram),
+   * so the delta-based change detection cannot see it.
+   * @private
+   */
+  _markPagesDirty() {
+    const core = this.modules.get('core');
+    if (core && typeof core._markDirty === 'function') {
+      core._markDirty();
+    }
   }
 
   /** Delete a page by index. Cannot delete the last remaining page. */
@@ -4758,6 +4772,7 @@ class SystemBlocksMain {
 
     this._loadPageState(this._activePageIndex);
     this._renderPageTabs();
+    this._markPagesDirty();
     if (window.advancedFeatures) window.advancedFeatures.saveState();
   }
 
@@ -4766,6 +4781,7 @@ class SystemBlocksMain {
     if (pageIndex < 0 || pageIndex >= this._pages.length) return;
     this._pages[pageIndex].name = newName || this._pages[pageIndex].name;
     this._renderPageTabs();
+    this._markPagesDirty();
   }
 
   /** Move a page from one index to another (reorder). */
@@ -4787,6 +4803,7 @@ class SystemBlocksMain {
     }
 
     this._renderPageTabs();
+    this._markPagesDirty();
   }
 
   /** Get all pages data for serialization. */
@@ -5050,6 +5067,7 @@ class SystemBlocksMain {
     this._activePageIndex = pageIndex + 1;
     this._loadPageState(this._activePageIndex);
     this._renderPageTabs();
+    this._markPagesDirty();
     if (window.advancedFeatures) window.advancedFeatures.saveState();
   }
 }

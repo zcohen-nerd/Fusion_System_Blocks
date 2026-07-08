@@ -366,3 +366,175 @@ class TestSnapshotStore:
         """from_list with empty list creates empty store."""
         store = SnapshotStore.from_list([])
         assert store.count == 0
+
+
+# ==================================================================
+# Document snapshots (verbatim storage — no Graph round-trip)
+# ==================================================================
+
+
+def _make_js_diagram() -> dict:
+    """Build a JS-editor-format diagram exercising every field the
+    Graph model does NOT track (sizes, shapes, child diagrams,
+    annotations, waypoints, port sides)."""
+    return {
+        "schemaVersion": "1.0",
+        "blocks": [
+            {
+                "id": "b1",
+                "name": "PSU",
+                "type": "Electrical",
+                "x": 100,
+                "y": 200,
+                "width": 220,
+                "height": 140,
+                "shape": "hexagon",
+                "status": "Planned",
+                "attributes": {"Cost": "12"},
+                "childDiagram": {
+                    "blocks": [{"id": "child1", "name": "Reg", "x": 0, "y": 0}],
+                    "connections": [],
+                    "metadata": {"parentBlockId": "b1"},
+                },
+            },
+            {"id": "b2", "name": "MCU", "type": "Electrical", "x": 400, "y": 200},
+        ],
+        "connections": [
+            {
+                "id": "c1",
+                "fromBlock": "b1",
+                "toBlock": "b2",
+                "type": "power",
+                "arrowDirection": "bidirectional",
+                "fromPort": "output",
+                "toPort": "input",
+                "waypoints": [{"x": 300, "y": 150}],
+            }
+        ],
+        "groups": [],
+        "namedStubs": [],
+        "annotations": [{"id": "a1", "type": "note", "text": "hi", "x": 5, "y": 6}],
+        "metadata": {"version": "2.0"},
+    }
+
+
+class TestDocumentSnapshots:
+    """add_document / restore_document must round-trip verbatim."""
+
+    def test_document_roundtrip_is_lossless(self):
+        store = SnapshotStore()
+        diagram = _make_js_diagram()
+        snap = store.add_document(diagram, author="me", description="v1")
+
+        restored = store.restore_document(snap.id)
+
+        assert restored == diagram
+        # Fields the Graph model would drop must survive
+        block = restored["blocks"][0]
+        assert block["width"] == 220
+        assert block["height"] == 140
+        assert block["shape"] == "hexagon"
+        assert block["childDiagram"]["blocks"][0]["id"] == "child1"
+        conn = restored["connections"][0]
+        assert conn["fromBlock"] == "b1"
+        assert conn["toBlock"] == "b2"
+        assert conn["waypoints"] == [{"x": 300, "y": 150}]
+        assert conn["fromPort"] == "output"
+        assert restored["annotations"][0]["text"] == "hi"
+
+    def test_document_snapshot_is_independent_copy(self):
+        store = SnapshotStore()
+        diagram = _make_js_diagram()
+        snap = store.add_document(diagram)
+        diagram["blocks"][0]["name"] = "MUTATED"
+
+        restored = store.restore_document(snap.id)
+        assert restored["blocks"][0]["name"] == "PSU"
+
+    def test_restore_document_missing_id_raises_keyerror(self):
+        store = SnapshotStore()
+        with pytest.raises(KeyError):
+            store.restore_document("nope")
+
+    def test_restore_document_empty_data_raises_valueerror(self):
+        store = SnapshotStore()
+        store._snapshots.append(Snapshot(id="s1", graph_json=""))
+        with pytest.raises(ValueError):
+            store.restore_document("s1")
+
+    def test_restore_document_invalid_json_raises_valueerror(self):
+        store = SnapshotStore()
+        store._snapshots.append(Snapshot(id="s1", graph_json="{not json"))
+        with pytest.raises(ValueError):
+            store.restore_document("s1")
+
+    def test_restore_document_works_for_legacy_graph_snapshots(self):
+        """Legacy snapshots created via add(graph) restore as dicts."""
+        store = SnapshotStore()
+        snap = store.add(_make_graph())
+        restored = store.restore_document(snap.id)
+        assert isinstance(restored, dict)
+        assert len(restored["blocks"]) == 2
+
+    def test_add_document_respects_max_snapshots(self):
+        store = SnapshotStore(max_snapshots=3)
+        for i in range(5):
+            store.add_document({"blocks": [], "connections": [], "rev": i})
+        assert store.count == 3
+        # Oldest were pruned — remaining are revs 2, 3, 4
+        revs = [json.loads(s.graph_json)["rev"] for s in store._snapshots]
+        assert revs == [2, 3, 4]
+
+    def test_document_snapshots_survive_persistence_roundtrip(self):
+        store = SnapshotStore()
+        diagram = _make_js_diagram()
+        snap = store.add_document(diagram, author="me")
+
+        restored_store = SnapshotStore.from_list(store.to_list())
+        assert restored_store.restore_document(snap.id) == diagram
+
+    def test_compare_works_between_document_snapshots(self):
+        """compare() parses JS-format documents via dict_to_graph."""
+        store = SnapshotStore()
+        d1 = _make_js_diagram()
+        d2 = _make_js_diagram()
+        d2["blocks"].append({"id": "b3", "name": "New", "x": 0, "y": 0})
+        s1 = store.add_document(d1)
+        s2 = store.add_document(d2)
+
+        diff = store.compare(s1.id, s2.id)
+        assert diff.added_block_ids == ["b3"]
+        assert diff.removed_block_ids == []
+
+
+class TestTrimToJsonSize:
+    """Snapshot stores must fit within persistence size budgets by
+    dropping oldest snapshots, never the newest."""
+
+    def test_trims_oldest_until_fits(self):
+        store = SnapshotStore()
+        for i in range(10):
+            store.add_document({"rev": i, "padding": "x" * 500})
+
+        budget = len(json.dumps(store.to_list())) - 1  # force at least one drop
+        removed = store.trim_to_json_size(budget)
+
+        assert removed >= 1
+        assert len(json.dumps(store.to_list())) <= budget
+        # Newest snapshot survives
+        revs = [json.loads(s.graph_json)["rev"] for s in store._snapshots]
+        assert revs[-1] == 9
+        # Oldest were the ones dropped
+        assert revs == list(range(removed, 10))
+
+    def test_no_trim_when_within_budget(self):
+        store = SnapshotStore()
+        store.add_document({"rev": 0})
+        assert store.trim_to_json_size(10_000_000) == 0
+        assert store.count == 1
+
+    def test_never_drops_final_snapshot(self):
+        store = SnapshotStore()
+        store.add_document({"rev": 0, "padding": "x" * 1000})
+        assert store.trim_to_json_size(10) == 0
+        assert store.count == 1

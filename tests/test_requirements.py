@@ -422,3 +422,11 @@ class TestRequirementSerialization:
         json_str = serialize_graph(g)
         g2 = deserialize_graph(json_str)
         assert g2.requirements == []
+
+    def test_different_rotation_different_hash(self) -> None:
+        """Rotation is user-visible state — a rotated block must show up
+        as 'modified' in snapshot diffs."""
+        b1 = _block("b1", "Motor", mass=1.0)
+        b2 = _block("b1", "Motor", mass=1.0)
+        b2.rotation = 90
+        assert block_fingerprint(b1) != block_fingerprint(b2)

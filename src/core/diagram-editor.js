@@ -800,6 +800,13 @@ class DiagramEditorCore {
    * the last snapshot.
    */
   hasUnsavedChanges() {
+    // The explicit dirty flag wins: the delta comparison below only
+    // sees the active page's content, so page-level operations
+    // (add/rename/reorder/delete page, edits parked on another page)
+    // would otherwise go undetected. markSaved() resets the flag.
+    if (this._dirty) {
+      return true;
+    }
     var delta = this.getDelta();
     if (delta !== null) {
       return delta.length > 0;

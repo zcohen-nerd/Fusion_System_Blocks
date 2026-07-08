@@ -728,3 +728,17 @@ class TestManufacturingProgress:
 
     def test_none_block(self):
         assert update_manufacturing_progress(None, "x", 50) is None
+
+
+class TestAssemblyTimeTypeMultipliers:
+    """Type multipliers must apply despite capitalized block types."""
+
+    def test_mechanical_takes_longer_than_generic(self):
+        mech = create_block("Gearbox", 0, 0, "Mechanical")
+        generic = create_block("Thing", 0, 0, "Generic")
+        assert estimate_assembly_time(mech) > estimate_assembly_time(generic)
+
+    def test_software_is_faster_than_generic(self):
+        soft = create_block("Firmware", 0, 0, "Software")
+        generic = create_block("Thing", 0, 0, "Generic")
+        assert estimate_assembly_time(soft) < estimate_assembly_time(generic)

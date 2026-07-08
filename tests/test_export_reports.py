@@ -812,3 +812,63 @@ class TestPdfExport:
         assert pdf_path.exists()
         content = pdf_path.read_bytes()
         assert content[:5] == b"%PDF-"
+
+
+class TestSvgConnectionStyling:
+    """generate_svg_diagram must honour the canonical 'kind' key."""
+
+    def _diagram(self, conn_extra):
+        return {
+            "blocks": [
+                {"id": "b1", "name": "PSU", "type": "Electrical", "x": 0, "y": 0},
+                {"id": "b2", "name": "MCU", "type": "Electrical", "x": 300, "y": 0},
+            ],
+            "connections": [
+                {
+                    "id": "c1",
+                    "from": {"blockId": "b1"},
+                    "to": {"blockId": "b2"},
+                    **conn_extra,
+                }
+            ],
+        }
+
+    def test_kind_key_selects_power_styling(self):
+        """Python-format connections carry 'kind' — the power colour
+        (#dc3545) must be used instead of the default grey."""
+        svg = diagram_data.generate_svg_diagram(self._diagram({"kind": "power"}))
+        assert "#dc3545" in svg
+
+    def test_type_key_still_selects_styling(self):
+        svg = diagram_data.generate_svg_diagram(self._diagram({"type": "power"}))
+        assert "#dc3545" in svg
+
+
+class TestReportGeneratorsDoNotMutateInput:
+    """BOM/assembly generation must not write into the caller's diagram."""
+
+    def _diagram(self):
+        import copy
+
+        diagram = {
+            "blocks": [
+                {"id": "b1", "name": "Motor", "type": "Mechanical", "x": 0, "y": 0},
+                {"id": "b2", "name": "Driver", "type": "Electrical", "x": 200, "y": 0},
+            ],
+            "connections": [
+                {"id": "c1", "from": {"blockId": "b1"}, "to": {"blockId": "b2"}}
+            ],
+        }
+        return diagram, copy.deepcopy(diagram)
+
+    def test_generate_living_bom_is_pure(self):
+        diagram, original = self._diagram()
+        bom = diagram_data.generate_living_bom(diagram)
+        assert len(bom["items"]) == 2
+        assert diagram == original  # no livingDocumentation injected
+
+    def test_generate_assembly_sequence_is_pure(self):
+        diagram, original = self._diagram()
+        seq = diagram_data.generate_assembly_sequence(diagram)
+        assert len(seq) == 2
+        assert diagram == original

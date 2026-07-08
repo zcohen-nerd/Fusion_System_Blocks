@@ -12,7 +12,8 @@ import adsk.fusion
 
 # Add src directory to path so we can import our modules
 SRC_PATH = os.path.join(os.path.dirname(__file__), "src")
-sys.path.insert(0, SRC_PATH)
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
 import diagram_data  # noqa: E402
 
 # Add repo root to path for core library
@@ -24,7 +25,10 @@ if REPO_ROOT not in sys.path:
 from fsb_core.bridge_actions import BridgeAction, BridgeEvent  # noqa: E402
 from fsb_core.delta import apply_patch, is_trivial_patch  # noqa: E402
 from fsb_core.requirements import validate_requirements  # noqa: E402
-from fsb_core.serialization import dict_to_graph  # noqa: E402
+from fsb_core.serialization import (  # noqa: E402
+    dict_to_graph,
+    flatten_connections_for_js,
+)
 from fsb_core.version_control import SnapshotStore  # noqa: E402
 
 # Import logging utilities
@@ -67,8 +71,23 @@ _handler_fallback_refs: dict[int, list[Any]] = {}
 # before the palette web-view is ready after being restored.
 _pending_cad_link: dict | None = None
 
-# Global snapshot store for version control (Issue #31)
+# Global snapshot store for version control (Issue #31).
+# _snapshot_store_scope records which document scope the store was loaded
+# for (None = default slot, otherwise the named-document slug) so that
+# _persist_snapshot_store can refuse to write one document's history into
+# another document's attribute.
 _snapshot_store = SnapshotStore(max_snapshots=50)
+_snapshot_store_scope: str | None = None
+
+# Conservative cap for the serialized snapshot store. Fusion attribute
+# values have finite size limits; exceeding them makes the write fail and
+# silently drops the whole history, so we trim oldest snapshots instead.
+_SNAPSHOT_STORE_MAX_BYTES = 1_500_000
+
+# Workspace-activation handler reference so stop() can unregister it from
+# Fusion's event (releasing only the Python reference leaves the handler
+# registered, stacking duplicates across add-in restarts).
+_workspace_activated_handler: Any | None = None
 
 
 def _log_runtime_error(message: str, exc: Exception | None = None) -> None:
@@ -95,7 +114,7 @@ def _retain_handler(owner: Any, handler: Any) -> Any:
         handlers = getattr(owner, "_system_blocks_handlers", None)
         if handlers is None:
             handlers = []
-            setattr(owner, "_system_blocks_handlers", handlers)
+            owner._system_blocks_handlers = handlers
         handlers.append(handler)
     except Exception:
         # Some Fusion proxy objects reject Python attributes; fall back to a
@@ -178,10 +197,59 @@ def _load_snapshot_store(slug: str | None = None) -> SnapshotStore:
     return SnapshotStore(max_snapshots=50)
 
 
+def _set_snapshot_store(slug: str | None = None) -> SnapshotStore:
+    """Load and activate the snapshot store for the given document scope.
+
+    All handlers must go through this helper (rather than assigning
+    ``_snapshot_store`` directly) so ``_snapshot_store_scope`` stays in
+    sync with the store's actual origin.
+    """
+    global _snapshot_store, _snapshot_store_scope
+    _snapshot_store = _load_snapshot_store(slug)
+    _snapshot_store_scope = _slug_from_label(slug) if slug else None
+    return _snapshot_store
+
+
 def _persist_snapshot_store(slug: str | None = None) -> bool:
     """Persist the current snapshot store with the active Fusion document."""
+    # Guard against cross-scope writes: the in-memory store may hold a
+    # different document's history (e.g. loaded for named doc "A" while
+    # a save targets the default slot). Persisting it would overwrite
+    # that scope's history with unrelated snapshots.
+    target_scope = _slug_from_label(slug) if slug else None
+    if target_scope != _snapshot_store_scope:
+        _log_runtime_error(
+            f"Refusing to persist snapshot store loaded for scope "
+            f"'{_snapshot_store_scope}' into scope '{target_scope}'"
+        )
+        return False
+
     root_comp = get_root_component()
     if not root_comp:
+        return False
+
+    # Fusion attribute values have finite size limits — trim oldest
+    # snapshots until the serialized store fits rather than letting the
+    # whole write fail and lose the history.
+    trimmed = _snapshot_store.trim_to_json_size(_SNAPSHOT_STORE_MAX_BYTES)
+    if trimmed:
+        _log_runtime_error(
+            f"Snapshot store exceeded {_SNAPSHOT_STORE_MAX_BYTES} bytes; "
+            f"dropped {trimmed} oldest snapshot(s) to fit"
+        )
+        notify_warning(
+            f"Snapshot history was trimmed ({trimmed} oldest snapshot(s) "
+            "removed) to fit document storage limits"
+        )
+
+    payload = json.dumps(_snapshot_store.to_list())
+    if len(payload) > _SNAPSHOT_STORE_MAX_BYTES:
+        # Even a single snapshot exceeds the budget — refuse rather than
+        # attempt a write that Fusion may truncate or reject.
+        _log_runtime_error(
+            f"Refusing to persist snapshot store: a single snapshot exceeds "
+            f"{_SNAPSHOT_STORE_MAX_BYTES} bytes"
+        )
         return False
 
     attr_name = _snapshot_attr_name(slug)
@@ -195,7 +263,7 @@ def _persist_snapshot_store(slug: str | None = None) -> bool:
 
         # Persist snapshots alongside the document so version history survives
         # add-in reloads and document switches.
-        attrs.add(ATTR_GROUP, attr_name, json.dumps(_snapshot_store.to_list()))
+        attrs.add(ATTR_GROUP, attr_name, payload)
         return True
     except Exception as exc:
         _log_runtime_error(
@@ -242,10 +310,13 @@ def _resolve_design_for_doc(doc_id: str) -> adsk.fusion.Design | None:
                     if design:
                         return design
 
-                if getattr(APP, "activeDocument", None) != document and hasattr(
-                    document,
-                    "activate",
-                ):
+                # Fallback: some API variants only expose the design of the
+                # active document. Temporarily activate the target document,
+                # grab its design, then restore the user's original document
+                # — resolving a link must never permanently switch their
+                # workspace.
+                original_document = getattr(APP, "activeDocument", None)
+                if original_document != document and hasattr(document, "activate"):
                     document.activate()
                     try:
                         adsk.doEvents()
@@ -253,6 +324,21 @@ def _resolve_design_for_doc(doc_id: str) -> adsk.fusion.Design | None:
                         pass
 
                 design = adsk.fusion.Design.cast(APP.activeProduct)
+
+                if (
+                    original_document is not None
+                    and original_document != document
+                    and hasattr(original_document, "activate")
+                ):
+                    try:
+                        original_document.activate()
+                        adsk.doEvents()
+                    except Exception:
+                        _log_runtime_error(
+                            "Failed to restore the previously active document "
+                            "after design lookup"
+                        )
+
                 if design:
                     return design
             except Exception as exc:
@@ -457,6 +543,30 @@ def _slug_from_label(label: str) -> str:
 
     slug = re.sub(r"[^a-zA-Z0-9_-]", "_", label.strip())[:64]
     return slug or "untitled"
+
+
+def _resolve_unique_slug(label: str) -> str:
+    """Resolve a slug for a Save As, avoiding cross-document collisions.
+
+    Slugging is lossy ("My Design!" and "My Design?" both become
+    "My_Design_"), so a new document could silently overwrite an
+    unrelated existing one. If the derived slug is taken by a document
+    with a *different* label, append a numeric suffix until free.
+    Saving with the same label as an existing document keeps its slug
+    (intentional overwrite of the same-named document).
+    """
+    base = _slug_from_label(label)
+    taken = {entry.get("slug"): entry.get("label") for entry in list_named_diagrams()}
+
+    if base not in taken or taken[base] == label:
+        return base
+
+    suffix = 2
+    while True:
+        candidate = f"{base[:60]}_{suffix}"
+        if candidate not in taken or taken[candidate] == label:
+            return candidate
+        suffix += 1
 
 
 def list_named_diagrams() -> list[dict[str, str]]:
@@ -756,6 +866,12 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         json_data = data.get("diagram", "{}")
         success = save_diagram_json(json_data)
         if success:
+            # A plain save targets the default document scope. If the
+            # active store was loaded for a named document, reload the
+            # default-scope store first so its history is never
+            # overwritten with another document's snapshots.
+            if _snapshot_store_scope is not None:
+                _set_snapshot_store()
             _persist_snapshot_store()
             return {
                 "success": True,
@@ -764,8 +880,6 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         return {"success": False, "error": "Diagram validation or save failed"}
 
     def _handle_load_diagram(self, data: dict[str, Any]) -> dict[str, Any]:
-        global _snapshot_store
-
         diagram_json = load_diagram_json()
         if diagram_json:
             try:
@@ -781,7 +895,7 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             diagram_dict = diagram_data.create_empty_diagram()
 
         # Reload persisted history whenever the active diagram is opened.
-        _snapshot_store = _load_snapshot_store()
+        _set_snapshot_store()
         return {
             "success": True,
             "diagram": diagram_dict,
@@ -1035,14 +1149,21 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         if not label:
             label = "Untitled"
 
-        resolved_slug = _slug_from_label(slug) if slug else _slug_from_label(label)
+        # Explicit slug = regular Save on an opened document (overwrite is
+        # intended). Label-only = Save As: pick a collision-free slug so a
+        # new document can never silently overwrite an unrelated one whose
+        # label happens to produce the same slug.
+        resolved_slug = _slug_from_label(slug) if slug else _resolve_unique_slug(label)
         ok = save_named_diagram(label, json_data, slug=resolved_slug)
         if ok:
-            _persist_snapshot_store(resolved_slug)
             # Keep the default open/load slot in sync with the latest saved
             # named document so plain "Open" returns the newest content.
             save_diagram_json(json_data)
-            _persist_snapshot_store()
+            # Activate the named document's own snapshot history. Saving a
+            # named diagram creates no snapshots, so nothing is persisted
+            # here — persisting the previously-loaded store could write one
+            # document's history into another's scope.
+            _set_snapshot_store(resolved_slug)
             return {
                 "success": True,
                 "documents": list_named_diagrams(),
@@ -1054,8 +1175,6 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
 
     def _handle_load_named_diagram(self, data: dict[str, Any]) -> dict[str, Any]:
         """Load a named diagram by slug."""
-        global _snapshot_store
-
         slug = data.get("slug", "")
         json_str = load_named_diagram(slug)
         if json_str:
@@ -1063,7 +1182,7 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
                 diagram = json.loads(json_str)
             except json.JSONDecodeError:
                 diagram = diagram_data.create_empty_diagram()
-            _snapshot_store = _load_snapshot_store(slug)
+            _set_snapshot_store(slug)
             docs = list_named_diagrams()
             existing = next((d for d in docs if d.get("slug") == slug), None)
             label = existing.get("label", slug) if existing else slug
@@ -1112,21 +1231,28 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             }
 
     def _handle_create_snapshot(self, data: dict[str, Any]) -> dict[str, Any]:
-        """Create a version-control snapshot of the current diagram."""
-        global _snapshot_store
+        """Create a version-control snapshot of the current diagram.
+
+        The diagram is stored verbatim (no Graph round-trip) so that
+        JS-side fields — block sizes/shapes, child diagrams, annotations,
+        connection waypoints — survive a later restore unchanged.
+        """
         try:
             slug = str(data.get("slug", "") or "").strip() or None
-            _snapshot_store = _load_snapshot_store(slug)
+            _set_snapshot_store(slug)
             diagram_json = data.get("diagram", "{}")
             diagram = (
                 diagram_json
                 if isinstance(diagram_json, dict)
                 else json.loads(diagram_json)
             )
-            graph = dict_to_graph(diagram)
             author = data.get("author", "")
             description = data.get("description", "")
-            snap = _snapshot_store.add(graph, author=author, description=description)
+            snap = _snapshot_store.add_document(
+                diagram,
+                author=author,
+                description=description,
+            )
             _persist_snapshot_store(slug)
             return {
                 "success": True,
@@ -1141,25 +1267,27 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
 
     def _handle_list_snapshots(self, data: dict[str, Any]) -> dict[str, Any]:
         """Return the list of stored snapshots."""
-        global _snapshot_store
         slug = str(data.get("slug", "") or "").strip() or None
-        _snapshot_store = _load_snapshot_store(slug)
+        _set_snapshot_store(slug)
         return {
             "success": True,
             "snapshots": _snapshot_store.list_snapshots(),
         }
 
     def _handle_restore_snapshot(self, data: dict[str, Any]) -> dict[str, Any]:
-        """Restore the diagram to a previous snapshot."""
-        global _snapshot_store
+        """Restore the diagram to a previous snapshot.
+
+        Snapshots are stored as verbatim documents, so restore returns
+        them unchanged. Legacy snapshots that were captured through the
+        Graph model carry nested-format connections, which the JS editor
+        would drop — flatten those before returning.
+        """
         slug = str(data.get("slug", "") or "").strip() or None
-        _snapshot_store = _load_snapshot_store(slug)
+        _set_snapshot_store(slug)
         snapshot_id = data.get("snapshotId", "")
         try:
-            graph = _snapshot_store.restore(snapshot_id)
-            from fsb_core.serialization import graph_to_dict
-
-            diagram = graph_to_dict(graph)
+            diagram = _snapshot_store.restore_document(snapshot_id)
+            diagram = flatten_connections_for_js(diagram)
             return {
                 "success": True,
                 "diagram": diagram,
@@ -1175,9 +1303,8 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
 
     def _handle_compare_snapshots(self, data: dict[str, Any]) -> dict[str, Any]:
         """Compare two snapshots and return a structured diff."""
-        global _snapshot_store
         slug = str(data.get("slug", "") or "").strip() or None
-        _snapshot_store = _load_snapshot_store(slug)
+        _set_snapshot_store(slug)
         old_id = data.get("oldId", "")
         new_id = data.get("newId", "")
         try:
@@ -1383,8 +1510,10 @@ def get_component_info_from_fusion(doc_id, occ_token):
                 adsk.fusion.CalculationAccuracy.LowCalculationAccuracy
             )
             if physical_props:
-                info["mass"] = physical_props.mass / 1000.0  # Convert to kg
-                info["volume"] = physical_props.volume / 1000.0  # Convert to cm³
+                # Fusion's PhysicalProperties API already reports mass in
+                # kilograms and volume in cubic centimetres — no conversion.
+                info["mass"] = physical_props.mass
+                info["volume"] = physical_props.volume
 
                 # Get bounding box from the occurrence (not physical_props)
                 bbox = occurrence.boundingBox if occurrence else None
@@ -1442,27 +1571,6 @@ def find_occurrence_by_token(component, target_token):
         return None
     except Exception:
         return None
-
-
-def get_all_component_statuses(diagram):
-    """
-    Get status of all components in the diagram.
-
-    Args:
-        diagram: The diagram dictionary
-
-    Returns:
-        Dictionary mapping block IDs to their component status
-    """
-    statuses = {}
-
-    for block in diagram.get("blocks", []):
-        block_id = block.get("id", "")
-        if block_id:
-            health_status = diagram_data.get_component_health_status(block)
-            statuses[block_id] = health_status
-
-    return statuses
 
 
 def start_cad_selection(block_id, block_name):
@@ -1675,350 +1783,6 @@ class CADSelectionExecuteHandler(adsk.core.CommandEventHandler):
                 pass  # palette restore is best-effort
 
 
-# ============================================================================
-# MILESTONE 13: VISUAL INTEGRATION & LIVING DOCUMENTATION - Fusion API
-# ============================================================================
-
-
-def enable_3d_overlay_mode(diagram, view_box):
-    """
-    Enable 3D overlay mode in Fusion viewport.
-
-    Args:
-        diagram: The block diagram data
-        view_box: Current view box coordinates
-    """
-    try:
-        design = adsk.fusion.Design.cast(APP.activeProduct)
-        if not design:
-            notify_error("No active Fusion design found")
-            return
-
-        # For now, show a message that overlay mode is enabled
-        # In the future, this would create actual 3D overlays in the viewport
-        notify_info("3D overlay mode enabled for the current diagram.")
-
-        # Initialize 3D visualization for all blocks
-        if "blocks" in diagram:
-            for block in diagram["blocks"]:
-                diagram_data.initialize_3d_visualization(block)
-
-    except Exception as e:
-        notify_error(f"3D overlay enable error: {str(e)}")
-
-
-def disable_3d_overlay_mode():
-    """
-    Disable 3D overlay mode in Fusion viewport.
-    """
-    try:
-        # Clear any 3D overlays
-        notify_info("3D Overlay Mode Disabled")
-
-    except Exception as e:
-        notify_error(f"3D overlay disable error: {str(e)}")
-
-
-def highlight_block_components(block_id, highlight_color):
-    """
-    Highlight 3D components associated with a block.
-
-    Args:
-        block_id: ID of the block whose components to highlight
-        highlight_color: Color for highlighting (hex string)
-    """
-    try:
-        design = adsk.fusion.Design.cast(APP.activeProduct)
-        if not design:
-            return
-
-        # Load current diagram to find the block
-        diagram_data_obj = load_diagram_data()
-        if not diagram_data_obj:
-            return
-
-        # Find the block
-        target_block = None
-        for block in diagram_data_obj.get("blocks", []):
-            if block.get("id") == block_id:
-                target_block = block
-                break
-
-        if not target_block:
-            return
-
-        # Find CAD links in the block
-        cad_links = [
-            link
-            for link in target_block.get("links", [])
-            if link.get("target") == "cad"
-        ]
-
-        highlighted_count = 0
-        for link in cad_links:
-            occ_token = link.get("occToken", "")
-            if occ_token:
-                # Find occurrence by token
-                occurrence = find_occurrence_by_token(
-                    design.rootComponent,
-                    occ_token,
-                )
-                if occurrence:
-                    # In a full implementation, this would change the appearance
-                    # For now, we'll select the component to show it's highlighted
-                    if highlighted_count == 0:
-                        # Select first component to show highlighting
-                        selection = UI.activeSelections
-                        selection.clear()
-                        selection.add(occurrence)
-                    highlighted_count += 1
-
-        if highlighted_count > 0:
-            notify_success(
-                "Highlighted "
-                f"{highlighted_count} components for block: "
-                f"{target_block.get('name', 'Unknown')}"
-            )
-        else:
-            block_name = target_block.get("name", "Unknown")
-            notify_warning(f"No CAD components found for block: {block_name}")
-
-    except Exception as e:
-        notify_error(f"Component highlighting error: {str(e)}")
-
-
-def create_connection_route_3d(connection_id, from_block_id, to_block_id, route_style):
-    """
-    Create 3D route visualization for a connection.
-
-    Args:
-        connection_id: ID of the connection
-        from_block_id: Source block ID
-        to_block_id: Target block ID
-        route_style: Visualization style properties
-    """
-    try:
-        design = adsk.fusion.Design.cast(APP.activeProduct)
-        if not design:
-            return
-
-        # For now, show a message about route creation
-        notify_info(f"Creating 3D route from {from_block_id} to {to_block_id}")
-
-        # In a full implementation, this would:
-        # 1. Find the 3D positions of components linked to both blocks
-        # 2. Calculate optimal routing path
-        # 3. Create 3D curve or sketch to visualize the connection
-        # 4. Apply styling (color, thickness, animation)
-
-    except Exception as e:
-        notify_error(f"Connection route error: {str(e)}")
-
-
-def create_system_group_visualization(block_ids, group_color):
-    """
-    Create system grouping visualization for multiple blocks.
-
-    Args:
-        block_ids: List of block IDs to group
-        group_color: Color for the group boundary
-    """
-    try:
-        design = adsk.fusion.Design.cast(APP.activeProduct)
-        if not design:
-            return
-
-        notify_info(
-            "Creating system group for "
-            f"{len(block_ids)} blocks with color {group_color}"
-        )
-
-        # In a full implementation, this would:
-        # 1. Find all components linked to the blocks
-        # 2. Calculate a bounding volume around all components
-        # 3. Create a visual boundary (wireframe box, colored region, etc.)
-        # 4. Apply group color and styling
-
-    except Exception as e:
-        notify_error(f"System grouping error: {str(e)}")
-
-
-def generate_live_thumbnail(block_id, view_angle, size):
-    """
-    Generate a live 3D thumbnail for a block.
-
-    Args:
-        block_id: ID of the block
-        view_angle: Camera angle ("iso", "front", "top", "side")
-        size: Thumbnail dimensions {"width": 150, "height": 150}
-    """
-    try:
-        design = adsk.fusion.Design.cast(APP.activeProduct)
-        if not design:
-            return
-
-        # Load current diagram to find the block
-        diagram_data_obj = load_diagram_data()
-        if not diagram_data_obj:
-            return
-
-        # Find the block
-        target_block = None
-        for block in diagram_data_obj.get("blocks", []):
-            if block.get("id") == block_id:
-                target_block = block
-                break
-
-        if not target_block:
-            return
-
-        # For now, update the block with a placeholder thumbnail
-        # In a full implementation, this would:
-        # 1. Set camera to specified view angle
-        # 2. Focus on components linked to the block
-        # 3. Capture viewport image at specified size
-        # 4. Convert to base64 and update block data
-
-        thumbnail_data = (
-            "data:image/png;base64,"
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
-            "AAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
-        )
-
-        # Update block with live thumbnail
-        updated_block = diagram_data.update_live_thumbnail(
-            target_block,
-            thumbnail_data,
-        )
-
-        # Save updated diagram
-        for i, block in enumerate(diagram_data_obj.get("blocks", [])):
-            if block.get("id") == block_id:
-                diagram_data_obj["blocks"][i] = updated_block
-                break
-
-        save_diagram_json(json.dumps(diagram_data_obj))
-
-        _send_bridge_event(
-            BridgeEvent.THUMBNAIL_UPDATE,
-            {
-                "blockId": block_id,
-                "thumbnailData": thumbnail_data,
-            },
-        )
-
-    except Exception as e:
-        notify_error(f"Live thumbnail error: {str(e)}")
-
-
-def generate_assembly_sequence_from_diagram(diagram):
-    """
-    Generate assembly sequence from diagram and send to JavaScript.
-
-    Args:
-        diagram: The complete diagram data
-    """
-    try:
-        # Generate assembly sequence using diagram_data
-        assembly_sequence = diagram_data.generate_assembly_sequence(diagram)
-
-        _send_bridge_event(
-            BridgeEvent.BOM_UPDATE,
-            {
-                "kind": "assembly-sequence",
-                "sequence": assembly_sequence,
-            },
-        )
-
-    except Exception as e:
-        notify_error(f"Assembly sequence error: {str(e)}")
-
-
-def generate_living_bom_from_diagram(diagram):
-    """
-    Generate living BOM from diagram and send to JavaScript.
-
-    Args:
-        diagram: The complete diagram data
-    """
-    try:
-        # Generate living BOM using diagram_data
-        living_bom = diagram_data.generate_living_bom(diagram)
-
-        _send_bridge_event(
-            BridgeEvent.BOM_UPDATE,
-            {
-                "kind": "living-bom",
-                "bom": living_bom,
-            },
-        )
-
-    except Exception as e:
-        notify_error(f"Living BOM error: {str(e)}")
-
-
-def generate_service_manual_for_block(block_id, diagram):
-    """
-    Generate service manual for a specific block.
-
-    Args:
-        block_id: ID of the block
-        diagram: The complete diagram data
-    """
-    try:
-        from datetime import datetime
-
-        # Find the block
-        target_block = None
-        for block in diagram.get("blocks", []):
-            if block.get("id") == block_id:
-                target_block = block
-                break
-
-        if not target_block:
-            return
-
-        # Initialize living documentation
-        target_block = diagram_data.initialize_living_documentation(target_block)
-
-        # Generate service manual content
-        service_manual_doc = target_block["livingDocumentation"]["serviceManual"]
-        service_manual = {
-            "blockName": target_block.get("name", "Unknown"),
-            "blockId": block_id,
-            "maintenanceInterval": service_manual_doc["maintenanceInterval"],
-            "replacementParts": service_manual_doc["replacementParts"],
-            "troubleshootingSteps": service_manual_doc["troubleshootingSteps"],
-            "safetyNotes": service_manual_doc["safetyNotes"],
-            "generatedAt": datetime.now().isoformat(),
-        }
-
-        _send_bridge_event(BridgeEvent.SERVICE_MANUAL_UPDATE, service_manual)
-
-    except Exception as e:
-        notify_error(f"Service manual error: {str(e)}")
-
-
-def analyze_change_impact_for_block(block_id, diagram):
-    """
-    Analyze change impact for a specific block.
-
-    Args:
-        block_id: ID of the block that changed
-        diagram: The complete diagram data
-    """
-    try:
-        # Analyze change impact using diagram_data
-        impact_analysis = diagram_data.track_change_impact(
-            diagram, block_id, "User-initiated analysis"
-        )
-
-        _send_bridge_event(BridgeEvent.CHANGE_IMPACT, impact_analysis)
-
-    except Exception as e:
-        notify_error(f"Change impact analysis error: {str(e)}")
-
-
 def _ensure_toolbar_controls() -> None:
     """Add System Blocks commands to the active workspace toolbar.
 
@@ -2184,13 +1948,20 @@ def run(context):
         _ensure_toolbar_controls()
 
         # Register workspace activation handler so toolbar controls
-        # are re-added when the user switches workspaces.
-        on_workspace_activated = WorkspaceActivatedHandler()
-        UI.workspaceActivated.add(on_workspace_activated)
-        _retain_handler(UI, on_workspace_activated)
+        # are re-added when the user switches workspaces. Unregister any
+        # handler left over from a previous run first so restarts don't
+        # stack duplicates.
+        global _workspace_activated_handler
+        if _workspace_activated_handler is not None:
+            try:
+                UI.workspaceActivated.remove(_workspace_activated_handler)
+            except Exception:
+                pass
+        _workspace_activated_handler = WorkspaceActivatedHandler()
+        UI.workspaceActivated.add(_workspace_activated_handler)
+        _retain_handler(UI, _workspace_activated_handler)
 
-        global _snapshot_store
-        _snapshot_store = _load_snapshot_store()
+        _set_snapshot_store()
 
         if LOGGING_AVAILABLE:
             _logger.info("=" * 60)
@@ -2263,6 +2034,16 @@ def stop(context):
         if palette:
             _release_handlers(palette)
             palette.deleteMe()
+
+        # Unregister the workspace-activation handler from Fusion's event —
+        # dropping only the Python reference would leave it registered.
+        global _workspace_activated_handler
+        if _workspace_activated_handler is not None:
+            try:
+                UI.workspaceActivated.remove(_workspace_activated_handler)
+            except Exception:
+                pass
+            _workspace_activated_handler = None
 
         _release_handlers(UI)
         _handler_fallback_refs.clear()

@@ -19,6 +19,10 @@ def create_child_diagram(parent_block: dict[str, Any]) -> dict[str, Any]:
     from .core import create_empty_diagram
 
     child_diagram = create_empty_diagram()
+    # Record the owning block so the JS editor's Navigate Up can persist
+    # child edits back into the parent diagram (it looks the parent block
+    # up via metadata.parentBlockId).
+    child_diagram["metadata"] = {"parentBlockId": parent_block.get("id", "")}
     parent_block["childDiagram"] = child_diagram
     return child_diagram
 

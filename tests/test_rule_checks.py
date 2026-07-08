@@ -9,6 +9,7 @@ from diagram.rules import _parse_power_value_mw
 from diagram_data import (
     check_implementation_completeness,
     check_logic_level_compatibility,
+    check_logic_level_compatibility_bulk,
     check_power_budget,
     check_power_budget_bulk,
     create_block,
@@ -522,3 +523,169 @@ class TestImplementationCompletenessEdge:
 
 if __name__ == "__main__":
     pytest.main([__file__])
+
+
+class TestRailVoltageAwareness:
+    """mA→mW conversion must honour a block's declared rail voltage."""
+
+    def test_declared_voltage_changes_conversion(self):
+        """A 5 V load drawing 300 mA consumes 1500 mW — more than a
+        1000 mW supply — even though 300 mA at the old hardcoded 3.3 V
+        assumption (990 mW) would have fit."""
+        diagram = {
+            "blocks": [
+                {
+                    "id": "psu",
+                    "name": "PSU",
+                    "attributes": {"power_supply_mw": "1000"},
+                },
+                {
+                    "id": "load",
+                    "name": "5V Load",
+                    "attributes": {"current": "300mA", "voltage": "5V"},
+                },
+            ],
+            "connections": [],
+        }
+        result = check_power_budget(diagram)
+        assert result["success"] is False
+        assert "exceeded" in result["message"]
+
+    def test_default_rail_voltage_without_attribute(self):
+        """Without a voltage attribute the 3.3 V default applies:
+        300 mA → 990 mW, which fits a 1000 mW supply."""
+        diagram = {
+            "blocks": [
+                {
+                    "id": "psu",
+                    "name": "PSU",
+                    "attributes": {"power_supply_mw": "1000"},
+                },
+                {
+                    "id": "load",
+                    "name": "Load",
+                    "attributes": {"current": "300mA"},
+                },
+            ],
+            "connections": [],
+        }
+        result = check_power_budget(diagram)
+        assert result["success"] is True
+
+    def test_unparsable_voltage_falls_back_to_default(self):
+        diagram = {
+            "blocks": [
+                {
+                    "id": "psu",
+                    "name": "PSU",
+                    "attributes": {"power_supply_mw": "1000"},
+                },
+                {
+                    "id": "load",
+                    "name": "Load",
+                    "attributes": {"current": "300mA", "voltage": "unknown"},
+                },
+            ],
+            "connections": [],
+        }
+        result = check_power_budget(diagram)
+        assert result["success"] is True
+
+
+class TestResultsCarryHighlightIds:
+    """Failing rule results must include block/connection ids so the
+    palette can highlight the offenders when a result row is clicked."""
+
+    def test_logic_level_mismatch_includes_ids(self):
+        diagram = {
+            "blocks": [
+                {
+                    "id": "block1",
+                    "name": "B1",
+                    "attributes": {"logic_level": "3.3V"},
+                    "interfaces": [],
+                },
+                {
+                    "id": "block2",
+                    "name": "B2",
+                    "attributes": {"logic_level": "12V"},
+                    "interfaces": [],
+                },
+            ],
+            "connections": [],
+        }
+        connection = {
+            "id": "conn9",
+            "from": {"blockId": "block1"},
+            "to": {"blockId": "block2"},
+        }
+        result = check_logic_level_compatibility(connection, diagram)
+        assert result["success"] is False
+        assert result["connection"] == "conn9"
+        assert result["blocks"] == ["block1", "block2"]
+
+    def test_power_budget_failure_includes_blocks(self):
+        diagram = {
+            "blocks": [
+                {
+                    "id": "supply1",
+                    "name": "Small Supply",
+                    "attributes": {"output_current": "100mA"},
+                },
+                {
+                    "id": "hungry1",
+                    "name": "Motor",
+                    "attributes": {"current": "200mA"},
+                },
+            ],
+            "connections": [],
+        }
+        result = check_power_budget(diagram)
+        assert result["success"] is False
+        assert "hungry1" in result["blocks"]
+
+    def test_implementation_completeness_includes_blocks(self):
+        diagram = {
+            "blocks": [
+                {
+                    "id": "block1",
+                    "name": "Incomplete",
+                    "status": "Implemented",
+                    "attributes": {},
+                    "interfaces": [],
+                    "links": [],
+                }
+            ],
+            "connections": [],
+        }
+        result = check_implementation_completeness(diagram)
+        assert result["success"] is False
+        assert result["blocks"] == ["block1"]
+
+    def test_bulk_logic_level_mismatch_is_warning(self):
+        """Severity must match the singular check ('warning')."""
+        diagram = {
+            "blocks": [
+                {
+                    "id": "block1",
+                    "name": "B1",
+                    "attributes": {"logic_level": "3.3V"},
+                },
+                {
+                    "id": "block2",
+                    "name": "B2",
+                    "attributes": {"logic_level": "12V"},
+                },
+            ],
+            "connections": [
+                {
+                    "id": "c1",
+                    "from": {"blockId": "block1"},
+                    "to": {"blockId": "block2"},
+                }
+            ],
+        }
+        violations = check_logic_level_compatibility_bulk(diagram)
+        assert len(violations) == 1
+        assert violations[0]["severity"] == "warning"
+        assert violations[0]["connection"] == "c1"
