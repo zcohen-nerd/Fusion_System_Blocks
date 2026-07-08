@@ -79,6 +79,9 @@ class ValidationError:
         port_id: ID of the affected port, if applicable.
         connection_id: ID of the affected connection, if applicable.
         details: Additional error-specific context.
+        severity: ``"error"`` for structural problems that must be fixed,
+            ``"warning"`` for findings that may be intentional design
+            choices (e.g. feedback loops, unnamed placeholder blocks).
     """
 
     code: ValidationErrorCode
@@ -87,6 +90,7 @@ class ValidationError:
     port_id: str | None = None
     connection_id: str | None = None
     details: dict[str, Any] = field(default_factory=dict)
+    severity: str = "error"
 
     def to_dict(self) -> dict[str, Any]:
         """Convert error to dictionary for serialization.
@@ -101,6 +105,7 @@ class ValidationError:
             "port_id": self.port_id,
             "connection_id": self.connection_id,
             "details": self.details,
+            "severity": self.severity,
         }
 
 
@@ -179,6 +184,7 @@ def _validate_block_ids(graph: Graph) -> list[ValidationError]:
                     code=ValidationErrorCode.EMPTY_BLOCK_NAME,
                     message=f"Block with ID '{block.id}' has an empty name.",
                     block_id=block.id,
+                    severity="warning",
                 )
             )
 
@@ -659,12 +665,17 @@ def _detect_cycles(graph: Graph) -> list[ValidationError]:
                         code=ValidationErrorCode.CYCLE_DETECTED,
                         message=(
                             f"Cycle detected in graph involving blocks: "
-                            f"{' -> '.join(cycle_names)}"
+                            f"{' -> '.join(cycle_names)} "
+                            f"(may be an intentional feedback loop)"
                         ),
                         details={
                             "cycle_block_ids": cycle_blocks.copy(),
                             "cycle_block_names": cycle_names,
                         },
+                        # Feedback loops are legitimate in real systems
+                        # (control loops, bidirectional buses) — flag for
+                        # review rather than as a structural error.
+                        severity="warning",
                     )
                 )
                 break  # Report first cycle found

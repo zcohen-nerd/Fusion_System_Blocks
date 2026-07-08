@@ -40,6 +40,10 @@ class SystemBlocksMain {
     // Multi-page state
     this._pages = [];
     this._activePageIndex = 0;
+    // True when a page-level change may have left the stored document's
+    // `pages` array out of date. Delta saves never touch that key, so
+    // the next save must be a full save. Cleared by markPagesSaved().
+    this._pagesNeedFullSave = false;
     this._windowResizeHandler = null;
     this._beforeUnloadHandler = null;
     this._pageTabEventsBound = false;
@@ -4585,6 +4589,7 @@ class SystemBlocksMain {
     // Reset multi-page state to a clean single default page
     this._pages = [];
     this._activePageIndex = 0;
+    this._pagesNeedFullSave = false;
     this._pageTabEventsBound = false;
     this._pageTabEventsTarget = null;
     this.isInitialized = false;
@@ -4736,13 +4741,50 @@ class SystemBlocksMain {
     this._activePageIndex = this._pages.length - 1;
     this._loadPageState(this._activePageIndex);
     this._renderPageTabs();
+    this._markPagesDirty();
     if (window.advancedFeatures) window.advancedFeatures.saveState();
+  }
+
+  /**
+   * Flag the diagram as having unsaved changes after a page-level
+   * operation. Page state lives in this._pages (not the live diagram),
+   * so the delta-based change detection cannot see it.
+   *
+   * Also forces the next save to be a FULL save: a delta patch never
+   * touches the stored document's `pages` key, so after a page change
+   * (especially deleting down to a single page) a delta save would
+   * leave a stale `pages` array behind — resurrecting deleted pages
+   * and reverting edits on the next load.
+   * @private
+   */
+  _markPagesDirty() {
+    this._pagesNeedFullSave = true;
+    const core = this.modules.get('core');
+    if (core && typeof core._markDirty === 'function') {
+      core._markDirty();
+    }
+  }
+
+  /**
+   * Called by the Python bridge after a successful full save (or named
+   * save) — the stored document now matches the live page state, so
+   * delta saves are safe again.
+   */
+  markPagesSaved() {
+    this._pagesNeedFullSave = false;
   }
 
   /** Delete a page by index. Cannot delete the last remaining page. */
   deletePage(pageIndex) {
     if (this._pages.length <= 1) return;
     if (pageIndex < 0 || pageIndex >= this._pages.length) return;
+
+    // Capture the active page's live state first. Without this, deleting
+    // a NON-active page reloads the active page from its last-captured
+    // copy below, silently reverting any edits made since the last page
+    // switch. (Harmless when deleting the active page — its captured
+    // state is spliced away with it.)
+    this._saveCurrentPageState();
 
     this._pages.splice(pageIndex, 1);
 
@@ -4758,6 +4800,7 @@ class SystemBlocksMain {
 
     this._loadPageState(this._activePageIndex);
     this._renderPageTabs();
+    this._markPagesDirty();
     if (window.advancedFeatures) window.advancedFeatures.saveState();
   }
 
@@ -4766,6 +4809,7 @@ class SystemBlocksMain {
     if (pageIndex < 0 || pageIndex >= this._pages.length) return;
     this._pages[pageIndex].name = newName || this._pages[pageIndex].name;
     this._renderPageTabs();
+    this._markPagesDirty();
   }
 
   /** Move a page from one index to another (reorder). */
@@ -4787,6 +4831,7 @@ class SystemBlocksMain {
     }
 
     this._renderPageTabs();
+    this._markPagesDirty();
   }
 
   /** Get all pages data for serialization. */
@@ -4830,6 +4875,9 @@ class SystemBlocksMain {
       this._activePageIndex = 0;
       this._loadPageState(0);
     }
+    // Pages were just loaded from the stored document, so live and
+    // stored page state match — delta saves are safe again.
+    this._pagesNeedFullSave = false;
     this._renderPageTabs();
   }
 
@@ -5050,6 +5098,7 @@ class SystemBlocksMain {
     this._activePageIndex = pageIndex + 1;
     this._loadPageState(this._activePageIndex);
     this._renderPageTabs();
+    this._markPagesDirty();
     if (window.advancedFeatures) window.advancedFeatures.saveState();
   }
 }

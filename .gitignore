@@ -1,5 +1,10 @@
 __pycache__/
 *.py[cod]
+
+# Runtime output (add-in logs and report exports land in the repo when it
+# doubles as the installed add-in folder)
+logs/
+exports/
 .venv/
 env/
 .env

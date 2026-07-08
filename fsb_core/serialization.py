@@ -352,6 +352,86 @@ def _parse_connection(data: dict[str, Any]) -> Connection:
     )
 
 
+#: Connection attributes that the JS editor stores as top-level keys but
+#: :func:`graph_to_dict` folds into the ``attributes`` dict.
+_JS_TOP_LEVEL_CONN_ATTRS = (
+    "arrowDirection",
+    "renderAsStub",
+    "label",
+    "labelOffset",
+    "labelOffsetY",
+)
+
+
+def flatten_connections_for_js(data: dict[str, Any]) -> dict[str, Any]:
+    """Convert Graph-style nested connections to the flat JS editor format.
+
+    The JS diagram editor stores connections as
+    ``{fromBlock, toBlock, type, arrowDirection, ...}`` while
+    :func:`graph_to_dict` emits
+    ``{from: {blockId, interfaceId}, to: {...}, kind, attributes}``.
+    A document that passed through the Graph model (e.g. a legacy
+    snapshot) must be normalised before it is handed back to the JS
+    editor — its import step drops every connection that has no
+    ``fromBlock``/``toBlock`` keys.
+
+    Connections already in flat format are returned unchanged, so the
+    function is safe to apply unconditionally.
+
+    Args:
+        data: Diagram dictionary in either format.
+
+    Returns:
+        A shallow-copied diagram whose connections all use the flat
+        JS format.  The input is not mutated.
+    """
+    connections = data.get("connections")
+    if not isinstance(connections, list) or not connections:
+        return data
+
+    def _flatten(conn: Any) -> Any:
+        if not isinstance(conn, dict):
+            return conn
+        from_data = conn.get("from")
+        to_data = conn.get("to")
+        if not isinstance(from_data, dict) and not isinstance(to_data, dict):
+            return conn  # already flat
+
+        flat = {
+            key: value
+            for key, value in conn.items()
+            if key not in ("from", "to", "kind", "attributes")
+        }
+        if isinstance(from_data, dict):
+            flat["fromBlock"] = from_data.get("blockId", "")
+            # dict_to_graph funnels the JS port side (e.g. "output")
+            # into interfaceId, so restoring it as fromPort/toPort
+            # recovers the original value for JS-authored diagrams.
+            if from_data.get("interfaceId"):
+                flat["fromPort"] = from_data["interfaceId"]
+        if isinstance(to_data, dict):
+            flat["toBlock"] = to_data.get("blockId", "")
+            if to_data.get("interfaceId"):
+                flat["toPort"] = to_data["interfaceId"]
+        if "type" not in flat:
+            flat["type"] = conn.get("kind", "data")
+
+        attrs = conn.get("attributes") or {}
+        leftover = {}
+        for key, value in attrs.items():
+            if key in _JS_TOP_LEVEL_CONN_ATTRS and key not in flat:
+                flat[key] = value
+            else:
+                leftover[key] = value
+        if leftover:
+            flat["attributes"] = leftover
+        return flat
+
+    result = {**data}
+    result["connections"] = [_flatten(conn) for conn in connections]
+    return result
+
+
 def convert_legacy_diagram(diagram: dict[str, Any]) -> Graph:
     """Convert a legacy diagram dictionary to a Graph.
 

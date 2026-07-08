@@ -155,10 +155,21 @@ class SelectionHandler:
                 if max_count > 0 and len(selections) >= max_count:
                     break
 
-                selection = self._ui.selectEntity(
-                    f"{prompt} ({len(selections)} selected, ESC to finish)",
-                    "Occurrences",
-                )
+                # selectEntity raises when the user presses ESC — that is
+                # the documented "finish" gesture for this loop, not an
+                # error, so it must not be logged as one.
+                try:
+                    selection = self._ui.selectEntity(
+                        f"{prompt} ({len(selections)} selected, ESC to finish)",
+                        "Occurrences",
+                    )
+                except Exception:
+                    if _LOGGER is not None:
+                        _LOGGER.debug(
+                            "select_multiple_occurrences finished with %d selection(s)",
+                            len(selections),
+                        )
+                    break
                 if not selection:
                     break
 
@@ -245,11 +256,14 @@ class SelectionHandler:
                     adsk.fusion.CalculationAccuracy.LowCalculationAccuracy
                 )
                 if props:
-                    info["mass"] = props.mass / 1000.0  # kg
-                    info["volume"] = props.volume / 1000.0  # cm³
+                    # Fusion's PhysicalProperties API already reports mass
+                    # in kilograms and volume in cubic centimetres.
+                    info["mass"] = props.mass
+                    info["volume"] = props.volume
 
-                    # Bounding box
-                    bbox = props.boundingBox
+                    # Bounding box comes from the occurrence —
+                    # PhysicalProperties has no boundingBox property.
+                    bbox = occurrence.boundingBox
                     if bbox:
                         info["boundingBox"] = {
                             "min": [bbox.minPoint.x, bbox.minPoint.y, bbox.minPoint.z],

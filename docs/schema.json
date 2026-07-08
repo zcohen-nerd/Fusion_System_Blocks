@@ -9,7 +9,38 @@
       "description": "Schema version for migration support. Missing = '0.9' (pre-versioning).",
       "enum": ["0.9", "1.0"]
     },
-    "schema": { "type": "string" },
+    "schema": {
+      "type": "string",
+      "description": "Document-format identifier; canonical value is 'system-blocks-v2' (schemaVersion is the migration key)"
+    },
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "metadata": {
+      "type": "object",
+      "description": "Diagram metadata (created/modified timestamps, parentBlockId for child diagrams, etc.)",
+      "additionalProperties": true
+    },
+    "groups": {
+      "type": "array",
+      "description": "Named block groups with optional nesting and metadata",
+      "items": { "type": "object" }
+    },
+    "namedStubs": {
+      "type": "array",
+      "description": "Net-label stubs; blocks sharing a netName are implicitly connected",
+      "items": { "type": "object" }
+    },
+    "annotations": {
+      "type": "array",
+      "description": "Canvas annotations (text, note, dimension, callout)",
+      "items": { "type": "object" }
+    },
+    "pages": {
+      "type": "array",
+      "description": "Multi-page diagrams: each page holds its own blocks/connections",
+      "items": { "type": "object" }
+    },
+    "activePageIndex": { "type": "number" },
     "units": {
       "type": "object",
       "properties": {
@@ -130,17 +161,21 @@
           },
           "childDiagram": {
             "type": "object",
+            "description": "A nested child diagram — structurally a full diagram (schemaVersion, metadata.parentBlockId, groups, ...), so unknown keys are permitted",
             "properties": {
               "blocks": {
                 "type": "array",
                 "items": { "$ref": "#/properties/blocks/items" }
               },
               "connections": {
-                "type": "array", 
+                "type": "array",
                 "items": { "$ref": "#/properties/connections/items" }
-              }
+              },
+              "schemaVersion": { "type": "string" },
+              "schema": { "type": "string" },
+              "metadata": { "type": "object", "additionalProperties": true }
             },
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "visualization3D": {
             "type": "object",

@@ -525,6 +525,10 @@ class PythonInterface {
         .then(response => {
           if (response.success) {
             window.diagramEditor.markSaved();
+            // Named saves always write the full document (pages included)
+            if (window.SystemBlocksMain && window.SystemBlocksMain.markPagesSaved) {
+              window.SystemBlocksMain.markPagesSaved();
+            }
             try { localStorage.removeItem('fsb_recovery_backup'); } catch (_) {}
             this._syncSnapshotPanel(response.snapshots || null);
             if (!silent) {
@@ -549,8 +553,24 @@ class PythonInterface {
         });
     }
 
+    // Multi-page diagrams must always full-save: the delta patch only
+    // covers the active page, leaving the stored `pages` array stale.
+    // On the next load, importDiagram prefers pages[0] over the patched
+    // top-level blocks, silently reverting the delta-saved edits.
+    // The _pagesNeedFullSave flag additionally covers the transition
+    // back to a single page: deleting down to one page leaves a stale
+    // `pages` array in the stored document that only a full save (which
+    // rewrites the whole document without it) can remove.
+    const coordinator = window.SystemBlocksMain;
+    const pagesRequireFullSave = coordinator && (
+      (Array.isArray(coordinator._pages) && coordinator._pages.length > 1) ||
+      coordinator._pagesNeedFullSave === true
+    );
+
     // Try delta-save: send only the diff instead of the full diagram.
-    var delta = !forceFull ? window.diagramEditor.getDelta() : null;
+    var delta = (!forceFull && !pagesRequireFullSave)
+      ? window.diagramEditor.getDelta()
+      : null;
     if (delta !== null && delta.length > 0) {
       return this.sendMessage(BridgeAction.APPLY_DELTA, { patch: delta }, true)
         .then(response => {
@@ -579,6 +599,11 @@ class PythonInterface {
       .then(response => {
         if (response.success) {
           window.diagramEditor.markSaved();
+          // Full save rewrote the entire stored document, so the stored
+          // pages state now matches the live one.
+          if (window.SystemBlocksMain && window.SystemBlocksMain.markPagesSaved) {
+            window.SystemBlocksMain.markPagesSaved();
+          }
           try { localStorage.removeItem('fsb_recovery_backup'); } catch (_) {}
           this._syncSnapshotPanel(response.snapshots || null);
           if (!silent) {

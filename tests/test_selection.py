@@ -177,18 +177,45 @@ class TestGetOccurrenceInfo:
         occ.component.material.name = "Ceramic"
 
         props = MagicMock()
-        props.mass = 5.0  # grams internally
-        props.volume = 2.0
-        props.boundingBox.minPoint.x = 0
-        props.boundingBox.minPoint.y = 0
-        props.boundingBox.minPoint.z = 0
-        props.boundingBox.maxPoint.x = 1
-        props.boundingBox.maxPoint.y = 1
-        props.boundingBox.maxPoint.z = 1
+        props.mass = 5.0  # Fusion reports kg — must pass through unconverted
+        props.volume = 2.0  # Fusion reports cm³ — must pass through unconverted
         occ.component.getPhysicalProperties.return_value = props
+
+        # The bounding box lives on the occurrence, not on
+        # PhysicalProperties (which has no boundingBox property).
+        occ.boundingBox.minPoint.x = 0
+        occ.boundingBox.minPoint.y = 0
+        occ.boundingBox.minPoint.z = 0
+        occ.boundingBox.maxPoint.x = 1
+        occ.boundingBox.maxPoint.y = 1
+        occ.boundingBox.maxPoint.z = 1
 
         info = handler.get_occurrence_info(occ)
         assert info["name"] == "Resistor"
         assert info["description"] == "10k"
         assert info["material"] == "Ceramic"
-        assert info["boundingBox"] is not None
+        assert info["mass"] == 5.0
+        assert info["volume"] == 2.0
+        assert info["boundingBox"] == {"min": [0, 0, 0], "max": [1, 1, 1]}
+
+
+class TestMultiSelectEscFinish:
+    def test_esc_after_selections_returns_collected(self):
+        """ESC raises inside selectEntity — that's the documented finish
+        gesture and must return what was collected, not log an error."""
+        handler = _make_handler()
+        occ = _mock_occurrence("Bolt", "tok-bolt")
+
+        mock_app = MagicMock()
+        mock_app.activeDocument.dataFile.id = "d1"
+        _adsk_core.Application.get.return_value = mock_app
+
+        handler._ui.selectEntity.side_effect = [
+            occ,
+            occ,
+            RuntimeError("user pressed ESC"),
+        ]
+        with patch.object(sel_mod, "_log_selection_error") as log_err:
+            results = handler.select_multiple_occurrences()
+        assert len(results) == 2
+        log_err.assert_not_called()

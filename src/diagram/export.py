@@ -809,7 +809,10 @@ def generate_svg_diagram(diagram: dict[str, Any]) -> str:
         x2 = tb.get("x", 0)
         y2 = tb.get("y", 0) + th // 2
 
-        conn_type = (conn.get("type") or "auto").lower()
+        # Normalised connections carry the canonical "kind"; raw JS-format
+        # ones use "type". Checking only "type" left every Python-format
+        # connection with the default grey style.
+        conn_type = (conn.get("kind") or conn.get("type") or "auto").lower()
         style = conn_styles.get(conn_type, default_conn_style)
 
         dash_attr = f' stroke-dasharray="{style["dash"]}"' if style["dash"] else ""
@@ -2089,14 +2092,21 @@ def import_from_csv(blocks_csv: str, connections_csv: str = None) -> dict[str, A
     x_position = 100
     y_position = 100
 
+    def _coord(raw_value: Any, default: int) -> int:
+        """Parse a CSV coordinate cell, tolerating empty/malformed values."""
+        try:
+            return int(float(raw_value))
+        except (TypeError, ValueError):
+            return default
+
     for row in blocks_reader:
         name = row.get("name", "").strip()
         if not name:
             continue
 
         block_type = (row.get("type") or "Generic").strip()
-        x = int(row.get("x", x_position))
-        y = int(row.get("y", y_position))
+        x = _coord(row.get("x"), x_position)
+        y = _coord(row.get("y"), y_position)
         status = (row.get("status") or "Placeholder").strip()
 
         block = create_block(name, x, y, block_type, status)

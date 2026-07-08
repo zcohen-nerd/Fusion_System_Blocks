@@ -551,3 +551,57 @@ class TestValidationUtilities:
         assert result["block_id"] == "block-123"
         assert result["port_id"] == "port-456"
         assert result["details"]["expected"] == "OUT"
+
+
+# ==================================================================
+# Severity levels
+# ==================================================================
+
+
+class TestValidationSeverity:
+    """Structural problems are errors; review-worthy findings that may be
+    intentional design choices (feedback loops, unnamed placeholders)
+    are warnings."""
+
+    def test_cycle_is_warning(self):
+        graph = Graph(
+            blocks=[
+                Block(id="a", name="A"),
+                Block(id="b", name="B"),
+            ],
+            connections=[
+                Connection(id="c1", from_block_id="a", to_block_id="b"),
+                Connection(id="c2", from_block_id="b", to_block_id="a"),
+            ],
+        )
+        errors = validate_graph(graph)
+        cycle_errors = filter_by_code(errors, ValidationErrorCode.CYCLE_DETECTED)
+        assert len(cycle_errors) == 1
+        assert cycle_errors[0].severity == "warning"
+
+    def test_empty_block_name_is_warning(self):
+        graph = Graph(blocks=[Block(id="a", name="")])
+        errors = validate_graph(graph)
+        name_errors = filter_by_code(errors, ValidationErrorCode.EMPTY_BLOCK_NAME)
+        assert len(name_errors) == 1
+        assert name_errors[0].severity == "warning"
+
+    def test_missing_block_reference_is_error(self):
+        graph = Graph(
+            blocks=[Block(id="a", name="A")],
+            connections=[
+                Connection(id="c1", from_block_id="a", to_block_id="ghost"),
+            ],
+        )
+        errors = validate_graph(graph)
+        missing = filter_by_code(errors, ValidationErrorCode.MISSING_TARGET_BLOCK)
+        assert len(missing) == 1
+        assert missing[0].severity == "error"
+
+    def test_to_dict_includes_severity(self):
+        error = ValidationError(
+            code=ValidationErrorCode.CYCLE_DETECTED,
+            message="test",
+            severity="warning",
+        )
+        assert error.to_dict()["severity"] == "warning"

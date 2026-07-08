@@ -635,3 +635,108 @@ class TestNamedStubSerialization:
         assert stub.port_side == "output"
         assert stub.stub_type == "auto"
         assert stub.direction == "forward"
+
+
+# ==================================================================
+# flatten_connections_for_js — Graph-format → JS-flat normalisation
+# ==================================================================
+
+
+class TestFlattenConnectionsForJs:
+    """Nested (graph_to_dict) connections must convert to the flat
+    fromBlock/toBlock format the JS editor requires."""
+
+    def _nested_diagram(self):
+        return {
+            "blocks": [{"id": "b1"}, {"id": "b2"}],
+            "connections": [
+                {
+                    "id": "c1",
+                    "from": {"blockId": "b1", "interfaceId": "output"},
+                    "to": {"blockId": "b2", "interfaceId": "input"},
+                    "kind": "power",
+                    "attributes": {
+                        "arrowDirection": "bidirectional",
+                        "label": "12V rail",
+                        "labelOffset": 0.3,
+                        "custom": "keep-me",
+                    },
+                    "routeMode": "orthogonal",
+                }
+            ],
+        }
+
+    def test_nested_connection_is_flattened(self):
+        from fsb_core.serialization import flatten_connections_for_js
+
+        result = flatten_connections_for_js(self._nested_diagram())
+        conn = result["connections"][0]
+
+        assert conn["fromBlock"] == "b1"
+        assert conn["toBlock"] == "b2"
+        assert "from" not in conn
+        assert "to" not in conn
+        assert conn["type"] == "power"
+        assert conn["fromPort"] == "output"
+        assert conn["toPort"] == "input"
+        assert conn["routeMode"] == "orthogonal"
+
+    def test_known_attributes_are_hoisted_to_top_level(self):
+        from fsb_core.serialization import flatten_connections_for_js
+
+        conn = flatten_connections_for_js(self._nested_diagram())["connections"][0]
+        assert conn["arrowDirection"] == "bidirectional"
+        assert conn["label"] == "12V rail"
+        assert conn["labelOffset"] == 0.3
+        # Unknown attributes stay in the attributes dict
+        assert conn["attributes"] == {"custom": "keep-me"}
+
+    def test_graph_to_dict_output_survives_js_import_contract(self):
+        """End-to-end: a Graph-serialized diagram gains fromBlock/toBlock
+        on every connection (the keys JS importDiagram filters on)."""
+        from fsb_core.models import Block, Connection, Graph
+        from fsb_core.serialization import (
+            flatten_connections_for_js,
+            graph_to_dict,
+        )
+
+        graph = Graph(
+            blocks=[Block(id="b1", name="A"), Block(id="b2", name="B")],
+            connections=[
+                Connection(id="c1", from_block_id="b1", to_block_id="b2"),
+            ],
+        )
+        flat = flatten_connections_for_js(graph_to_dict(graph))
+        for conn in flat["connections"]:
+            assert conn.get("fromBlock") and conn.get("toBlock")
+
+    def test_flat_connections_pass_through_unchanged(self):
+        from fsb_core.serialization import flatten_connections_for_js
+
+        diagram = {
+            "blocks": [],
+            "connections": [
+                {"id": "c1", "fromBlock": "b1", "toBlock": "b2", "type": "data"}
+            ],
+        }
+        result = flatten_connections_for_js(diagram)
+        assert result["connections"][0] is diagram["connections"][0]
+
+    def test_input_diagram_is_not_mutated(self):
+        import copy
+
+        from fsb_core.serialization import flatten_connections_for_js
+
+        diagram = self._nested_diagram()
+        original = copy.deepcopy(diagram)
+        flatten_connections_for_js(diagram)
+        assert diagram == original
+
+    def test_empty_and_missing_connections_are_safe(self):
+        from fsb_core.serialization import flatten_connections_for_js
+
+        assert flatten_connections_for_js({"blocks": []}) == {"blocks": []}
+        assert flatten_connections_for_js({"blocks": [], "connections": []}) == {
+            "blocks": [],
+            "connections": [],
+        }

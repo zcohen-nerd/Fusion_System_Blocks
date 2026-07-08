@@ -407,3 +407,39 @@ class TestAddinVersion:
         # Parts should be numeric
         for part in parts:
             int(part)
+
+
+class TestResolveLogLevel:
+    """Default log level is INFO, overridable via SYSTEM_BLOCKS_LOG_LEVEL."""
+
+    def test_default_is_info(self, monkeypatch):
+        import logging
+
+        from fusion_addin.logging_util import LOG_LEVEL_ENV_VAR, resolve_log_level
+
+        monkeypatch.delenv(LOG_LEVEL_ENV_VAR, raising=False)
+        assert resolve_log_level() == logging.INFO
+
+    def test_env_var_overrides_default(self, monkeypatch):
+        import logging
+
+        from fusion_addin.logging_util import LOG_LEVEL_ENV_VAR, resolve_log_level
+
+        monkeypatch.setenv(LOG_LEVEL_ENV_VAR, "debug")
+        assert resolve_log_level() == logging.DEBUG
+
+    def test_env_var_is_case_insensitive(self, monkeypatch):
+        import logging
+
+        from fusion_addin.logging_util import LOG_LEVEL_ENV_VAR, resolve_log_level
+
+        monkeypatch.setenv(LOG_LEVEL_ENV_VAR, "Warning")
+        assert resolve_log_level() == logging.WARNING
+
+    def test_invalid_env_var_falls_back(self, monkeypatch):
+        import logging
+
+        from fusion_addin.logging_util import LOG_LEVEL_ENV_VAR, resolve_log_level
+
+        monkeypatch.setenv(LOG_LEVEL_ENV_VAR, "verbose")
+        assert resolve_log_level() == logging.INFO

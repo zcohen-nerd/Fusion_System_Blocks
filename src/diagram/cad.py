@@ -6,6 +6,7 @@ including component tracking, 3D visualization, assembly sequences, and living d
 """
 
 import base64
+import copy
 from datetime import datetime
 from typing import Any, Optional
 
@@ -382,13 +383,17 @@ def generate_component_thumbnail_placeholder(
     Returns:
         Thumbnail data dictionary
     """
-    # Create a simple SVG placeholder
+    # Create a simple SVG placeholder; only ellipsize names that were
+    # actually truncated.
+    display_name = (
+        component_name if len(component_name) <= 8 else component_name[:8] + "…"
+    )
     svg_content = f"""
     <svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
         <rect width="100%" height="100%" fill="#f0f0f0" stroke="#ccc" stroke-width="1"/>
         <text x="50%" y="50%" font-family="Arial" font-size="10" text-anchor="middle"
               dominant-baseline="middle" fill="#666">
-            {component_name[:8]}...
+            {display_name}
         </text>
     </svg>
     """
@@ -866,6 +871,10 @@ def generate_assembly_sequence(diagram: dict[str, Any]) -> list[dict[str, Any]]:
     if not diagram or not diagram.get("blocks", []):
         return []
 
+    # Work on a deep copy: generating a report must not mutate the
+    # caller's diagram (the steps below inject livingDocumentation and
+    # assembly order into every block).
+    diagram = copy.deepcopy(diagram)
     blocks = diagram["blocks"]
     connections = diagram.get("connections", [])
 
@@ -984,8 +993,9 @@ def estimate_assembly_time(block: dict[str, Any]) -> float:
     cad_links = [link for link in block.get("links", []) if link.get("target") == "cad"]
     base_time += len(cad_links) * 5.0
 
-    # Adjust based on block type
-    block_type = block.get("type", "")
+    # Adjust based on block type — lower-case the lookup because block
+    # types are stored capitalized ("Mechanical", "Electrical", ...).
+    block_type = str(block.get("type", "")).lower()
     type_multipliers = {
         "mechanical": 1.5,
         "electrical": 1.2,
@@ -1085,6 +1095,10 @@ def generate_living_bom(diagram: dict[str, Any]) -> dict[str, Any]:
     """
     if not diagram or not diagram.get("blocks", []):
         return {"items": [], "summary": {}}
+
+    # Work on a deep copy: generating a BOM must not mutate the caller's
+    # diagram (initialize_living_documentation writes into each block).
+    diagram = copy.deepcopy(diagram)
 
     bom_items = []
     total_cost = 0.0

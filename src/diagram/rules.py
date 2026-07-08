@@ -103,27 +103,63 @@ def check_logic_level_compatibility_bulk(
                 violations.append(
                     {
                         "type": "logic_level_mismatch",
-                        "severity": "error",
+                        # "warning" matches check_logic_level_compatibility —
+                        # a mismatch may be resolved by external level
+                        # shifters the diagram doesn't model.
+                        "severity": "warning",
                         "message": (
                             f"Logic level mismatch: {from_block['name']} ({from_level}) → "
                             f"{to_block['name']} ({to_level})"
                         ),
                         "blocks": [from_block["id"], to_block["id"]],
-                        "connection": connection["id"],
+                        "connection": connection.get("id"),
                     }
                 )
 
     return violations
 
 
-def _parse_power_value_mw(raw_value: Any) -> float:
+#: Rail voltage assumed for mA→mW conversion when a block does not
+#: declare one via a ``voltage`` / ``rail_voltage`` attribute.
+DEFAULT_RAIL_VOLTAGE = 3.3
+
+
+def _parse_rail_voltage(attributes: dict[str, Any]) -> float:
+    """Determine the rail voltage for a block's mA→mW conversion.
+
+    Reads the block's ``voltage`` or ``rail_voltage`` attribute.
+    Accepts plain numbers ("5", 5.0) or a trailing-V form ("5V", "3.3v").
+    Falls back to :data:`DEFAULT_RAIL_VOLTAGE` when absent or unparsable.
+    """
+    for key in ("voltage", "rail_voltage"):
+        raw = attributes.get(key)
+        if raw in (None, ""):
+            continue
+        text = str(raw).strip()
+        if text and text[-1] in ("V", "v"):
+            text = text[:-1]
+        try:
+            value = float(text)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            return value
+    return DEFAULT_RAIL_VOLTAGE
+
+
+def _parse_power_value_mw(
+    raw_value: Any,
+    rail_voltage: float = DEFAULT_RAIL_VOLTAGE,
+) -> float:
     """Parse a power value to milliwatts.
 
     Accepts plain numeric strings (interpreted as mW) and strings
-    suffixed with ``mA`` (converted at an assumed 3.3 V rail).
+    suffixed with ``mA`` (converted at *rail_voltage*, which comes from
+    the block's ``voltage``/``rail_voltage`` attribute when declared).
 
     Args:
         raw_value: The raw attribute value (str, int, or float).
+        rail_voltage: Rail voltage used for mA→mW conversion.
 
     Returns:
         The value in milliwatts.
@@ -134,7 +170,7 @@ def _parse_power_value_mw(raw_value: Any) -> float:
     text = str(raw_value)
     if "mA" in text:
         current_ma = float(text.replace("mA", ""))
-        return current_ma * 3.3  # Assume 3.3 V rail
+        return current_ma * rail_voltage
     return float(text)
 
 
@@ -150,11 +186,10 @@ def _collect_power_budget_data(diagram: dict[str, Any]) -> dict[str, Any]:
         attributes = block.get("attributes", {})
         block_name = block.get("name") or block.get("id") or "Unknown Block"
         block_id = block.get("id")
+        rail_voltage = _parse_rail_voltage(attributes)
 
         supply_field = (
-            "output_current"
-            if attributes.get("output_current")
-            else "power_supply_mw"
+            "output_current" if attributes.get("output_current") else "power_supply_mw"
         )
         supply_raw = attributes.get(supply_field)
         if any(key in attributes for key in ("output_current", "power_supply_mw")):
@@ -163,7 +198,9 @@ def _collect_power_budget_data(diagram: dict[str, Any]) -> dict[str, Any]:
                 referenced_blocks.append(block_id)
         if supply_raw not in (None, ""):
             try:
-                power_supplies.append((block, _parse_power_value_mw(supply_raw)))
+                power_supplies.append(
+                    (block, _parse_power_value_mw(supply_raw, rail_voltage))
+                )
             except (ValueError, TypeError):
                 issues.append(
                     {
@@ -178,9 +215,7 @@ def _collect_power_budget_data(diagram: dict[str, Any]) -> dict[str, Any]:
                 )
 
         consumption_field = (
-            "current"
-            if attributes.get("current")
-            else "power_consumption_mw"
+            "current" if attributes.get("current") else "power_consumption_mw"
         )
         consumption_raw = attributes.get(consumption_field)
         if any(key in attributes for key in ("current", "power_consumption_mw")):
@@ -189,7 +224,9 @@ def _collect_power_budget_data(diagram: dict[str, Any]) -> dict[str, Any]:
                 referenced_blocks.append(block_id)
         if consumption_raw not in (None, ""):
             try:
-                power_consumers.append((block, _parse_power_value_mw(consumption_raw)))
+                power_consumers.append(
+                    (block, _parse_power_value_mw(consumption_raw, rail_voltage))
+                )
             except (ValueError, TypeError):
                 issues.append(
                     {
@@ -380,11 +417,18 @@ def check_logic_level_compatibility(
     from_block = find_block_by_id(diagram, from_id) if from_id else None
     to_block = find_block_by_id(diagram, to_id) if to_id else None
 
+    # Ids attached to results let the palette highlight offending
+    # blocks/connections when a result row is clicked.
+    connection_id = connection.get("id")
+    block_ids = [bid for bid in (from_id, to_id) if bid]
+
     if not from_block or not to_block:
         return {
             "success": False,
             "rule": "logic_level_compatibility",
             "message": "Could not find connected blocks",
+            "connection": connection_id,
+            "blocks": block_ids,
         }
 
     # Find interfaces to get voltage parameters
@@ -411,6 +455,8 @@ def check_logic_level_compatibility(
                 "rule": "logic_level_compatibility",
                 "message": "Cannot find connected interfaces",
                 "severity": "error",
+                "connection": connection_id,
+                "blocks": block_ids,
             }
 
     if to_interface_id:
@@ -427,6 +473,8 @@ def check_logic_level_compatibility(
                 "rule": "logic_level_compatibility",
                 "message": "Cannot find connected interfaces",
                 "severity": "error",
+                "connection": connection_id,
+                "blocks": block_ids,
             }
 
     # Fall back to block attributes if interface params not found
@@ -465,6 +513,8 @@ def check_logic_level_compatibility(
         "rule": "logic_level_compatibility",
         "message": f"Logic level mismatch: {from_voltage} → {to_voltage}",
         "severity": "warning",
+        "connection": connection_id,
+        "blocks": block_ids,
     }
 
 
@@ -511,11 +561,23 @@ def check_power_budget(diagram: dict[str, Any]) -> dict[str, Any]:
                     f"{details['total_supply']:.1f}mW available"
                 )
 
+        # Aggregate the block ids from all violations so the palette can
+        # highlight the offending blocks when the result row is clicked.
+        involved_blocks = sorted(
+            {
+                block_id
+                for violation in violations
+                for block_id in violation.get("blocks", [])
+                if block_id
+            }
+        )
+
         return {
             "success": False,
             "rule": "power_budget",
             "message": message,
             "severity": highest_severity,
+            "blocks": involved_blocks,
         }
 
     return {
@@ -538,7 +600,8 @@ def check_implementation_completeness(diagram: dict[str, Any]) -> dict[str, Any]
     Returns:
         Dictionary with check results
     """
-    incomplete_blocks = []
+    incomplete_names = []
+    incomplete_ids = []
 
     for block in diagram.get("blocks", []):
         status = block.get("status", "Placeholder")
@@ -551,9 +614,11 @@ def check_implementation_completeness(diagram: dict[str, Any]) -> dict[str, Any]
 
             # Block should have some attributes, interfaces, and links to be truly "implemented"
             if not attributes or not interfaces or not links:
-                incomplete_blocks.append(block.get("name", "Unnamed"))
+                incomplete_names.append(block.get("name", "Unnamed"))
+                if block.get("id"):
+                    incomplete_ids.append(block["id"])
 
-    if not incomplete_blocks:
+    if not incomplete_names:
         return {
             "success": True,
             "rule": "implementation_completeness",
@@ -563,6 +628,7 @@ def check_implementation_completeness(diagram: dict[str, Any]) -> dict[str, Any]
         return {
             "success": False,
             "rule": "implementation_completeness",
-            "message": f"Incomplete blocks: {', '.join(incomplete_blocks)}",
+            "message": f"Incomplete blocks: {', '.join(incomplete_names)}",
             "severity": "warning",
+            "blocks": incomplete_ids,
         }

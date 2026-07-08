@@ -111,16 +111,24 @@ var DeltaUtils = (function () {
   }
 
   function _diffListByIndex(old, cur, path, ops) {
-    var max = Math.max(old.length, cur.length);
-    for (var i = 0; i < max; i++) {
-      var childPath = path + '/' + i;
-      if (i >= old.length) {
-        ops.push({ op: 'add', path: childPath, value: cur[i] });
-      } else if (i >= cur.length) {
-        ops.push({ op: 'remove', path: childPath });
-      } else {
-        _diff(old[i], cur[i], childPath, ops);
-      }
+    var minLen = Math.min(old.length, cur.length);
+    var i;
+
+    // Compare overlapping elements
+    for (i = 0; i < minLen; i++) {
+      _diff(old[i], cur[i], path + '/' + i, ops);
+    }
+
+    // Add new elements (ascending order is correct for sequential inserts)
+    for (i = minLen; i < cur.length; i++) {
+      ops.push({ op: 'add', path: path + '/' + i, value: cur[i] });
+    }
+
+    // Remove extra elements in REVERSE order — ascending removals shift
+    // the indices of subsequent removals, deleting the wrong elements
+    // (mirrors _diff_list_by_index in fsb_core/delta.py).
+    for (i = old.length - 1; i >= minLen; i--) {
+      ops.push({ op: 'remove', path: path + '/' + i });
     }
   }
 

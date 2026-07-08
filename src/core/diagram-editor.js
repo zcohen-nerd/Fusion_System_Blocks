@@ -48,15 +48,18 @@ class DiagramEditorCore {
 
   createEmptyDiagram() {
     return {
+      // schemaVersion is the migration key (see migrateDiagram);
+      // schema is the document-format identifier, shared with the
+      // Python core (fsb_core Graph / diagram.core.create_empty_diagram).
       schemaVersion: DiagramEditorCore.SCHEMA_VERSION,
+      schema: 'system-blocks-v2',
       blocks: [],
       connections: [],
       groups: [],
       namedStubs: [],
       metadata: {
         created: new Date().toISOString(),
-        modified: new Date().toISOString(),
-        version: "2.0"
+        modified: new Date().toISOString()
       }
     };
   }
@@ -800,6 +803,13 @@ class DiagramEditorCore {
    * the last snapshot.
    */
   hasUnsavedChanges() {
+    // The explicit dirty flag wins: the delta comparison below only
+    // sees the active page's content, so page-level operations
+    // (add/rename/reorder/delete page, edits parked on another page)
+    // would otherwise go undetected. markSaved() resets the flag.
+    if (this._dirty) {
+      return true;
+    }
     var delta = this.getDelta();
     if (delta !== null) {
       return delta.length > 0;
